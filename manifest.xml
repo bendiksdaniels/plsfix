@@ -27,4 +27,269 @@
     <SourceLocation DefaultValue="https://localhost:3000/taskpane.html"/>
   </DefaultSettings>
   <Permissions>ReadWriteDocument</Permissions>
+  <VersionOverrides xmlns="http://schemas.microsoft.com/office/taskpaneappversionoverrides" xsi:type="VersionOverridesV1_0">
+    <Requirements>
+      <bt:Sets DefaultMinVersion="1.1">
+        <bt:Set Name="SharedRuntime" MinVersion="1.1"/>
+      </bt:Sets>
+    </Requirements>
+    <Hosts>
+      <Host xsi:type="Workbook">
+        <Runtimes>
+          <Runtime resid="SMT.Taskpane.Url" lifetime="long"/>
+        </Runtimes>
+        <DesktopFormFactor>
+          <FunctionFile resid="SMT.Taskpane.Url"/>
+          <ExtensionPoint xsi:type="PrimaryCommandSurface">
+            <CustomTab id="SMT.Tab">
+              <Group id="SMT.Group.Tools">
+                <Label resid="SMT.Group.Tools.Label"/>
+                <Icon>
+                  <bt:Image size="16" resid="SMT.Icon.16"/>
+                  <bt:Image size="32" resid="SMT.Icon.32"/>
+                  <bt:Image size="80" resid="SMT.Icon.80"/>
+                </Icon>
+                <Control xsi:type="Button" id="SMT.Button.OpenPane">
+                  <Label resid="SMT.OpenPane.Label"/>
+                  <Supertip>
+                    <Title resid="SMT.OpenPane.Label"/>
+                    <Description resid="SMT.OpenPane.Tip"/>
+                  </Supertip>
+                  <Icon>
+                    <bt:Image size="16" resid="SMT.Icon.16"/>
+                    <bt:Image size="32" resid="SMT.Icon.32"/>
+                    <bt:Image size="80" resid="SMT.Icon.80"/>
+                  </Icon>
+                  <Action xsi:type="ShowTaskpane">
+                    <TaskpaneId>SMT.Taskpane</TaskpaneId>
+                    <SourceLocation resid="SMT.Taskpane.Url"/>
+                  </Action>
+                </Control>
+                <Control xsi:type="Button" id="SMT.Button.Autocolor">
+                  <Label resid="SMT.Autocolor.Label"/>
+                  <Supertip>
+                    <Title resid="SMT.Autocolor.Label"/>
+                    <Description resid="SMT.Autocolor.Tip"/>
+                  </Supertip>
+                  <Icon>
+                    <bt:Image size="16" resid="SMT.Icon.16"/>
+                    <bt:Image size="32" resid="SMT.Icon.32"/>
+                    <bt:Image size="80" resid="SMT.Icon.80"/>
+                  </Icon>
+                  <Action xsi:type="ExecuteFunction">
+                    <FunctionName>SMT_AUTOCOLOR</FunctionName>
+                  </Action>
+                </Control>
+                <Control xsi:type="Button" id="SMT.Button.FillRight">
+                  <Label resid="SMT.FillRight.Label"/>
+                  <Supertip>
+                    <Title resid="SMT.FillRight.Label"/>
+                    <Description resid="SMT.FillRight.Tip"/>
+                  </Supertip>
+                  <Icon>
+                    <bt:Image size="16" resid="SMT.Icon.16"/>
+                    <bt:Image size="32" resid="SMT.Icon.32"/>
+                    <bt:Image size="80" resid="SMT.Icon.80"/>
+                  </Icon>
+                  <Action xsi:type="ExecuteFunction">
+                    <FunctionName>SMT_FILLRIGHT</FunctionName>
+                  </Action>
+                </Control>
+                <Control xsi:type="Button" id="SMT.Button.FillDown">
+                  <Label resid="SMT.FillDown.Label"/>
+                  <Supertip>
+                    <Title resid="SMT.FillDown.Label"/>
+                    <Description resid="SMT.FillDown.Tip"/>
+                  </Supertip>
+                  <Icon>
+                    <bt:Image size="16" resid="SMT.Icon.16"/>
+                    <bt:Image size="32" resid="SMT.Icon.32"/>
+                    <bt:Image size="80" resid="SMT.Icon.80"/>
+                  </Icon>
+                  <Action xsi:type="ExecuteFunction">
+                    <FunctionName>SMT_FILLDOWN</FunctionName>
+                  </Action>
+                </Control>
+                <Control xsi:type="Button" id="SMT.Button.IfError">
+                  <Label resid="SMT.IfError.Label"/>
+                  <Supertip>
+                    <Title resid="SMT.IfError.Label"/>
+                    <Description resid="SMT.IfError.Tip"/>
+                  </Supertip>
+                  <Icon>
+                    <bt:Image size="16" resid="SMT.Icon.16"/>
+                    <bt:Image size="32" resid="SMT.Icon.32"/>
+                    <bt:Image size="80" resid="SMT.Icon.80"/>
+                  </Icon>
+                  <Action xsi:type="ExecuteFunction">
+                    <FunctionName>SMT_IFERROR</FunctionName>
+                  </Action>
+                </Control>
+              </Group>
+              <Label resid="SMT.Tab.Label"/>
+            </CustomTab>
+          </ExtensionPoint>
+        </DesktopFormFactor>
+      </Host>
+    </Hosts>
+    <Resources>
+      <bt:Images>
+        <bt:Image id="SMT.Icon.16" DefaultValue="https://localhost:3000/assets/icon-16.png"/>
+        <bt:Image id="SMT.Icon.32" DefaultValue="https://localhost:3000/assets/icon-32.png"/>
+        <bt:Image id="SMT.Icon.80" DefaultValue="https://localhost:3000/assets/icon-80.png"/>
+      </bt:Images>
+      <bt:Urls>
+        <bt:Url id="SMT.Taskpane.Url" DefaultValue="https://localhost:3000/taskpane.html"/>
+      </bt:Urls>
+      <bt:ShortStrings>
+        <bt:String id="SMT.Tab.Label" DefaultValue="Model Tools"/>
+        <bt:String id="SMT.Group.Tools.Label" DefaultValue="Model Tools"/>
+        <bt:String id="SMT.OpenPane.Label" DefaultValue="Model Tools"/>
+        <bt:String id="SMT.Autocolor.Label" DefaultValue="Autocolor"/>
+        <bt:String id="SMT.FillRight.Label" DefaultValue="Fill Right"/>
+        <bt:String id="SMT.FillDown.Label" DefaultValue="Fill Down"/>
+        <bt:String id="SMT.IfError.Label" DefaultValue="IFERROR"/>
+      </bt:ShortStrings>
+      <bt:LongStrings>
+        <bt:String id="SMT.OpenPane.Tip" DefaultValue="Open the Model Tools task pane."/>
+        <bt:String id="SMT.Autocolor.Tip" DefaultValue="Color inputs, formulas and links in your palette."/>
+        <bt:String id="SMT.FillRight.Tip" DefaultValue="Fill the formula from the left cell across the selection."/>
+        <bt:String id="SMT.FillDown.Tip" DefaultValue="Fill the formula from the top cell down the selection."/>
+        <bt:String id="SMT.IfError.Tip" DefaultValue="Wrap selected formulas with IFERROR."/>
+      </bt:LongStrings>
+    </Resources>
+    <VersionOverrides xmlns="http://schemas.microsoft.com/office/taskpaneappversionoverrides/1.1" xsi:type="VersionOverridesV1_1">
+      <Requirements>
+        <bt:Sets DefaultMinVersion="1.1">
+          <bt:Set Name="SharedRuntime" MinVersion="1.1"/>
+        </bt:Sets>
+      </Requirements>
+      <Hosts>
+        <Host xsi:type="Workbook">
+          <Runtimes>
+            <Runtime resid="SMT.Taskpane.Url" lifetime="long"/>
+          </Runtimes>
+          <DesktopFormFactor>
+            <FunctionFile resid="SMT.Taskpane.Url"/>
+            <ExtensionPoint xsi:type="PrimaryCommandSurface">
+              <CustomTab id="SMT.Tab">
+                <Group id="SMT.Group.Tools">
+                  <Label resid="SMT.Group.Tools.Label"/>
+                  <Icon>
+                    <bt:Image size="16" resid="SMT.Icon.16"/>
+                    <bt:Image size="32" resid="SMT.Icon.32"/>
+                    <bt:Image size="80" resid="SMT.Icon.80"/>
+                  </Icon>
+                  <Control xsi:type="Button" id="SMT.Button.OpenPane">
+                    <Label resid="SMT.OpenPane.Label"/>
+                    <Supertip>
+                      <Title resid="SMT.OpenPane.Label"/>
+                      <Description resid="SMT.OpenPane.Tip"/>
+                    </Supertip>
+                    <Icon>
+                      <bt:Image size="16" resid="SMT.Icon.16"/>
+                      <bt:Image size="32" resid="SMT.Icon.32"/>
+                      <bt:Image size="80" resid="SMT.Icon.80"/>
+                    </Icon>
+                    <Action xsi:type="ShowTaskpane">
+                      <TaskpaneId>SMT.Taskpane</TaskpaneId>
+                      <SourceLocation resid="SMT.Taskpane.Url"/>
+                    </Action>
+                  </Control>
+                  <Control xsi:type="Button" id="SMT.Button.Autocolor">
+                    <Label resid="SMT.Autocolor.Label"/>
+                    <Supertip>
+                      <Title resid="SMT.Autocolor.Label"/>
+                      <Description resid="SMT.Autocolor.Tip"/>
+                    </Supertip>
+                    <Icon>
+                      <bt:Image size="16" resid="SMT.Icon.16"/>
+                      <bt:Image size="32" resid="SMT.Icon.32"/>
+                      <bt:Image size="80" resid="SMT.Icon.80"/>
+                    </Icon>
+                    <Action xsi:type="ExecuteFunction">
+                      <FunctionName>SMT_AUTOCOLOR</FunctionName>
+                    </Action>
+                  </Control>
+                  <Control xsi:type="Button" id="SMT.Button.FillRight">
+                    <Label resid="SMT.FillRight.Label"/>
+                    <Supertip>
+                      <Title resid="SMT.FillRight.Label"/>
+                      <Description resid="SMT.FillRight.Tip"/>
+                    </Supertip>
+                    <Icon>
+                      <bt:Image size="16" resid="SMT.Icon.16"/>
+                      <bt:Image size="32" resid="SMT.Icon.32"/>
+                      <bt:Image size="80" resid="SMT.Icon.80"/>
+                    </Icon>
+                    <Action xsi:type="ExecuteFunction">
+                      <FunctionName>SMT_FILLRIGHT</FunctionName>
+                    </Action>
+                  </Control>
+                  <Control xsi:type="Button" id="SMT.Button.FillDown">
+                    <Label resid="SMT.FillDown.Label"/>
+                    <Supertip>
+                      <Title resid="SMT.FillDown.Label"/>
+                      <Description resid="SMT.FillDown.Tip"/>
+                    </Supertip>
+                    <Icon>
+                      <bt:Image size="16" resid="SMT.Icon.16"/>
+                      <bt:Image size="32" resid="SMT.Icon.32"/>
+                      <bt:Image size="80" resid="SMT.Icon.80"/>
+                    </Icon>
+                    <Action xsi:type="ExecuteFunction">
+                      <FunctionName>SMT_FILLDOWN</FunctionName>
+                    </Action>
+                  </Control>
+                  <Control xsi:type="Button" id="SMT.Button.IfError">
+                    <Label resid="SMT.IfError.Label"/>
+                    <Supertip>
+                      <Title resid="SMT.IfError.Label"/>
+                      <Description resid="SMT.IfError.Tip"/>
+                    </Supertip>
+                    <Icon>
+                      <bt:Image size="16" resid="SMT.Icon.16"/>
+                      <bt:Image size="32" resid="SMT.Icon.32"/>
+                      <bt:Image size="80" resid="SMT.Icon.80"/>
+                    </Icon>
+                    <Action xsi:type="ExecuteFunction">
+                      <FunctionName>SMT_IFERROR</FunctionName>
+                    </Action>
+                  </Control>
+                </Group>
+                <Label resid="SMT.Tab.Label"/>
+              </CustomTab>
+            </ExtensionPoint>
+          </DesktopFormFactor>
+        </Host>
+      </Hosts>
+      <Resources>
+        <bt:Images>
+          <bt:Image id="SMT.Icon.16" DefaultValue="https://localhost:3000/assets/icon-16.png"/>
+          <bt:Image id="SMT.Icon.32" DefaultValue="https://localhost:3000/assets/icon-32.png"/>
+          <bt:Image id="SMT.Icon.80" DefaultValue="https://localhost:3000/assets/icon-80.png"/>
+        </bt:Images>
+        <bt:Urls>
+          <bt:Url id="SMT.Taskpane.Url" DefaultValue="https://localhost:3000/taskpane.html"/>
+        </bt:Urls>
+        <bt:ShortStrings>
+          <bt:String id="SMT.Tab.Label" DefaultValue="Model Tools"/>
+          <bt:String id="SMT.Group.Tools.Label" DefaultValue="Model Tools"/>
+          <bt:String id="SMT.OpenPane.Label" DefaultValue="Model Tools"/>
+          <bt:String id="SMT.Autocolor.Label" DefaultValue="Autocolor"/>
+          <bt:String id="SMT.FillRight.Label" DefaultValue="Fill Right"/>
+          <bt:String id="SMT.FillDown.Label" DefaultValue="Fill Down"/>
+          <bt:String id="SMT.IfError.Label" DefaultValue="IFERROR"/>
+        </bt:ShortStrings>
+        <bt:LongStrings>
+          <bt:String id="SMT.OpenPane.Tip" DefaultValue="Open the Model Tools task pane."/>
+          <bt:String id="SMT.Autocolor.Tip" DefaultValue="Color inputs, formulas and links in your palette."/>
+          <bt:String id="SMT.FillRight.Tip" DefaultValue="Fill the formula from the left cell across the selection."/>
+          <bt:String id="SMT.FillDown.Tip" DefaultValue="Fill the formula from the top cell down the selection."/>
+          <bt:String id="SMT.IfError.Tip" DefaultValue="Wrap selected formulas with IFERROR."/>
+        </bt:LongStrings>
+      </Resources>
+      <ExtendedOverrides Url="https://localhost:3000/shortcuts.json"/>
+    </VersionOverrides>
+  </VersionOverrides>
 </OfficeApp>

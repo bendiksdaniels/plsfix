@@ -117,6 +117,42 @@ async function runAction(action: string): Promise<void> {
 }
 
 // ---------------------------------------------------------------------------
+// Ribbon commands and keyboard shortcuts (shared runtime)
+// ---------------------------------------------------------------------------
+
+interface CommandEvent {
+  completed: () => void;
+}
+
+function registerCommands(): void {
+  if (!Office.actions?.associate) return;
+
+  const commands: Record<string, () => Promise<void>> = {
+    SMT_AUTOCOLOR: autocolorSelection,
+    SMT_FILLRIGHT: () => fastFill("right"),
+    SMT_FILLDOWN: () => fastFill("down"),
+    SMT_IFERROR: addIfError,
+    SMT_SCALEUP: () => scaleSelection(1000),
+    SMT_SCALEDOWN: () => scaleSelection(0.001),
+  };
+
+  for (const [id, run] of Object.entries(commands)) {
+    Office.actions.associate(id, (event?: CommandEvent) => {
+      void run()
+        .then(() => refreshSelection())
+        .catch((error) => showToast(errorMessage(error), "error"))
+        .finally(() => event?.completed());
+    });
+  }
+
+  Office.actions.associate("SMT_SHOWPANE", (event?: CommandEvent) => {
+    void Promise.resolve(Office.addin?.showAsTaskpane())
+      .catch(() => undefined)
+      .finally(() => event?.completed());
+  });
+}
+
+// ---------------------------------------------------------------------------
 // Brand dashboard
 // ---------------------------------------------------------------------------
 
@@ -354,6 +390,8 @@ Office.onReady(async ({ host }) => {
 
   connectionStatus.textContent = "Excel connected";
   connectionStatus.className = "connection ready";
+
+  registerCommands();
 
   for (const button of actionButtons) {
     button.addEventListener("click", () => {

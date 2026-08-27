@@ -1,0 +1,21 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/office-js/keyboard-shortcuts.json",
+  "actions": [
+    { "id": "SMT_SHOWPANE", "type": "ExecuteFunction", "name": "Open Model Tools" },
+    { "id": "SMT_AUTOCOLOR", "type": "ExecuteFunction", "name": "Autocolor selection" },
+    { "id": "SMT_FILLRIGHT", "type": "ExecuteFunction", "name": "Fill formula right" },
+    { "id": "SMT_FILLDOWN", "type": "ExecuteFunction", "name": "Fill formula down" },
+    { "id": "SMT_IFERROR", "type": "ExecuteFunction", "name": "Wrap with IFERROR" },
+    { "id": "SMT_SCALEUP", "type": "ExecuteFunction", "name": "Multiply by 1,000" },
+    { "id": "SMT_SCALEDOWN", "type": "ExecuteFunction", "name": "Divide by 1,000" }
+  ],
+  "shortcuts": [
+    { "action": "SMT_SHOWPANE", "key": { "default": "Ctrl+Shift+M" } },
+    { "action": "SMT_AUTOCOLOR", "key": { "default": "Ctrl+Shift+K" } },
+    { "action": "SMT_FILLRIGHT", "key": { "default": "Ctrl+Alt+R" } },
+    { "action": "SMT_FILLDOWN", "key": { "default": "Ctrl+Alt+D" } },
+    { "action": "SMT_IFERROR", "key": { "default": "Ctrl+Shift+I" } },
+    { "action": "SMT_SCALEUP", "key": { "default": "Ctrl+Shift+8" } },
+    { "action": "SMT_SCALEDOWN", "key": { "default": "Ctrl+Shift+9" } }
+  ]
+}

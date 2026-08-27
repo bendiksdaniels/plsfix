@@ -2,7 +2,7 @@
 
 Model Tools is an early Excel productivity add-in for financial modelling teams. The first milestone focuses on fast, consistent workbook formatting and common formula operations.
 
-## What works in v0.2
+## What works in v0.3
 
 - Live selection summary: cells, formulas, blanks, and formula errors
 - Five financial-model formatting presets
@@ -12,6 +12,7 @@ Model Tools is an early Excel productivity add-in for financial modelling teams.
 - Financial-model autocoloring: hardcodes blue, formulas black, external links green
 - Multiply or divide selected constants and formulas by 1,000
 - Brand tab: company palette (pickers, hex entry, or logo upload with local color extraction), font and currency settings, JSON import/export; all presets and autocolor follow the palette; persisted in the task pane
+- the add-in's ribbon tab with one-click commands (autocolor, fills, IFERROR) and customizable keyboard shortcuts via the shared runtime (`public/shortcuts.json`)
 
 The task pane runs locally. It has no backend and sends no workbook data anywhere.
 
