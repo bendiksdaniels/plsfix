@@ -247,6 +247,7 @@ button:disabled { cursor: wait; opacity: .5; }
 }
 .action-icon.colors { color: #0057b8; text-shadow: 6px 0 #17823b, 3px 0 #1f1d1b; }
 .action-icon.key { color: var(--bronze); }
+.action-icon.audit { color: var(--bronze); }
 kbd {
   padding: 3px 6px;
   border: 1px solid #d3cec4;
@@ -259,6 +260,44 @@ kbd {
 
 .scale-row { grid-template-columns: 1fr 1fr; }
 .scale-row button { min-height: 36px; font-size: 11px; }
+
+.trace-strip { grid-template-columns: 1fr 1fr; }
+.trace-panel {
+  display: grid;
+  gap: 8px;
+  margin-top: 8px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  background: rgba(255,255,255,.68);
+}
+.trace-head { display: flex; align-items: center; gap: 8px; }
+.trace-origin {
+  overflow: hidden;
+  flex: 1;
+  min-width: 0;
+  color: #565047;
+  font: 600 10px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* The refresh icon spins on hover; a back arrow must not. */
+.icon-button.back:hover { transform: none; }
+.chip-strip { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip-strip .hint { margin: 0; }
+.chip {
+  max-width: 100%;
+  overflow: hidden;
+  padding: 4px 9px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--ink);
+  background: #fff;
+  font: 650 10px ui-monospace, SFMono-Regular, Menlo, monospace;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
 
 .preview-table {
   width: 100%;
@@ -469,6 +508,7 @@ footer span:last-child { margin-left: auto; }
   .tool-grid { grid-template-columns: repeat(2, 1fr); }
   .number-strip { grid-template-columns: repeat(2, 1fr); }
   .cycle-strip { grid-template-columns: repeat(5, 1fr); }
+  .trace-strip { grid-template-columns: repeat(2, 1fr); }
   .palette-row { grid-template-columns: 40px 1fr 74px; }
 }
 

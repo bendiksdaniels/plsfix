@@ -13,10 +13,17 @@ import {
   fastFill,
   insertColorKey,
   inspectSelection,
+  parseAddress,
   scaleSelection,
+  selectArea,
   setAutocolorOnEdit,
+  toggleAuditOverlay,
+  traceActiveCell,
   type NumberFormatName,
   type PresetName,
+  type TraceArea,
+  type TraceDirection,
+  type TraceResult,
 } from "./excel";
 import {
   activeTheme,
@@ -87,58 +94,177 @@ async function refreshSelection(): Promise<void> {
   }
 }
 
-async function runAction(action: string): Promise<void> {
+// ---------------------------------------------------------------------------
+// Audit overlay and Smart Track
+// ---------------------------------------------------------------------------
+
+const TRACE_STACK_LIMIT = 20;
+
+interface TraceView {
+  direction: TraceDirection;
+  result: TraceResult;
+}
+
+const traceStack: TraceView[] = [];
+let traceView: TraceView | null = null;
+let auditOn = false;
+
+function renderAuditState(): void {
+  getElement("audit-state").textContent = auditOn ? "On" : "Off";
+}
+
+function renderTrace(): void {
+  const panel = getElement<HTMLDivElement>("trace-panel");
+  const chips = getElement<HTMLDivElement>("trace-chips");
+  // Clearing before the early return keeps stale chips from firing when the
+  // panel comes back.
+  chips.replaceChildren();
+
+  if (!traceView) {
+    panel.hidden = true;
+    return;
+  }
+
+  const { direction, result } = traceView;
+  getElement("trace-origin").textContent = `${result.origin} · ${direction}`;
+  getElement<HTMLButtonElement>("trace-back").disabled = traceStack.length === 0;
+
+  if (result.areas.length === 0) {
+    const empty = document.createElement("p");
+    empty.className = "hint";
+    empty.textContent = `No direct ${direction}.`;
+    chips.append(empty);
+  }
+
+  for (const area of result.areas) {
+    const label = `${area.sheet}!${area.address}`;
+    const chip = document.createElement("button");
+    chip.type = "button";
+    chip.className = "chip";
+    chip.textContent = label;
+    chip.title = `Select ${label} (${area.cellCount.toLocaleString()} cells)`;
+    chip.addEventListener("click", () => void guard(() => walkTo(area)));
+    chips.append(chip);
+  }
+
+  panel.hidden = false;
+}
+
+function traceMessage(direction: TraceDirection, count: number): string {
+  if (count === 0) return `No direct ${direction}`;
+  return `${count} direct ${count === 1 ? direction.slice(0, -1) : direction}`;
+}
+
+async function showTrace(
+  direction: TraceDirection,
+  jump: boolean,
+): Promise<string> {
+  const result = await traceActiveCell(direction);
+  traceView = { direction, result };
+  renderTrace();
+
+  // A shortcut can fire with the pane closed, so the keystroke jumps instead.
+  const first = result.areas[0];
+  if (jump && first) await selectArea(first);
+
+  return traceMessage(direction, result.areas.length);
+}
+
+// A fresh trace is a new walk, so the back stack starts empty.
+function startTrace(direction: TraceDirection, jump: boolean): Promise<string> {
+  traceStack.length = 0;
+  return showTrace(direction, jump);
+}
+
+async function walkTo(area: TraceArea): Promise<string> {
+  const current = traceView;
+  if (!current) return "Nothing to trace";
+
+  await selectArea(area);
+  if (traceStack.length >= TRACE_STACK_LIMIT) traceStack.shift();
+  traceStack.push(current);
+  return showTrace(current.direction, false);
+}
+
+async function traceBack(): Promise<string> {
+  const previous = traceStack.pop();
+  if (!previous) return "Nothing to go back to";
+
+  traceView = previous;
+  renderTrace();
+  await selectArea(parseAddress(previous.result.origin));
+  return `Back at ${previous.result.origin}`;
+}
+
+async function toggleAudit(): Promise<string> {
+  auditOn = await toggleAuditOverlay();
+  renderAuditState();
+  return auditOn ? "Audit overlay on" : "Audit overlay off";
+}
+
+async function dispatch(action: string): Promise<string> {
+  if (action.startsWith("style-")) {
+    await applyPreset(action.replace("style-", "") as PresetName);
+  } else if (action.startsWith("number-")) {
+    await applyNumberFormat(action.replace("number-", "") as NumberFormatName);
+  } else if (action.startsWith("cycle-number-")) {
+    await applyNumberCycle(
+      action.replace("cycle-number-", "") as NumberCycleFamily,
+    );
+  } else if (action.startsWith("cycle-row-")) {
+    await applyRowStyleCycle(action.replace("cycle-row-", "") as RowStyleKind);
+  } else {
+    switch (action) {
+      case "cycle-fill":
+        await applyFillCycle();
+        break;
+      case "cycle-font":
+        await applyFontColorCycle();
+        break;
+      case "clear-formats":
+        await clearFormats();
+        break;
+      case "fill-right":
+        await fastFill("right");
+        break;
+      case "fill-down":
+        await fastFill("down");
+        break;
+      case "if-error":
+        await addIfError();
+        break;
+      case "autocolor":
+        await autocolorSelection();
+        break;
+      case "insert-color-key":
+        await insertColorKey();
+        break;
+      case "divide-1000":
+        await scaleSelection(0.001);
+        break;
+      case "multiply-1000":
+        await scaleSelection(1000);
+        break;
+      case "audit-toggle":
+        return toggleAudit();
+      case "trace-precedents":
+      case "trace-dependents":
+        return startTrace(action.replace("trace-", "") as TraceDirection, false);
+      default:
+        throw new Error(`Unknown action: ${action}`);
+    }
+  }
+
+  return "Selection updated";
+}
+
+// Every pane interaction runs through here: buttons off, toast on, busy cleared.
+async function guard(run: () => Promise<string>): Promise<void> {
   setBusy(true);
   try {
-    if (action.startsWith("style-")) {
-      await applyPreset(action.replace("style-", "") as PresetName);
-    } else if (action.startsWith("number-")) {
-      await applyNumberFormat(action.replace("number-", "") as NumberFormatName);
-    } else if (action.startsWith("cycle-number-")) {
-      await applyNumberCycle(
-        action.replace("cycle-number-", "") as NumberCycleFamily,
-      );
-    } else if (action.startsWith("cycle-row-")) {
-      await applyRowStyleCycle(action.replace("cycle-row-", "") as RowStyleKind);
-    } else {
-      switch (action) {
-        case "cycle-fill":
-          await applyFillCycle();
-          break;
-        case "cycle-font":
-          await applyFontColorCycle();
-          break;
-        case "clear-formats":
-          await clearFormats();
-          break;
-        case "fill-right":
-          await fastFill("right");
-          break;
-        case "fill-down":
-          await fastFill("down");
-          break;
-        case "if-error":
-          await addIfError();
-          break;
-        case "autocolor":
-          await autocolorSelection();
-          break;
-        case "insert-color-key":
-          await insertColorKey();
-          break;
-        case "divide-1000":
-          await scaleSelection(0.001);
-          break;
-        case "multiply-1000":
-          await scaleSelection(1000);
-          break;
-        default:
-          throw new Error(`Unknown action: ${action}`);
-      }
-    }
-
+    const message = await run();
     await refreshSelection();
-    showToast("Selection updated");
+    showToast(message);
   } catch (error) {
     showToast(errorMessage(error), "error");
   } finally {
@@ -157,8 +283,13 @@ interface CommandEvent {
 function registerCommands(): void {
   if (!Office.actions?.associate) return;
 
-  const commands: Record<string, () => Promise<void>> = {
+  const commands: Record<string, () => Promise<unknown>> = {
     SMT_AUTOCOLOR: autocolorSelection,
+    SMT_AUDIT: toggleAudit,
+    // With the pane closed there is nothing to read, so the keystroke jumps to
+    // the first result instead.
+    SMT_TRACE_PRE: () => startTrace("precedents", true),
+    SMT_TRACE_DEP: () => startTrace("dependents", true),
     SMT_FILLRIGHT: () => fastFill("right"),
     SMT_FILLDOWN: () => fastFill("down"),
     SMT_IFERROR: addIfError,
@@ -443,6 +574,7 @@ loadSettings();
 wireTabs();
 wireBrand();
 renderBrand();
+renderAuditState();
 
 Office.onReady(async ({ host }) => {
   if (host !== Office.HostType.Excel) {
@@ -460,13 +592,18 @@ Office.onReady(async ({ host }) => {
   for (const button of actionButtons) {
     button.addEventListener("click", () => {
       const action = button.dataset.action;
-      if (action) void runAction(action);
+      if (action) void guard(() => dispatch(action));
     });
   }
 
   getElement<HTMLButtonElement>("refresh-selection").addEventListener(
     "click",
     () => void refreshSelection(),
+  );
+
+  getElement<HTMLButtonElement>("trace-back").addEventListener(
+    "click",
+    () => void guard(traceBack),
   );
 
   Office.context.document.addHandlerAsync(

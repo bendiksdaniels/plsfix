@@ -1,3 +1,4 @@
+import { type AuditMark, auditGrid } from "./audit";
 import { type CellClass, classifyCell } from "./classify";
 import {
   type BorderSpec,
@@ -24,6 +25,7 @@ import {
   activeTheme,
   currencyNumberFormat,
   getActiveSettings,
+  tint,
   type WorkbookTheme,
 } from "./settings";
 
@@ -349,8 +351,31 @@ function classFont(kind: CellClass, theme: WorkbookTheme): string | null {
   }
 }
 
-// One write per run of same-class cells instead of one per cell: model rows are
-// usually uniform, so this keeps the batch small on wide selections.
+// One write per run of same-key cells instead of one per cell: model rows are
+// usually uniform, so this keeps the batch small on wide selections. A null key
+// leaves the cell untouched.
+function writeRuns(
+  range: Excel.Range,
+  keys: (string | null)[][],
+  write: (block: Excel.Range, key: string) => void,
+): void {
+  keys.forEach((row, rowIndex) => {
+    let start = 0;
+    while (start < row.length) {
+      const key = row[start] ?? null;
+      let end = start + 1;
+      while (end < row.length && (row[end] ?? null) === key) end += 1;
+      if (key !== null) {
+        write(
+          range.getCell(rowIndex, start).getResizedRange(0, end - start - 1),
+          key,
+        );
+      }
+      start = end;
+    }
+  });
+}
+
 function colorGrid(
   range: Excel.Range,
   rows: number,
@@ -359,9 +384,8 @@ function colorGrid(
   values: CellValue[][],
 ): void {
   const theme = activeTheme();
-
-  for (let row = 0; row < rows; row += 1) {
-    const colors = Array.from({ length: columns }, (_unused, column) =>
+  const colors = Array.from({ length: rows }, (_unusedRow, row) =>
+    Array.from({ length: columns }, (_unusedColumn, column) =>
       classFont(
         classifyCell(
           formulas[row]?.[column] ?? null,
@@ -369,22 +393,12 @@ function colorGrid(
         ),
         theme,
       ),
-    );
+    ),
+  );
 
-    let start = 0;
-    while (start < columns) {
-      const color = colors[start] ?? null;
-      let end = start + 1;
-      while (end < columns && colors[end] === color) end += 1;
-      if (color) {
-        range
-          .getCell(row, start)
-          .getResizedRange(0, end - start - 1)
-          .format.font.color = color;
-      }
-      start = end;
-    }
-  }
+  writeRuns(range, colors, (block, color) => {
+    block.format.font.color = color;
+  });
 }
 
 export async function autocolorSelection(): Promise<void> {
@@ -544,4 +558,246 @@ export function setAutocolorOnEdit(enabled: boolean): Promise<void> {
   const task = handlerQueue.then(() => applyEditHandler(enabled));
   handlerQueue = task.catch(() => undefined);
   return task;
+}
+
+// ---------------------------------------------------------------------------
+// Formula audit overlay
+// ---------------------------------------------------------------------------
+
+const LONE_FILL = "#E8B4B4";
+const OVERLAY_BASE = "#FFFFFF";
+const NO_FILL = "none";
+
+interface FillSnapshot {
+  sheetId: string;
+  address: string;
+  cells: string[][];
+}
+
+// The overlay owns nothing it did not paint: every fill it covers is stored here
+// first and written back verbatim. C5 generalizes the pair into SMT Undo.
+const fillSnapshots = new Map<string, FillSnapshot>();
+
+// Colour, pattern and pattern colour together, so a modeller's own striped fill
+// comes back exactly as it was.
+function fillKey(fill: Excel.CellPropertiesFill | undefined): string {
+  const pattern = fill?.pattern ?? Excel.FillPattern.none;
+  if (pattern === Excel.FillPattern.none) return NO_FILL;
+  return [
+    pattern,
+    fill?.color ?? OVERLAY_BASE,
+    fill?.patternColor ?? OVERLAY_BASE,
+  ].join("|");
+}
+
+function applyFillKey(block: Excel.Range, key: string): void {
+  const { fill } = block.format;
+  if (key === NO_FILL) {
+    fill.clear();
+    return;
+  }
+  const [pattern, color, patternColor] = key.split("|");
+  // Colour first: setting it on an unfilled cell would otherwise force Solid.
+  fill.color = color ?? OVERLAY_BASE;
+  fill.pattern = pattern as Excel.FillPattern;
+  fill.patternColor = patternColor ?? OVERLAY_BASE;
+}
+
+function overlayKey(mark: AuditMark, patternColor: string): string | null {
+  switch (mark) {
+    case "horizontal":
+      return [Excel.FillPattern.lightHorizontal, OVERLAY_BASE, patternColor].join("|");
+    case "vertical":
+      return [Excel.FillPattern.lightVertical, OVERLAY_BASE, patternColor].join("|");
+    case "both":
+      return [Excel.FillPattern.crissCross, OVERLAY_BASE, patternColor].join("|");
+    case "lone":
+      return [Excel.FillPattern.solid, LONE_FILL, LONE_FILL].join("|");
+    case "none":
+      return null;
+  }
+}
+
+// Range addresses arrive sheet-qualified; worksheet.getRange wants the local part.
+export function parseAddress(address: string): {
+  sheet: string;
+  address: string;
+} {
+  const cut = address.lastIndexOf("!");
+  if (cut < 0) return { sheet: "", address };
+  return {
+    sheet: address.slice(0, cut).replace(/^'|'$/g, "").replace(/''/g, "'"),
+    address: address.slice(cut + 1),
+  };
+}
+
+export async function snapshotFills(
+  context: Excel.RequestContext,
+  range: Excel.Range,
+): Promise<void> {
+  const properties = range.getCellProperties({
+    format: { fill: { color: true, pattern: true, patternColor: true } },
+  });
+  const sheet = range.worksheet;
+  sheet.load("id");
+  range.load("address");
+  await context.sync();
+
+  const address = parseAddress(range.address).address;
+  fillSnapshots.set(`${sheet.id}!${address}`, {
+    sheetId: sheet.id,
+    address,
+    cells: properties.value.map((row) =>
+      row.map((cell) => fillKey(cell.format?.fill)),
+    ),
+  });
+}
+
+export async function restoreFills(context: Excel.RequestContext): Promise<void> {
+  if (fillSnapshots.size === 0) return;
+
+  const pending = [...fillSnapshots.values()].map((snapshot) => ({
+    snapshot,
+    // Sheet id rather than name, so a rename between paint and restore is fine.
+    sheet: context.workbook.worksheets.getItemOrNullObject(snapshot.sheetId),
+  }));
+  fillSnapshots.clear();
+
+  for (const { sheet } of pending) sheet.load("isNullObject");
+  await context.sync();
+
+  for (const { snapshot, sheet } of pending) {
+    if (sheet.isNullObject) continue;
+    writeRuns(sheet.getRange(snapshot.address), snapshot.cells, applyFillKey);
+  }
+  await context.sync();
+}
+
+export async function toggleAuditOverlay(): Promise<boolean> {
+  return Excel.run(async (context) => {
+    const selected = context.workbook.getSelectedRange();
+    selected.load("rowCount,columnCount");
+    await context.sync();
+
+    // One cell says "check this block", not "check this cell".
+    let target = selected;
+    if (selected.rowCount === 1 && selected.columnCount === 1) {
+      target = selected.getSurroundingRegion();
+      target.load("rowCount,columnCount");
+      await context.sync();
+    }
+    if (target.rowCount * target.columnCount > SELECTION_CELL_CAP) {
+      throw new Error("The audit overlay supports up to 5,000 cells at once.");
+    }
+
+    const sheet = target.worksheet;
+    sheet.load("id");
+    target.load("address,formulasR1C1");
+    await context.sync();
+
+    const key = `${sheet.id}!${parseAddress(target.address).address}`;
+    const wasOn = fillSnapshots.has(key);
+    // Put old fills back before reading new ones, or the next snapshot would
+    // capture our own paint over an overlapping range.
+    await restoreFills(context);
+    if (wasOn) return false;
+
+    await snapshotFills(context, target);
+
+    const patternColor = tint(getActiveSettings().primary, 0.55);
+    const marks = auditGrid(target.formulasR1C1 as CellValue[][]);
+    writeRuns(
+      target,
+      marks.map((row) => row.map((mark) => overlayKey(mark, patternColor))),
+      applyFillKey,
+    );
+    await context.sync();
+    return true;
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Smart Track (direct precedents and dependents)
+// ---------------------------------------------------------------------------
+
+export type TraceDirection = "precedents" | "dependents";
+
+export interface TraceArea {
+  sheet: string;
+  address: string;
+  cellCount: number;
+}
+
+export interface TraceResult {
+  origin: string;
+  areas: TraceArea[];
+}
+
+const TRACE_API_SET: Record<TraceDirection, string> = {
+  precedents: "1.12",
+  dependents: "1.13",
+};
+
+function hostSupports(apiSet: string): boolean {
+  const requirements = Office.context?.requirements;
+  return requirements ? requirements.isSetSupported("ExcelApi", apiSet) : true;
+}
+
+export async function traceActiveCell(
+  direction: TraceDirection,
+): Promise<TraceResult> {
+  return Excel.run(async (context) => {
+    const cell = context.workbook.getActiveCell();
+    cell.load("address");
+    await context.sync();
+
+    // The hosted office.js always defines the method, so the host API set decides.
+    const method =
+      direction === "precedents" ? "getDirectPrecedents" : "getDirectDependents";
+    const callable = (cell as unknown as Record<string, unknown>)[method];
+    if (
+      typeof callable !== "function" ||
+      !hostSupports(TRACE_API_SET[direction])
+    ) {
+      throw new Error("Tracing needs a newer Excel build.");
+    }
+
+    const found =
+      direction === "precedents"
+        ? cell.getDirectPrecedents()
+        : cell.getDirectDependents();
+    found.ranges.load("items/address,items/cellCount");
+
+    try {
+      await context.sync();
+    } catch (error) {
+      // Excel reports "nothing found" by throwing rather than returning nothing.
+      if ((error as { code?: string }).code !== Excel.ErrorCodes.itemNotFound) {
+        throw error;
+      }
+      return { origin: cell.address, areas: [] };
+    }
+
+    return {
+      origin: cell.address,
+      areas: found.ranges.items.map((item) => ({
+        ...parseAddress(item.address),
+        cellCount: item.cellCount,
+      })),
+    };
+  });
+}
+
+export async function selectArea(area: {
+  sheet: string;
+  address: string;
+}): Promise<void> {
+  await Excel.run(async (context) => {
+    const sheet = area.sheet
+      ? context.workbook.worksheets.getItem(area.sheet)
+      : context.workbook.worksheets.getActiveWorksheet();
+    sheet.activate();
+    sheet.getRange(area.address).select();
+    await context.sync();
+  });
 }
