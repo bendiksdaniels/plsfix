@@ -162,6 +162,27 @@ suppression are out of reach; additive checks only.
 | Track changes / workbook discussions | MB/US | Review workflows | Backend | P3 |
 | Corporate dictionary / proofing rules | MB | Terminology enforcement | Partial | P3 |
 
+## 11. Deltas from the wider competitor set (added 27.08; sources in docs/research/competitor-deltas.md and user-gaps.md)
+
+| Feature | Inspired by | Feasibility | Priority |
+|---|---|---|---|
+| SMT Undo: snapshot + restore last bulk action | #1 Macabacus trust complaint (undo broken) | Yes (we read state before writing anyway) | P1 — fold into C5 |
+| Palette legend insert (auto color key block) | F1F9 "Keys" | Yes (trivial once autocolor v2 exists) | P1 — fold into C3 |
+| =SMT.ROUND consistent-rounding custom functions | think-cell TCROUND | Yes (CustomFunctions set) | P2 (v1.x) |
+| Reconciliation solver (subset-sum: which cells make up a variance) | Kutools "Make Up a Number" | Yes (pure TS) | P2 (v1.x) |
+| Tornado chart builder | PowerUser | Yes (composed bar chart) | P2 (v1.x) |
+| Unpivot selection | PowerUser + Ablebits | Yes (pure transform) | P2 (v1.x) |
+| Workbook diff vs uploaded version (insertion-aware) | Arixcel | Partial (parse uploaded .xlsx in-pane, diff vs live workbook) | P2/P3 |
+| One-click whole-deck link refresh; move-resilient link paths | user gap #7 + empower | Backend (M2/M3 design requirements) | P1 within M3 |
+| Deck sanitize, stamps, Smart Fields, Gantt | think-cell/PowerUser | PPT companion scope | P3 |
+| Circularity logic detection, model risk score | OAK | Partial (heavy) | P3 |
+| ERP roll-forward, module library | Modano/bpmToolbox | Backend, different product class | P3/X |
+| Number-to-words, fuzzy dedupe, multi goal seek, currency conversion | Kutools/Ablebits/QuickCel | Yes (pure/simple) | P3 |
+
+Positioning note from user research: Macabacus and UpSlide are Windows-COM/VSTO only by their own
+docs; we are Office.js = native on Mac, web and Windows. Lead with it. Undo reliability and
+large-file performance are the two loudest trust complaints — both are v1 quality bars.
+
 ## Not worth cloning / impossible
 
 - Native paste interception (Ctrl+V hooks), app-level events, cross-workbook reads, arbitrary

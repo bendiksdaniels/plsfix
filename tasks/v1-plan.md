@@ -18,18 +18,21 @@ validate), reviewer-agent pass on the diff, terse commit, version bump per Danie
       machine in pure TS + tests; shortcuts wired.
 - [ ] C3 Autocolor v2: same-sheet vs cross-sheet vs external-file vs partial-input
       classification, legend + per-type overrides in Brand tab, optional autocolor-on-edit
-      (onChanged, off by default).
+      (onChanged, off by default); "insert color key" block on the sheet (F1F9-style).
 - [ ] C4 Auditing: formula consistency overlay (R1C1 compare, striped/solid fills,
       save/restore formats) + Smart Track pane (getDirectPrecedents/Dependents tree,
       keyboard navigation).
 - [ ] C5 Fill & paste: fast-fill auto-extent, paste values/formats/transpose/skip-blanks,
       preserve-formulas paste; quick CAGR, sign flip, decimal steppers, IFERROR unwrap +
-      custom fallback.
+      custom fallback; SMT Undo (snapshot affected range before every bulk mutation,
+      one-tap restore of the last action — answers the #1 Macabacus trust complaint).
 - [ ] C6 Charts: waterfall builder from a bridge table, CAGR arrow, chart brand format.
 - [ ] C7 Workbook tools: TOC sheet generator, sheet explorer pane, name scrubber.
-- [ ] C8 Launch polish: gap-research features triaged in, onboarding hints, docs,
-      production manifest (non-localhost URLs decision), README, full QA sweep,
-      reviewer sweep across the whole codebase, v1.0.0.
+- [ ] C8 Launch polish: triage FEATURES.md section 11 (SMT.ROUND, reconciliation solver,
+      tornado, unpivot = v1.x candidates), onboarding hints + shortcut cheat card
+      (discoverability was gap #4), large-model performance benchmark (gap #2),
+      production manifest (non-localhost URLs decision), README with the Mac-native
+      positioning, full QA sweep, reviewer sweep across the whole codebase, v1.0.0.
 
 ## Agent strategy
 
