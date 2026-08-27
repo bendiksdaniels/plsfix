@@ -21,9 +21,10 @@ validate), reviewer-agent pass on the diff, terse commit, version bump per Danie
       toggle, insert-color-key block. Merged bea665c, v0.5.0. Reviewer + in-Excel check
       pending. Open follow-ups: structured table refs (Table1[Col]) classify as external;
       color key doesn't autosize columns (deliberate).
-- [ ] C4 Auditing: formula consistency overlay (R1C1 compare, striped/solid fills,
-      save/restore formats) + Smart Track pane (getDirectPrecedents/Dependents tree,
-      keyboard navigation).
+- [x] C4 Auditing: audit.ts (11 tests) pattern-fill overlay with snapshot/restore,
+      Smart Track pane w/ chips + back stack, runtime requirement detection (1.12/1.13)
+      without raising the manifest floor. Merged 4abe5a8, v0.6.0. Reviewer + in-Excel
+      check pending. snapshotFills/restoreFills ready to generalize into C5's SMT Undo.
 - [ ] C5 Fill & paste: fast-fill auto-extent, paste values/formats/transpose/skip-blanks,
       preserve-formulas paste; quick CAGR, sign flip, decimal steppers, IFERROR unwrap +
       custom fallback; SMT Undo (snapshot affected range before every bulk mutation,
