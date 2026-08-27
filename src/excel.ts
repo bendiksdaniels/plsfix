@@ -19,8 +19,14 @@ import {
   type CellValue,
   makeFormatGrid,
   scaleCells,
-  wrapFormulasWithIfError,
 } from "./model";
+import {
+  buildCagrFormula,
+  detectFillExtent,
+  flipSign,
+  stepDecimals,
+  toggleIfError,
+} from "./paste";
 import {
   activeTheme,
   currencyNumberFormat,
@@ -53,6 +59,178 @@ function numberFormat(name: NumberFormatName): string {
   return staticNumberFormats[name];
 }
 
+// ---------------------------------------------------------------------------
+// Shared range helpers
+// ---------------------------------------------------------------------------
+
+const SELECTION_CELL_CAP = 5_000;
+const EDIT_CELL_CAP = 500;
+const NO_FILL = "none";
+const BASE_WHITE = "#FFFFFF";
+
+// One write per run of same-key cells instead of one per cell: model rows are
+// usually uniform, so this keeps the batch small on wide selections. A null key
+// leaves the cell untouched.
+function writeRuns(
+  range: Excel.Range,
+  keys: (string | null)[][],
+  write: (block: Excel.Range, key: string) => void,
+): void {
+  keys.forEach((row, rowIndex) => {
+    let start = 0;
+    while (start < row.length) {
+      const key = row[start] ?? null;
+      let end = start + 1;
+      while (end < row.length && (row[end] ?? null) === key) end += 1;
+      if (key !== null) {
+        write(
+          range.getCell(rowIndex, start).getResizedRange(0, end - start - 1),
+          key,
+        );
+      }
+      start = end;
+    }
+  });
+}
+
+// Range addresses arrive sheet-qualified; worksheet.getRange wants the local part.
+export function parseAddress(address: string): {
+  sheet: string;
+  address: string;
+} {
+  const cut = address.lastIndexOf("!");
+  if (cut < 0) return { sheet: "", address };
+  return {
+    sheet: address.slice(0, cut).replace(/^'|'$/g, "").replace(/''/g, "'"),
+    address: address.slice(cut + 1),
+  };
+}
+
+// Colour, pattern and pattern colour together, so a modeller's own striped fill
+// comes back exactly as it was.
+function fillKey(fill: Excel.CellPropertiesFill | undefined): string {
+  const pattern = fill?.pattern ?? Excel.FillPattern.none;
+  if (pattern === Excel.FillPattern.none) return NO_FILL;
+  return [
+    pattern,
+    fill?.color ?? BASE_WHITE,
+    fill?.patternColor ?? BASE_WHITE,
+  ].join("|");
+}
+
+function applyFillKey(block: Excel.Range, key: string): void {
+  const { fill } = block.format;
+  if (key === NO_FILL) {
+    fill.clear();
+    return;
+  }
+  const [pattern, color, patternColor] = key.split("|");
+  // Colour first: setting it on an unfilled cell would otherwise force Solid.
+  fill.color = color ?? BASE_WHITE;
+  fill.pattern = pattern as Excel.FillPattern;
+  fill.patternColor = patternColor ?? BASE_WHITE;
+}
+
+// ---------------------------------------------------------------------------
+// SMT Undo (one slot, restored on demand)
+// ---------------------------------------------------------------------------
+
+interface UndoSlot {
+  sheetId: string;
+  address: string;
+  label: string;
+  formulas: (string | number | boolean)[][];
+  numberFormat: string[][];
+  formats: string[][];
+}
+
+let undoSlot: UndoSlot | null = null;
+
+// Fill, font colour and weight in one key, so a run of identical cells is a
+// single write on the way back.
+function formatKey(cell: Excel.CellProperties | undefined): string {
+  const font = cell?.format?.font;
+  return [fillKey(cell?.format?.fill), font?.color ?? "", font?.bold ? "1" : "0"]
+    .join("~");
+}
+
+function applyFormatKey(block: Excel.Range, key: string): void {
+  const [fill, fontColor, bold] = key.split("~");
+  applyFillKey(block, fill ?? NO_FILL);
+  if (fontColor) block.format.font.color = fontColor;
+  block.format.font.bold = bold === "1";
+}
+
+// Office.js writes never reach Excel's own undo stack, so every mutating action
+// stores what it is about to overwrite here first (user gap #5: undo trust).
+export async function captureUndo(
+  context: Excel.RequestContext,
+  range: Excel.Range,
+): Promise<void> {
+  range.load("address,rowCount,columnCount");
+  await context.sync();
+
+  // A skipped capture must not leave an older slot behind: the pane would then
+  // offer to restore something that is not the last action.
+  undoSlot = null;
+  if (range.rowCount * range.columnCount > SELECTION_CELL_CAP) return;
+
+  const properties = range.getCellProperties({
+    format: {
+      fill: { color: true, pattern: true, patternColor: true },
+      font: { color: true, bold: true },
+    },
+  });
+  const sheet = range.worksheet;
+  sheet.load("id");
+  range.load("formulas,numberFormat");
+  await context.sync();
+
+  undoSlot = {
+    sheetId: sheet.id,
+    address: parseAddress(range.address).address,
+    label: range.address,
+    formulas: range.formulas as (string | number | boolean)[][],
+    numberFormat: range.numberFormat as string[][],
+    formats: properties.value.map((row) => row.map(formatKey)),
+  };
+}
+
+export function undoTarget(): string | null {
+  return undoSlot?.label ?? null;
+}
+
+export async function undoLastAction(): Promise<string> {
+  const slot = undoSlot;
+  if (!slot) throw new Error("There is no Model Tools action to undo yet.");
+
+  return Excel.run(async (context) => {
+    // Sheet id rather than name, so a rename between action and undo is fine.
+    const sheet = context.workbook.worksheets.getItemOrNullObject(slot.sheetId);
+    sheet.load("isNullObject");
+    await context.sync();
+
+    if (sheet.isNullObject) {
+      undoSlot = null;
+      throw new Error("The sheet that action ran on is gone.");
+    }
+
+    const range = sheet.getRange(slot.address);
+    range.formulas = slot.formulas;
+    range.numberFormat = slot.numberFormat;
+    writeRuns(range, slot.formats, applyFormatKey);
+    await context.sync();
+
+    // Only a restore that landed consumes the slot; a failed one stays retryable.
+    undoSlot = null;
+    return slot.label;
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Selection and formatting
+// ---------------------------------------------------------------------------
+
 export async function inspectSelection(): Promise<SelectionSummary> {
   return Excel.run(async (context) => {
     const range = context.workbook.getSelectedRange();
@@ -74,6 +252,7 @@ export async function inspectSelection(): Promise<SelectionSummary> {
 export async function applyPreset(name: PresetName): Promise<void> {
   await Excel.run(async (context) => {
     const range = context.workbook.getSelectedRange();
+    await captureUndo(context, range);
     const { format } = range;
 
     const theme = activeTheme();
@@ -125,9 +304,9 @@ export async function applyPreset(name: PresetName): Promise<void> {
 
 export async function clearFormats(): Promise<void> {
   await Excel.run(async (context) => {
-    context.workbook
-      .getSelectedRange()
-      .clear(Excel.ClearApplyTo.formats);
+    const range = context.workbook.getSelectedRange();
+    await captureUndo(context, range);
+    range.clear(Excel.ClearApplyTo.formats);
     await context.sync();
   });
 }
@@ -137,6 +316,8 @@ export async function applyNumberFormat(name: NumberFormatName): Promise<void> {
     const range = context.workbook.getSelectedRange();
     range.load("rowCount,columnCount");
     await context.sync();
+    await captureUndo(context, range);
+
     range.numberFormat = makeFormatGrid(
       range.rowCount,
       range.columnCount,
@@ -202,6 +383,7 @@ export async function applyNumberCycle(
     range.load("rowCount,columnCount");
     active.load("numberFormat");
     await context.sync();
+    await captureUndo(context, range);
 
     const current = active.numberFormat[0]?.[0];
     const next = nextInCycle(
@@ -227,6 +409,8 @@ export async function applyRowStyleCycle(kind: RowStyleKind): Promise<void> {
     const variants = buildRowStyleCycles(getActiveSettings())[kind];
     const index = matchStyleIndex(readCellStyle(active), variants);
     const next = variants[(index + 1) % variants.length];
+    await captureUndo(context, range);
+
     if (next) {
       // Edge borders target the whole range, which would leave interior rows
       // bare in a multi-row selection; row styles are per-row by definition.
@@ -254,6 +438,8 @@ export async function applyFillCycle(): Promise<void> {
       readFill(active),
       buildFillCycle(getActiveSettings()),
     );
+    await captureUndo(context, range);
+
     if (next === CLEAR_FILL) range.format.fill.clear();
     else range.format.fill.color = next;
 
@@ -268,47 +454,83 @@ export async function applyFontColorCycle(): Promise<void> {
     active.load("format/font/color");
     await context.sync();
 
-    range.format.font.color = nextInCycle(
+    const next = nextInCycle(
       active.format.font.color.toUpperCase(),
       buildFontCycle(getActiveSettings()),
     );
+    await captureUndo(context, range);
+
+    range.format.font.color = next;
     await context.sync();
   });
 }
 
-export async function fastFill(direction: "right" | "down"): Promise<void> {
+// ---------------------------------------------------------------------------
+// Formula edits
+// ---------------------------------------------------------------------------
+
+const FILL_SCAN_LIMIT = 1_000;
+const SHEET_ROWS = 1_048_576;
+const SHEET_COLUMNS = 16_384;
+
+// Macabacus-style fast fill: the data beside the origin decides how far the
+// formula travels, so nobody has to select the block first.
+export async function fastFillAuto(direction: "right" | "down"): Promise<void> {
   await Excel.run(async (context) => {
-    const range = context.workbook.getSelectedRange();
-    range.load("rowCount,columnCount,formulas");
+    const cell = context.workbook.getActiveCell();
+    const sheet = cell.worksheet;
+    cell.load("rowIndex,columnIndex,formulas");
     await context.sync();
 
-    if (direction === "right" && range.rowCount !== 1) {
-      throw new Error("Fill right needs a single-row selection.");
-    }
-    if (direction === "down" && range.columnCount !== 1) {
-      throw new Error("Fill down needs a single-column selection.");
+    const formula = (cell.formulas as CellValue[][])[0]?.[0] ?? null;
+    if (typeof formula !== "string" || !formula.startsWith("=")) {
+      throw new Error("The active cell must contain a formula.");
     }
 
-    const source = range.getCell(0, 0);
-    source.load("formulas");
+    const { rowIndex, columnIndex } = cell;
+    const down = direction === "down";
+    const span = Math.min(
+      FILL_SCAN_LIMIT,
+      down ? SHEET_ROWS - rowIndex : SHEET_COLUMNS - columnIndex,
+    );
+    const lines = (down ? [columnIndex - 1, columnIndex + 1] : [rowIndex - 1, rowIndex + 1])
+      .filter((index) => index >= 0 && index < (down ? SHEET_COLUMNS : SHEET_ROWS))
+      .map((index) =>
+        down
+          ? sheet.getRangeByIndexes(rowIndex, index, span, 1)
+          : sheet.getRangeByIndexes(index, columnIndex, 1, span),
+      );
+    for (const line of lines) line.load("values");
     await context.sync();
-    const sourceFormula = source.formulas[0]?.[0] as CellValue | undefined;
-    if (typeof sourceFormula !== "string" || !sourceFormula.startsWith("=")) {
-      throw new Error("The first selected cell must contain a formula.");
-    }
 
-    range.copyFrom(source, Excel.RangeCopyType.formulas);
+    const extent = detectFillExtent(
+      lines.map((line) => {
+        const values = line.values as CellValue[][];
+        return down ? values.map((row) => row[0] ?? null) : values[0] ?? [];
+      }),
+    );
+    if (extent === 0) throw new Error("No neighbor data to size the fill.");
+
+    const destination = down
+      ? cell.getResizedRange(extent - 1, 0)
+      : cell.getResizedRange(0, extent - 1);
+    await captureUndo(context, destination);
+
+    destination.copyFrom(cell, Excel.RangeCopyType.formulas);
     await context.sync();
   });
 }
 
-export async function addIfError(): Promise<void> {
+export async function toggleIfErrorGuard(): Promise<void> {
   await Excel.run(async (context) => {
     const range = context.workbook.getSelectedRange();
     range.load("formulas");
     await context.sync();
-    range.formulas = wrapFormulasWithIfError(
+    await captureUndo(context, range);
+
+    range.formulas = toggleIfError(
       range.formulas as CellValue[][],
+      "0",
     ) as (string | number | boolean)[][];
     await context.sync();
   });
@@ -319,6 +541,8 @@ export async function scaleSelection(factor: 1000 | 0.001): Promise<void> {
     const range = context.workbook.getSelectedRange();
     range.load("formulas");
     await context.sync();
+    await captureUndo(context, range);
+
     range.formulas = scaleCells(
       range.formulas as CellValue[][],
       factor,
@@ -327,12 +551,193 @@ export async function scaleSelection(factor: 1000 | 0.001): Promise<void> {
   });
 }
 
+export async function applySignFlip(): Promise<void> {
+  await Excel.run(async (context) => {
+    const range = context.workbook.getSelectedRange();
+    range.load("formulas");
+    await context.sync();
+    await captureUndo(context, range);
+
+    range.formulas = flipSign(
+      range.formulas as CellValue[][],
+    ) as (string | number | boolean)[][];
+    await context.sync();
+  });
+}
+
+export async function applyDecimalStep(delta: 1 | -1): Promise<void> {
+  await Excel.run(async (context) => {
+    const range = context.workbook.getSelectedRange();
+    range.load("numberFormat");
+    await context.sync();
+    await captureUndo(context, range);
+
+    range.numberFormat = (range.numberFormat as CellValue[][]).map((row) =>
+      row.map((format) => {
+        const current = typeof format === "string" ? format : "General";
+        // Excel's own Increase Decimal reads General as "0"; stepDecimals, being
+        // a pure format transform, leaves an unnumbered format alone.
+        const base = current === "General" && delta === 1 ? "0" : current;
+        return stepDecimals(base, delta);
+      }),
+    );
+    await context.sync();
+  });
+}
+
+export async function insertCagr(): Promise<void> {
+  await Excel.run(async (context) => {
+    const range = context.workbook.getSelectedRange();
+    range.load("rowCount,columnCount");
+    await context.sync();
+
+    const { rowCount, columnCount } = range;
+    const periods = (rowCount === 1 ? columnCount : rowCount) - 1;
+    if ((rowCount !== 1 && columnCount !== 1) || periods < 1) {
+      throw new Error("Select one row or column with at least two periods.");
+    }
+
+    const first = range.getCell(0, 0);
+    const last = range.getCell(rowCount - 1, columnCount - 1);
+    first.load("address");
+    last.load("address");
+    await context.sync();
+
+    // The result lands just past the series, where a growth row usually sits.
+    const destination =
+      rowCount === 1 ? last.getOffsetRange(0, 1) : last.getOffsetRange(1, 0);
+    await captureUndo(context, destination);
+
+    destination.numberFormat = [[numberFormat("percent")]];
+    destination.formulas = [
+      [
+        buildCagrFormula(
+          parseAddress(first.address).address,
+          parseAddress(last.address).address,
+          periods,
+        ),
+      ],
+    ];
+    await context.sync();
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Copy and paste
+// ---------------------------------------------------------------------------
+
+export type PasteMode = "values" | "formats" | "formulas" | "transpose";
+
+interface CopySource {
+  sheetId: string;
+  address: string;
+  label: string;
+}
+
+let copySource: CopySource | null = null;
+
+export function copySourceLabel(): string | null {
+  return copySource?.label ?? null;
+}
+
+export async function markCopySource(): Promise<string> {
+  return Excel.run(async (context) => {
+    const range = context.workbook.getSelectedRange();
+    const sheet = range.worksheet;
+    sheet.load("id");
+    range.load("address");
+    await context.sync();
+
+    copySource = {
+      sheetId: sheet.id,
+      address: parseAddress(range.address).address,
+      label: range.address,
+    };
+    return range.address;
+  });
+}
+
+// Resolved by sheet id, so renaming the source sheet between copy and paste is fine.
+async function openCopySource(
+  context: Excel.RequestContext,
+): Promise<Excel.Range> {
+  const source = copySource;
+  if (!source) throw new Error("Mark a copy source first.");
+
+  const sheet = context.workbook.worksheets.getItemOrNullObject(source.sheetId);
+  sheet.load("isNullObject");
+  await context.sync();
+
+  if (sheet.isNullObject) {
+    copySource = null;
+    throw new Error("The copy source sheet is gone. Mark a new source.");
+  }
+  return sheet.getRange(source.address);
+}
+
+// Read inside the call, never at module scope: office.js defines the enums, and
+// the pane also loads in a plain browser where they do not exist yet.
+function pasteCopyType(mode: PasteMode): Excel.RangeCopyType {
+  switch (mode) {
+    case "values":
+      return Excel.RangeCopyType.values;
+    case "formats":
+      return Excel.RangeCopyType.formats;
+    case "formulas":
+      return Excel.RangeCopyType.formulas;
+    case "transpose":
+      return Excel.RangeCopyType.all;
+  }
+}
+
+export async function pasteSpecial(mode: PasteMode): Promise<void> {
+  await Excel.run(async (context) => {
+    const from = await openCopySource(context);
+    const target = context.workbook.getSelectedRange();
+    from.load("rowCount,columnCount");
+    target.load("rowCount,columnCount");
+    await context.sync();
+
+    // Excel grows a smaller destination to the source shape, so undo has to
+    // cover the whole footprint, not just what the user selected.
+    const transposed = mode === "transpose";
+    const rows = transposed ? from.columnCount : from.rowCount;
+    const columns = transposed ? from.rowCount : from.columnCount;
+    const footprint = target
+      .getCell(0, 0)
+      .getResizedRange(
+        Math.max(rows, target.rowCount) - 1,
+        Math.max(columns, target.columnCount) - 1,
+      );
+    await captureUndo(context, footprint);
+
+    target.copyFrom(from, pasteCopyType(mode), false, transposed);
+    await context.sync();
+  });
+}
+
+// Excel's own paste rewrites relative references; this one keeps the formula
+// text byte for byte, which is what a modeller means by "same formula here".
+export async function pastePreserveFormulas(): Promise<void> {
+  await Excel.run(async (context) => {
+    const from = await openCopySource(context);
+    const target = context.workbook.getSelectedRange();
+    from.load("rowCount,columnCount,formulas");
+    await context.sync();
+
+    const destination = target
+      .getCell(0, 0)
+      .getResizedRange(from.rowCount - 1, from.columnCount - 1);
+    await captureUndo(context, destination);
+
+    destination.formulas = from.formulas;
+    await context.sync();
+  });
+}
+
 // ---------------------------------------------------------------------------
 // Autocolor
 // ---------------------------------------------------------------------------
-
-const SELECTION_CELL_CAP = 5_000;
-const EDIT_CELL_CAP = 500;
 
 function classFont(kind: CellClass, theme: WorkbookTheme): string | null {
   switch (kind) {
@@ -349,31 +754,6 @@ function classFont(kind: CellClass, theme: WorkbookTheme): string | null {
     case "blank":
       return null;
   }
-}
-
-// One write per run of same-key cells instead of one per cell: model rows are
-// usually uniform, so this keeps the batch small on wide selections. A null key
-// leaves the cell untouched.
-function writeRuns(
-  range: Excel.Range,
-  keys: (string | null)[][],
-  write: (block: Excel.Range, key: string) => void,
-): void {
-  keys.forEach((row, rowIndex) => {
-    let start = 0;
-    while (start < row.length) {
-      const key = row[start] ?? null;
-      let end = start + 1;
-      while (end < row.length && (row[end] ?? null) === key) end += 1;
-      if (key !== null) {
-        write(
-          range.getCell(rowIndex, start).getResizedRange(0, end - start - 1),
-          key,
-        );
-      }
-      start = end;
-    }
-  });
 }
 
 function colorGrid(
@@ -410,6 +790,7 @@ export async function autocolorSelection(): Promise<void> {
     if (range.rowCount * range.columnCount > SELECTION_CELL_CAP) {
       throw new Error("Autocolor supports up to 5,000 selected cells at once.");
     }
+    await captureUndo(context, range);
 
     colorGrid(
       range,
@@ -454,6 +835,7 @@ export async function insertColorKey(): Promise<void> {
       COLOR_KEY_ROWS.length + 1,
       2,
     );
+    await captureUndo(context, block);
 
     block.format.font.name = getActiveSettings().font;
     block.format.font.size = 10;
@@ -565,8 +947,6 @@ export function setAutocolorOnEdit(enabled: boolean): Promise<void> {
 // ---------------------------------------------------------------------------
 
 const LONE_FILL = "#E8B4B4";
-const OVERLAY_BASE = "#FFFFFF";
-const NO_FILL = "none";
 
 interface FillSnapshot {
   sheetId: string;
@@ -575,60 +955,23 @@ interface FillSnapshot {
 }
 
 // The overlay owns nothing it did not paint: every fill it covers is stored here
-// first and written back verbatim. C5 generalizes the pair into SMT Undo.
+// first and written back verbatim. It stays separate from SMT Undo because the
+// overlay is a toggle the modeller turns off again, not an edit to the model.
 const fillSnapshots = new Map<string, FillSnapshot>();
-
-// Colour, pattern and pattern colour together, so a modeller's own striped fill
-// comes back exactly as it was.
-function fillKey(fill: Excel.CellPropertiesFill | undefined): string {
-  const pattern = fill?.pattern ?? Excel.FillPattern.none;
-  if (pattern === Excel.FillPattern.none) return NO_FILL;
-  return [
-    pattern,
-    fill?.color ?? OVERLAY_BASE,
-    fill?.patternColor ?? OVERLAY_BASE,
-  ].join("|");
-}
-
-function applyFillKey(block: Excel.Range, key: string): void {
-  const { fill } = block.format;
-  if (key === NO_FILL) {
-    fill.clear();
-    return;
-  }
-  const [pattern, color, patternColor] = key.split("|");
-  // Colour first: setting it on an unfilled cell would otherwise force Solid.
-  fill.color = color ?? OVERLAY_BASE;
-  fill.pattern = pattern as Excel.FillPattern;
-  fill.patternColor = patternColor ?? OVERLAY_BASE;
-}
 
 function overlayKey(mark: AuditMark, patternColor: string): string | null {
   switch (mark) {
     case "horizontal":
-      return [Excel.FillPattern.lightHorizontal, OVERLAY_BASE, patternColor].join("|");
+      return [Excel.FillPattern.lightHorizontal, BASE_WHITE, patternColor].join("|");
     case "vertical":
-      return [Excel.FillPattern.lightVertical, OVERLAY_BASE, patternColor].join("|");
+      return [Excel.FillPattern.lightVertical, BASE_WHITE, patternColor].join("|");
     case "both":
-      return [Excel.FillPattern.crissCross, OVERLAY_BASE, patternColor].join("|");
+      return [Excel.FillPattern.crissCross, BASE_WHITE, patternColor].join("|");
     case "lone":
       return [Excel.FillPattern.solid, LONE_FILL, LONE_FILL].join("|");
     case "none":
       return null;
   }
-}
-
-// Range addresses arrive sheet-qualified; worksheet.getRange wants the local part.
-export function parseAddress(address: string): {
-  sheet: string;
-  address: string;
-} {
-  const cut = address.lastIndexOf("!");
-  if (cut < 0) return { sheet: "", address };
-  return {
-    sheet: address.slice(0, cut).replace(/^'|'$/g, "").replace(/''/g, "'"),
-    address: address.slice(cut + 1),
-  };
 }
 
 export async function snapshotFills(

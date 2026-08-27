@@ -215,7 +215,7 @@ button:disabled { cursor: wait; opacity: .5; }
   cursor: pointer;
 }
 .number-strip button:last-child, .scale-row button:last-child { border-right: 0; }
-.cycle-strip { grid-template-columns: repeat(5, 1fr); }
+.cycle-strip, .paste-strip { grid-template-columns: repeat(5, 1fr); }
 
 .action-list { display: grid; gap: 7px; }
 .action-list > button {
@@ -248,6 +248,7 @@ button:disabled { cursor: wait; opacity: .5; }
 .action-icon.colors { color: #0057b8; text-shadow: 6px 0 #17823b, 3px 0 #1f1d1b; }
 .action-icon.key { color: var(--bronze); }
 .action-icon.audit { color: var(--bronze); }
+.action-icon.undo { color: var(--bronze); font-size: 15px; }
 kbd {
   padding: 3px 6px;
   border: 1px solid #d3cec4;
@@ -258,8 +259,11 @@ kbd {
   font: 700 9px ui-monospace, monospace;
 }
 
-.scale-row { grid-template-columns: 1fr 1fr; }
+.scale-row { grid-template-columns: repeat(3, 1fr); }
 .scale-row button { min-height: 36px; font-size: 11px; }
+/* Two rows of three: the third column ends a row, the second row needs a rule. */
+.scale-row button:nth-child(3n) { border-right: 0; }
+.scale-row button:nth-child(n + 4) { border-top: 1px solid var(--line); }
 
 .trace-strip { grid-template-columns: 1fr 1fr; }
 .trace-panel {
@@ -507,7 +511,7 @@ footer span:last-child { margin-left: auto; }
   .connection { display: none; }
   .tool-grid { grid-template-columns: repeat(2, 1fr); }
   .number-strip { grid-template-columns: repeat(2, 1fr); }
-  .cycle-strip { grid-template-columns: repeat(5, 1fr); }
+  .cycle-strip, .paste-strip { grid-template-columns: repeat(5, 1fr); }
   .trace-strip { grid-template-columns: repeat(2, 1fr); }
   .palette-row { grid-template-columns: 40px 1fr 74px; }
 }
