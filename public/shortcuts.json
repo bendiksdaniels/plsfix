@@ -33,7 +33,8 @@
     { "id": "SMT_DEC_LESS", "type": "ExecuteFunction", "name": "One less decimal" },
     { "id": "SMT_WATERFALL", "type": "ExecuteFunction", "name": "Waterfall from selection" },
     { "id": "SMT_CHARTFMT", "type": "ExecuteFunction", "name": "Brand-format chart" },
-    { "id": "SMT_CHART_CAGR", "type": "ExecuteFunction", "name": "CAGR label" }
+    { "id": "SMT_CHART_CAGR", "type": "ExecuteFunction", "name": "CAGR label" },
+    { "id": "SMT_TOC", "type": "ExecuteFunction", "name": "Insert contents sheet" }
   ],
   "shortcuts": [
     { "action": "SMT_SHOWPANE", "key": { "default": "Ctrl+Shift+M" } },
@@ -68,6 +69,7 @@
     { "action": "SMT_DEC_LESS", "key": { "default": "Ctrl+Shift+7" } },
     { "action": "SMT_WATERFALL", "key": { "default": "Ctrl+Shift+B" } },
     { "action": "SMT_CHARTFMT", "key": { "default": "Ctrl+Alt+G" } },
-    { "action": "SMT_CHART_CAGR", "key": { "default": "Ctrl+Alt+K" } }
+    { "action": "SMT_CHART_CAGR", "key": { "default": "Ctrl+Alt+K" } },
+    { "action": "SMT_TOC", "key": { "default": "Ctrl+Alt+O" } }
   ]
 }

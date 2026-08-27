@@ -2,7 +2,7 @@
 
 Model Tools is an early Excel productivity add-in for financial modelling teams. The first milestone focuses on fast, consistent workbook formatting and common formula operations.
 
-## What works in v0.8
+## What works in v0.9
 
 - Live selection summary: cells, formulas, blanks, and formula errors
 - Five financial-model formatting presets
@@ -17,6 +17,7 @@ Model Tools is an early Excel productivity add-in for financial modelling teams.
 - Charts: a native waterfall built from a two-column bridge table with branded opening, closing, up and down columns and a reconciliation of the deltas against the closing total, a one-click brand restyle of any selected chart, and a CAGR callout beside the selected series
 - Brand tab: company palette (pickers, hex entry, or logo upload with local color extraction), font and currency settings, JSON import/export; all presets and autocolor follow the palette; persisted in the task pane
 - the add-in's ribbon tab with one-click commands (autocolor, fills, IFERROR) and customizable keyboard shortcuts via the shared runtime (`public/shortcuts.json`)
+- Workbook tab: a sheet explorer that jumps to, hides and shows sheets (very hidden ones are listed but never touched), a hyperlinked contents sheet rebuilt on demand, and a scrubber that finds and deletes defined names left pointing at `#REF!`
 
 The task pane runs locally. It has no backend and sends no workbook data anywhere.
 

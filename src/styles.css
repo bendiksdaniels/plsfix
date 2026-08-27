@@ -82,7 +82,9 @@ h2 { font-size: 15px; font-weight: 750; }
 
 .tab-bar {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  /* Equal columns for however many tabs the bar holds. */
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
   gap: 4px;
   padding: 4px;
   border: 1px solid var(--line);
@@ -524,3 +526,88 @@ footer span:last-child { margin-left: auto; }
   .icon-button:hover, .logo-swatch:hover,
   button:hover:not(:disabled) { transform: none; }
 }
+
+/* Workbook view: sheet explorer, contents sheet, name scrubber. */
+
+.sheet-list { display: grid; gap: 6px; }
+.sheet-row {
+  display: grid;
+  grid-template-columns: 1fr auto 26px;
+  gap: 8px;
+  align-items: center;
+  padding: 5px 6px 5px 10px;
+  border: 1px solid var(--line);
+  border-left: 3px solid transparent;
+  border-radius: 999px;
+  background: rgba(255,255,255,.68);
+}
+.sheet-row.active { border-left-color: var(--bronze); background: #fff; }
+.sheet-row.locked { opacity: .55; }
+
+.sheet-name {
+  display: block;
+  overflow: hidden;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  color: var(--ink);
+  background: none;
+  font-size: 11px;
+  font-weight: 700;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+/* The global button hover would lift the bare name out of its row. */
+.sheet-name:hover:not(:disabled) {
+  background: none;
+  text-decoration: underline;
+  transform: none;
+}
+.sheet-name.muted { color: var(--muted); cursor: default; }
+
+.sheet-badge {
+  padding: 2px 7px;
+  border-radius: 999px;
+  color: var(--muted);
+  background: #f0ece5;
+  font-size: 9px;
+  font-weight: 750;
+  white-space: nowrap;
+}
+.sheet-badge.off { color: var(--bronze); background: rgba(178, 126, 84, .14); }
+
+.eye {
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  color: var(--muted);
+  background: #fff;
+  font-size: 11px;
+  line-height: 1;
+  cursor: pointer;
+}
+.eye:hover:not(:disabled) { color: var(--ink); border-color: #a89f92; transform: none; }
+.eye-slot { display: block; height: 26px; }
+
+.action-icon.toc, .action-icon.names { color: var(--bronze); }
+
+.danger {
+  display: block;
+  width: 100%;
+  min-height: 34px;
+  margin-top: 8px;
+  border: 1px solid var(--red);
+  border-radius: 9px;
+  color: var(--red);
+  background: rgba(163, 63, 50, .07);
+  font-size: 11px;
+  font-weight: 750;
+  cursor: pointer;
+}
+.danger:hover:not(:disabled) { border-color: var(--red); background: rgba(163, 63, 50, .14); }
+/* Second click within five seconds: the button says so and looks it. */
+.danger.armed, .danger.armed:hover:not(:disabled) { color: #fff; background: var(--red); }
