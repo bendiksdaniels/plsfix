@@ -1,21 +1,30 @@
-# AUTORESUME - Model Tools (pinned 2026-08-27 evening)
+# AUTORESUME - Model Tools (pinned 2026-08-27 late evening, post-debug)
 
-## State: v1.0.1, feature-complete, verified in a simulated host, NOT yet launched
+## State: v1.0.2, feature-complete, crash debugged, NOT yet launched
 
-- Repo `~/plsfix` (Desktop symlink), git local-only, HEAD 815671b, tree clean.
+- Repo `~/plsfix` (Desktop symlink), git local-only, tree clean.
+- FULL CRASH DEBUG done (Daniel: "find where it crashes"): the crash was npm start
+  sideloading Excel before the dev server was up (no dev_server_port config ->
+  office-addin-debugging never waits) plus vite binding IPv6-only on Node 25. Both
+  fixed (package.json config block; dns ipv4first in vite.config.ts) and verified
+  headlessly with `npm start -- --no-sideload`. Everything else ruled out: manifest +
+  shortcuts clean, pane boots in a real browser, and src/excel.ts is PROVEN free of
+  unloaded reads (strict-load fake host + 60-load mutation sweep). Details in
+  tasks/v1-plan.md "Full crash debug".
 - All 8 v1 chunks shipped (see tasks/v1-plan.md for per-chunk detail): shared runtime +
   ribbon + 34 shortcuts, format cycles, autocolor v2 + color key, audit overlay + Smart
   Track, SMT Undo + paste suite + fast fill, native waterfall + chart tools, Workbook tab
   (TOC, sheet explorer, name scrubber), launch polish.
-- Verification: 212 vitest green = 102 pure-logic + 110 end-to-end against
-  `test/fakehost.ts` (in-memory Office.js host, all 38 excel.ts exports, host-quirk
-  switches). 5 review passes + final sweep, all findings fixed. The fake-host suite
-  caught 2 real bugs, fixed in v1.0.1 (per-row borders >100 rows; orphaned on-edit
-  handler). `npm run build` + both manifest validations green.
+- Verification: 219 vitest green = 102 pure-logic + 110 end-to-end + 7 instrument
+  tests. The integration suite now runs under STRICT LOAD SEMANTICS
+  (test/fakehost.ts enableStrictLoadSemantics(): scalar proxy reads throw
+  PropertyNotLoaded unless loaded AND synced, like real Excel) - load-ordering is no
+  longer an unverified class. Earlier: 5 review passes + final sweep; fake host caught
+  2 real bugs fixed in v1.0.1. `npm run build` + both manifest validations green.
 - NOT verified (needs real Excel, ~10 min when Daniel has the machine free): waterfall
   rendering + one manual "Set as Total", shortcut conflict dialogs (Ctrl+Shift+V/Z/C and
-  format keys - deliberate UpSlide-style shadowing), Office.js load-ordering (fake sync
-  is a no-op), copyFrom relative-ref rewrite.
+  format keys - deliberate UpSlide-style shadowing), write payload size on huge
+  selections, multi-area selections, copyFrom relative-ref rewrite.
 
 ## Next actions (all Daniel-gated)
 

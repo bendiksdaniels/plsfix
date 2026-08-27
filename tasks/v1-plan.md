@@ -60,6 +60,28 @@ validate), reviewer-agent pass on the diff, terse commit, version bump per Danie
       exercised), no formula recalculation, copyFrom does not rewrite relative refs.
       Real-Excel-only residue: waterfall rendering, shortcut conflict dialogs.
 
+## Full crash debug (27.08 evening, "find where it crashes")
+
+- [x] Chain traced link by link, headless (no Excel/screen). CRASH FOUND in the npm
+      start tooling, not the add-in: with no config.dev_server_port,
+      office-addin-debugging spawns vite detached and sideloads WITHOUT waiting, so a
+      cold start opens Excel against a dead URL ("Sorry, we can't load the add-in") -
+      works on retry, feels like a crash. Second defect: Node 25 resolves localhost to
+      ::1 first, vite bound IPv6-only, IPv4 probes refused. Both fixed (9a17f7d:
+      package.json config block + dns ipv4first in vite.config.ts) and verified: the
+      pipeline now prints "The dev server is running on port 3000" before sideload and
+      serves 127.0.0.1.
+- [x] Ruled out with evidence: no native Excel crash reports on disk; manifest +
+      shortcuts.json audited clean (34/34 action ids match registerCommands); built
+      pane boots in a real browser with zero uncaught exceptions (Office.onReady runs,
+      "Excel required" branch correct).
+- [x] Strict-load fake host (opus agent, a960b3e): integration suite now runs with
+      real PropertyNotLoaded semantics. src/excel.ts proven CLEAN of unloaded reads by
+      mutation sweep - deleting each of the 60 load() calls one at a time reddens the
+      suite for 53; the 7 survivors are redundant defensive loads, verified by hand.
+      Suite 219 green. Residue only real Excel can test: write payload size on large
+      selections, requirement-set gaps on old builds, multi-area selections.
+
 ## Remaining for launch (Daniel's gates)
 
 - [ ] Sideload pass on desktop Excel (npm start): ribbon, shortcut conflict dialogs,

@@ -36,6 +36,14 @@
 - [ ] DANIEL: sideload pass (npm start) - checklist in v1-plan "Remaining for launch"
 - [ ] DANIEL: suite-path key + Cloudflare Access exclusion -> deploy -> M365 centralized deployment
 
+## Full crash debug (27.08 evening) - COMPLETE at v1.0.2
+
+- [x] Crash located: npm start sideloaded before the dev server was up (no
+      dev_server_port config) + vite bound IPv6-only on Node 25. Both fixed + verified.
+- [x] Everything else ruled out with evidence: manifest/shortcuts clean, pane boots in
+      a real browser, excel.ts proven free of unloaded reads (strict-load fake host +
+      mutation sweep, suite 219 green). Details: tasks/v1-plan.md "Full crash debug".
+
 Resume pin: tasks/AUTORESUME.md
 
 ## Review
