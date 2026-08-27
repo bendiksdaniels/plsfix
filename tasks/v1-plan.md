@@ -48,6 +48,18 @@ validate), reviewer-agent pass on the diff, terse commit, version bump per Danie
       deploy, Mac positioning. manifest.prod.xml valid. v1.x candidates (SMT.ROUND,
       reconciliation solver, tornado, unpivot) stay in FEATURES.md section 11.
 
+## Simulated host verification (27.08, post-rc)
+
+- [x] test/fakehost.ts: in-memory Office.js host (2,267 lines) with host-quirk switches
+      (currency-format rewrite, unfilled-fill reporting, sync-committed events) +
+      test/host.integration.test.ts: 110 end-to-end tests over all 38 excel.ts exports.
+      Suite total 212 green. It caught TWO real bugs, both fixed in v1.0.1 (50f0afa):
+      per-row borders silently degraded above 100 rows (now per-row to 500, refused
+      beyond), and a failed on-edit removal sync orphaned the handler (handle now kept
+      until the removal syncs). Known simulator limits: no-op sync (load ordering not
+      exercised), no formula recalculation, copyFrom does not rewrite relative refs.
+      Real-Excel-only residue: waterfall rendering, shortcut conflict dialogs.
+
 ## Remaining for launch (Daniel's gates)
 
 - [ ] Sideload pass on desktop Excel (npm start): ribbon, shortcut conflict dialogs,
