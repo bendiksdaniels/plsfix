@@ -1,6 +1,7 @@
 import "./styles.css";
 import type { NumberCycleFamily, RowStyleKind } from "./cycles";
 import {
+  addCagrLabel,
   applyDecimalStep,
   applyFillCycle,
   applyFontColorCycle,
@@ -13,8 +14,10 @@ import {
   clearFormats,
   copySourceLabel,
   fastFillAuto,
+  formatSelectedChart,
   insertCagr,
   insertColorKey,
+  insertWaterfall,
   inspectSelection,
   markCopySource,
   parseAddress,
@@ -293,6 +296,13 @@ async function dispatch(action: string): Promise<string> {
       case "paste-exact":
         await pastePreserveFormulas();
         break;
+      case "chart-waterfall":
+        return insertWaterfall();
+      case "chart-format":
+        await formatSelectedChart();
+        return "Chart restyled to your brand";
+      case "chart-cagr":
+        return addCagrLabel();
       case "audit-toggle":
         return toggleAudit();
       case "trace-precedents":
@@ -365,6 +375,9 @@ function registerCommands(): void {
     SMT_CYC_ITEM: () => applyRowStyleCycle("item"),
     SMT_CYC_FILL: applyFillCycle,
     SMT_CYC_FONT: applyFontColorCycle,
+    SMT_WATERFALL: insertWaterfall,
+    SMT_CHARTFMT: formatSelectedChart,
+    SMT_CHART_CAGR: addCagrLabel,
   };
 
   for (const [id, run] of Object.entries(commands)) {

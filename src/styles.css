@@ -249,6 +249,9 @@ button:disabled { cursor: wait; opacity: .5; }
 .action-icon.key { color: var(--bronze); }
 .action-icon.audit { color: var(--bronze); }
 .action-icon.undo { color: var(--bronze); font-size: 15px; }
+.action-icon.chart { color: var(--bronze); }
+/* Two blocks read as a rising bridge; they need to sit on one line in 28px. */
+.action-icon.bridge { color: var(--bronze); font-size: 11px; letter-spacing: -1px; }
 kbd {
   padding: 3px 6px;
   border: 1px solid #d3cec4;
