@@ -244,6 +244,7 @@ button:disabled { cursor: wait; opacity: .5; }
   font-weight: 800;
 }
 .action-icon.colors { color: #0057b8; text-shadow: 6px 0 #17823b, 3px 0 #1f1d1b; }
+.action-icon.key { color: var(--bronze); }
 kbd {
   padding: 3px 6px;
   border: 1px solid #d3cec4;
@@ -287,6 +288,8 @@ kbd {
 .pv-input { color: var(--pv-input, #0057b8); }
 .pv-formula { color: var(--pv-formula, #1f1d1b); }
 .pv-link { color: var(--pv-link, #17823b); }
+.pv-external { color: var(--pv-external, #c00000); }
+.pv-partial { color: var(--pv-partial, #7a3e9d); }
 .pv-result td {
   border-top: 3px double var(--pv-result-border, #86603f);
   background: var(--pv-result-fill, #f4ede7);
@@ -389,6 +392,22 @@ kbd {
   background: #fff;
   font: 600 11px "Aptos", "Segoe UI", system-ui, sans-serif;
 }
+
+.toggle-row {
+  display: grid;
+  grid-template-columns: 18px 1fr;
+  gap: 10px;
+  align-items: center;
+  margin-top: 10px;
+  padding: 9px 10px;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  background: rgba(255,255,255,.68);
+  cursor: pointer;
+}
+.toggle-row input { width: 18px; height: 18px; margin: 0; accent-color: var(--bronze); }
+.toggle-row strong { display: block; font-size: 11px; }
+.toggle-row small { color: var(--muted); font-size: 9px; }
 
 .io-row {
   display: grid;

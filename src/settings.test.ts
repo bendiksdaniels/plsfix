@@ -52,6 +52,20 @@ describe("theme derivation", () => {
     expect(theme.formulaFont).toBe(DEFAULT_SETTINGS.formula);
     expect(theme.linkFont).toBe(DEFAULT_SETTINGS.link);
   });
+
+  it("gives the autocolor link classes their own fonts", () => {
+    const theme = deriveTheme(DEFAULT_SETTINGS);
+    expect(theme.externalFont).toBe(DEFAULT_SETTINGS.external);
+    expect(theme.partialFont).toBe(DEFAULT_SETTINGS.partial);
+  });
+});
+
+describe("autocolor defaults", () => {
+  it("ships a red external color, a violet partial color and no live coloring", () => {
+    expect(DEFAULT_SETTINGS.external).toBe("#C00000");
+    expect(DEFAULT_SETTINGS.partial).toBe("#7A3E9D");
+    expect(DEFAULT_SETTINGS.autocolorOnEdit).toBe(false);
+  });
 });
 
 describe("number formats", () => {
@@ -80,6 +94,27 @@ describe("palette import and export", () => {
     expect(parsePalette("not json")).toBeNull();
     expect(parsePalette('{"primary":"nope"}')).toBeNull();
     expect(parsePalette('{"currency":"€€€€"}')).toBeNull();
+    expect(parsePalette('{"external":"nope"}')).toBeNull();
+    expect(parsePalette('{"partial":"#12"}')).toBeNull();
+  });
+
+  it("round-trips the autocolor-on-edit flag and rejects non-booleans", () => {
+    const live = { ...DEFAULT_SETTINGS, autocolorOnEdit: true };
+    expect(parsePalette(serializeSettings(live))).toEqual(live);
+    expect(parsePalette('{"autocolorOnEdit":"yes"}')).toBeNull();
+  });
+
+  it("keeps palettes stored before the external and partial colors existed", () => {
+    const stored = JSON.stringify({
+      primary: "#282623",
+      accent: "#B27E54",
+      input: "#0057B8",
+      formula: "#1F1D1B",
+      link: "#17823B",
+      font: "Aptos",
+      currency: "€",
+    });
+    expect(parsePalette(stored)).toEqual(DEFAULT_SETTINGS);
   });
 });
 
