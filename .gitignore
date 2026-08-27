@@ -1,5 +1,7 @@
 node_modules/
 dist/
+server/target/
+target-linux/
 .DS_Store
 *.log
 .idea/

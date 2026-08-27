@@ -1,0 +1,12 @@
+[Unit]
+Description=Model Tools pane host (Excel add-in static assets)
+After=network-online.target
+[Service]
+WorkingDirectory=/opt/plsfix
+Environment=MODELIS_PORT=8804
+Environment=MODELIS_STATIC=/opt/plsfix/static
+ExecStart=/opt/plsfix/bin/plsfix-server
+Restart=always
+RestartSec=3
+[Install]
+WantedBy=multi-user.target
