@@ -30,7 +30,11 @@ validate), reviewer-agent pass on the diff, terse commit, version bump per Danie
       into all 17 mutating actions. Merged 80dcf81, v0.7.0. Reviewer + in-Excel check
       pending. Known limits for C8: undo skips borders/alignment; shortcut conflicts with
       native Ctrl+Shift+V/Z/C/3 need the sideload conflict-dialog check.
-- [ ] C6 Charts: waterfall builder from a bridge table, CAGR arrow, chart brand format.
+- [x] C6 Charts: chartmath.ts (12 tests), NATIVE waterfall from a bridge table (typings
+      rule out array-backed series) with per-point brand colors + delta reconciliation
+      toast, brand chart formatter, CAGR label shape. Merged 5dbb0da, v0.8.0. Known
+      defect for C8/README: Office.js has no "set as total" flag, so the closing total
+      renders as a floating delta until the user right-clicks Set as Total once.
 - [ ] C7 Workbook tools: TOC sheet generator, sheet explorer pane, name scrubber.
 - [ ] C8 Launch polish: triage FEATURES.md section 11 (SMT.ROUND, reconciliation solver,
       tornado, unpivot = v1.x candidates), onboarding hints + shortcut cheat card
