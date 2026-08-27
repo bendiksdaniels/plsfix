@@ -890,9 +890,9 @@ async function colorChangedRange(
 
   try {
     await Excel.run(async (context) => {
-      const range = context.workbook.worksheets
-        .getItem(event.worksheetId)
-        .getRange(event.address);
+      // event.address may be sheet-qualified depending on host; the event's own
+      // getRange avoids parsing it at all.
+      const range = event.getRange(context);
       range.load("rowCount,columnCount");
       await context.sync();
 
