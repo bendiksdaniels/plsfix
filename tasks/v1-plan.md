@@ -25,10 +25,11 @@ validate), reviewer-agent pass on the diff, terse commit, version bump per Danie
       Smart Track pane w/ chips + back stack, runtime requirement detection (1.12/1.13)
       without raising the manifest floor. Merged 4abe5a8, v0.6.0. Reviewer + in-Excel
       check pending. snapshotFills/restoreFills ready to generalize into C5's SMT Undo.
-- [ ] C5 Fill & paste: fast-fill auto-extent, paste values/formats/transpose/skip-blanks,
-      preserve-formulas paste; quick CAGR, sign flip, decimal steppers, IFERROR unwrap +
-      custom fallback; SMT Undo (snapshot affected range before every bulk mutation,
-      one-tap restore of the last action — answers the #1 Macabacus trust complaint).
+- [x] C5 Fill & paste: paste.ts (17 tests), fast-fill auto-extent, copy/paste suite incl.
+      exact-formulas, CAGR/sign/decimal steppers, IFERROR toggle, one-slot SMT Undo wired
+      into all 17 mutating actions. Merged 80dcf81, v0.7.0. Reviewer + in-Excel check
+      pending. Known limits for C8: undo skips borders/alignment; shortcut conflicts with
+      native Ctrl+Shift+V/Z/C/3 need the sideload conflict-dialog check.
 - [ ] C6 Charts: waterfall builder from a bridge table, CAGR arrow, chart brand format.
 - [ ] C7 Workbook tools: TOC sheet generator, sheet explorer pane, name scrubber.
 - [ ] C8 Launch polish: triage FEATURES.md section 11 (SMT.ROUND, reconciliation solver,
