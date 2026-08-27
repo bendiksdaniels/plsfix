@@ -1,11 +1,16 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  enableStrictLoadSemantics,
   type FakeHelpers,
   type FakeHostOptions,
   type FakeWorkbook,
   installFakeHost,
   uninstallFakeHost,
 } from "./fakehost";
+
+// Every host in this file answers like the real one: a scalar property read
+// without a load() plus a context.sync() throws instead of quietly working.
+enableStrictLoadSemantics();
 
 type ExcelModule = typeof import("../src/excel");
 type SettingsModule = typeof import("../src/settings");
@@ -1467,5 +1472,116 @@ describe("resolution by sheet id", () => {
 
     expect(await smt.restorePersistedOverlay()).toBe(false);
     expect(workbook.settings.get("smtAuditOverlay")).toBe("");
+  });
+});
+
+// ---------------------------------------------------------------------------
+
+// The instrument itself: without these, a green suite would only prove that
+// nothing above happens to read an unloaded property in the fake's own way.
+describe("strict load semantics", () => {
+  interface Probe {
+    load: (properties?: string) => void;
+    address: string;
+    values: unknown;
+    format: { fill: { color: string } };
+    getCell: (row: number, column: number) => Probe;
+  }
+
+  async function inRun(
+    body: (context: Excel.RequestContext, range: Probe) => Promise<void>,
+  ): Promise<void> {
+    const host = globalThis as unknown as {
+      Excel: { run: (cb: (context: never) => unknown) => Promise<unknown> };
+    };
+    await host.Excel.run(async (context: never) => {
+      const workbook = (
+        context as unknown as {
+          workbook: { getSelectedRange: () => Probe };
+        }
+      ).workbook;
+      await body(context as Excel.RequestContext, workbook.getSelectedRange());
+    });
+  }
+
+  async function throws(run: () => void): Promise<string> {
+    try {
+      run();
+    } catch (error) {
+      return (error as Error).message;
+    }
+    return "nothing was thrown";
+  }
+
+  beforeEach(() => {
+    helpers.seed("Model!A1", [[1, 2]]);
+    helpers.select("Model!A1:B1");
+  });
+
+  it("refuses a scalar read with no load behind it", async () => {
+    await inRun(async (_context, range) => {
+      expect(await throws(() => range.address)).toBe(
+        "The property 'address' is not available. Before reading the " +
+          "property's value, call the load method on the containing object " +
+          'and call "context.sync()".',
+      );
+    });
+  });
+
+  it("refuses a load that has not been synced yet", async () => {
+    await inRun(async (_context, range) => {
+      range.load("address");
+      expect(await throws(() => range.address)).toContain("is not available");
+    });
+  });
+
+  it("serves a property once it is loaded and synced", async () => {
+    await inRun(async (context, range) => {
+      range.load("address,values");
+      await context.sync();
+      expect(range.address).toBe("Model!A1:B1");
+      expect(range.values).toEqual([[1, 2]]);
+    });
+  });
+
+  it("unlocks one property at a time, not the whole object", async () => {
+    await inRun(async (context, range) => {
+      range.load("values");
+      await context.sync();
+      expect(range.values).toEqual([[1, 2]]);
+      expect(await throws(() => range.address)).toContain("is not available");
+    });
+  });
+
+  it("keys the unlock to the proxy, not to the cells behind it", async () => {
+    await inRun(async (context, range) => {
+      range.load("values");
+      await context.sync();
+      // A fresh proxy over the same cells starts with nothing loaded, which is
+      // what makes a second Excel.run a clean slate.
+      expect(await throws(() => range.getCell(0, 0).values)).toContain(
+        "is not available",
+      );
+    });
+  });
+
+  it("reaches nested paths and leaves navigation alone", async () => {
+    await inRun(async (context, range) => {
+      expect(await throws(() => range.format.fill.color)).toContain(
+        "The property 'color' is not available",
+      );
+      range.load("format/fill/color");
+      await context.sync();
+      expect(range.format.fill.color).toBe("#FFFFFF");
+    });
+  });
+
+  it("commits nothing when the sync fails", async () => {
+    await inRun(async (context, range) => {
+      range.load("address");
+      helpers.failNextSync();
+      await expect(context.sync()).rejects.toThrow();
+      expect(await throws(() => range.address)).toContain("is not available");
+    });
   });
 });
