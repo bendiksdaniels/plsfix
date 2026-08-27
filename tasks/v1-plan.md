@@ -17,9 +17,10 @@ validate), reviewer-agent pass on the diff, terse commit, version bump per Danie
       title/result/item row styles, fill/font cycles; palette-driven; pure cycles.ts + 17
       tests; ten shortcuts wired. Merged 5d786e8, v0.4.0. Reviewer pass + in-Excel check
       pending. Open: standalone border cycle (borders ship inside row styles for now).
-- [ ] C3 Autocolor v2: same-sheet vs cross-sheet vs external-file vs partial-input
-      classification, legend + per-type overrides in Brand tab, optional autocolor-on-edit
-      (onChanged, off by default); "insert color key" block on the sheet (F1F9-style).
+- [x] C3 Autocolor v2: classify.ts (13 tests), external/partial palette slots, on-edit
+      toggle, insert-color-key block. Merged bea665c, v0.5.0. Reviewer + in-Excel check
+      pending. Open follow-ups: structured table refs (Table1[Col]) classify as external;
+      color key doesn't autosize columns (deliberate).
 - [ ] C4 Auditing: formula consistency overlay (R1C1 compare, striped/solid fills,
       save/restore formats) + Smart Track pane (getDirectPrecedents/Dependents tree,
       keyboard navigation).

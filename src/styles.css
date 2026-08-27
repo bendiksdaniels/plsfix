@@ -102,6 +102,8 @@ h2 { font-size: 15px; font-weight: 750; }
 }
 .tab:hover:not(.active) { color: var(--ink); }
 .tab.active { color: var(--paper); background: var(--ink); }
+/* button:hover (0,2,1) outranks .tab.active (0,2,0); keep the active tab dark on hover. */
+.tab.active:hover { border-color: transparent; background: var(--ink); }
 
 .view { display: grid; gap: 24px; }
 
