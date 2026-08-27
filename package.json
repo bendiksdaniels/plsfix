@@ -4,6 +4,12 @@
   "private": true,
   "type": "module",
   "description": "A focused Excel productivity add-in for financial modelling teams.",
+  "config": {
+    "app_to_debug": "excel",
+    "app_type_to_debug": "desktop",
+    "dev_server_command": "npm run dev-server",
+    "dev_server_port": 3000
+  },
   "scripts": {
     "dev": "vite",
     "dev-server": "vite",
