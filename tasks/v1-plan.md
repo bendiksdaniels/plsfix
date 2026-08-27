@@ -35,7 +35,10 @@ validate), reviewer-agent pass on the diff, terse commit, version bump per Danie
       toast, brand chart formatter, CAGR label shape. Merged 5dbb0da, v0.8.0. Known
       defect for C8/README: Office.js has no "set as total" flag, so the closing total
       renders as a floating delta until the user right-clicks Set as Total once.
-- [ ] C7 Workbook tools: TOC sheet generator, sheet explorer pane, name scrubber.
+- [x] C7 Workbook tools: workbook.ts (10 tests), TOC sheet w/ marker guard + hyperlinks,
+      third Workbook tab (sheet explorer w/ visibility toggles, two-step broken-name
+      delete). Merged 0e9cf6c, v0.9.0 (em-dash marker fixed to hyphen at merge; two
+      keep-both junction chops repaired; 102 tests green). In-Excel check pending.
 - [ ] C8 Launch polish: triage FEATURES.md section 11 (SMT.ROUND, reconciliation solver,
       tornado, unpivot = v1.x candidates), onboarding hints + shortcut cheat card
       (discoverability was gap #4), large-model performance benchmark (gap #2),

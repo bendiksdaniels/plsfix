@@ -175,7 +175,11 @@ export async function captureUndo(
   // A skipped capture must not leave an older slot behind: the pane would then
   // offer to restore something that is not the last action.
   undoSlot = null;
-  if (range.rowCount * range.columnCount > SELECTION_CELL_CAP) return;
+  if (range.rowCount * range.columnCount > SELECTION_CELL_CAP) {
+    undoSkipped = true;
+    return;
+  }
+  undoSkipped = false;
 
   const properties = range.getCellProperties({
     format: {
@@ -200,6 +204,17 @@ export async function captureUndo(
 
 export function undoTarget(): string | null {
   return undoSlot?.label ?? null;
+}
+
+let undoSkipped = false;
+
+// True when the most recent mutating action ran without undo protection
+// (selection over the cap) — the pane says so instead of implying a safety net.
+// Read-once: a later non-mutating action must not inherit the flag.
+export function lastUndoSkipped(): boolean {
+  const was = undoSkipped;
+  undoSkipped = false;
+  return was;
 }
 
 export async function undoLastAction(): Promise<string> {

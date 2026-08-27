@@ -22,6 +22,7 @@ import {
   insertWaterfall,
   insertToc,
   inspectSelection,
+  lastUndoSkipped,
   listBrokenNames,
   listSheets,
   markCopySource,
@@ -333,7 +334,9 @@ async function guard(run: () => Promise<string>): Promise<void> {
   try {
     const message = await run();
     await refreshSelection();
-    showToast(message);
+    showToast(
+      lastUndoSkipped() ? `${message} (too large for undo)` : message,
+    );
   } catch (error) {
     showToast(errorMessage(error), "error");
   } finally {
