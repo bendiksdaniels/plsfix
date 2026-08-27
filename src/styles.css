@@ -15,6 +15,10 @@
 
 * { box-sizing: border-box; }
 
+/* Author display rules (e.g. .view, .swatch-strip) would otherwise override the
+   UA [hidden] rule, which the tab switcher relies on. */
+[hidden] { display: none !important; }
+
 body {
   margin: 0;
   min-width: 290px;

@@ -14,7 +14,7 @@
 - [x] Palette editor: 5 semantic slots, pickers + hex, logo upload -> local dominant-color extraction
 - [x] Font + currency settings; presets/autocolor/currency format read the palette (src/settings.ts, TDD, 17 tests)
 - [x] localStorage persistence + JSON import/export, live ledger preview
-- [ ] Code review pass on the diff
+- [x] Code review pass: 2 real findings (hidden-vs-display cascade broke tab switching; stale logo swatches after reset) — fixed in v0.2.1, lesson captured in tasks/lessons.md. In-Excel visual check pending next sideload.
 
 ## Competitor feature research
 

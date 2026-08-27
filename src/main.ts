@@ -309,7 +309,9 @@ function wireBrand(): void {
 
   getElement<HTMLButtonElement>("reset-brand").addEventListener("click", () => {
     applySettings({ ...DEFAULT_SETTINGS }, "Palette reset to house defaults");
-    getElement<HTMLDivElement>("logo-swatches").hidden = true;
+    const strip = getElement<HTMLDivElement>("logo-swatches");
+    strip.replaceChildren();
+    strip.hidden = true;
     getElement<HTMLParagraphElement>("logo-hint").hidden = true;
   });
 
