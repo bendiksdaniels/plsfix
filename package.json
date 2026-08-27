@@ -1,0 +1,28 @@
+{
+  "name": "plsfix",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "A focused Excel productivity add-in for financial modelling teams.",
+  "scripts": {
+    "dev": "vite",
+    "dev-server": "vite",
+    "build": "tsc --noEmit && vite build",
+    "test": "vitest run",
+    "start": "office-addin-debugging start manifest.xml desktop",
+    "stop": "office-addin-debugging stop manifest.xml",
+    "validate": "office-addin-manifest validate manifest.xml"
+  },
+  "dependencies": {
+    "office-js": "0.1.0"
+  },
+  "devDependencies": {
+    "@types/office-js": "1.0.606",
+    "office-addin-debugging": "6.1.2",
+    "office-addin-dev-certs": "2.0.10",
+    "office-addin-manifest": "2.1.6",
+    "typescript": "7.0.2",
+    "vite": "8.2.2",
+    "vitest": "4.1.11"
+  }
+}
