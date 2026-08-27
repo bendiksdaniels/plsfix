@@ -462,7 +462,11 @@ export async function applyRowStyleCycle(kind: RowStyleKind): Promise<void> {
     if (next) {
       // Edge borders target the whole range, which would leave interior rows
       // bare in a multi-row selection; row styles are per-row by definition.
-      if (range.rowCount > 1 && range.rowCount <= 100) {
+      // Refuse absurd heights instead of silently degrading to edge borders.
+      if (range.rowCount > 500) {
+        throw new Error("Row styles support up to 500 rows at once.");
+      }
+      if (range.rowCount > 1) {
         for (let row = 0; row < range.rowCount; row += 1) {
           applyStyleSpec(range.getRow(row).format, next);
         }
@@ -976,12 +980,15 @@ async function applyEditHandler(enabled: boolean): Promise<void> {
 
   const handler = editHandler;
   if (!handler) return;
-  editHandler = null;
-  // Removal has to run on the context the handler was added in.
+  // Removal has to run on the context the handler was added in. The handle is
+  // given up only after the removal has synced — the mirror of the enable
+  // path — so a failed sync stays removable instead of orphaning a live
+  // registration nothing can reach any more.
   await Excel.run(handler.context, async (context) => {
     handler.remove();
     await context.sync();
   });
+  editHandler = null;
 }
 
 export function setAutocolorOnEdit(enabled: boolean): Promise<void> {

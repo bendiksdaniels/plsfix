@@ -65,6 +65,7 @@ branded equivalent. Users can remap under Office add-in shortcut preferences.
 
 ## Known limits
 
+- Row style cycles apply per row and support up to 500 rows at once.
 - Undo restores the full range state of the last action (formulas, number formats,
   fills, fonts, borders, alignment, wrapping and indent) up to 5,000 cells; larger
   actions are refused or run without undo and say so in the toast. Row heights and

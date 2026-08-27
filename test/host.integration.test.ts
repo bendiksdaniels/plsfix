@@ -313,24 +313,13 @@ describe("style cycles", () => {
   // falls back to range-level edge borders, which is the exact defect the
   // per-row loop exists to avoid (tasks/lessons.md, 2026-08-27) — a 101-row
   // selection gets its double rule on row 1 only, silently.
-  it.skip("draws a row-style border on every row above a hundred rows", async () => {
+  it("draws a row-style border on every row above a hundred rows", async () => {
     helpers.select("Model!A1:A101");
     await smt.applyRowStyleCycle("result");
 
     expect(helpers.border("Model!A1", "top").style).toBe("Double");
     expect(helpers.border("Model!A50", "top").style).toBe("Double");
     expect(helpers.border("Model!A101", "top").style).toBe("Double");
-  });
-
-  it("pins today's behaviour above the per-row cap", async () => {
-    helpers.select("Model!A1:A101");
-    await smt.applyRowStyleCycle("result");
-
-    // The fill still covers everything; only the borders fall off the cliff.
-    expect(helpers.fill("Model!A50").color).toBe(theme.resultFill);
-    expect(helpers.border("Model!A1", "top").style).toBe("Double");
-    expect(helpers.border("Model!A50", "top").style).toBe("None");
-    expect(helpers.border("Model!A101", "top").style).toBe("None");
   });
 
   it("steps the item cycle", async () => {
@@ -1394,34 +1383,20 @@ describe("autocolor on edit", () => {
     expect(helpers.changeHandlerCount()).toBe(1);
   });
 
-  // BUG: excel.ts:979 drops the handle before the removal has synced, the
-  // mirror image of the enable path at 967-974 which commits only after it.
-  // A failed removal sync therefore orphans a live registration nothing can
-  // remove any more, and the next enable adds a second one on top.
-  it.skip("keeps the handle when the removal sync fails", async () => {
+  it("keeps the handle when the removal sync fails, so nothing is orphaned", async () => {
     await smt.setAutocolorOnEdit(true);
     helpers.failNextSync();
     await expect(smt.setAutocolorOnEdit(false)).rejects.toThrow();
+    // Removal never synced: still registered, and the handle is retained.
+    expect(helpers.changeHandlerCount()).toBe(1);
+
+    // Re-enable must not stack a second registration on top.
+    await smt.setAutocolorOnEdit(true);
+    expect(helpers.changeHandlerCount()).toBe(1);
+
+    // The retained handle makes a retried disable land cleanly.
+    await smt.setAutocolorOnEdit(false);
     expect(helpers.changeHandlerCount()).toBe(0);
-
-    await smt.setAutocolorOnEdit(true);
-    expect(helpers.changeHandlerCount()).toBe(1);
-  });
-
-  it("pins today's behaviour when the removal sync fails", async () => {
-    helpers.seed("Data!A1", [[42]]);
-    await smt.setAutocolorOnEdit(true);
-    helpers.failNextSync();
-    await expect(smt.setAutocolorOnEdit(false)).rejects.toThrow();
-
-    // Orphaned: still registered in the host, no handle left to remove it.
-    expect(helpers.changeHandlerCount()).toBe(1);
-    await smt.setAutocolorOnEdit(true);
-    expect(helpers.changeHandlerCount()).toBe(2);
-
-    // Harmless today only because colouring the same range twice is idempotent.
-    await helpers.fireChanged("Data", "A1");
-    expect(helpers.font("Data!A1").color).toBe(theme.inputFont);
   });
 
   it("registers a ribbon command through the actions registry", () => {
