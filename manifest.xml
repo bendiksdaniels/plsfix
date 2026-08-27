@@ -1,4 +1,8 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<!-- Production manifest: same GUID as manifest.xml (same add-in identity), only URLs differ.
+     Served LIVE from https://dbautomatizacijas.com/modelis/ (suite key modelis, Rust host :8804).
+     The path carries a Cloudflare Access bypass - Office webviews cannot pass Access
+     (docs/research/launch-path.md), so only built pane assets may live there. -->
 <OfficeApp xmlns="http://schemas.microsoft.com/office/appforoffice/1.1"
   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
   xmlns:bt="http://schemas.microsoft.com/office/officeappbasictypes/1.0"
@@ -10,10 +14,10 @@
   <DefaultLocale>en-US</DefaultLocale>
   <DisplayName DefaultValue="Model Tools"/>
   <Description DefaultValue="Fast, consistent financial modelling tools for Excel."/>
-  <IconUrl DefaultValue="https://localhost:3000/assets/icon-32.png"/>
-  <SupportUrl DefaultValue="https://localhost:3000/taskpane.html"/>
+  <IconUrl DefaultValue="https://dbautomatizacijas.com/modelis/assets/icon-32.png"/>
+  <SupportUrl DefaultValue="https://dbautomatizacijas.com"/>
   <AppDomains>
-    <AppDomain>https://localhost:3000</AppDomain>
+    <AppDomain>https://dbautomatizacijas.com</AppDomain>
   </AppDomains>
   <Hosts>
     <Host Name="Workbook"/>
@@ -24,7 +28,7 @@
     </Sets>
   </Requirements>
   <DefaultSettings>
-    <SourceLocation DefaultValue="https://localhost:3000/taskpane.html"/>
+    <SourceLocation DefaultValue="https://dbautomatizacijas.com/modelis/taskpane.html"/>
   </DefaultSettings>
   <Permissions>ReadWriteDocument</Permissions>
   <VersionOverrides xmlns="http://schemas.microsoft.com/office/taskpaneappversionoverrides" xsi:type="VersionOverridesV1_0">
@@ -134,12 +138,12 @@
     </Hosts>
     <Resources>
       <bt:Images>
-        <bt:Image id="SMT.Icon.16" DefaultValue="https://localhost:3000/assets/icon-16.png"/>
-        <bt:Image id="SMT.Icon.32" DefaultValue="https://localhost:3000/assets/icon-32.png"/>
-        <bt:Image id="SMT.Icon.80" DefaultValue="https://localhost:3000/assets/icon-80.png"/>
+        <bt:Image id="SMT.Icon.16" DefaultValue="https://dbautomatizacijas.com/modelis/assets/icon-16.png"/>
+        <bt:Image id="SMT.Icon.32" DefaultValue="https://dbautomatizacijas.com/modelis/assets/icon-32.png"/>
+        <bt:Image id="SMT.Icon.80" DefaultValue="https://dbautomatizacijas.com/modelis/assets/icon-80.png"/>
       </bt:Images>
       <bt:Urls>
-        <bt:Url id="SMT.Taskpane.Url" DefaultValue="https://localhost:3000/taskpane.html"/>
+        <bt:Url id="SMT.Taskpane.Url" DefaultValue="https://dbautomatizacijas.com/modelis/taskpane.html"/>
       </bt:Urls>
       <bt:ShortStrings>
         <bt:String id="SMT.Tab.Label" DefaultValue="Model Tools"/>
@@ -265,12 +269,12 @@
       </Hosts>
       <Resources>
         <bt:Images>
-          <bt:Image id="SMT.Icon.16" DefaultValue="https://localhost:3000/assets/icon-16.png"/>
-          <bt:Image id="SMT.Icon.32" DefaultValue="https://localhost:3000/assets/icon-32.png"/>
-          <bt:Image id="SMT.Icon.80" DefaultValue="https://localhost:3000/assets/icon-80.png"/>
+          <bt:Image id="SMT.Icon.16" DefaultValue="https://dbautomatizacijas.com/modelis/assets/icon-16.png"/>
+          <bt:Image id="SMT.Icon.32" DefaultValue="https://dbautomatizacijas.com/modelis/assets/icon-32.png"/>
+          <bt:Image id="SMT.Icon.80" DefaultValue="https://dbautomatizacijas.com/modelis/assets/icon-80.png"/>
         </bt:Images>
         <bt:Urls>
-          <bt:Url id="SMT.Taskpane.Url" DefaultValue="https://localhost:3000/taskpane.html"/>
+          <bt:Url id="SMT.Taskpane.Url" DefaultValue="https://dbautomatizacijas.com/modelis/taskpane.html"/>
         </bt:Urls>
         <bt:ShortStrings>
           <bt:String id="SMT.Tab.Label" DefaultValue="Model Tools"/>
@@ -289,7 +293,7 @@
           <bt:String id="SMT.IfError.Tip" DefaultValue="Wrap selected formulas with IFERROR."/>
         </bt:LongStrings>
       </Resources>
-      <ExtendedOverrides Url="https://localhost:3000/shortcuts.json"/>
+      <ExtendedOverrides Url="https://dbautomatizacijas.com/modelis/shortcuts.json"/>
     </VersionOverrides>
   </VersionOverrides>
 </OfficeApp>

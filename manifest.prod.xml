@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <!-- Production manifest: same GUID as manifest.xml (same add-in identity), only URLs differ.
-     Base path https://dbautomatizacijas.com/modelis is a PROPOSAL pending the suite path-key decision.
-     The path must be EXCLUDED from Cloudflare Access (see docs/research/launch-path.md). -->
+     Served LIVE from https://dbautomatizacijas.com/modelis/ (suite key modelis, Rust host :8804).
+     The path carries a Cloudflare Access bypass - Office webviews cannot pass Access
+     (docs/research/launch-path.md), so only built pane assets may live there. -->
 <OfficeApp xmlns="http://schemas.microsoft.com/office/appforoffice/1.1"
   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
   xmlns:bt="http://schemas.microsoft.com/office/officeappbasictypes/1.0"

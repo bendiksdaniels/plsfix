@@ -82,14 +82,33 @@ validate), reviewer-agent pass on the diff, terse commit, version bump per Danie
       Suite 219 green. Residue only real Excel can test: write payload size on large
       selections, requirement-set gaps on old builds, multi-area selections.
 
+## Hosted launch (27.08 night, "make it easier to show up") - LIVE
+
+- [x] Suite hosting: Rust static host `server/` (axum, :8804, 6 tests) serving dist/ +
+      /healthz + /version; registered as suite key `modelis` (hidden card, NO sidebar
+      injection into the pane), nginx routes regenerated, deploy.sh target `modelis`
+      (pane built on the Mac, host rebuilt on the VPS), routed smoke check added.
+- [x] Cloudflare Access: path app dbautomatizacijas.com/modelis (efca6c1c...) with a
+      bypass policy - VERIFIED: pane serves publicly with zero sidebar refs, /excel/
+      still 302s to the Access login.
+- [x] Public edge green: taskpane.html/shortcuts.json/healthz/version 200 no-cache,
+      icons 200. manifest.prod.xml valid, PROPOSAL note replaced with the live host.
+- [x] Daniel's Mac: wef folder now carries manifest.PROD (loads from the server at
+      every Excel launch, no local servers). Dev flow (npm start) re-registers the
+      localhost manifest when needed; npm stop would DELETE the wef entry - re-copy
+      manifest.prod.xml after using it.
+
 ## Remaining for launch (Daniel's gates)
 
-- [ ] Sideload pass on desktop Excel (npm start): ribbon, shortcut conflict dialogs,
-      cycles, waterfall + Set as Total, undo, TOC, overlay persistence across reopen.
-- [ ] Suite path key decision (proposal: /modelis/) + Cloudflare Access EXCLUSION for
-      that path; deploy dist/ + shortcuts.json + icons; then M365 centralized
-      deployment (admin upload manifest.prod.xml, group assignment).
-- [ ] Tag v1.0.0 after the sideload pass is clean.
+- [ ] Quit Excel fully and reopen: the add-in's tab should be there (prod manifest in wef).
+      Visual pass: ribbon, shortcut conflict dialogs, cycles, waterfall + Set as
+      Total, undo, TOC, overlay persistence across reopen.
+- [ ] M365 centralized deployment (Daniel/IT, the ONLY remaining step for the team):
+      admin.microsoft.com > Settings > Integrated apps > Upload custom apps > Office
+      Add-in > upload ~/plsfix/manifest.prod.xml > assign the group.
+      Propagation up to 24-72h. AppSource stays out (public store, public
+      support/privacy pages - wrong fit for an internal tool).
+- [ ] Tag v1.1.0 after the visual pass is clean.
 
 ## Agent strategy
 

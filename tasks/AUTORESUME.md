@@ -1,6 +1,16 @@
-# AUTORESUME - Model Tools (pinned 2026-08-27 late evening, post-debug)
+# AUTORESUME - Model Tools (pinned 2026-08-27 night, post-hosting)
 
-## State: v1.0.2, feature-complete, crash debugged, NOT yet launched
+## State: v1.1.0, HOSTED LIVE at dbautomatizacijas.com/modelis/, M365 upload = last gate
+
+- HOSTING LIVE (Daniel: "make it easier to show up"): Rust static host `server/`
+  (axum :8804) serves dist/ on the suite as key `modelis` (hidden, no sidebar
+  injection); Cloudflare Access BYPASS app for the path (Office webviews cannot pass
+  Access) - verified publicly, /excel/ still gated. Deploy: `deploy.sh modelis`
+  (builds pane on the Mac, rebuilds host on the VPS). Daniel's wef folder now carries
+  manifest.PROD: every fresh Excel launch loads the add-in from the server, no local
+  servers. CAUTION: `npm stop` deletes the wef entry - re-copy manifest.prod.xml
+  after dev sessions. Remaining: M365 admin upload (steps in tasks/v1-plan.md) +
+  Daniel's visual pass after a full Excel restart.
 
 - Repo `~/plsfix` (Desktop symlink), git local-only, tree clean.
 - FULL CRASH DEBUG done (Daniel: "find where it crashes"): the crash was npm start

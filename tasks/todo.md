@@ -36,6 +36,15 @@
 - [ ] DANIEL: sideload pass (npm start) - checklist in v1-plan "Remaining for launch"
 - [ ] DANIEL: suite-path key + Cloudflare Access exclusion -> deploy -> M365 centralized deployment
 
+## Hosted launch (27.08 night) - LIVE at /modelis/
+
+- [x] Rust static host server/ (:8804) + suite registration (key modelis) + deploy.sh
+      target + CF Access bypass; public edge verified, rest of suite still gated.
+- [x] Daniel's wef carries manifest.prod.xml -> add-in loads from the server at every
+      fresh Excel launch. v1.1.0.
+- [ ] DANIEL: quit + reopen Excel -> the add-in's tab; visual pass (v1-plan checklist)
+- [ ] DANIEL/IT: M365 admin upload of manifest.prod.xml (steps in v1-plan)
+
 ## Full crash debug (27.08 evening) - COMPLETE at v1.0.2
 
 - [x] Crash located: npm start sideloaded before the dev server was up (no

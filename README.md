@@ -104,11 +104,13 @@ npm run validate
 ## Deploy
 
 `manifest.xml` is the localhost development manifest; `manifest.prod.xml` is the same
-add-in (same GUID) pointed at the production host. Ship the `dist/` build to a plain
-HTTPS path with no auth wall in front of it (an access-gated pane cannot load inside
-Office webviews) and restrict availability through Microsoft 365 centralized
-deployment group assignment instead. Hosted JS updates need no admin action; manifest
-changes need a re-upload. Details and sources: `docs/research/launch-path.md`.
+add-in (same GUID) served live from `https://dbautomatizacijas.com/modelis/` (suite key
+`modelis`: Rust static host in `server/`, deployed with the gateway's
+`deploy.sh modelis`). The path carries a Cloudflare Access bypass - an access-gated
+pane cannot load inside Office webviews - so availability is restricted through
+Microsoft 365 centralized deployment group assignment instead. Hosted JS updates need
+no admin action; manifest changes need a re-upload. Details and sources:
+`docs/research/launch-path.md`.
 
 ## Architecture
 
