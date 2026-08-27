@@ -39,11 +39,23 @@ validate), reviewer-agent pass on the diff, terse commit, version bump per Danie
       third Workbook tab (sheet explorer w/ visibility toggles, two-step broken-name
       delete). Merged 0e9cf6c, v0.9.0 (em-dash marker fixed to hyphen at merge; two
       keep-both junction chops repaired; 102 tests green). In-Excel check pending.
-- [ ] C8 Launch polish: triage FEATURES.md section 11 (SMT.ROUND, reconciliation solver,
-      tornado, unpivot = v1.x candidates), onboarding hints + shortcut cheat card
-      (discoverability was gap #4), large-model performance benchmark (gap #2),
-      production manifest (non-localhost URLs decision), README with the Mac-native
-      positioning, full QA sweep, reviewer sweep across the whole codebase, v1.0.0.
+- [x] C8 Launch polish -> v1.0.0-rc (559fa1a): final whole-codebase sweep (3 critical,
+      4 important, 5 minor - ALL applied: audit-overlay snapshot persisted in workbook
+      settings + startup restore, selection caps on reads AND writes w/ debounce,
+      full-fidelity undo via setCellProperties, vite relative base for sub-path
+      hosting, phantom edit-handler fix, full-combo kbd hints, prod manifest
+      AppDomain/SupportUrl, dead code removed). README: shortcut table, limits,
+      deploy, Mac positioning. manifest.prod.xml valid. v1.x candidates (SMT.ROUND,
+      reconciliation solver, tornado, unpivot) stay in FEATURES.md section 11.
+
+## Remaining for launch (Daniel's gates)
+
+- [ ] Sideload pass on desktop Excel (npm start): ribbon, shortcut conflict dialogs,
+      cycles, waterfall + Set as Total, undo, TOC, overlay persistence across reopen.
+- [ ] Suite path key decision (proposal: /modelis/) + Cloudflare Access EXCLUSION for
+      that path; deploy dist/ + shortcuts.json + icons; then M365 centralized
+      deployment (admin upload manifest.prod.xml, group assignment).
+- [ ] Tag v1.0.0 after the sideload pass is clean.
 
 ## Agent strategy
 
