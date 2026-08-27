@@ -107,6 +107,30 @@
             <button data-action="multiply-1000" type="button">× 1,000</button>
           </div>
         </section>
+
+        <section aria-labelledby="audit-heading">
+          <div class="section-heading">
+            <div>
+              <p class="kicker">CHECK AND TRACE</p>
+              <h2 id="audit-heading">Audit</h2>
+            </div>
+          </div>
+          <div class="action-list">
+            <button data-action="audit-toggle" type="button" title="Toggle the formula consistency overlay (Ctrl+Shift+A)"><span class="action-icon audit">▤</span><span><strong>Audit overlay</strong><small>Stripes where formulas match their neighbours, red where one breaks the pattern</small></span><kbd id="audit-state">Off</kbd></button>
+          </div>
+          <div class="number-strip trace-strip" role="group" aria-label="Trace formulas">
+            <button data-action="trace-precedents" type="button" title="Cells the active cell reads from (Ctrl+Alt+Q)">Precedents</button>
+            <button data-action="trace-dependents" type="button" title="Cells that read the active cell (Ctrl+Alt+W)">Dependents</button>
+          </div>
+          <div class="trace-panel" id="trace-panel" hidden>
+            <div class="trace-head">
+              <button id="trace-back" class="icon-button back" type="button" aria-label="Back to the previous cell" title="Back" disabled>←</button>
+              <span class="trace-origin" id="trace-origin"></span>
+            </div>
+            <div class="chip-strip" id="trace-chips"></div>
+          </div>
+          <p class="hint">Click an address to jump there and keep tracing.</p>
+        </section>
       </div>
 
       <div id="view-brand" class="view" role="tabpanel" aria-labelledby="tab-brand" hidden>
@@ -233,7 +257,7 @@
       <footer>
         <span class="privacy-dot"></span>
         Workbook data stays inside Excel
-        <span>v0.5</span>
+        <span>v0.6</span>
       </footer>
     </main>
 
