@@ -68,9 +68,20 @@ export function buildNumberCycles(settings: BrandSettings): NumberCycles {
   };
 }
 
+// Excel rewrites plain currency symbols into locale-tagged codes on read-back
+// (e.g. "€ #,##0" comes back as "[$€-x-euro2] #,##0"), so cycle matching must
+// compare canonical forms while still writing the clean literal format.
+export function canonicalNumberFormat(format: string): string {
+  return format.replace(/\[\$([^-\]]+)(-[^\]]*)?\]/g, "$1");
+}
+
 export function nextInCycle(current: string, cycle: string[]): string {
-  // indexOf returns -1 for formats we did not apply, which steps to entry 0.
-  const next = cycle[(cycle.indexOf(current) + 1) % cycle.length];
+  const canonical = canonicalNumberFormat(current);
+  const index = cycle.findIndex(
+    (entry) => canonicalNumberFormat(entry) === canonical,
+  );
+  // -1 for formats we did not apply, which steps to entry 0.
+  const next = cycle[(index + 1) % cycle.length];
   return next ?? current;
 }
 

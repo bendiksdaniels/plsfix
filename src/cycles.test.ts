@@ -4,6 +4,7 @@ import {
   buildFontCycle,
   buildNumberCycles,
   buildRowStyleCycles,
+  canonicalNumberFormat,
   CLEAR_FILL,
   matchStyleIndex,
   nextInCycle,
@@ -78,6 +79,22 @@ describe("cycle stepping", () => {
 
   it("leaves the cell alone when the cycle is empty", () => {
     expect(nextInCycle("General", [])).toBe("General");
+  });
+
+  it("strips locale-tagged currency codes when canonicalizing", () => {
+    expect(
+      canonicalNumberFormat("[$€-x-euro2] #,##0;[Red]([$€-x-euro2] #,##0);-"),
+    ).toBe("€ #,##0;[Red](€ #,##0);-");
+    expect(canonicalNumberFormat("[$$-409] #,##0.0")).toBe("$ #,##0.0");
+    expect(canonicalNumberFormat("#,##0;[Red](#,##0);-")).toBe(
+      "#,##0;[Red](#,##0);-",
+    );
+  });
+
+  it("keeps cycling when Excel rewrote the applied currency format", () => {
+    const currency = buildNumberCycles(DEFAULT_SETTINGS).currency;
+    const rewritten = "[$€-x-euro2] #,##0;[Red]([$€-x-euro2] #,##0);-";
+    expect(nextInCycle(rewritten, currency)).toBe(currency[1]);
   });
 });
 

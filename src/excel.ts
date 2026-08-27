@@ -216,6 +216,7 @@ export async function applyRowStyleCycle(kind: RowStyleKind): Promise<void> {
   await Excel.run(async (context) => {
     const range = context.workbook.getSelectedRange();
     const active = range.getCell(0, 0);
+    range.load("rowCount");
     active.load(
       "format/fill/color,format/fill/pattern,format/font/color,format/font/bold",
     );
@@ -224,7 +225,17 @@ export async function applyRowStyleCycle(kind: RowStyleKind): Promise<void> {
     const variants = buildRowStyleCycles(getActiveSettings())[kind];
     const index = matchStyleIndex(readCellStyle(active), variants);
     const next = variants[(index + 1) % variants.length];
-    if (next) applyStyleSpec(range.format, next);
+    if (next) {
+      // Edge borders target the whole range, which would leave interior rows
+      // bare in a multi-row selection; row styles are per-row by definition.
+      if (range.rowCount > 1 && range.rowCount <= 100) {
+        for (let row = 0; row < range.rowCount; row += 1) {
+          applyStyleSpec(range.getRow(row).format, next);
+        }
+      } else {
+        applyStyleSpec(range.format, next);
+      }
+    }
 
     await context.sync();
   });
