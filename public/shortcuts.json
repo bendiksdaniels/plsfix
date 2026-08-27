@@ -7,7 +7,17 @@
     { "id": "SMT_FILLDOWN", "type": "ExecuteFunction", "name": "Fill formula down" },
     { "id": "SMT_IFERROR", "type": "ExecuteFunction", "name": "Wrap with IFERROR" },
     { "id": "SMT_SCALEUP", "type": "ExecuteFunction", "name": "Multiply by 1,000" },
-    { "id": "SMT_SCALEDOWN", "type": "ExecuteFunction", "name": "Divide by 1,000" }
+    { "id": "SMT_SCALEDOWN", "type": "ExecuteFunction", "name": "Divide by 1,000" },
+    { "id": "SMT_CYC_GENERAL", "type": "ExecuteFunction", "name": "Cycle general number format" },
+    { "id": "SMT_CYC_DATE", "type": "ExecuteFunction", "name": "Cycle date format" },
+    { "id": "SMT_CYC_CURRENCY", "type": "ExecuteFunction", "name": "Cycle currency format" },
+    { "id": "SMT_CYC_PERCENT", "type": "ExecuteFunction", "name": "Cycle percent format" },
+    { "id": "SMT_CYC_MULTIPLE", "type": "ExecuteFunction", "name": "Cycle multiple format" },
+    { "id": "SMT_CYC_TITLE", "type": "ExecuteFunction", "name": "Cycle title row style" },
+    { "id": "SMT_CYC_RESULT", "type": "ExecuteFunction", "name": "Cycle result row style" },
+    { "id": "SMT_CYC_ITEM", "type": "ExecuteFunction", "name": "Cycle item row style" },
+    { "id": "SMT_CYC_FILL", "type": "ExecuteFunction", "name": "Cycle fill color" },
+    { "id": "SMT_CYC_FONT", "type": "ExecuteFunction", "name": "Cycle font color" }
   ],
   "shortcuts": [
     { "action": "SMT_SHOWPANE", "key": { "default": "Ctrl+Shift+M" } },
@@ -16,6 +26,16 @@
     { "action": "SMT_FILLDOWN", "key": { "default": "Ctrl+Alt+D" } },
     { "action": "SMT_IFERROR", "key": { "default": "Ctrl+Shift+I" } },
     { "action": "SMT_SCALEUP", "key": { "default": "Ctrl+Shift+8" } },
-    { "action": "SMT_SCALEDOWN", "key": { "default": "Ctrl+Shift+9" } }
+    { "action": "SMT_SCALEDOWN", "key": { "default": "Ctrl+Shift+9" } },
+    { "action": "SMT_CYC_GENERAL", "key": { "default": "Ctrl+Shift+1" } },
+    { "action": "SMT_CYC_DATE", "key": { "default": "Ctrl+Shift+2" } },
+    { "action": "SMT_CYC_CURRENCY", "key": { "default": "Ctrl+Shift+4" } },
+    { "action": "SMT_CYC_PERCENT", "key": { "default": "Ctrl+Shift+5" } },
+    { "action": "SMT_CYC_MULTIPLE", "key": { "default": "Ctrl+Shift+6" } },
+    { "action": "SMT_CYC_TITLE", "key": { "default": "Ctrl+Shift+H" } },
+    { "action": "SMT_CYC_RESULT", "key": { "default": "Ctrl+Shift+R" } },
+    { "action": "SMT_CYC_ITEM", "key": { "default": "Ctrl+Shift+E" } },
+    { "action": "SMT_CYC_FILL", "key": { "default": "Ctrl+Shift+F" } },
+    { "action": "SMT_CYC_FONT", "key": { "default": "Ctrl+Shift+G" } }
   ]
 }

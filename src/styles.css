@@ -213,6 +213,7 @@ button:disabled { cursor: wait; opacity: .5; }
   cursor: pointer;
 }
 .number-strip button:last-child, .scale-row button:last-child { border-right: 0; }
+.cycle-strip { grid-template-columns: repeat(5, 1fr); }
 
 .action-list { display: grid; gap: 7px; }
 .action-list > button {
@@ -446,6 +447,7 @@ footer span:last-child { margin-left: auto; }
   .connection { display: none; }
   .tool-grid { grid-template-columns: repeat(2, 1fr); }
   .number-strip { grid-template-columns: repeat(2, 1fr); }
+  .cycle-strip { grid-template-columns: repeat(5, 1fr); }
   .palette-row { grid-template-columns: 40px 1fr 74px; }
 }
 
