@@ -143,25 +143,10 @@ interface UndoSlot {
   label: string;
   formulas: (string | number | boolean)[][];
   numberFormat: string[][];
-  formats: string[][];
+  formats: Excel.CellProperties[][];
 }
 
 let undoSlot: UndoSlot | null = null;
-
-// Fill, font colour and weight in one key, so a run of identical cells is a
-// single write on the way back.
-function formatKey(cell: Excel.CellProperties | undefined): string {
-  const font = cell?.format?.font;
-  return [fillKey(cell?.format?.fill), font?.color ?? "", font?.bold ? "1" : "0"]
-    .join("~");
-}
-
-function applyFormatKey(block: Excel.Range, key: string): void {
-  const [fill, fontColor, bold] = key.split("~");
-  applyFillKey(block, fill ?? NO_FILL);
-  if (fontColor) block.format.font.color = fontColor;
-  block.format.font.bold = bold === "1";
-}
 
 // Office.js writes never reach Excel's own undo stack, so every mutating action
 // stores what it is about to overwrite here first (user gap #5: undo trust).
@@ -181,10 +166,24 @@ export async function captureUndo(
   }
   undoSkipped = false;
 
+  // The full settable surface, so a restore is not partial: fills, fonts,
+  // borders, alignment, wrapping and indent all come back (row height cannot).
   const properties = range.getCellProperties({
     format: {
       fill: { color: true, pattern: true, patternColor: true },
-      font: { color: true, bold: true },
+      font: {
+        bold: true,
+        color: true,
+        italic: true,
+        name: true,
+        size: true,
+        underline: true,
+      },
+      borders: { color: true, style: true, weight: true },
+      horizontalAlignment: true,
+      verticalAlignment: true,
+      wrapText: true,
+      indentLevel: true,
     },
   });
   const sheet = range.worksheet;
@@ -198,7 +197,7 @@ export async function captureUndo(
     label: range.address,
     formulas: range.formulas as (string | number | boolean)[][],
     numberFormat: range.numberFormat as string[][],
-    formats: properties.value.map((row) => row.map(formatKey)),
+    formats: properties.value,
   };
 }
 
@@ -235,7 +234,7 @@ export async function undoLastAction(): Promise<string> {
     const range = sheet.getRange(slot.address);
     range.formulas = slot.formulas;
     range.numberFormat = slot.numberFormat;
-    writeRuns(range, slot.formats, applyFormatKey);
+    range.setCellProperties(slot.formats as Excel.SettableCellProperties[][]);
     await context.sync();
 
     // Only a restore that landed consumes the slot; a failed one stays retryable.
@@ -248,10 +247,42 @@ export async function undoLastAction(): Promise<string> {
 // Selection and formatting
 // ---------------------------------------------------------------------------
 
+// A whole-column click selects a million cells; reading or writing their grids
+// would freeze the pane or overflow the request payload.
+async function selectionWithinCap(
+  context: Excel.RequestContext,
+  what: string,
+): Promise<Excel.Range> {
+  const range = context.workbook.getSelectedRange();
+  range.load("cellCount");
+  await context.sync();
+  if (range.cellCount > SELECTION_CELL_CAP) {
+    throw new Error(
+      `${what} supports up to ${SELECTION_CELL_CAP.toLocaleString()} selected cells at once.`,
+    );
+  }
+  return range;
+}
+
 export async function inspectSelection(): Promise<SelectionSummary> {
   return Excel.run(async (context) => {
     const range = context.workbook.getSelectedRange();
-    range.load("address,rowCount,columnCount,formulas,values");
+    range.load("address,cellCount");
+    await context.sync();
+
+    // Over the cap the pane shows the address and count only (metrics as "—")
+    // instead of asking the host for two full-column grids on a passive click.
+    if (range.cellCount > SELECTION_CELL_CAP) {
+      return {
+        address: range.address,
+        cells: range.cellCount,
+        formulas: -1,
+        errors: -1,
+        blanks: -1,
+      };
+    }
+
+    range.load("formulas,values");
     await context.sync();
 
     const summary = analyzeGrid(
@@ -330,7 +361,7 @@ export async function clearFormats(): Promise<void> {
 
 export async function applyNumberFormat(name: NumberFormatName): Promise<void> {
   await Excel.run(async (context) => {
-    const range = context.workbook.getSelectedRange();
+    const range = await selectionWithinCap(context, "Number formatting");
     range.load("rowCount,columnCount");
     await context.sync();
     await captureUndo(context, range);
@@ -395,7 +426,7 @@ export async function applyNumberCycle(
   family: NumberCycleFamily,
 ): Promise<void> {
   await Excel.run(async (context) => {
-    const range = context.workbook.getSelectedRange();
+    const range = await selectionWithinCap(context, "Format cycling");
     const active = range.getCell(0, 0);
     range.load("rowCount,columnCount");
     active.load("numberFormat");
@@ -540,7 +571,7 @@ export async function fastFillAuto(direction: "right" | "down"): Promise<void> {
 
 export async function toggleIfErrorGuard(): Promise<void> {
   await Excel.run(async (context) => {
-    const range = context.workbook.getSelectedRange();
+    const range = await selectionWithinCap(context, "The IFERROR guard");
     range.load("formulas");
     await context.sync();
     await captureUndo(context, range);
@@ -555,7 +586,7 @@ export async function toggleIfErrorGuard(): Promise<void> {
 
 export async function scaleSelection(factor: 1000 | 0.001): Promise<void> {
   await Excel.run(async (context) => {
-    const range = context.workbook.getSelectedRange();
+    const range = await selectionWithinCap(context, "Scaling");
     range.load("formulas");
     await context.sync();
     await captureUndo(context, range);
@@ -570,7 +601,7 @@ export async function scaleSelection(factor: 1000 | 0.001): Promise<void> {
 
 export async function applySignFlip(): Promise<void> {
   await Excel.run(async (context) => {
-    const range = context.workbook.getSelectedRange();
+    const range = await selectionWithinCap(context, "Sign flip");
     range.load("formulas");
     await context.sync();
     await captureUndo(context, range);
@@ -584,7 +615,7 @@ export async function applySignFlip(): Promise<void> {
 
 export async function applyDecimalStep(delta: 1 | -1): Promise<void> {
   await Excel.run(async (context) => {
-    const range = context.workbook.getSelectedRange();
+    const range = await selectionWithinCap(context, "Decimal stepping");
     range.load("numberFormat");
     await context.sync();
     await captureUndo(context, range);
@@ -643,7 +674,7 @@ export async function insertCagr(): Promise<void> {
 // Copy and paste
 // ---------------------------------------------------------------------------
 
-export type PasteMode = "values" | "formats" | "formulas" | "transpose";
+export type PasteMode = "values" | "formats" | "transpose";
 
 interface CopySource {
   sheetId: string;
@@ -700,8 +731,6 @@ function pasteCopyType(mode: PasteMode): Excel.RangeCopyType {
       return Excel.RangeCopyType.values;
     case "formats":
       return Excel.RangeCopyType.formats;
-    case "formulas":
-      return Excel.RangeCopyType.formulas;
     case "transpose":
       return Excel.RangeCopyType.all;
   }
@@ -936,8 +965,11 @@ async function applyEditHandler(enabled: boolean): Promise<void> {
   if (enabled) {
     if (editHandler) return;
     await Excel.run(async (context) => {
-      editHandler = context.workbook.worksheets.onChanged.add(colorChangedRange);
+      // Commit only after the sync that actually registers the handler; a
+      // failed sync must not leave a phantom registration behind.
+      const handle = context.workbook.worksheets.onChanged.add(colorChangedRange);
       await context.sync();
+      editHandler = handle;
     });
     return;
   }
@@ -975,6 +1007,53 @@ interface FillSnapshot {
 // first and written back verbatim. It stays separate from SMT Undo because the
 // overlay is a toggle the modeller turns off again, not an edit to the model.
 const fillSnapshots = new Map<string, FillSnapshot>();
+
+// The paint is saved with the file while this map dies with the runtime, so the
+// snapshot rides along in workbook settings and startup restores it before the
+// stripes can be mistaken for model formatting or re-snapshotted as original.
+const OVERLAY_SETTING = "smtAuditOverlay";
+const OVERLAY_SETTING_MAX = 400_000;
+
+function persistOverlaySetting(context: Excel.RequestContext): void {
+  const json = JSON.stringify([...fillSnapshots.values()]);
+  context.workbook.settings.add(
+    OVERLAY_SETTING,
+    json.length > OVERLAY_SETTING_MAX ? "" : json,
+  );
+}
+
+export async function restorePersistedOverlay(): Promise<boolean> {
+  return Excel.run(async (context) => {
+    const setting = context.workbook.settings.getItemOrNullObject(OVERLAY_SETTING);
+    setting.load("isNullObject,value");
+    await context.sync();
+    if (setting.isNullObject || !setting.value) return false;
+
+    let snapshots: FillSnapshot[] = [];
+    try {
+      snapshots = JSON.parse(String(setting.value)) as FillSnapshot[];
+    } catch {
+      snapshots = [];
+    }
+
+    const pending = snapshots.map((snapshot) => ({
+      snapshot,
+      sheet: context.workbook.worksheets.getItemOrNullObject(snapshot.sheetId),
+    }));
+    for (const { sheet } of pending) sheet.load("isNullObject");
+    await context.sync();
+
+    let restored = false;
+    for (const { snapshot, sheet } of pending) {
+      if (sheet.isNullObject) continue;
+      writeRuns(sheet.getRange(snapshot.address), snapshot.cells, applyFillKey);
+      restored = true;
+    }
+    context.workbook.settings.add(OVERLAY_SETTING, "");
+    await context.sync();
+    return restored;
+  });
+}
 
 function overlayKey(mark: AuditMark, patternColor: string): string | null {
   switch (mark) {
@@ -1030,6 +1109,7 @@ export async function restoreFills(context: Excel.RequestContext): Promise<void>
     if (sheet.isNullObject) continue;
     writeRuns(sheet.getRange(snapshot.address), snapshot.cells, applyFillKey);
   }
+  context.workbook.settings.add(OVERLAY_SETTING, "");
   await context.sync();
 }
 
@@ -1071,6 +1151,7 @@ export async function toggleAuditOverlay(): Promise<boolean> {
       marks.map((row) => row.map((mark) => overlayKey(mark, patternColor))),
       applyFillKey,
     );
+    persistOverlaySetting(context);
     await context.sync();
     return true;
   });
@@ -1356,6 +1437,63 @@ export async function formatSelectedChart(): Promise<void> {
   });
 }
 
+// A floating growth callout beside the series, the way a banker annotates a
+// chart by hand. Shapes are worksheet objects, so no range state is touched.
+export async function addCagrLabel(): Promise<string> {
+  return Excel.run(async (context) => {
+    const range = context.workbook.getSelectedRange();
+    const sheet = range.worksheet;
+    // Range geometry arrived in 1.10; without it the label lands where Excel
+    // drops it and the modeller moves it.
+    const positioned = hostSupports("1.10");
+    range.load("rowCount,columnCount,values");
+    if (positioned) range.load("left,top,width");
+    await context.sync();
+
+    const { rowCount, columnCount } = range;
+    const periods = (rowCount === 1 ? columnCount : rowCount) - 1;
+    if ((rowCount !== 1 && columnCount !== 1) || periods < 1) {
+      throw new Error("Select one row or column with at least two numbers.");
+    }
+
+    const cells = (range.values as CellValue[][]).flat();
+    const first = cells[0];
+    const last = cells[cells.length - 1];
+    if (typeof first !== "number" || typeof last !== "number") {
+      throw new Error("The first and last cells must hold numbers.");
+    }
+
+    const shapes = (sheet as unknown as { shapes?: Excel.ShapeCollection }).shapes;
+    if (!shapes || typeof shapes.addTextBox !== "function" || !hostSupports("1.9")) {
+      throw new Error("Chart labels need a newer Excel build.");
+    }
+
+    const settings = getActiveSettings();
+    const label = formatCagrLabel(cagr(first, last, periods));
+    const shape = shapes.addTextBox(label);
+    shape.width = CAGR_LABEL_WIDTH;
+    shape.height = CAGR_LABEL_HEIGHT;
+    if (positioned) {
+      shape.left = range.left + range.width + CAGR_LABEL_GAP;
+      shape.top = range.top;
+    }
+    shape.fill.clear();
+    shape.lineFormat.visible = false;
+
+    const { textFrame } = shape;
+    textFrame.horizontalAlignment = Excel.ShapeTextHorizontalAlignment.left;
+    textFrame.verticalAlignment = Excel.ShapeTextVerticalAlignment.middle;
+    const { font } = textFrame.textRange;
+    font.name = settings.font;
+    font.size = 11;
+    font.bold = true;
+    font.color = settings.accent;
+
+    await context.sync();
+    return `${label} over ${periods} ${periods === 1 ? "period" : "periods"}`;
+  });
+}
+
 // ---------------------------------------------------------------------------
 // Workbook tools: contents sheet, sheet explorer, name scrubber
 // ---------------------------------------------------------------------------
@@ -1447,63 +1585,6 @@ export async function insertToc(): Promise<void> {
     sheet.visibility = Excel.SheetVisibility.visible;
     sheet.activate();
     await context.sync();
-  });
-}
-
-// A floating growth callout beside the series, the way a banker annotates a
-// chart by hand. Shapes are worksheet objects, so no range state is touched.
-export async function addCagrLabel(): Promise<string> {
-  return Excel.run(async (context) => {
-    const range = context.workbook.getSelectedRange();
-    const sheet = range.worksheet;
-    // Range geometry arrived in 1.10; without it the label lands where Excel
-    // drops it and the modeller moves it.
-    const positioned = hostSupports("1.10");
-    range.load("rowCount,columnCount,values");
-    if (positioned) range.load("left,top,width");
-    await context.sync();
-
-    const { rowCount, columnCount } = range;
-    const periods = (rowCount === 1 ? columnCount : rowCount) - 1;
-    if ((rowCount !== 1 && columnCount !== 1) || periods < 1) {
-      throw new Error("Select one row or column with at least two numbers.");
-    }
-
-    const cells = (range.values as CellValue[][]).flat();
-    const first = cells[0];
-    const last = cells[cells.length - 1];
-    if (typeof first !== "number" || typeof last !== "number") {
-      throw new Error("The first and last cells must hold numbers.");
-    }
-
-    const shapes = (sheet as unknown as { shapes?: Excel.ShapeCollection }).shapes;
-    if (!shapes || typeof shapes.addTextBox !== "function" || !hostSupports("1.9")) {
-      throw new Error("Chart labels need a newer Excel build.");
-    }
-
-    const settings = getActiveSettings();
-    const label = formatCagrLabel(cagr(first, last, periods));
-    const shape = shapes.addTextBox(label);
-    shape.width = CAGR_LABEL_WIDTH;
-    shape.height = CAGR_LABEL_HEIGHT;
-    if (positioned) {
-      shape.left = range.left + range.width + CAGR_LABEL_GAP;
-      shape.top = range.top;
-    }
-    shape.fill.clear();
-    shape.lineFormat.visible = false;
-
-    const { textFrame } = shape;
-    textFrame.horizontalAlignment = Excel.ShapeTextHorizontalAlignment.left;
-    textFrame.verticalAlignment = Excel.ShapeTextVerticalAlignment.middle;
-    const { font } = textFrame.textRange;
-    font.name = settings.font;
-    font.size = 11;
-    font.bold = true;
-    font.color = settings.accent;
-
-    await context.sync();
-    return `${label} over ${periods} ${periods === 1 ? "period" : "periods"}`;
   });
 }
 

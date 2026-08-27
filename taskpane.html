@@ -97,11 +97,11 @@
             </div>
           </div>
           <div class="action-list">
-            <button data-action="undo" type="button" title="Restore what the last Model Tools action overwrote (Ctrl+Shift+Z)"><span class="action-icon undo">⟲</span><span><strong>Undo last Model Tools action</strong><small id="undo-target">Nothing to undo yet</small></span><kbd>Z</kbd></button>
-            <button data-action="fill-right" type="button" title="Fill the active formula right (Ctrl+Alt+R)"><span class="action-icon">→</span><span><strong>Fill formula right</strong><small>Sized by the neighbouring rows</small></span><kbd>R</kbd></button>
-            <button data-action="fill-down" type="button" title="Fill the active formula down (Ctrl+Alt+D)"><span class="action-icon">↓</span><span><strong>Fill formula down</strong><small>Sized by the neighbouring columns</small></span><kbd>D</kbd></button>
+            <button data-action="undo" type="button" title="Restore what the last Model Tools action overwrote (Ctrl+Shift+Z)"><span class="action-icon undo">⟲</span><span><strong>Undo last Model Tools action</strong><small id="undo-target">Nothing to undo yet</small></span><kbd>Ctrl+Shift+Z</kbd></button>
+            <button data-action="fill-right" type="button" title="Fill the active formula right (Ctrl+Alt+R)"><span class="action-icon">→</span><span><strong>Fill formula right</strong><small>Sized by the neighbouring rows</small></span><kbd>Ctrl+Alt+R</kbd></button>
+            <button data-action="fill-down" type="button" title="Fill the active formula down (Ctrl+Alt+D)"><span class="action-icon">↓</span><span><strong>Fill formula down</strong><small>Sized by the neighbouring columns</small></span><kbd>Ctrl+Alt+D</kbd></button>
             <button data-action="if-error" type="button" title="Add or strip the IFERROR guard (Ctrl+Shift+I)"><span class="action-icon">ƒ</span><span><strong>IFERROR guard</strong><small>Adds IFERROR(…, 0), or strips it when it is already there</small></span></button>
-            <button data-action="autocolor" type="button"><span class="action-icon colors">●</span><span><strong>Autocolor selection</strong><small>Inputs, formulas, links and hardcodes in your palette</small></span></button>
+            <button data-action="autocolor" type="button" title="Color inputs, formulas, links and hardcodes in your palette (Ctrl+Shift+K)"><span class="action-icon colors">●</span><span><strong>Autocolor selection</strong><small>Inputs, formulas, links and hardcodes in your palette</small></span><kbd>Ctrl+Shift+K</kbd></button>
             <button data-action="insert-color-key" type="button"><span class="action-icon key">⚿</span><span><strong>Insert color key</strong><small>Drops the legend at the active cell</small></span></button>
           </div>
           <div class="number-strip paste-strip" role="group" aria-label="Copy and paste">
@@ -154,9 +154,9 @@
             </div>
           </div>
           <div class="action-list">
-            <button data-action="chart-waterfall" type="button" title="Waterfall from a two-column bridge table (Ctrl+Shift+B)"><span class="action-icon bridge">▃▆</span><span><strong>Waterfall from selection</strong><small>Labels and values, first and last rows the opening and closing totals</small></span><kbd>B</kbd></button>
-            <button data-action="chart-format" type="button" title="Restyle the selected chart to your palette (Ctrl+Alt+G)"><span class="action-icon chart">◫</span><span><strong>Brand-format chart</strong><small>Fonts, series colors and legend from your palette, gridlines off</small></span><kbd>G</kbd></button>
-            <button data-action="chart-cagr" type="button" title="CAGR callout beside the selected series (Ctrl+Alt+K)"><span class="action-icon chart">↗</span><span><strong>CAGR label</strong><small>Drops the growth rate at the top right of the selection</small></span><kbd>K</kbd></button>
+            <button data-action="chart-waterfall" type="button" title="Waterfall from a two-column bridge table (Ctrl+Shift+B)"><span class="action-icon bridge">▃▆</span><span><strong>Waterfall from selection</strong><small>Labels and values, first and last rows the opening and closing totals</small></span><kbd>Ctrl+Shift+B</kbd></button>
+            <button data-action="chart-format" type="button" title="Restyle the selected chart to your palette (Ctrl+Alt+G)"><span class="action-icon chart">◫</span><span><strong>Brand-format chart</strong><small>Fonts, series colors and legend from your palette, gridlines off</small></span><kbd>Ctrl+Alt+G</kbd></button>
+            <button data-action="chart-cagr" type="button" title="CAGR callout beside the selected series (Ctrl+Alt+K)"><span class="action-icon chart">↗</span><span><strong>CAGR label</strong><small>Drops the growth rate at the top right of the selection</small></span><kbd>Ctrl+Alt+K</kbd></button>
           </div>
         </section>
       </div>
@@ -303,7 +303,7 @@
             </div>
           </div>
           <div class="action-list">
-            <button data-action="insert-toc" type="button" title="Build or rebuild the TOC sheet (Ctrl+Alt+O)"><span class="action-icon toc">☰</span><span><strong>Insert contents sheet</strong><small>A TOC sheet linking every visible sheet, rewritten on each run</small></span><kbd>O</kbd></button>
+            <button data-action="insert-toc" type="button" title="Build or rebuild the TOC sheet (Ctrl+Alt+O)"><span class="action-icon toc">☰</span><span><strong>Insert contents sheet</strong><small>A TOC sheet linking every visible sheet, rewritten on each run</small></span><kbd>Ctrl+Alt+O</kbd></button>
           </div>
         </section>
 
@@ -325,7 +325,7 @@
       <footer>
         <span class="privacy-dot"></span>
         Workbook data stays inside Excel
-        <span>v0.9</span>
+        <span>v1.0.000</span>
       </footer>
     </main>
 

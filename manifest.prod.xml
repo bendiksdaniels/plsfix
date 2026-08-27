@@ -14,9 +14,9 @@
   <DisplayName DefaultValue="Model Tools"/>
   <Description DefaultValue="Fast, consistent financial modelling tools for Excel."/>
   <IconUrl DefaultValue="https://dbautomatizacijas.com/modelis/assets/icon-32.png"/>
-  <SupportUrl DefaultValue="https://dbautomatizacijas.com/modelis/taskpane.html"/>
+  <SupportUrl DefaultValue="https://dbautomatizacijas.com"/>
   <AppDomains>
-    <AppDomain>https://dbautomatizacijas.com/modelis</AppDomain>
+    <AppDomain>https://dbautomatizacijas.com</AppDomain>
   </AppDomains>
   <Hosts>
     <Host Name="Workbook"/>

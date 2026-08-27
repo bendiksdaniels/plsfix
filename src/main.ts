@@ -23,6 +23,7 @@ import {
   insertToc,
   inspectSelection,
   lastUndoSkipped,
+  restorePersistedOverlay,
   listBrokenNames,
   listSheets,
   markCopySource,
@@ -104,11 +105,14 @@ function errorMessage(error: unknown): string {
 async function refreshSelection(): Promise<void> {
   try {
     const summary = await inspectSelection();
+    // -1 means the selection was too large to read (whole column/row click).
+    const metric = (value: number): string =>
+      value < 0 ? "—" : value.toLocaleString();
     getElement("selection-address").textContent = summary.address;
-    getElement("metric-cells").textContent = summary.cells.toLocaleString();
-    getElement("metric-formulas").textContent = summary.formulas.toLocaleString();
-    getElement("metric-errors").textContent = summary.errors.toLocaleString();
-    getElement("metric-blanks").textContent = summary.blanks.toLocaleString();
+    getElement("metric-cells").textContent = metric(summary.cells);
+    getElement("metric-formulas").textContent = metric(summary.formulas);
+    getElement("metric-errors").textContent = metric(summary.errors);
+    getElement("metric-blanks").textContent = metric(summary.blanks);
   } catch (error) {
     showToast(errorMessage(error), "error");
   }
@@ -401,6 +405,8 @@ function registerCommands(): void {
         .then(() => refreshSelection())
         .catch((error) => showToast(errorMessage(error), "error"))
         .finally(() => {
+          // Drain the skip flag so a later pane toast cannot inherit it.
+          lastUndoSkipped();
           renderActionState();
           event?.completed();
         });
@@ -880,10 +886,23 @@ Office.onReady(async ({ host }) => {
     void guard(deleteNames);
   });
 
+  // Debounced: dragging a selection fires the event continuously.
+  let selectionTimer: number | undefined;
   Office.context.document.addHandlerAsync(
     Office.EventType.DocumentSelectionChanged,
-    () => void refreshSelection(),
+    () => {
+      window.clearTimeout(selectionTimer);
+      selectionTimer = window.setTimeout(() => void refreshSelection(), 150);
+    },
   );
+
+  void restorePersistedOverlay()
+    .then((restored) => {
+      if (restored) {
+        showToast("Audit overlay fills from the last session were restored.");
+      }
+    })
+    .catch(() => undefined);
 
   await refreshSelection();
 });

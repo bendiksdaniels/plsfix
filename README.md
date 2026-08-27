@@ -2,7 +2,7 @@
 
 Model Tools is an Excel productivity add-in for financial modelling teams. It is a web add-in, so unlike the COM/VSTO incumbents it runs natively on Windows, Mac and Excel on the web. The first milestone covers fast, consistent workbook formatting, model auditing and common formula operations.
 
-## What works in v0.9
+## What works in v1.0
 
 - Live selection summary: cells, formulas, blanks, and formula errors
 - Five financial-model formatting presets
@@ -13,7 +13,7 @@ Model Tools is an Excel productivity add-in for financial modelling teams. It is
 - Financial-model autocoloring: hardcodes blue, formulas black, cross-sheet links green
 - Autocolor v2: external-file links and numbers hardcoded inside formulas get their own palette colors, an optional on-edit toggle recolors as you type, and "Insert color key" drops the legend on the sheet
 - Multiply or divide selected constants and formulas by 1,000
-- Audit: a reversible formula-consistency overlay (striped where a formula matches its neighbours, soft red where one breaks the pattern) and a Smart Track panel that walks direct precedents and dependents
+- Audit: a reversible formula-consistency overlay whose snapshot travels with the file, so reopening a workbook saved mid-audit restores your original fills (striped where a formula matches its neighbours, soft red where one breaks the pattern) and a Smart Track panel that walks direct precedents and dependents
 - Charts: a native waterfall built from a two-column bridge table with branded opening, closing, up and down columns and a reconciliation of the deltas against the closing total, a one-click brand restyle of any selected chart, and a CAGR callout beside the selected series
 - Brand tab: company palette (pickers, hex entry, or logo upload with local color extraction), font and currency settings, JSON import/export; all presets and autocolor follow the palette; persisted in the task pane
 - the add-in's ribbon tab with one-click commands (autocolor, fills, IFERROR) and customizable keyboard shortcuts via the shared runtime (`public/shortcuts.json`)
@@ -65,9 +65,10 @@ branded equivalent. Users can remap under Office add-in shortcut preferences.
 
 ## Known limits
 
-- Undo covers range state (formulas, number formats, fills, font color and weight) for
-  the last action up to 5,000 cells; larger actions run without undo and say so in the
-  toast. Chart, shape, sheet and defined-name operations are outside undo.
+- Undo restores the full range state of the last action (formulas, number formats,
+  fills, fonts, borders, alignment, wrapping and indent) up to 5,000 cells; larger
+  actions are refused or run without undo and say so in the toast. Row heights and
+  chart, shape, sheet and defined-name operations sit outside undo.
 - The waterfall's closing total needs one manual right-click > Set as Total: Office.js
   exposes no API for it.
 - Smart Track tracing needs ExcelApi 1.12 (precedents) / 1.13 (dependents); older

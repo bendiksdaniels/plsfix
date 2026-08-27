@@ -6,6 +6,8 @@ export default defineConfig(async ({ command }) => {
     command === "serve" ? await devCerts.getHttpsServerOptions() : undefined;
 
   return {
+    // Relative base so the same build serves from any suite sub-path.
+    base: command === "serve" ? "/" : "./",
     publicDir: "public",
     server: {
       host: "localhost",
