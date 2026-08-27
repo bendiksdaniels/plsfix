@@ -3,8 +3,9 @@
 // to end without a sideload.
 //
 // Deliberate simplifications the suite relies on:
-//   * context.sync() is a no-op flush. Reads are served live from the model, so
-//     load() ordering is never exercised and a stale proxy cannot happen.
+//   * context.sync() is a no-op flush: reads are served live from the model, so
+//     a stale proxy cannot happen. Load ORDERING is exercised all the same once
+//     enableStrictLoadSemantics() is on — see the strict section below.
 //   * No formula engine. Writing "=A1+1" stores the text and leaves the cell's
 //     value alone; writing a literal sets value and formula together.
 //   * formulasR1C1 mirrors the A1 text unless a test seeds it (seedR1C1).
@@ -436,6 +437,437 @@ export interface FakeHostOptions {
   rewriteCurrencyFormats?: boolean;
   isSetSupported?: (set: string, version: string) => boolean;
   maxCells?: number;
+  strictLoad?: boolean;
+}
+
+// ---------------------------------------------------------------------------
+// Strict load semantics
+// ---------------------------------------------------------------------------
+//
+// Real office.js hands out proxies, not values: reading a scalar property that
+// was never asked for with load() and committed by a context.sync() throws
+// PropertyNotLoaded. The fake serves reads straight from the model, so that
+// whole class of bug is invisible unless this layer is switched on.
+//
+// Every wrapped object belongs to a ROOT — the object load() is called on.
+// Navigation properties (range.format, format.fill, chart.series) need no load
+// of their own and carry no state; they extend the root's path, so
+// range.load("format/fill/color") unlocks range.format.fill.color even though
+// the fake builds a fresh child object on every access. What a METHOD hands
+// back (getRange, getCell, getItemOrNullObject) is a new root with nothing
+// loaded, which is what makes a second Excel.run start from scratch.
+
+const RAW = Symbol("fakehost.raw");
+
+interface Shape {
+  // Property reads that need a load plus a sync first.
+  scalars?: readonly string[];
+  // Navigation property -> kind of the child it hands back.
+  children?: Readonly<Record<string, string>>;
+  // Method -> kind of the fresh root it hands back.
+  returns?: Readonly<Record<string, string>>;
+  // Kind of the elements behind a collection's items array.
+  items?: string;
+  // ClientResult: .value arrives with the next sync, no load needed.
+  result?: boolean;
+}
+
+// Every kind the add-in can reach, down to the write-only chart and shape
+// surfaces: a property named nowhere here would slip through unpoliced, so the
+// scalar lists carry the office.js properties even where nothing reads them yet.
+const SHAPES: Record<string, Shape> = {
+  context: { children: { workbook: "workbook" } },
+  workbook: {
+    children: { worksheets: "worksheets", settings: "settings", names: "names" },
+    returns: {
+      getSelectedRange: "range",
+      getActiveCell: "range",
+      getActiveChartOrNullObject: "chart",
+    },
+  },
+  worksheets: {
+    scalars: ["items"],
+    items: "worksheet",
+    children: { onChanged: "events" },
+    returns: {
+      getItem: "worksheet",
+      getItemOrNullObject: "worksheet",
+      getActiveWorksheet: "worksheet",
+      add: "worksheet",
+    },
+  },
+  // An event source hands back a registration, not a loadable object.
+  events: {},
+  worksheet: {
+    scalars: [
+      "id",
+      "name",
+      "visibility",
+      "position",
+      "showGridlines",
+      "isNullObject",
+    ],
+    children: { charts: "charts", shapes: "shapes" },
+    returns: {
+      getRange: "range",
+      getRangeByIndexes: "range",
+      getUsedRangeOrNullObject: "range",
+    },
+  },
+  charts: { returns: { add: "chart" } },
+  shapes: { returns: { addTextBox: "shape" } },
+  range: {
+    scalars: [
+      "address",
+      "rowIndex",
+      "columnIndex",
+      "rowCount",
+      "columnCount",
+      "cellCount",
+      "left",
+      "top",
+      "width",
+      "height",
+      "values",
+      "formulas",
+      "formulasR1C1",
+      "numberFormat",
+      "isNullObject",
+    ],
+    children: { worksheet: "worksheet", format: "rangeFormat" },
+    returns: {
+      getCell: "range",
+      getRow: "range",
+      getColumn: "range",
+      getResizedRange: "range",
+      getOffsetRange: "range",
+      getSurroundingRegion: "range",
+      getUsedRangeOrNullObject: "range",
+      getCellProperties: "clientResult",
+      getDirectPrecedents: "trace",
+      getDirectDependents: "trace",
+    },
+  },
+  rangeFormat: {
+    scalars: [
+      "horizontalAlignment",
+      "verticalAlignment",
+      "wrapText",
+      "indentLevel",
+      "rowHeight",
+      "columnWidth",
+    ],
+    children: { font: "font", fill: "fill", borders: "borders" },
+  },
+  font: { scalars: ["name", "size", "bold", "italic", "color", "underline"] },
+  fill: { scalars: ["color", "pattern", "patternColor"] },
+  borders: { returns: { getItem: "border" } },
+  border: { scalars: ["style", "color", "weight"] },
+  clientResult: { scalars: ["value"], result: true },
+  trace: { children: { ranges: "rangeCollection" } },
+  rangeCollection: { scalars: ["items"], items: "traceArea" },
+  traceArea: { scalars: ["address", "cellCount"] },
+  chart: {
+    scalars: ["chartType", "isNullObject"],
+    children: {
+      format: "chartFormat",
+      title: "chartTitle",
+      axes: "chartAxes",
+      legend: "chartLegend",
+      dataLabels: "chartDataLabels",
+      series: "chartSeries",
+    },
+  },
+  chartFormat: {
+    scalars: ["roundedCorners"],
+    children: { font: "chartFont", border: "chartBorder", fill: "chartFill" },
+  },
+  chartFont: {
+    scalars: ["name", "size", "bold", "italic", "color", "underline"],
+  },
+  chartBorder: { scalars: ["lineStyle", "color", "weight"] },
+  chartTitle: {
+    scalars: ["text", "visible", "overlay"],
+    children: { format: "chartFormat" },
+  },
+  chartAxes: {
+    children: { categoryAxis: "chartAxis", valueAxis: "chartAxis" },
+  },
+  chartAxis: {
+    children: { format: "chartFormat", majorGridlines: "chartGridlines" },
+  },
+  chartGridlines: { scalars: ["visible"] },
+  chartLegend: {
+    scalars: ["position", "overlay", "visible"],
+    children: { format: "chartFormat" },
+  },
+  chartDataLabels: { scalars: ["showValue"] },
+  chartSeries: { scalars: ["count"], returns: { getItemAt: "chartSeriesItem" } },
+  chartSeriesItem: {
+    scalars: ["name", "showConnectorLines"],
+    children: { format: "chartFormat", points: "chartPoints" },
+  },
+  chartPoints: { scalars: ["count"], returns: { getItemAt: "chartPoint" } },
+  chartPoint: { children: { format: "chartFormat" } },
+  chartFill: {},
+  shape: {
+    scalars: ["id", "name", "width", "height", "left", "top", "visible"],
+    children: {
+      fill: "shapeFill",
+      lineFormat: "shapeLine",
+      textFrame: "shapeTextFrame",
+    },
+  },
+  shapeFill: { scalars: ["foregroundColor", "transparency"] },
+  shapeLine: { scalars: ["visible", "color", "weight"] },
+  shapeTextFrame: {
+    scalars: ["horizontalAlignment", "verticalAlignment"],
+    children: { textRange: "shapeTextRange" },
+  },
+  shapeTextRange: { scalars: ["text"], children: { font: "chartFont" } },
+  settings: { returns: { add: "setting", getItemOrNullObject: "setting" } },
+  setting: { scalars: ["key", "value", "isNullObject"] },
+  names: { scalars: ["items"], items: "namedItem" },
+  namedItem: { scalars: ["name", "formula"] },
+};
+
+interface LoadState {
+  loaded: Set<string>;
+  pending: Set<string>;
+  // Prefixes a bare load() covered: every direct scalar below them.
+  all: Set<string>;
+  pendingAll: Set<string>;
+  result: boolean;
+  pendingResult: boolean;
+}
+
+// The message office.js itself throws, so a failure reads like the real crash.
+function notLoaded(property: string): Error {
+  const error = new Error(
+    `The property '${property}' is not available. Before reading the property's ` +
+      `value, call the load method on the containing object and call "context.sync()".`,
+  ) as Error & { code: string };
+  error.name = "RichApi.Error";
+  error.code = "PropertyNotLoaded";
+  return error;
+}
+
+function notSynced(): Error {
+  const error = new Error(
+    "The value of the result object has not been loaded yet. Call " +
+      '"context.sync()" on the associated request context before reading it.',
+  ) as Error & { code: string };
+  error.name = "RichApi.Error";
+  error.code = "ValueNotLoaded";
+  return error;
+}
+
+function loadPaths(argument: unknown): string[] | null {
+  const split = (text: string): string[] =>
+    text
+      .split(",")
+      .map((part) => part.trim())
+      .filter(Boolean);
+
+  if (typeof argument === "string") return split(argument);
+  if (Array.isArray(argument)) {
+    return argument.flatMap((entry) => split(String(entry)));
+  }
+  if (argument !== null && typeof argument === "object") {
+    return loadPaths((argument as { select?: unknown }).select);
+  }
+  // load() with no argument: every scalar of that object.
+  return null;
+}
+
+function rawOf<T>(value: T): T {
+  if (value !== null && typeof value === "object") {
+    const raw = (value as Record<symbol, unknown>)[RAW];
+    if (raw !== undefined) return raw as T;
+  }
+  return value;
+}
+
+class StrictLoads {
+  private states = new WeakMap<object, LoadState>();
+  private queued = new Set<LoadState>();
+
+  // A sync is what makes a requested property readable.
+  commit(): void {
+    for (const state of this.queued) {
+      for (const path of state.pending) state.loaded.add(path);
+      for (const prefix of state.pendingAll) state.all.add(prefix);
+      if (state.pendingResult) state.result = true;
+      this.reset(state);
+    }
+    this.queued.clear();
+  }
+
+  // A failed sync commits nothing: the whole batch never reached the host.
+  drop(): void {
+    for (const state of this.queued) this.reset(state);
+    this.queued.clear();
+  }
+
+  // Wraps an object that owns its own load state: the context, and everything
+  // a method hands back.
+  root<T>(value: T, kind: string): T {
+    if (value === null || typeof value !== "object") return value;
+    const state = this.state(value as object);
+    if (SHAPES[kind]?.result) {
+      state.pendingResult = true;
+      this.queued.add(state);
+    }
+    return this.wrap(value, kind, value as object, "") as T;
+  }
+
+  private reset(state: LoadState): void {
+    state.pending.clear();
+    state.pendingAll.clear();
+    state.pendingResult = false;
+  }
+
+  private state(root: object): LoadState {
+    let found = this.states.get(root);
+    if (!found) {
+      found = {
+        loaded: new Set(),
+        pending: new Set(),
+        all: new Set(),
+        pendingAll: new Set(),
+        result: false,
+        pendingResult: false,
+      };
+      this.states.set(root, found);
+    }
+    return found;
+  }
+
+  private record(root: object, prefix: string, argument: unknown): void {
+    const state = this.state(root);
+    const paths = loadPaths(argument);
+    if (paths === null) state.pendingAll.add(prefix);
+    else for (const path of paths) state.pending.add(prefix + path);
+    this.queued.add(state);
+  }
+
+  private require(
+    root: object,
+    path: string,
+    property: string,
+    collection: boolean,
+  ): void {
+    const state = this.states.get(root);
+    if (state) {
+      if (state.loaded.has(path)) return;
+      const cut = path.lastIndexOf("/");
+      if (state.all.has(cut < 0 ? "" : path.slice(0, cut + 1))) return;
+      // "items/name" makes the items array itself readable, as it does in Excel.
+      if (collection) {
+        for (const loaded of state.loaded) {
+          if (loaded.startsWith(`${path}/`)) return;
+        }
+      }
+    }
+    throw notLoaded(property);
+  }
+
+  private wrap(
+    value: unknown,
+    kind: string,
+    root: object,
+    prefix: string,
+  ): unknown {
+    if (value === null || typeof value !== "object") return value;
+    const shape = SHAPES[kind];
+    // A kind nobody described would police nothing, which is the one failure
+    // this layer must never have: say so instead of passing everything through.
+    if (!shape) throw new Error(`fake host has no strict shape for "${kind}"`);
+    const loads = this;
+
+    return new Proxy(value as Record<string, unknown>, {
+      get(target, property, receiver) {
+        if (property === RAW) return target;
+        if (typeof property === "symbol") return Reflect.get(target, property);
+
+        const path = prefix + property;
+        const childKind = shape.children?.[property];
+        if (childKind !== undefined) {
+          return loads.wrap(
+            Reflect.get(target, property),
+            childKind,
+            root,
+            `${path}/`,
+          );
+        }
+
+        const raw = Reflect.get(target, property);
+        if (typeof raw === "function") {
+          return loads.method(target, property, shape, root, prefix, receiver);
+        }
+
+        if (property === "items" && shape.items !== undefined) {
+          loads.require(root, path, property, true);
+          const items = shape.items;
+          return (raw as unknown[]).map((item) =>
+            loads.wrap(item, items, root, `${path}/`),
+          );
+        }
+        if (property === "value" && shape.result) {
+          if (!loads.state(root).result) throw notSynced();
+          return raw;
+        }
+        if (shape.scalars?.includes(property)) {
+          loads.require(root, path, property, false);
+          return raw;
+        }
+        // Not part of the office.js surface: the fake's own fields, and the
+        // "then" the runtime probes for whenever a proxy is returned from an
+        // async function.
+        return raw;
+      },
+      set(target, property, next) {
+        // Writes never need a load, and the setter runs against the model.
+        return Reflect.set(target, property, next);
+      },
+    });
+  }
+
+  private method(
+    target: Record<string, unknown>,
+    property: string,
+    shape: Shape,
+    root: object,
+    prefix: string,
+    self: unknown,
+  ): (...args: unknown[]) => unknown {
+    const loads = this;
+    return (...args: unknown[]): unknown => {
+      // Host-side calls take objects, not property reads: hand the fake its own
+      // unwrapped proxies so its internals are not policed as add-in reads.
+      const plain = args.map((argument) => rawOf(argument));
+      if (property === "load") {
+        loads.record(root, prefix, plain[0]);
+        return self;
+      }
+      const result = (target[property] as (...a: unknown[]) => unknown).apply(
+        target,
+        plain,
+      );
+      const returnKind = shape.returns?.[property];
+      if (returnKind !== undefined) return loads.root(result, returnKind);
+      return result;
+    };
+  }
+}
+
+let strictByDefault = false;
+
+// Switches strict load semantics on for every host installed afterwards, which
+// is how the integration suite runs the whole add-in against real office.js
+// load ordering. installFakeHost({ strictLoad }) overrides it per host.
+export function enableStrictLoadSemantics(on = true): void {
+  strictByDefault = on;
 }
 
 // ---------------------------------------------------------------------------
@@ -646,6 +1078,7 @@ class FakeRuntime {
   supported: (set: string, version: string) => boolean;
   rewriteCurrencyFormats: boolean;
   maxCells: number;
+  strict: StrictLoads | null;
 
   constructor(
     public workbook: FakeWorkbook,
@@ -654,6 +1087,8 @@ class FakeRuntime {
     this.rewriteCurrencyFormats = options.rewriteCurrencyFormats ?? false;
     this.maxCells = options.maxCells ?? 250_000;
     this.supported = options.isSetSupported ?? (() => true);
+    const strict = options.strictLoad ?? strictByDefault;
+    this.strict = strict ? new StrictLoads() : null;
   }
 
   format(value: string): string {
@@ -1990,14 +2425,16 @@ class FakeContext {
     this.error = error;
   }
 
-  // No-op flush: the model is already current. Pending event registrations and
-  // a queued host error are the only things a sync really decides.
+  // No-op flush for values: the model is already current. Pending event
+  // registrations, a queued host error and — under strict load semantics — the
+  // properties this batch asked for are what a sync really decides.
   async sync(): Promise<void> {
     const queued = this.error ?? this.runtime.failSync;
     if (queued) {
       this.error = null;
       this.runtime.failSync = null;
       this.pending.length = 0;
+      this.runtime.strict?.drop();
       throw queued;
     }
     for (const event of this.pending) {
@@ -2009,6 +2446,7 @@ class FakeContext {
       }
     }
     this.pending.length = 0;
+    this.runtime.strict?.commit();
   }
 }
 
@@ -2081,9 +2519,13 @@ export function installFakeHost(options: FakeHostOptions = {}): {
       const callback = (typeof first === "function" ? first : second) as (
         context: FakeContext,
       ) => unknown;
+      const given = rawOf(first);
       const context =
-        first instanceof FakeContext ? first : new FakeContext(runtime);
-      return Promise.resolve().then(() => callback(context));
+        given instanceof FakeContext ? given : new FakeContext(runtime);
+      const handed = runtime.strict
+        ? runtime.strict.root(context, "context")
+        : context;
+      return Promise.resolve().then(() => callback(handed));
     },
     RequestContext: FakeContext,
     FillPattern,
