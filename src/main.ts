@@ -11,8 +11,10 @@ import {
   autocolorSelection,
   clearFormats,
   fastFill,
+  insertColorKey,
   inspectSelection,
   scaleSelection,
+  setAutocolorOnEdit,
   type NumberFormatName,
   type PresetName,
 } from "./excel";
@@ -30,7 +32,15 @@ import {
 } from "./settings";
 
 const STORAGE_KEY = "smt.brand.v1";
-const PALETTE_SLOTS = ["primary", "accent", "input", "formula", "link"] as const;
+const PALETTE_SLOTS = [
+  "primary",
+  "accent",
+  "input",
+  "formula",
+  "link",
+  "external",
+  "partial",
+] as const;
 type PaletteSlot = (typeof PALETTE_SLOTS)[number];
 
 const getElement = <T extends HTMLElement>(id: string): T => {
@@ -112,6 +122,9 @@ async function runAction(action: string): Promise<void> {
           break;
         case "autocolor":
           await autocolorSelection();
+          break;
+        case "insert-color-key":
+          await insertColorKey();
           break;
         case "divide-1000":
           await scaleSelection(0.001);
@@ -218,6 +231,8 @@ function renderBrand(): void {
 
   getElement<HTMLSelectElement>("setting-font").value = settings.font;
   getElement<HTMLSelectElement>("setting-currency").value = settings.currency;
+  getElement<HTMLInputElement>("setting-autocolor-edit").checked =
+    settings.autocolorOnEdit;
   getElement("currency-format-button").textContent =
     `${settings.currency ? `${settings.currency} ` : ""}1,234`;
 
@@ -232,12 +247,22 @@ function renderBrand(): void {
   preview.style.setProperty("--pv-input", theme.inputFont);
   preview.style.setProperty("--pv-formula", theme.formulaFont);
   preview.style.setProperty("--pv-link", theme.linkFont);
+  preview.style.setProperty("--pv-external", theme.externalFont);
+  preview.style.setProperty("--pv-partial", theme.partialFont);
+}
+
+// Excel is only there when the pane runs inside the host; the toast reports the rest.
+function syncAutocolorOnEdit(): void {
+  setAutocolorOnEdit(getActiveSettings().autocolorOnEdit).catch((error) => {
+    showToast(errorMessage(error), "error");
+  });
 }
 
 function applySettings(next: BrandSettings, message?: string): void {
   setActiveSettings(next);
   persistSettings();
   renderBrand();
+  syncAutocolorOnEdit();
   if (message) showToast(message);
 }
 
@@ -370,6 +395,17 @@ function wireBrand(): void {
     updateSetting({ currency: (event.target as HTMLSelectElement).value });
   });
 
+  getElement<HTMLInputElement>("setting-autocolor-edit").addEventListener(
+    "change",
+    (event) => {
+      const on = (event.target as HTMLInputElement).checked;
+      updateSetting(
+        { autocolorOnEdit: on },
+        on ? "Autocolor runs on every edit" : "Autocolor on edit is off",
+      );
+    },
+  );
+
   getElement<HTMLButtonElement>("reset-brand").addEventListener("click", () => {
     applySettings({ ...DEFAULT_SETTINGS }, "Palette reset to house defaults");
     const strip = getElement<HTMLDivElement>("logo-swatches");
@@ -419,6 +455,7 @@ Office.onReady(async ({ host }) => {
   connectionStatus.className = "connection ready";
 
   registerCommands();
+  syncAutocolorOnEdit();
 
   for (const button of actionButtons) {
     button.addEventListener("click", () => {

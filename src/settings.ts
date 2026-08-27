@@ -4,8 +4,11 @@ export interface BrandSettings {
   input: string;
   formula: string;
   link: string;
+  external: string;
+  partial: string;
   font: string;
   currency: string;
+  autocolorOnEdit: boolean;
 }
 
 export interface WorkbookTheme {
@@ -18,6 +21,8 @@ export interface WorkbookTheme {
   inputFont: string;
   formulaFont: string;
   linkFont: string;
+  externalFont: string;
+  partialFont: string;
 }
 
 export const DEFAULT_SETTINGS: BrandSettings = {
@@ -26,11 +31,22 @@ export const DEFAULT_SETTINGS: BrandSettings = {
   input: "#0057B8",
   formula: "#1F1D1B",
   link: "#17823B",
+  external: "#C00000",
+  partial: "#7A3E9D",
   font: "Aptos",
   currency: "€",
+  autocolorOnEdit: false,
 };
 
-const COLOR_KEYS = ["primary", "accent", "input", "formula", "link"] as const;
+const COLOR_KEYS = [
+  "primary",
+  "accent",
+  "input",
+  "formula",
+  "link",
+  "external",
+  "partial",
+] as const;
 
 export function normalizeHex(value: string): string | null {
   let hex = value.trim().replace(/^#/, "");
@@ -89,6 +105,8 @@ export function deriveTheme(settings: BrandSettings): WorkbookTheme {
     inputFont: settings.input,
     formulaFont: settings.formula,
     linkFont: settings.link,
+    externalFont: settings.external,
+    partialFont: settings.partial,
   };
 }
 
@@ -132,6 +150,11 @@ export function parsePalette(json: string): BrandSettings | null {
       return null;
     }
     settings.currency = source.currency;
+  }
+
+  if (source.autocolorOnEdit !== undefined) {
+    if (typeof source.autocolorOnEdit !== "boolean") return null;
+    settings.autocolorOnEdit = source.autocolorOnEdit;
   }
 
   return settings;

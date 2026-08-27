@@ -99,7 +99,8 @@
             <button data-action="fill-right" type="button"><span class="action-icon">→</span><span><strong>Fill formula right</strong><small>Use the left cell as the source</small></span><kbd>R</kbd></button>
             <button data-action="fill-down" type="button"><span class="action-icon">↓</span><span><strong>Fill formula down</strong><small>Use the top cell as the source</small></span><kbd>D</kbd></button>
             <button data-action="if-error" type="button"><span class="action-icon">ƒ</span><span><strong>Wrap with IFERROR</strong><small>Return zero when a formula errors</small></span></button>
-            <button data-action="autocolor" type="button"><span class="action-icon colors">●</span><span><strong>Autocolor selection</strong><small>Inputs, formulas and links in your palette</small></span></button>
+            <button data-action="autocolor" type="button"><span class="action-icon colors">●</span><span><strong>Autocolor selection</strong><small>Inputs, formulas, links and hardcodes in your palette</small></span></button>
+            <button data-action="insert-color-key" type="button"><span class="action-icon key">⚿</span><span><strong>Insert color key</strong><small>Drops the legend at the active cell</small></span></button>
           </div>
           <div class="scale-row">
             <button data-action="divide-1000" type="button">÷ 1,000</button>
@@ -123,6 +124,8 @@
               <tr><td>Growth</td><td class="pv-input">4,0%</td><td class="pv-input">5,0%</td></tr>
               <tr><td>Revenue</td><td class="pv-formula">1 240</td><td class="pv-formula">1 302</td></tr>
               <tr><td>Group fees</td><td class="pv-link">(18)</td><td class="pv-link">(19)</td></tr>
+              <tr><td>Fuel index</td><td class="pv-external">102</td><td class="pv-external">107</td></tr>
+              <tr><td>Other costs</td><td class="pv-partial">(820)</td><td class="pv-partial">(852)</td></tr>
               <tr class="pv-result"><td>EBITDA</td><td>402</td><td>431</td></tr>
             </tbody>
           </table>
@@ -158,9 +161,19 @@
               <input type="text" class="hex-input" data-slot-hex="formula" spellcheck="false" maxlength="7" aria-label="Formula hex value" />
             </div>
             <div class="palette-row">
-              <input type="color" class="swatch-input" data-slot-color="link" aria-label="Link color picker" />
-              <span class="palette-meta"><strong>Links</strong><small>References to other sheets</small></span>
-              <input type="text" class="hex-input" data-slot-hex="link" spellcheck="false" maxlength="7" aria-label="Link hex value" />
+              <input type="color" class="swatch-input" data-slot-color="link" aria-label="Cross-sheet link color picker" />
+              <span class="palette-meta"><strong>Cross-sheet links</strong><small>References to another sheet</small></span>
+              <input type="text" class="hex-input" data-slot-hex="link" spellcheck="false" maxlength="7" aria-label="Cross-sheet link hex value" />
+            </div>
+            <div class="palette-row">
+              <input type="color" class="swatch-input" data-slot-color="external" aria-label="External file link color picker" />
+              <span class="palette-meta"><strong>External file links</strong><small>References to another workbook</small></span>
+              <input type="text" class="hex-input" data-slot-hex="external" spellcheck="false" maxlength="7" aria-label="External file link hex value" />
+            </div>
+            <div class="palette-row">
+              <input type="color" class="swatch-input" data-slot-color="partial" aria-label="Partial input color picker" />
+              <span class="palette-meta"><strong>Partial inputs</strong><small>Numbers typed inside a formula</small></span>
+              <input type="text" class="hex-input" data-slot-hex="partial" spellcheck="false" maxlength="7" aria-label="Partial input hex value" />
             </div>
           </div>
         </section>
@@ -206,6 +219,10 @@
               </select>
             </label>
           </div>
+          <label class="toggle-row" for="setting-autocolor-edit">
+            <input type="checkbox" id="setting-autocolor-edit" />
+            <span><strong>Autocolor on edit</strong><small>Recolor cells as you type, up to 500 at a time</small></span>
+          </label>
           <div class="io-row">
             <button id="export-brand" type="button">Copy palette JSON</button>
             <label class="io-import" for="import-file">Import JSON<input type="file" id="import-file" accept="application/json,.json" hidden /></label>
@@ -216,7 +233,7 @@
       <footer>
         <span class="privacy-dot"></span>
         Workbook data stays inside Excel
-        <span>v0.4</span>
+        <span>v0.5</span>
       </footer>
     </main>
 
