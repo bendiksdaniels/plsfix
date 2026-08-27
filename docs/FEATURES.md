@@ -6,6 +6,13 @@ Raw inventories with per-feature source URLs live in `docs/research/`.
 
 Date: 2026-08-27. Owner add-in: Model Tools (Office.js task pane, ExcelApi >= 1.9).
 
+**Status 27.08 (v0.9.x):** everything marked P1 in sections 0-7 shipped in chunks C1-C7 —
+shared runtime + ribbon + 34 shortcuts, ten format cycles, autocolor v2 + color key,
+audit overlay + Smart Track, SMT Undo + paste suite + fast fill + CAGR/sign/decimals,
+native waterfall + chart formatter + CAGR label, TOC + sheet explorer + name scrubber.
+Sections 8-10 (linking, PPT companion, enterprise) remain the M2-M4 roadmap. See
+tasks/v1-plan.md for per-chunk detail and open follow-ups.
+
 **Feasibility legend** — `Yes`: doable with documented Office.js APIs. `Yes*`: doable with a
 caveat (noted). `Partial`: a reduced version is doable. `Backend`: needs our planned Rust
 service or Microsoft Graph relay. `No`: impossible in web add-ins (COM-only).

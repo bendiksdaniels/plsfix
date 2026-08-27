@@ -1,6 +1,6 @@
 # Model Tools
 
-Model Tools is an early Excel productivity add-in for financial modelling teams. The first milestone focuses on fast, consistent workbook formatting and common formula operations.
+Model Tools is an Excel productivity add-in for financial modelling teams. It is a web add-in, so unlike the COM/VSTO incumbents it runs natively on Windows, Mac and Excel on the web. The first milestone covers fast, consistent workbook formatting, model auditing and common formula operations.
 
 ## What works in v0.9
 
@@ -18,6 +18,62 @@ Model Tools is an early Excel productivity add-in for financial modelling teams.
 - Brand tab: company palette (pickers, hex entry, or logo upload with local color extraction), font and currency settings, JSON import/export; all presets and autocolor follow the palette; persisted in the task pane
 - the add-in's ribbon tab with one-click commands (autocolor, fills, IFERROR) and customizable keyboard shortcuts via the shared runtime (`public/shortcuts.json`)
 - Workbook tab: a sheet explorer that jumps to, hides and shows sheets (very hidden ones are listed but never touched), a hyperlinked contents sheet rebuilt on demand, and a scrubber that finds and deletes defined names left pointing at `#REF!`
+
+## Keyboard shortcuts
+
+All shortcuts run without the pane open (shared runtime). Excel shows a one-time
+conflict dialog where a combination shadows a native one; the number-format cycles
+deliberately sit on the native format keys so existing muscle memory lands on the
+branded equivalent. Users can remap under Office add-in shortcut preferences.
+
+| Action | Keys |
+|---|---|
+| Open Model Tools | Ctrl+Shift+M |
+| Autocolor selection | Ctrl+Shift+K |
+| Fill formula right | Ctrl+Alt+R |
+| Fill formula down | Ctrl+Alt+D |
+| Wrap with IFERROR | Ctrl+Shift+I |
+| Multiply by 1,000 | Ctrl+Shift+Alt+8 |
+| Divide by 1,000 | Ctrl+Shift+Alt+9 |
+| Cycle general number format | Ctrl+Shift+1 |
+| Cycle date format | Ctrl+Shift+2 |
+| Cycle currency format | Ctrl+Shift+4 |
+| Cycle percent format | Ctrl+Shift+5 |
+| Cycle multiple format | Ctrl+Shift+6 |
+| Cycle title row style | Ctrl+Shift+H |
+| Cycle result row style | Ctrl+Shift+R |
+| Cycle item row style | Ctrl+Shift+E |
+| Cycle fill color | Ctrl+Shift+F |
+| Cycle font color | Ctrl+Shift+G |
+| Toggle audit overlay | Ctrl+Shift+A |
+| Trace precedents | Ctrl+Alt+Q |
+| Trace dependents | Ctrl+Alt+W |
+| Undo last Model Tools action | Ctrl+Shift+Z |
+| Mark copy source | Ctrl+Shift+C |
+| Paste values | Ctrl+Shift+V |
+| Paste formats | Ctrl+Alt+F |
+| Paste formulas exactly | Ctrl+Alt+P |
+| Paste transposed | Ctrl+Alt+T |
+| Insert CAGR | Ctrl+Shift+Q |
+| Flip sign | Ctrl+Shift+J |
+| One more decimal | Ctrl+Shift+Alt+3 |
+| One less decimal | Ctrl+Shift+Alt+7 |
+| Waterfall from selection | Ctrl+Shift+B |
+| Brand-format chart | Ctrl+Alt+G |
+| CAGR label | Ctrl+Alt+K |
+| Insert contents sheet | Ctrl+Alt+O |
+
+## Known limits
+
+- Undo covers range state (formulas, number formats, fills, font color and weight) for
+  the last action up to 5,000 cells; larger actions run without undo and say so in the
+  toast. Chart, shape, sheet and defined-name operations are outside undo.
+- The waterfall's closing total needs one manual right-click > Set as Total: Office.js
+  exposes no API for it.
+- Smart Track tracing needs ExcelApi 1.12 (precedents) / 1.13 (dependents); older
+  builds get a clear message. Everything else runs on the manifest floor (1.9).
+- Tracing and auditing work within the open workbook; Office.js cannot cross into
+  other files.
 
 The task pane runs locally. It has no backend and sends no workbook data anywhere.
 
@@ -43,15 +99,24 @@ npm run build
 npm run validate
 ```
 
+## Deploy
+
+`manifest.xml` is the localhost development manifest; `manifest.prod.xml` is the same
+add-in (same GUID) pointed at the production host. Ship the `dist/` build to a plain
+HTTPS path with no auth wall in front of it (an access-gated pane cannot load inside
+Office webviews) and restrict availability through Microsoft 365 centralized
+deployment group assignment instead. Hosted JS updates need no admin action; manifest
+changes need a re-upload. Details and sources: `docs/research/launch-path.md`.
+
 ## Architecture
 
 - `taskpane.html` and `src/main.ts`: task-pane UI and action routing
 - `src/excel.ts`: Office.js integration; workbook data remains in the Excel process
-- `src/model.ts`: pure formula and grid transformations
+- `src/model.ts`, `src/cycles.ts`, `src/classify.ts`, `src/audit.ts`, `src/paste.ts`, `src/chartmath.ts`, `src/workbook.ts`: pure, tested logic (cycling, classification, auditing, paste math, bridge math, TOC/name hygiene)
 - `src/settings.ts`: brand palette model, theme derivation, logo color extraction, persistence helpers
 - `manifest.xml`: Excel add-in identity, permissions, and local development URL
 
-TypeScript is used because an Office.js task pane is a web front end. A future cloud service—for shared brand libraries, authentication and link metadata—should be implemented in Rust.
+TypeScript is used because an Office.js task pane is a web front end. A future cloud service - for shared brand libraries, authentication and link metadata - should be implemented in Rust.
 
 ## Next milestone
 
