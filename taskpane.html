@@ -20,6 +20,7 @@
 
       <nav class="tab-bar" role="tablist" aria-label="Task pane views">
         <button id="tab-tools" class="tab active" role="tab" aria-selected="true" aria-controls="view-tools" type="button">Tools</button>
+        <button id="tab-workbook" class="tab" role="tab" aria-selected="false" aria-controls="view-workbook" type="button">Workbook</button>
         <button id="tab-brand" class="tab" role="tab" aria-selected="false" aria-controls="view-brand" type="button">Brand</button>
       </nav>
 
@@ -264,6 +265,46 @@
             <button id="export-brand" type="button">Copy palette JSON</button>
             <label class="io-import" for="import-file">Import JSON<input type="file" id="import-file" accept="application/json,.json" hidden /></label>
           </div>
+        </section>
+      </div>
+
+      <div id="view-workbook" class="view" role="tabpanel" aria-labelledby="tab-workbook" hidden>
+        <section aria-labelledby="sheets-heading">
+          <div class="section-heading">
+            <div>
+              <p class="kicker">SHEETS</p>
+              <h2 id="sheets-heading">Sheet explorer</h2>
+            </div>
+            <button id="refresh-sheets" class="icon-button" type="button" aria-label="Refresh the sheet list" title="Refresh">↻</button>
+          </div>
+          <div class="sheet-list" id="sheet-list"></div>
+          <p class="hint">Click a name to go there. The circle hides or shows a sheet; very hidden sheets are left alone.</p>
+        </section>
+
+        <section aria-labelledby="toc-heading">
+          <div class="section-heading">
+            <div>
+              <p class="kicker">NAVIGATION</p>
+              <h2 id="toc-heading">Table of contents</h2>
+            </div>
+          </div>
+          <div class="action-list">
+            <button data-action="insert-toc" type="button" title="Build or rebuild the TOC sheet (Ctrl+Alt+O)"><span class="action-icon toc">☰</span><span><strong>Insert contents sheet</strong><small>A TOC sheet linking every visible sheet, rewritten on each run</small></span><kbd>O</kbd></button>
+          </div>
+        </section>
+
+        <section aria-labelledby="names-heading">
+          <div class="section-heading">
+            <div>
+              <p class="kicker">CLEANUP</p>
+              <h2 id="names-heading">Names</h2>
+            </div>
+          </div>
+          <div class="action-list">
+            <button data-action="scan-names" type="button"><span class="action-icon names">⌗</span><span><strong>Scan broken names</strong><small>Defined names left pointing at deleted cells</small></span></button>
+          </div>
+          <p class="hint" id="names-result">Not scanned yet.</p>
+          <button id="delete-names" class="danger" type="button" hidden>Delete broken names</button>
         </section>
       </div>
 

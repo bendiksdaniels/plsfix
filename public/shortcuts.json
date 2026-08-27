@@ -30,7 +30,8 @@
     { "id": "SMT_CAGR", "type": "ExecuteFunction", "name": "Insert CAGR" },
     { "id": "SMT_SIGN", "type": "ExecuteFunction", "name": "Flip sign" },
     { "id": "SMT_DEC_MORE", "type": "ExecuteFunction", "name": "One more decimal" },
-    { "id": "SMT_DEC_LESS", "type": "ExecuteFunction", "name": "One less decimal" }
+    { "id": "SMT_DEC_LESS", "type": "ExecuteFunction", "name": "One less decimal" },
+    { "id": "SMT_TOC", "type": "ExecuteFunction", "name": "Insert contents sheet" }
   ],
   "shortcuts": [
     { "action": "SMT_SHOWPANE", "key": { "default": "Ctrl+Shift+M" } },
@@ -62,6 +63,7 @@
     { "action": "SMT_CAGR", "key": { "default": "Ctrl+Shift+Q" } },
     { "action": "SMT_SIGN", "key": { "default": "Ctrl+Shift+J" } },
     { "action": "SMT_DEC_MORE", "key": { "default": "Ctrl+Shift+3" } },
-    { "action": "SMT_DEC_LESS", "key": { "default": "Ctrl+Shift+7" } }
+    { "action": "SMT_DEC_LESS", "key": { "default": "Ctrl+Shift+7" } },
+    { "action": "SMT_TOC", "key": { "default": "Ctrl+Alt+O" } }
   ]
 }
