@@ -20,7 +20,17 @@
     { "id": "SMT_CYC_FONT", "type": "ExecuteFunction", "name": "Cycle font color" },
     { "id": "SMT_AUDIT", "type": "ExecuteFunction", "name": "Toggle audit overlay" },
     { "id": "SMT_TRACE_PRE", "type": "ExecuteFunction", "name": "Trace precedents" },
-    { "id": "SMT_TRACE_DEP", "type": "ExecuteFunction", "name": "Trace dependents" }
+    { "id": "SMT_TRACE_DEP", "type": "ExecuteFunction", "name": "Trace dependents" },
+    { "id": "SMT_UNDO", "type": "ExecuteFunction", "name": "Undo last Model Tools action" },
+    { "id": "SMT_COPYSRC", "type": "ExecuteFunction", "name": "Mark copy source" },
+    { "id": "SMT_PASTE_VALUES", "type": "ExecuteFunction", "name": "Paste values" },
+    { "id": "SMT_PASTE_FORMATS", "type": "ExecuteFunction", "name": "Paste formats" },
+    { "id": "SMT_PASTE_EXACT", "type": "ExecuteFunction", "name": "Paste formulas exactly" },
+    { "id": "SMT_PASTE_TRANSPOSE", "type": "ExecuteFunction", "name": "Paste transposed" },
+    { "id": "SMT_CAGR", "type": "ExecuteFunction", "name": "Insert CAGR" },
+    { "id": "SMT_SIGN", "type": "ExecuteFunction", "name": "Flip sign" },
+    { "id": "SMT_DEC_MORE", "type": "ExecuteFunction", "name": "One more decimal" },
+    { "id": "SMT_DEC_LESS", "type": "ExecuteFunction", "name": "One less decimal" }
   ],
   "shortcuts": [
     { "action": "SMT_SHOWPANE", "key": { "default": "Ctrl+Shift+M" } },
@@ -42,6 +52,16 @@
     { "action": "SMT_CYC_FONT", "key": { "default": "Ctrl+Shift+G" } },
     { "action": "SMT_AUDIT", "key": { "default": "Ctrl+Shift+A" } },
     { "action": "SMT_TRACE_PRE", "key": { "default": "Ctrl+Alt+Q" } },
-    { "action": "SMT_TRACE_DEP", "key": { "default": "Ctrl+Alt+W" } }
+    { "action": "SMT_TRACE_DEP", "key": { "default": "Ctrl+Alt+W" } },
+    { "action": "SMT_UNDO", "key": { "default": "Ctrl+Shift+Z" } },
+    { "action": "SMT_COPYSRC", "key": { "default": "Ctrl+Shift+C" } },
+    { "action": "SMT_PASTE_VALUES", "key": { "default": "Ctrl+Shift+V" } },
+    { "action": "SMT_PASTE_FORMATS", "key": { "default": "Ctrl+Alt+F" } },
+    { "action": "SMT_PASTE_EXACT", "key": { "default": "Ctrl+Alt+P" } },
+    { "action": "SMT_PASTE_TRANSPOSE", "key": { "default": "Ctrl+Alt+T" } },
+    { "action": "SMT_CAGR", "key": { "default": "Ctrl+Shift+Q" } },
+    { "action": "SMT_SIGN", "key": { "default": "Ctrl+Shift+J" } },
+    { "action": "SMT_DEC_MORE", "key": { "default": "Ctrl+Shift+3" } },
+    { "action": "SMT_DEC_LESS", "key": { "default": "Ctrl+Shift+7" } }
   ]
 }

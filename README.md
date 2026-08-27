@@ -2,14 +2,14 @@
 
 Model Tools is an early Excel productivity add-in for financial modelling teams. The first milestone focuses on fast, consistent workbook formatting and common formula operations.
 
-## What works in v0.6
+## What works in v0.7
 
 - Live selection summary: cells, formulas, blanks, and formula errors
 - Five financial-model formatting presets
 - Whole-number, decimal, euro, and percentage number formats
 - Format cycles: press the same key again to step through number formats (general, date, currency, percent, multiple), title, result and item row styles, and brand fill or font colors
-- Fill-formula-right and fill-formula-down actions
-- Safe `IFERROR(..., 0)` wrapping
+- Fill, paste and undo: fills sized by the neighbouring column or row, a marked copy source pasted as values, formats, exact formulas or transposed, quick CAGR, sign flip and decimal steppers, and **Undo last Model Tools action**, which puts back the formulas, number formats and colors the add-in last wrote (Office.js writes never reach Excel's own undo stack)
+- Reversible `IFERROR(..., 0)` guard: the same action strips it again
 - Financial-model autocoloring: hardcodes blue, formulas black, cross-sheet links green
 - Autocolor v2: external-file links and numbers hardcoded inside formulas get their own palette colors, an optional on-edit toggle recolors as you type, and "Insert color key" drops the legend on the sheet
 - Multiply or divide selected constants and formulas by 1,000

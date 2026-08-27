@@ -96,15 +96,28 @@
             </div>
           </div>
           <div class="action-list">
-            <button data-action="fill-right" type="button"><span class="action-icon">→</span><span><strong>Fill formula right</strong><small>Use the left cell as the source</small></span><kbd>R</kbd></button>
-            <button data-action="fill-down" type="button"><span class="action-icon">↓</span><span><strong>Fill formula down</strong><small>Use the top cell as the source</small></span><kbd>D</kbd></button>
-            <button data-action="if-error" type="button"><span class="action-icon">ƒ</span><span><strong>Wrap with IFERROR</strong><small>Return zero when a formula errors</small></span></button>
+            <button data-action="undo" type="button" title="Restore what the last Model Tools action overwrote (Ctrl+Shift+Z)"><span class="action-icon undo">⟲</span><span><strong>Undo last Model Tools action</strong><small id="undo-target">Nothing to undo yet</small></span><kbd>Z</kbd></button>
+            <button data-action="fill-right" type="button" title="Fill the active formula right (Ctrl+Alt+R)"><span class="action-icon">→</span><span><strong>Fill formula right</strong><small>Sized by the neighbouring rows</small></span><kbd>R</kbd></button>
+            <button data-action="fill-down" type="button" title="Fill the active formula down (Ctrl+Alt+D)"><span class="action-icon">↓</span><span><strong>Fill formula down</strong><small>Sized by the neighbouring columns</small></span><kbd>D</kbd></button>
+            <button data-action="if-error" type="button" title="Add or strip the IFERROR guard (Ctrl+Shift+I)"><span class="action-icon">ƒ</span><span><strong>IFERROR guard</strong><small>Adds IFERROR(…, 0), or strips it when it is already there</small></span></button>
             <button data-action="autocolor" type="button"><span class="action-icon colors">●</span><span><strong>Autocolor selection</strong><small>Inputs, formulas, links and hardcodes in your palette</small></span></button>
             <button data-action="insert-color-key" type="button"><span class="action-icon key">⚿</span><span><strong>Insert color key</strong><small>Drops the legend at the active cell</small></span></button>
           </div>
+          <div class="number-strip paste-strip" role="group" aria-label="Copy and paste">
+            <button data-action="copy-source" type="button" title="Mark the selection as the copy source (Ctrl+Shift+C)">Mark</button>
+            <button data-action="paste-values" type="button" title="Paste the source values (Ctrl+Shift+V)">Values</button>
+            <button data-action="paste-formats" type="button" title="Paste the source formatting (Ctrl+Alt+F)">Formats</button>
+            <button data-action="paste-exact" type="button" title="Paste the formulas exactly, references unchanged (Ctrl+Alt+P)">Exact</button>
+            <button data-action="paste-transpose" type="button" title="Paste rows as columns (Ctrl+Alt+T)">Transpose</button>
+          </div>
+          <p class="hint" id="paste-source">Mark a source, then paste it into any selection.</p>
           <div class="scale-row">
-            <button data-action="divide-1000" type="button">÷ 1,000</button>
-            <button data-action="multiply-1000" type="button">× 1,000</button>
+            <button data-action="divide-1000" type="button" title="Divide the selection by a thousand (Ctrl+Shift+9)">÷ 1,000</button>
+            <button data-action="multiply-1000" type="button" title="Multiply the selection by a thousand (Ctrl+Shift+8)">× 1,000</button>
+            <button data-action="cagr" type="button" title="CAGR just past the selected row or column (Ctrl+Shift+Q)">CAGR</button>
+            <button data-action="sign-flip" type="button" title="Flip the sign of the selection (Ctrl+Shift+J)">± sign</button>
+            <button data-action="dec-more" type="button" title="One more decimal place (Ctrl+Shift+3)">.00 +</button>
+            <button data-action="dec-less" type="button" title="One less decimal place (Ctrl+Shift+7)">.00 −</button>
           </div>
         </section>
 
@@ -257,7 +270,7 @@
       <footer>
         <span class="privacy-dot"></span>
         Workbook data stays inside Excel
-        <span>v0.6</span>
+        <span>v0.7</span>
       </footer>
     </main>
 

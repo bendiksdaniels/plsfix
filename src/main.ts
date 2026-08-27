@@ -1,24 +1,33 @@
 import "./styles.css";
 import type { NumberCycleFamily, RowStyleKind } from "./cycles";
 import {
-  addIfError,
+  applyDecimalStep,
   applyFillCycle,
   applyFontColorCycle,
   applyNumberCycle,
   applyNumberFormat,
   applyPreset,
   applyRowStyleCycle,
+  applySignFlip,
   autocolorSelection,
   clearFormats,
-  fastFill,
+  copySourceLabel,
+  fastFillAuto,
+  insertCagr,
   insertColorKey,
   inspectSelection,
+  markCopySource,
   parseAddress,
+  pasteSpecial,
+  pastePreserveFormulas,
   scaleSelection,
   selectArea,
   setAutocolorOnEdit,
   toggleAuditOverlay,
+  toggleIfErrorGuard,
   traceActiveCell,
+  undoLastAction,
+  undoTarget,
   type NumberFormatName,
   type PresetName,
   type TraceArea,
@@ -111,6 +120,17 @@ let auditOn = false;
 
 function renderAuditState(): void {
   getElement("audit-state").textContent = auditOn ? "On" : "Off";
+}
+
+// The undo slot and the copy source are module state in excel.ts; the pane
+// reads them back after every action so both rows say what they will do.
+function renderActionState(): void {
+  getElement("undo-target").textContent =
+    undoTarget() ?? "Nothing to undo yet";
+  const source = copySourceLabel();
+  getElement("paste-source").textContent = source
+    ? `Copy source: ${source}`
+    : "Mark a source, then paste it into any selection.";
 }
 
 function renderTrace(): void {
@@ -225,13 +245,13 @@ async function dispatch(action: string): Promise<string> {
         await clearFormats();
         break;
       case "fill-right":
-        await fastFill("right");
+        await fastFillAuto("right");
         break;
       case "fill-down":
-        await fastFill("down");
+        await fastFillAuto("down");
         break;
       case "if-error":
-        await addIfError();
+        await toggleIfErrorGuard();
         break;
       case "autocolor":
         await autocolorSelection();
@@ -244,6 +264,34 @@ async function dispatch(action: string): Promise<string> {
         break;
       case "multiply-1000":
         await scaleSelection(1000);
+        break;
+      case "cagr":
+        await insertCagr();
+        break;
+      case "sign-flip":
+        await applySignFlip();
+        break;
+      case "dec-more":
+        await applyDecimalStep(1);
+        break;
+      case "dec-less":
+        await applyDecimalStep(-1);
+        break;
+      case "undo":
+        return `Restored ${await undoLastAction()}`;
+      case "copy-source":
+        return `Copy source: ${await markCopySource()}`;
+      case "paste-values":
+        await pasteSpecial("values");
+        break;
+      case "paste-formats":
+        await pasteSpecial("formats");
+        break;
+      case "paste-transpose":
+        await pasteSpecial("transpose");
+        break;
+      case "paste-exact":
+        await pastePreserveFormulas();
         break;
       case "audit-toggle":
         return toggleAudit();
@@ -268,6 +316,8 @@ async function guard(run: () => Promise<string>): Promise<void> {
   } catch (error) {
     showToast(errorMessage(error), "error");
   } finally {
+    // Also after a failure: a capture may have replaced the undo slot already.
+    renderActionState();
     setBusy(false);
   }
 }
@@ -290,11 +340,21 @@ function registerCommands(): void {
     // the first result instead.
     SMT_TRACE_PRE: () => startTrace("precedents", true),
     SMT_TRACE_DEP: () => startTrace("dependents", true),
-    SMT_FILLRIGHT: () => fastFill("right"),
-    SMT_FILLDOWN: () => fastFill("down"),
-    SMT_IFERROR: addIfError,
+    SMT_FILLRIGHT: () => fastFillAuto("right"),
+    SMT_FILLDOWN: () => fastFillAuto("down"),
+    SMT_IFERROR: toggleIfErrorGuard,
     SMT_SCALEUP: () => scaleSelection(1000),
     SMT_SCALEDOWN: () => scaleSelection(0.001),
+    SMT_UNDO: undoLastAction,
+    SMT_COPYSRC: markCopySource,
+    SMT_PASTE_VALUES: () => pasteSpecial("values"),
+    SMT_PASTE_FORMATS: () => pasteSpecial("formats"),
+    SMT_PASTE_EXACT: pastePreserveFormulas,
+    SMT_PASTE_TRANSPOSE: () => pasteSpecial("transpose"),
+    SMT_CAGR: insertCagr,
+    SMT_SIGN: applySignFlip,
+    SMT_DEC_MORE: () => applyDecimalStep(1),
+    SMT_DEC_LESS: () => applyDecimalStep(-1),
     SMT_CYC_GENERAL: () => applyNumberCycle("general"),
     SMT_CYC_DATE: () => applyNumberCycle("date"),
     SMT_CYC_CURRENCY: () => applyNumberCycle("currency"),
@@ -312,7 +372,10 @@ function registerCommands(): void {
       void run()
         .then(() => refreshSelection())
         .catch((error) => showToast(errorMessage(error), "error"))
-        .finally(() => event?.completed());
+        .finally(() => {
+          renderActionState();
+          event?.completed();
+        });
     });
   }
 
@@ -575,6 +638,7 @@ wireTabs();
 wireBrand();
 renderBrand();
 renderAuditState();
+renderActionState();
 
 Office.onReady(async ({ host }) => {
   if (host !== Office.HostType.Excel) {

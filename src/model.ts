@@ -38,17 +38,6 @@ export function analyzeGrid(
   return { cells, formulas: formulaCount, errors, blanks };
 }
 
-export function wrapFormulasWithIfError(
-  cells: CellValue[][],
-): CellValue[][] {
-  return cells.map((row) =>
-    row.map((cell) => {
-      if (!isFormula(cell) || /^=IFERROR\s*\(/i.test(cell)) return cell;
-      return `=IFERROR(${cell.slice(1)},0)`;
-    }),
-  );
-}
-
 export function scaleCells(
   cells: CellValue[][],
   factor: 1000 | 0.001,
