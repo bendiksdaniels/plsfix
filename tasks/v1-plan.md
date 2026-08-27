@@ -13,9 +13,10 @@ validate), reviewer-agent pass on the diff, terse commit, version bump per Danie
 - [x] C1 Foundation: shared runtime, the add-in's ribbon tab (function commands), keyboard
       shortcuts via ExtendedOverrides (v1.1 nested overrides). v0.3.0.
       In-Excel verification of shortcuts/ribbon PENDING next sideload.
-- [ ] C2 Format cycles: number-format families (general/currency/percent/multiple/date),
-      title/result/item row styles, fill/font/border cycles; palette-driven; cycle state
-      machine in pure TS + tests; shortcuts wired.
+- [x] C2 Format cycles: number-format families (general/currency/percent/multiple/date),
+      title/result/item row styles, fill/font cycles; palette-driven; pure cycles.ts + 17
+      tests; ten shortcuts wired. Merged 5d786e8, v0.4.0. Reviewer pass + in-Excel check
+      pending. Open: standalone border cycle (borders ship inside row styles for now).
 - [ ] C3 Autocolor v2: same-sheet vs cross-sheet vs external-file vs partial-input
       classification, legend + per-type overrides in Brand tab, optional autocolor-on-edit
       (onChanged, off by default); "insert color key" block on the sheet (F1F9-style).
