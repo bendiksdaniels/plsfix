@@ -26,14 +26,17 @@
 - [ ] Roadmap deltas: proposed in FEATURES.md, awaiting Daniel's sign-off (ROADMAP.md is his file)
 - [ ] Known conflict: UpSlide training file vs help center swap Autocolor/Smart Track shortcuts (remappable; flagged in research notes)
 
-## v1 campaign (27.08, loop)
+## v1 campaign (27.08, loop) - COMPLETE at v1.0.1
 
-- [x] C1-C7 built, merged, gated (see tasks/v1-plan.md); v0.9.1, 102 tests
-- [x] Per-chunk reviews C2-C5 processed (2 refuted, 5 fixed); final whole-codebase sweep running
-- [x] manifest.prod.xml (proposed path dbautomatizacijas.com/modelis - Daniel's call), README launch sections
-- [ ] Final sweep findings applied -> v1.0.0-rc
-- [ ] DANIEL: sideload pass (npm start) - ribbon, shortcuts + conflict dialogs, cycles in Excel, waterfall, undo
-- [ ] DANIEL: suite-path key + Cloudflare Access exclusion, then deploy dist/ + centralized deployment
+- [x] C1-C8 built, merged, gated (tasks/v1-plan.md); final sweep findings applied -> v1.0.0-rc
+- [x] Reviews: 5 passes + final sweep; findings fixed (2 refuted with evidence)
+- [x] Simulated host: test/fakehost.ts + 110 end-to-end tests (212 total green); caught 2
+      real bugs, fixed in v1.0.1
+- [x] manifest.prod.xml valid (path /modelis/ = proposal), README launch sections
+- [ ] DANIEL: sideload pass (npm start) - checklist in v1-plan "Remaining for launch"
+- [ ] DANIEL: suite-path key + Cloudflare Access exclusion -> deploy -> M365 centralized deployment
+
+Resume pin: tasks/AUTORESUME.md
 
 ## Review
 
