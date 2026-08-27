@@ -1,0 +1,2267 @@
+// A hand-built Office.js host: an in-memory workbook answering exactly the API
+// surface src/excel.ts and src/main.ts touch, so every action can be driven end
+// to end without a sideload.
+//
+// Deliberate simplifications the suite relies on:
+//   * context.sync() is a no-op flush. Reads are served live from the model, so
+//     load() ordering is never exercised and a stale proxy cannot happen.
+//   * No formula engine. Writing "=A1+1" stores the text and leaves the cell's
+//     value alone; writing a literal sets value and formula together.
+//   * formulasR1C1 mirrors the A1 text unless a test seeds it (seedR1C1).
+//   * getSelectedRange models one rectangular area, never a multi-area selection.
+//   * copyFrom(..., formulas) copies text verbatim; Excel rewrites relative refs.
+
+export type CellValue = string | number | boolean | null;
+
+export const ROW_LIMIT = 1_048_576;
+export const COLUMN_LIMIT = 16_384;
+const DEFAULT_ROW_HEIGHT = 15;
+const DEFAULT_COLUMN_WIDTH = 64;
+const POINTS_PER_ROW = 20;
+
+// ---------------------------------------------------------------------------
+// Addresses
+// ---------------------------------------------------------------------------
+
+export interface Rect {
+  row: number;
+  col: number;
+  rowCount: number;
+  colCount: number;
+}
+
+export function columnName(index: number): string {
+  let name = "";
+  let n = index;
+  while (n >= 0) {
+    name = String.fromCharCode(65 + (n % 26)) + name;
+    n = Math.floor(n / 26) - 1;
+  }
+  return name;
+}
+
+export function columnIndex(name: string): number {
+  let n = 0;
+  for (const char of name.toUpperCase()) n = n * 26 + (char.charCodeAt(0) - 64);
+  return n - 1;
+}
+
+function parsePart(part: string): { row: number | null; col: number | null } {
+  const match = /^([A-Za-z]+)?(\d+)?$/.exec(part);
+  if (!match || (!match[1] && !match[2])) {
+    throw new Error(`fake host cannot parse address part "${part}"`);
+  }
+  return {
+    row: match[2] ? Number(match[2]) - 1 : null,
+    col: match[1] ? columnIndex(match[1]) : null,
+  };
+}
+
+export function parseA1(address: string): Rect {
+  const [first, second] = address.replace(/\$/g, "").trim().split(":");
+  const a = parsePart(first ?? "");
+  const b = second ? parsePart(second) : a;
+
+  const rowStart = a.row ?? 0;
+  const rowEnd = b.row ?? (a.row === null ? ROW_LIMIT - 1 : rowStart);
+  const colStart = a.col ?? 0;
+  const colEnd = b.col ?? (a.col === null ? COLUMN_LIMIT - 1 : colStart);
+
+  return {
+    row: Math.min(rowStart, rowEnd),
+    col: Math.min(colStart, colEnd),
+    rowCount: Math.abs(rowEnd - rowStart) + 1,
+    colCount: Math.abs(colEnd - colStart) + 1,
+  };
+}
+
+export function formatA1(rect: Rect): string {
+  const fullColumn = rect.rowCount >= ROW_LIMIT;
+  const fullRow = rect.colCount >= COLUMN_LIMIT;
+  if (fullColumn && !fullRow) {
+    const last = columnName(rect.col + rect.colCount - 1);
+    return `${columnName(rect.col)}:${last}`;
+  }
+  if (fullRow && !fullColumn) {
+    return `${rect.row + 1}:${rect.row + rect.rowCount}`;
+  }
+  const start = `${columnName(rect.col)}${rect.row + 1}`;
+  if (rect.rowCount === 1 && rect.colCount === 1) return start;
+  const end = `${columnName(rect.col + rect.colCount - 1)}${rect.row + rect.rowCount}`;
+  return `${start}:${end}`;
+}
+
+// Excel quotes a sheet name that is not a bare identifier and doubles apostrophes.
+export function quoteSheet(name: string): string {
+  return /^[A-Za-z0-9_]+$/.test(name) ? name : `'${name.replace(/'/g, "''")}'`;
+}
+
+// ---------------------------------------------------------------------------
+// Cell model
+// ---------------------------------------------------------------------------
+
+export interface FakeFont {
+  name: string;
+  size: number;
+  bold: boolean;
+  italic: boolean;
+  color: string;
+  underline: string;
+}
+
+export interface FakeFill {
+  color: string;
+  pattern: string;
+  patternColor: string;
+}
+
+export interface FakeBorder {
+  style: string;
+  color: string;
+  weight: string;
+}
+
+export type BorderEdge =
+  | "top"
+  | "bottom"
+  | "left"
+  | "right"
+  | "diagonalDown"
+  | "diagonalUp";
+
+const BORDER_EDGES: BorderEdge[] = [
+  "top",
+  "bottom",
+  "left",
+  "right",
+  "diagonalDown",
+  "diagonalUp",
+];
+
+export interface FakeHyperlink {
+  documentReference?: string;
+  address?: string;
+  textToDisplay?: string;
+  screenTip?: string;
+}
+
+export interface FakeCell {
+  value: CellValue;
+  formula: CellValue;
+  formulaR1C1: CellValue | null;
+  numberFormat: string;
+  font: FakeFont;
+  fill: FakeFill;
+  borders: Record<BorderEdge, FakeBorder>;
+  horizontalAlignment: string;
+  verticalAlignment: string;
+  wrapText: boolean;
+  indentLevel: number;
+  hyperlink: FakeHyperlink | null;
+}
+
+export function defaultCell(): FakeCell {
+  return {
+    value: "",
+    formula: "",
+    formulaR1C1: null,
+    numberFormat: "General",
+    font: {
+      name: "Calibri",
+      size: 11,
+      bold: false,
+      italic: false,
+      color: "#000000",
+      underline: "None",
+    },
+    fill: { color: "#FFFFFF", pattern: "None", patternColor: "#FFFFFF" },
+    borders: Object.fromEntries(
+      BORDER_EDGES.map((edge) => [
+        edge,
+        { style: "None", color: "#000000", weight: "Thin" },
+      ]),
+    ) as Record<BorderEdge, FakeBorder>,
+    horizontalAlignment: "General",
+    verticalAlignment: "Bottom",
+    wrapText: false,
+    indentLevel: 0,
+    hyperlink: null,
+  };
+}
+
+const DEFAULT_CELL_JSON = JSON.stringify(defaultCell());
+
+function clone<T>(value: T): T {
+  return value === undefined ? value : (JSON.parse(JSON.stringify(value)) as T);
+}
+
+function isDefaultCell(cell: FakeCell): boolean {
+  return JSON.stringify(cell) === DEFAULT_CELL_JSON;
+}
+
+export class FakeSheet {
+  cells = new Map<string, FakeCell>();
+  rowHeights = new Map<number, number>();
+  columnWidths = new Map<number, number>();
+  showGridlines = true;
+  // Stands in for a recalculation: the last value seen for a formula text, so a
+  // formula written back over a clobbered cell shows its result again. Kept off
+  // the cell record, which is what tests deep-compare.
+  formulaValues = new Map<string, Map<string, CellValue>>();
+
+  constructor(
+    public name: string,
+    public id: string,
+    public visibility: string = "Visible",
+    public position: number = 0,
+  ) {}
+
+  key(row: number, col: number): string {
+    return `${row},${col}`;
+  }
+
+  // Reads never materialize a cell; only writes do.
+  peek(row: number, col: number): FakeCell {
+    return this.cells.get(this.key(row, col)) ?? defaultCell();
+  }
+
+  edit(row: number, col: number): FakeCell {
+    const key = this.key(row, col);
+    let cell = this.cells.get(key);
+    if (!cell) {
+      cell = defaultCell();
+      this.cells.set(key, cell);
+    }
+    return cell;
+  }
+
+  remember(row: number, col: number, formula: CellValue, value: CellValue): void {
+    if (typeof formula !== "string" || !formula.startsWith("=")) return;
+    const key = this.key(row, col);
+    let memo = this.formulaValues.get(key);
+    if (!memo) {
+      memo = new Map();
+      this.formulaValues.set(key, memo);
+    }
+    memo.set(formula, value);
+  }
+
+  recall(row: number, col: number, formula: CellValue): CellValue | undefined {
+    if (typeof formula !== "string") return undefined;
+    return this.formulaValues.get(this.key(row, col))?.get(formula);
+  }
+
+  prune(row: number, col: number): void {
+    const key = this.key(row, col);
+    const cell = this.cells.get(key);
+    if (cell && isDefaultCell(cell)) this.cells.delete(key);
+  }
+
+  usedRect(): Rect | null {
+    let top = Infinity;
+    let left = Infinity;
+    let bottom = -1;
+    let right = -1;
+    for (const [key, cell] of this.cells) {
+      if (isDefaultCell(cell)) continue;
+      const [row, col] = key.split(",").map(Number) as [number, number];
+      top = Math.min(top, row);
+      left = Math.min(left, col);
+      bottom = Math.max(bottom, row);
+      right = Math.max(right, col);
+    }
+    if (bottom < 0) return null;
+    return {
+      row: top,
+      col: left,
+      rowCount: bottom - top + 1,
+      colCount: right - left + 1,
+    };
+  }
+}
+
+export interface FakeAxis {
+  fontName?: string;
+  fontSize?: number;
+  fontColor?: string;
+  majorGridlines?: boolean;
+}
+
+export interface FakeSeries {
+  showConnectorLines?: boolean;
+  fillColor?: string;
+  pointColors: Record<number, string>;
+}
+
+export interface FakeChart {
+  sheetName: string;
+  chartType: string;
+  sourceAddress: string;
+  seriesBy: string;
+  title: string | null;
+  titleFont: Partial<FakeFont>;
+  font: Partial<FakeFont>;
+  borderLineStyle?: string;
+  roundedCorners?: boolean;
+  legend: {
+    position?: string;
+    overlay?: boolean;
+    visible?: boolean;
+    font: Partial<FakeFont>;
+  };
+  axes: { category: FakeAxis; value: FakeAxis };
+  dataLabels: { showValue?: boolean };
+  seriesCount: number;
+  series: FakeSeries[];
+}
+
+export interface FakeShape {
+  sheetName: string;
+  text: string;
+  width?: number;
+  height?: number;
+  left?: number;
+  top?: number;
+  fillCleared: boolean;
+  lineVisible?: boolean;
+  textFrame: {
+    horizontalAlignment?: string;
+    verticalAlignment?: string;
+    font: Partial<FakeFont>;
+  };
+}
+
+export interface FakeName {
+  name: string;
+  formula: string;
+}
+
+export interface TraceArea {
+  address: string;
+  cellCount: number;
+}
+
+export type TraceConfig = TraceArea[] | "itemNotFound";
+
+export class FakeWorkbook {
+  sheets: FakeSheet[] = [];
+  settings = new Map<string, string>();
+  names: FakeName[] = [];
+  charts: FakeChart[] = [];
+  shapes: FakeShape[] = [];
+  selection: { sheetId: string; rect: Rect } = {
+    sheetId: "",
+    rect: { row: 0, col: 0, rowCount: 1, colCount: 1 },
+  };
+  activeCell: { sheetId: string; row: number; col: number } | null = null;
+  activeSheetId = "";
+  activeChart: FakeChart | null = null;
+  precedents = new Map<string, TraceConfig>();
+  dependents = new Map<string, TraceConfig>();
+  private nextId = 1;
+
+  constructor(sheetNames: string[] = ["Sheet1"]) {
+    for (const name of sheetNames) this.addSheet(name);
+    const first = this.sheets[0];
+    if (first) {
+      this.activeSheetId = first.id;
+      this.selection = {
+        sheetId: first.id,
+        rect: { row: 0, col: 0, rowCount: 1, colCount: 1 },
+      };
+    }
+  }
+
+  addSheet(name: string): FakeSheet {
+    const sheet = new FakeSheet(name, `sid-${this.nextId}`, "Visible", this.sheets.length);
+    this.nextId += 1;
+    this.sheets.push(sheet);
+    this.renumber();
+    return sheet;
+  }
+
+  deleteSheet(name: string): void {
+    const index = this.sheets.findIndex((sheet) => sheet.name === name);
+    if (index >= 0) this.sheets.splice(index, 1);
+    this.renumber();
+  }
+
+  find(nameOrId: string): FakeSheet | undefined {
+    return this.sheets.find(
+      (sheet) => sheet.name === nameOrId || sheet.id === nameOrId,
+    );
+  }
+
+  ordered(): FakeSheet[] {
+    return [...this.sheets].sort((a, b) => a.position - b.position);
+  }
+
+  move(sheet: FakeSheet, position: number): void {
+    const order = this.ordered().filter((item) => item !== sheet);
+    order.splice(Math.max(0, Math.min(position, order.length)), 0, sheet);
+    order.forEach((item, index) => {
+      item.position = index;
+    });
+  }
+
+  renumber(): void {
+    this.ordered().forEach((sheet, index) => {
+      sheet.position = index;
+    });
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Errors
+// ---------------------------------------------------------------------------
+
+export function hostError(code: string, message: string): Error {
+  const error = new Error(message) as Error & { code: string };
+  error.code = code;
+  return error;
+}
+
+// Excel rewrites a bare currency symbol into a locale-tagged code on read-back.
+function rewriteCurrency(format: string): string {
+  return format.replace(
+    /(\[[^\]]*\])|([€$£¥₹])(?= )/g,
+    (_match, bracketed: string | undefined, symbol: string | undefined) =>
+      bracketed ?? `[$${symbol}-x-fake]`,
+  );
+}
+
+export interface FakeHostOptions {
+  workbook?: FakeWorkbook;
+  sheets?: string[];
+  rewriteCurrencyFormats?: boolean;
+  isSetSupported?: (set: string, version: string) => boolean;
+  maxCells?: number;
+}
+
+// ---------------------------------------------------------------------------
+// Enums (string values copied from @types/office-js)
+// ---------------------------------------------------------------------------
+
+const FillPattern = {
+  none: "None",
+  solid: "Solid",
+  gray50: "Gray50",
+  gray75: "Gray75",
+  gray25: "Gray25",
+  horizontal: "Horizontal",
+  vertical: "Vertical",
+  down: "Down",
+  up: "Up",
+  checker: "Checker",
+  semiGray75: "SemiGray75",
+  lightHorizontal: "LightHorizontal",
+  lightVertical: "LightVertical",
+  lightDown: "LightDown",
+  lightUp: "LightUp",
+  grid: "Grid",
+  crissCross: "CrissCross",
+  gray16: "Gray16",
+  gray8: "Gray8",
+  linearGradient: "LinearGradient",
+  rectangularGradient: "RectangularGradient",
+} as const;
+
+const BorderIndex = {
+  edgeTop: "EdgeTop",
+  edgeBottom: "EdgeBottom",
+  edgeLeft: "EdgeLeft",
+  edgeRight: "EdgeRight",
+  insideVertical: "InsideVertical",
+  insideHorizontal: "InsideHorizontal",
+  diagonalDown: "DiagonalDown",
+  diagonalUp: "DiagonalUp",
+} as const;
+
+const BorderLineStyle = {
+  none: "None",
+  continuous: "Continuous",
+  dash: "Dash",
+  dashDot: "DashDot",
+  dashDotDot: "DashDotDot",
+  dot: "Dot",
+  double: "Double",
+  slantDashDot: "SlantDashDot",
+} as const;
+
+const BorderWeight = {
+  hairline: "Hairline",
+  thin: "Thin",
+  medium: "Medium",
+  thick: "Thick",
+} as const;
+
+const HorizontalAlignment = {
+  general: "General",
+  left: "Left",
+  center: "Center",
+  right: "Right",
+  fill: "Fill",
+  justify: "Justify",
+  centerAcrossSelection: "CenterAcrossSelection",
+  distributed: "Distributed",
+} as const;
+
+const VerticalAlignment = {
+  top: "Top",
+  center: "Center",
+  bottom: "Bottom",
+  justify: "Justify",
+  distributed: "Distributed",
+} as const;
+
+const RangeCopyType = {
+  all: "All",
+  formulas: "Formulas",
+  values: "Values",
+  formats: "Formats",
+  link: "Link",
+} as const;
+
+const ChartType = {
+  columnClustered: "ColumnClustered",
+  line: "Line",
+  pie: "Pie",
+  pieExploded: "PieExploded",
+  pieOfPie: "PieOfPie",
+  barOfPie: "BarOfPie",
+  doughnut: "Doughnut",
+  treemap: "Treemap",
+  sunburst: "Sunburst",
+  regionMap: "RegionMap",
+  xyscatter: "XYScatter",
+  waterfall: "Waterfall",
+} as const;
+
+const ChartSeriesBy = { auto: "Auto", columns: "Columns", rows: "Rows" } as const;
+
+const SheetVisibility = {
+  visible: "Visible",
+  hidden: "Hidden",
+  veryHidden: "VeryHidden",
+} as const;
+
+const ClearApplyTo = {
+  all: "All",
+  formats: "Formats",
+  contents: "Contents",
+  hyperlinks: "Hyperlinks",
+  removeHyperlinks: "RemoveHyperlinks",
+  resetContents: "ResetContents",
+} as const;
+
+const ShapeTextHorizontalAlignment = {
+  left: "Left",
+  center: "Center",
+  right: "Right",
+  justify: "Justify",
+  justifyLow: "JustifyLow",
+  distributed: "Distributed",
+  thaiDistributed: "ThaiDistributed",
+} as const;
+
+const ShapeTextVerticalAlignment = {
+  top: "Top",
+  middle: "Middle",
+  bottom: "Bottom",
+  justified: "Justified",
+  distributed: "Distributed",
+} as const;
+
+const ChartLineStyle = {
+  none: "None",
+  continuous: "Continuous",
+  dash: "Dash",
+  dashDot: "DashDot",
+  dashDotDot: "DashDotDot",
+  dot: "Dot",
+  grey25: "Grey25",
+  grey50: "Grey50",
+  grey75: "Grey75",
+  automatic: "Automatic",
+  roundDot: "RoundDot",
+} as const;
+
+const ChartLegendPosition = {
+  invalid: "Invalid",
+  top: "Top",
+  bottom: "Bottom",
+  left: "Left",
+  right: "Right",
+  corner: "Corner",
+  custom: "Custom",
+} as const;
+
+const RangeUnderlineStyle = {
+  none: "None",
+  single: "Single",
+  double: "Double",
+  singleAccountant: "SingleAccountant",
+  doubleAccountant: "DoubleAccountant",
+} as const;
+
+const ErrorCodes = {
+  generalException: "GeneralException",
+  invalidArgument: "InvalidArgument",
+  itemAlreadyExists: "ItemAlreadyExists",
+  itemNotFound: "ItemNotFound",
+  invalidOperation: "InvalidOperation",
+  unsupportedOperation: "UnsupportedOperation",
+} as const;
+
+// BorderIndex -> the cell-level edge it writes. Inside borders are not modelled;
+// they fall back to the nearest edge, which excel.ts never asks for.
+const BORDER_EDGE: Record<string, BorderEdge> = {
+  EdgeTop: "top",
+  EdgeBottom: "bottom",
+  EdgeLeft: "left",
+  EdgeRight: "right",
+  DiagonalDown: "diagonalDown",
+  DiagonalUp: "diagonalUp",
+  InsideHorizontal: "top",
+  InsideVertical: "left",
+};
+
+// ---------------------------------------------------------------------------
+// Runtime
+// ---------------------------------------------------------------------------
+
+interface Registration {
+  handler: (args: unknown) => unknown;
+}
+
+interface PendingEvent {
+  kind: "add" | "remove";
+  registration: Registration;
+}
+
+class FakeRuntime {
+  changeHandlers: Registration[] = [];
+  actions = new Map<string, (event?: { completed: () => void }) => void>();
+  failSync: Error | null = null;
+  supported: (set: string, version: string) => boolean;
+  rewriteCurrencyFormats: boolean;
+  maxCells: number;
+
+  constructor(
+    public workbook: FakeWorkbook,
+    options: FakeHostOptions,
+  ) {
+    this.rewriteCurrencyFormats = options.rewriteCurrencyFormats ?? false;
+    this.maxCells = options.maxCells ?? 250_000;
+    this.supported = options.isSetSupported ?? (() => true);
+  }
+
+  format(value: string): string {
+    return this.rewriteCurrencyFormats ? rewriteCurrency(value) : value;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Range
+// ---------------------------------------------------------------------------
+
+class RangeProxy {
+  constructor(
+    private runtime: FakeRuntime,
+    private ctx: FakeContext,
+    public sheet: FakeSheet,
+    public rect: Rect,
+  ) {}
+
+  load(): this {
+    return this;
+  }
+
+  get address(): string {
+    return `${quoteSheet(this.sheet.name)}!${formatA1(this.rect)}`;
+  }
+
+  get rowIndex(): number {
+    return this.rect.row;
+  }
+
+  get columnIndex(): number {
+    return this.rect.col;
+  }
+
+  get rowCount(): number {
+    return this.rect.rowCount;
+  }
+
+  get columnCount(): number {
+    return this.rect.colCount;
+  }
+
+  get cellCount(): number {
+    return this.rect.rowCount * this.rect.colCount;
+  }
+
+  get left(): number {
+    return this.rect.col * DEFAULT_COLUMN_WIDTH;
+  }
+
+  get top(): number {
+    return this.rect.row * POINTS_PER_ROW;
+  }
+
+  get width(): number {
+    return this.rect.colCount * DEFAULT_COLUMN_WIDTH;
+  }
+
+  get height(): number {
+    return this.rect.rowCount * POINTS_PER_ROW;
+  }
+
+  get worksheet(): WorksheetProxy {
+    return new WorksheetProxy(this.runtime, this.ctx, this.sheet);
+  }
+
+  get format(): RangeFormatProxy {
+    return new RangeFormatProxy(this.runtime, this.sheet, this.rect);
+  }
+
+  // A guard rather than a hang: an accidental whole-column grid read is a
+  // production regression worth failing loudly on.
+  private guard(what: string): void {
+    if (this.cellCount > this.runtime.maxCells) {
+      throw new Error(
+        `fake host refused a ${this.cellCount}-cell ${what} (${this.address})`,
+      );
+    }
+  }
+
+  private map<T>(read: (cell: FakeCell) => T): T[][] {
+    this.guard("read");
+    const { row, col, rowCount, colCount } = this.rect;
+    return Array.from({ length: rowCount }, (_unusedRow, r) =>
+      Array.from({ length: colCount }, (_unusedColumn, c) =>
+        read(this.sheet.peek(row + r, col + c)),
+      ),
+    );
+  }
+
+  private each(write: (cell: FakeCell, r: number, c: number) => void): void {
+    this.guard("write");
+    const { row, col, rowCount, colCount } = this.rect;
+    for (let r = 0; r < rowCount; r += 1) {
+      for (let c = 0; c < colCount; c += 1) {
+        write(this.sheet.edit(row + r, col + c), r, c);
+      }
+    }
+  }
+
+  get values(): CellValue[][] {
+    return this.map((cell) => cell.value);
+  }
+
+  set values(grid: CellValue[][]) {
+    this.each((cell, r, c) => {
+      const entry = grid[r]?.[c];
+      if (entry === undefined) return;
+      cell.value = entry;
+      cell.formula = entry;
+      cell.formulaR1C1 = null;
+    });
+  }
+
+  get formulas(): CellValue[][] {
+    return this.map((cell) => cell.formula);
+  }
+
+  // No formula engine: a formula write stores the text and the last result seen
+  // for it stands in for a recalculation; a literal write sets both, as Excel does.
+  set formulas(grid: CellValue[][]) {
+    this.each((cell, r, c) => {
+      const entry = grid[r]?.[c];
+      if (entry === undefined) return;
+      cell.formula = entry;
+      cell.formulaR1C1 = null;
+      if (typeof entry === "string" && entry.startsWith("=")) {
+        const known = this.sheet.recall(this.rect.row + r, this.rect.col + c, entry);
+        if (known !== undefined) cell.value = known;
+        return;
+      }
+      cell.value = entry;
+    });
+  }
+
+  get formulasR1C1(): CellValue[][] {
+    return this.map((cell) => cell.formulaR1C1 ?? cell.formula);
+  }
+
+  set formulasR1C1(grid: CellValue[][]) {
+    this.each((cell, r, c) => {
+      const entry = grid[r]?.[c];
+      if (entry === undefined) return;
+      cell.formulaR1C1 = entry;
+    });
+  }
+
+  get numberFormat(): CellValue[][] {
+    return this.map((cell) => cell.numberFormat);
+  }
+
+  set numberFormat(grid: CellValue[][]) {
+    this.each((cell, r, c) => {
+      const entry = grid[r]?.[c];
+      if (entry === undefined) return;
+      cell.numberFormat = this.runtime.format(String(entry));
+    });
+  }
+
+  set hyperlink(link: FakeHyperlink) {
+    this.each((cell) => {
+      cell.hyperlink = clone(link);
+      if (link.textToDisplay !== undefined) {
+        cell.value = link.textToDisplay;
+        cell.formula = link.textToDisplay;
+      }
+    });
+  }
+
+  private at(rect: Rect): RangeProxy {
+    return new RangeProxy(this.runtime, this.ctx, this.sheet, rect);
+  }
+
+  getCell(row: number, column: number): RangeProxy {
+    return this.at({
+      row: this.rect.row + row,
+      col: this.rect.col + column,
+      rowCount: 1,
+      colCount: 1,
+    });
+  }
+
+  getRow(row: number): RangeProxy {
+    return this.at({
+      row: this.rect.row + row,
+      col: this.rect.col,
+      rowCount: 1,
+      colCount: this.rect.colCount,
+    });
+  }
+
+  getColumn(column: number): RangeProxy {
+    return this.at({
+      row: this.rect.row,
+      col: this.rect.col + column,
+      rowCount: this.rect.rowCount,
+      colCount: 1,
+    });
+  }
+
+  getResizedRange(deltaRows: number, deltaColumns: number): RangeProxy {
+    return this.at({
+      ...this.rect,
+      rowCount: Math.max(1, this.rect.rowCount + deltaRows),
+      colCount: Math.max(1, this.rect.colCount + deltaColumns),
+    });
+  }
+
+  getOffsetRange(rowOffset: number, columnOffset: number): RangeProxy {
+    return this.at({
+      ...this.rect,
+      row: this.rect.row + rowOffset,
+      col: this.rect.col + columnOffset,
+    });
+  }
+
+  // Excel's current region: grow the rectangle while any bordering line still
+  // holds data.
+  getSurroundingRegion(): RangeProxy {
+    const filled = (row: number, col: number): boolean => {
+      const cell = this.sheet.cells.get(this.sheet.key(row, col));
+      if (!cell) return false;
+      return (
+        (cell.value !== "" && cell.value !== null) ||
+        (cell.formula !== "" && cell.formula !== null)
+      );
+    };
+
+    let { row, col, rowCount, colCount } = this.rect;
+    if (rowCount === 1 && colCount === 1 && !filled(row, col)) return this;
+
+    let grew = true;
+    while (grew) {
+      grew = false;
+      const line = (
+        r0: number,
+        c0: number,
+        rn: number,
+        cn: number,
+      ): boolean => {
+        for (let r = r0; r < r0 + rn; r += 1) {
+          for (let c = c0; c < c0 + cn; c += 1) {
+            if (r >= 0 && c >= 0 && filled(r, c)) return true;
+          }
+        }
+        return false;
+      };
+      if (row > 0 && line(row - 1, col, 1, colCount)) {
+        row -= 1;
+        rowCount += 1;
+        grew = true;
+      }
+      if (line(row + rowCount, col, 1, colCount)) {
+        rowCount += 1;
+        grew = true;
+      }
+      if (col > 0 && line(row, col - 1, rowCount, 1)) {
+        col -= 1;
+        colCount += 1;
+        grew = true;
+      }
+      if (line(row, col + colCount, rowCount, 1)) {
+        colCount += 1;
+        grew = true;
+      }
+    }
+    return this.at({ row, col, rowCount, colCount });
+  }
+
+  getUsedRangeOrNullObject(): RangeProxy & { isNullObject: boolean } {
+    const used = this.sheet.usedRect();
+    const proxy = this.at(used ?? this.rect) as RangeProxy & {
+      isNullObject: boolean;
+    };
+    proxy.isNullObject = used === null;
+    return proxy;
+  }
+
+  // Excel grows a smaller destination to the source shape and tiles a single
+  // source cell across a larger one; both are one modulo away from each other.
+  copyFrom(
+    source: RangeProxy,
+    copyType: string = RangeCopyType.all,
+    _skipBlanks = false,
+    transpose = false,
+  ): void {
+    const rows = transpose ? source.rect.colCount : source.rect.rowCount;
+    const columns = transpose ? source.rect.rowCount : source.rect.colCount;
+    const target = this.at({
+      ...this.rect,
+      rowCount: Math.max(this.rect.rowCount, rows),
+      colCount: Math.max(this.rect.colCount, columns),
+    });
+
+    // Snapshot up front: a source that overlaps the destination must not read
+    // back what this very copy already wrote.
+    const values = source.values;
+    const formulas = source.formulas;
+    const formats = source.map((cell) => clone(cell));
+    const numberFormats = source.numberFormat;
+
+    target.each((cell, r, c) => {
+      // Transposed, destination (r, c) reads source (c, r); the modulo tiles a
+      // one-cell source across the whole destination, which is what a fast fill is.
+      const sr = (transpose ? c : r) % source.rect.rowCount;
+      const sc = (transpose ? r : c) % source.rect.colCount;
+      const from = formats[sr]?.[sc];
+      if (!from) return;
+      const value = values[sr]?.[sc];
+      const formula = formulas[sr]?.[sc];
+      const numberFormat = numberFormats[sr]?.[sc];
+
+      if (copyType === RangeCopyType.values) {
+        cell.value = value ?? "";
+        cell.formula = value ?? "";
+        cell.formulaR1C1 = null;
+      }
+      if (copyType === RangeCopyType.formulas || copyType === RangeCopyType.all) {
+        cell.value = value ?? "";
+        cell.formula = formula ?? "";
+        cell.formulaR1C1 = null;
+        target.sheet.remember(
+          target.rect.row + r,
+          target.rect.col + c,
+          cell.formula,
+          cell.value,
+        );
+      }
+      if (copyType === RangeCopyType.formats || copyType === RangeCopyType.all) {
+        cell.font = clone(from.font);
+        cell.fill = clone(from.fill);
+        cell.borders = clone(from.borders);
+        cell.horizontalAlignment = from.horizontalAlignment;
+        cell.verticalAlignment = from.verticalAlignment;
+        cell.wrapText = from.wrapText;
+        cell.indentLevel = from.indentLevel;
+        cell.numberFormat = String(numberFormat ?? "General");
+      }
+      if (copyType === RangeCopyType.all) cell.hyperlink = clone(from.hyperlink);
+    });
+  }
+
+  clear(applyTo: string = ClearApplyTo.all): void {
+    this.each((cell) => {
+      const fresh = defaultCell();
+      if (applyTo === ClearApplyTo.all || applyTo === ClearApplyTo.formats) {
+        cell.font = fresh.font;
+        cell.fill = fresh.fill;
+        cell.borders = fresh.borders;
+        cell.horizontalAlignment = fresh.horizontalAlignment;
+        cell.verticalAlignment = fresh.verticalAlignment;
+        cell.wrapText = fresh.wrapText;
+        cell.indentLevel = fresh.indentLevel;
+        cell.numberFormat = fresh.numberFormat;
+      }
+      if (
+        applyTo === ClearApplyTo.all ||
+        applyTo === ClearApplyTo.contents ||
+        applyTo === ClearApplyTo.resetContents
+      ) {
+        cell.value = fresh.value;
+        cell.formula = fresh.formula;
+        cell.formulaR1C1 = fresh.formulaR1C1;
+      }
+      if (
+        applyTo === ClearApplyTo.all ||
+        applyTo === ClearApplyTo.hyperlinks ||
+        applyTo === ClearApplyTo.removeHyperlinks
+      ) {
+        cell.hyperlink = null;
+      }
+    });
+    const { row, col, rowCount, colCount } = this.rect;
+    for (let r = 0; r < rowCount; r += 1) {
+      for (let c = 0; c < colCount; c += 1) this.sheet.prune(row + r, col + c);
+    }
+  }
+
+  getCellProperties(options: Record<string, unknown>): {
+    value: Record<string, unknown>[][];
+  } {
+    const wanted = (options?.format ?? {}) as Record<string, unknown>;
+    const pick = <T extends object>(
+      source: T,
+      flags: Record<string, unknown>,
+    ): Partial<T> => {
+      const out: Record<string, unknown> = {};
+      for (const [key, on] of Object.entries(flags)) {
+        if (on) out[key] = clone((source as Record<string, unknown>)[key]);
+      }
+      return out as Partial<T>;
+    };
+
+    const value = this.map((cell) => {
+      const format: Record<string, unknown> = {};
+      if (wanted.fill) {
+        format.fill = pick(cell.fill, wanted.fill as Record<string, unknown>);
+      }
+      if (wanted.font) {
+        format.font = pick(cell.font, wanted.font as Record<string, unknown>);
+      }
+      if (wanted.borders) {
+        const flags = wanted.borders as Record<string, unknown>;
+        format.borders = Object.fromEntries(
+          BORDER_EDGES.map((edge) => [edge, pick(cell.borders[edge], flags)]),
+        );
+      }
+      if (wanted.horizontalAlignment) {
+        format.horizontalAlignment = cell.horizontalAlignment;
+      }
+      if (wanted.verticalAlignment) {
+        format.verticalAlignment = cell.verticalAlignment;
+      }
+      if (wanted.wrapText) format.wrapText = cell.wrapText;
+      if (wanted.indentLevel) format.indentLevel = cell.indentLevel;
+
+      const out: Record<string, unknown> = {};
+      if (Object.keys(format).length > 0) out.format = format;
+      if (options?.hyperlink) out.hyperlink = clone(cell.hyperlink);
+      return out;
+    });
+
+    return { value };
+  }
+
+  // Partial update: a property the caller left out keeps its current value.
+  setCellProperties(grid: (Record<string, unknown> | null)[][]): void {
+    this.each((cell, r, c) => {
+      const props = grid[r]?.[c];
+      if (!props) return;
+      const format = props.format as Record<string, unknown> | undefined;
+      if (format) {
+        if (format.fill) Object.assign(cell.fill, clone(format.fill));
+        if (format.font) Object.assign(cell.font, clone(format.font));
+        if (format.borders) {
+          for (const [edge, spec] of Object.entries(
+            format.borders as Record<string, object>,
+          )) {
+            if (spec && cell.borders[edge as BorderEdge]) {
+              Object.assign(cell.borders[edge as BorderEdge], clone(spec));
+            }
+          }
+        }
+        if (format.horizontalAlignment !== undefined) {
+          cell.horizontalAlignment = String(format.horizontalAlignment);
+        }
+        if (format.verticalAlignment !== undefined) {
+          cell.verticalAlignment = String(format.verticalAlignment);
+        }
+        if (format.wrapText !== undefined) cell.wrapText = Boolean(format.wrapText);
+        if (format.indentLevel !== undefined) {
+          cell.indentLevel = Number(format.indentLevel);
+        }
+      }
+      if (props.hyperlink !== undefined) {
+        cell.hyperlink = clone(props.hyperlink as FakeHyperlink | null);
+      }
+    });
+  }
+
+  select(): void {
+    this.runtime.workbook.selection = {
+      sheetId: this.sheet.id,
+      rect: { ...this.rect },
+    };
+    this.runtime.workbook.activeCell = null;
+    this.runtime.workbook.activeSheetId = this.sheet.id;
+  }
+
+  private trace(source: Map<string, TraceConfig>): {
+    ranges: { items: TraceArea[]; load: () => void };
+  } {
+    const config = source.get(this.address) ?? source.get(formatA1(this.rect));
+    if (config === "itemNotFound" || config === undefined) {
+      this.ctx.queueError(
+        hostError(ErrorCodes.itemNotFound, "The requested item was not found."),
+      );
+      return { ranges: { items: [], load: () => undefined } };
+    }
+    return { ranges: { items: clone(config), load: () => undefined } };
+  }
+
+  getDirectPrecedents() {
+    return this.trace(this.runtime.workbook.precedents);
+  }
+
+  getDirectDependents() {
+    return this.trace(this.runtime.workbook.dependents);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Range format
+// ---------------------------------------------------------------------------
+
+class RangeFormatProxy {
+  constructor(
+    private runtime: FakeRuntime,
+    private sheet: FakeSheet,
+    private rect: Rect,
+  ) {}
+
+  private each(write: (cell: FakeCell) => void): void {
+    const { row, col, rowCount, colCount } = this.rect;
+    if (rowCount * colCount > this.runtime.maxCells) {
+      throw new Error(
+        `fake host refused a ${rowCount * colCount}-cell format write`,
+      );
+    }
+    for (let r = 0; r < rowCount; r += 1) {
+      for (let c = 0; c < colCount; c += 1) write(this.sheet.edit(row + r, col + c));
+    }
+  }
+
+  private first(): FakeCell {
+    return this.sheet.peek(this.rect.row, this.rect.col);
+  }
+
+  get font(): FontProxy {
+    return new FontProxy(
+      () => this.first().font,
+      (apply) => this.each((cell) => apply(cell.font)),
+    );
+  }
+
+  get fill(): FillProxy {
+    return new FillProxy(
+      () => this.first().fill,
+      (apply) => this.each((cell) => apply(cell.fill)),
+    );
+  }
+
+  get borders(): BordersProxy {
+    return new BordersProxy(this.runtime, this.sheet, this.rect);
+  }
+
+  get horizontalAlignment(): string {
+    return this.first().horizontalAlignment;
+  }
+
+  set horizontalAlignment(value: string) {
+    this.each((cell) => {
+      cell.horizontalAlignment = value;
+    });
+  }
+
+  get verticalAlignment(): string {
+    return this.first().verticalAlignment;
+  }
+
+  set verticalAlignment(value: string) {
+    this.each((cell) => {
+      cell.verticalAlignment = value;
+    });
+  }
+
+  get wrapText(): boolean {
+    return this.first().wrapText;
+  }
+
+  set wrapText(value: boolean) {
+    this.each((cell) => {
+      cell.wrapText = value;
+    });
+  }
+
+  get indentLevel(): number {
+    return this.first().indentLevel;
+  }
+
+  set indentLevel(value: number) {
+    this.each((cell) => {
+      cell.indentLevel = value;
+    });
+  }
+
+  // Row height and column width are sheet state, not cell state: SMT Undo
+  // cannot reach them, which the suite asserts explicitly.
+  get rowHeight(): number {
+    return this.sheet.rowHeights.get(this.rect.row) ?? DEFAULT_ROW_HEIGHT;
+  }
+
+  set rowHeight(value: number) {
+    for (let r = 0; r < this.rect.rowCount; r += 1) {
+      this.sheet.rowHeights.set(this.rect.row + r, value);
+    }
+  }
+
+  get columnWidth(): number {
+    return this.sheet.columnWidths.get(this.rect.col) ?? DEFAULT_COLUMN_WIDTH;
+  }
+
+  set columnWidth(value: number) {
+    for (let c = 0; c < this.rect.colCount; c += 1) {
+      this.sheet.columnWidths.set(this.rect.col + c, value);
+    }
+  }
+}
+
+class FontProxy {
+  constructor(
+    private read: () => FakeFont,
+    private write: (apply: (font: FakeFont) => void) => void,
+  ) {}
+
+  get name(): string {
+    return this.read().name;
+  }
+  set name(value: string) {
+    this.write((font) => {
+      font.name = value;
+    });
+  }
+
+  get size(): number {
+    return this.read().size;
+  }
+  set size(value: number) {
+    this.write((font) => {
+      font.size = value;
+    });
+  }
+
+  get bold(): boolean {
+    return this.read().bold;
+  }
+  set bold(value: boolean) {
+    this.write((font) => {
+      font.bold = value;
+    });
+  }
+
+  get italic(): boolean {
+    return this.read().italic;
+  }
+  set italic(value: boolean) {
+    this.write((font) => {
+      font.italic = value;
+    });
+  }
+
+  get color(): string {
+    return this.read().color;
+  }
+  set color(value: string) {
+    this.write((font) => {
+      font.color = value;
+    });
+  }
+
+  get underline(): string {
+    return this.read().underline;
+  }
+  set underline(value: string) {
+    this.write((font) => {
+      font.underline = value;
+    });
+  }
+}
+
+class FillProxy {
+  constructor(
+    private read: () => FakeFill,
+    private write: (apply: (fill: FakeFill) => void) => void,
+  ) {}
+
+  get color(): string {
+    return this.read().color;
+  }
+
+  // Setting a colour on an unfilled cell forces Solid, exactly as Excel does.
+  set color(value: string) {
+    this.write((fill) => {
+      fill.color = value;
+      fill.pattern = FillPattern.solid;
+    });
+  }
+
+  get pattern(): string {
+    return this.read().pattern;
+  }
+  set pattern(value: string) {
+    this.write((fill) => {
+      fill.pattern = value;
+    });
+  }
+
+  get patternColor(): string {
+    return this.read().patternColor;
+  }
+  set patternColor(value: string) {
+    this.write((fill) => {
+      fill.patternColor = value;
+    });
+  }
+
+  // Excel reports an unfilled cell as white with pattern None.
+  clear(): void {
+    this.write((fill) => {
+      fill.color = "#FFFFFF";
+      fill.pattern = FillPattern.none;
+      fill.patternColor = "#FFFFFF";
+    });
+  }
+}
+
+class BordersProxy {
+  constructor(
+    private runtime: FakeRuntime,
+    private sheet: FakeSheet,
+    private rect: Rect,
+  ) {}
+
+  // An edge border styles the outer line of the RANGE, so only the cells on
+  // that edge carry it. Per-row semantics need a per-row loop in the caller.
+  getItem(index: string): BorderProxy {
+    const edge = BORDER_EDGE[index] ?? "top";
+    const { row, col, rowCount, colCount } = this.rect;
+    let band: Rect;
+    switch (index) {
+      case BorderIndex.edgeTop:
+        band = { row, col, rowCount: 1, colCount };
+        break;
+      case BorderIndex.edgeBottom:
+        band = { row: row + rowCount - 1, col, rowCount: 1, colCount };
+        break;
+      case BorderIndex.edgeLeft:
+        band = { row, col, rowCount, colCount: 1 };
+        break;
+      case BorderIndex.edgeRight:
+        band = { row, col: col + colCount - 1, rowCount, colCount: 1 };
+        break;
+      default:
+        band = { row, col, rowCount, colCount };
+    }
+    return new BorderProxy(this.runtime, this.sheet, band, edge);
+  }
+}
+
+class BorderProxy {
+  constructor(
+    private runtime: FakeRuntime,
+    private sheet: FakeSheet,
+    private band: Rect,
+    private edge: BorderEdge,
+  ) {}
+
+  private write(apply: (border: FakeBorder) => void): void {
+    const { row, col, rowCount, colCount } = this.band;
+    if (rowCount * colCount > this.runtime.maxCells) {
+      throw new Error("fake host refused an oversized border write");
+    }
+    for (let r = 0; r < rowCount; r += 1) {
+      for (let c = 0; c < colCount; c += 1) {
+        apply(this.sheet.edit(row + r, col + c).borders[this.edge]);
+      }
+    }
+  }
+
+  private read(): FakeBorder {
+    return this.sheet.peek(this.band.row, this.band.col).borders[this.edge];
+  }
+
+  get style(): string {
+    return this.read().style;
+  }
+  set style(value: string) {
+    this.write((border) => {
+      border.style = value;
+    });
+  }
+
+  get color(): string {
+    return this.read().color;
+  }
+  set color(value: string) {
+    this.write((border) => {
+      border.color = value;
+    });
+  }
+
+  get weight(): string {
+    return this.read().weight;
+  }
+  set weight(value: string) {
+    this.write((border) => {
+      border.weight = value;
+    });
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Charts and shapes
+// ---------------------------------------------------------------------------
+
+class ChartFontProxy {
+  constructor(private target: Partial<FakeFont>) {}
+  set name(value: string) {
+    this.target.name = value;
+  }
+  set size(value: number) {
+    this.target.size = value;
+  }
+  set bold(value: boolean) {
+    this.target.bold = value;
+  }
+  set color(value: string) {
+    this.target.color = value;
+  }
+}
+
+class ChartAxisProxy {
+  constructor(private axis: FakeAxis) {}
+  get format() {
+    const axis = this.axis;
+    return {
+      font: {
+        set name(value: string) {
+          axis.fontName = value;
+        },
+        set size(value: number) {
+          axis.fontSize = value;
+        },
+        set color(value: string) {
+          axis.fontColor = value;
+        },
+      },
+    };
+  }
+  get majorGridlines() {
+    const axis = this.axis;
+    return {
+      set visible(value: boolean) {
+        axis.majorGridlines = value;
+      },
+    };
+  }
+}
+
+class ChartProxy {
+  isNullObject = false;
+
+  constructor(public record: FakeChart) {}
+
+  load(): this {
+    return this;
+  }
+
+  get chartType(): string {
+    return this.record.chartType;
+  }
+
+  get format() {
+    const record = this.record;
+    return {
+      font: new ChartFontProxy(record.font),
+      border: {
+        set lineStyle(value: string) {
+          record.borderLineStyle = value;
+        },
+      },
+      set roundedCorners(value: boolean) {
+        record.roundedCorners = value;
+      },
+    };
+  }
+
+  get title() {
+    const record = this.record;
+    return {
+      set text(value: string) {
+        record.title = value;
+      },
+      format: { font: new ChartFontProxy(record.titleFont) },
+    };
+  }
+
+  get axes() {
+    return {
+      categoryAxis: new ChartAxisProxy(this.record.axes.category),
+      valueAxis: new ChartAxisProxy(this.record.axes.value),
+    };
+  }
+
+  get legend() {
+    const record = this.record;
+    return {
+      set position(value: string) {
+        record.legend.position = value;
+      },
+      set overlay(value: boolean) {
+        record.legend.overlay = value;
+      },
+      set visible(value: boolean) {
+        record.legend.visible = value;
+      },
+      format: { font: new ChartFontProxy(record.legend.font) },
+    };
+  }
+
+  get dataLabels() {
+    const record = this.record;
+    return {
+      set showValue(value: boolean) {
+        record.dataLabels.showValue = value;
+      },
+    };
+  }
+
+  get series() {
+    const record = this.record;
+    return {
+      load: () => undefined,
+      get count() {
+        return record.seriesCount;
+      },
+      getItemAt(index: number) {
+        let entry = record.series[index];
+        if (!entry) {
+          entry = { pointColors: {} };
+          record.series[index] = entry;
+        }
+        const series = entry;
+        return {
+          set showConnectorLines(value: boolean) {
+            series.showConnectorLines = value;
+          },
+          format: {
+            fill: {
+              setSolidColor(color: string) {
+                series.fillColor = color;
+              },
+            },
+          },
+          points: {
+            getItemAt(point: number) {
+              return {
+                format: {
+                  fill: {
+                    setSolidColor(color: string) {
+                      series.pointColors[point] = color;
+                    },
+                  },
+                },
+              };
+            },
+          },
+        };
+      },
+    };
+  }
+}
+
+class ShapeProxy {
+  constructor(private record: FakeShape) {}
+
+  set width(value: number) {
+    this.record.width = value;
+  }
+  set height(value: number) {
+    this.record.height = value;
+  }
+  set left(value: number) {
+    this.record.left = value;
+  }
+  set top(value: number) {
+    this.record.top = value;
+  }
+
+  get fill() {
+    const record = this.record;
+    return {
+      clear() {
+        record.fillCleared = true;
+      },
+    };
+  }
+
+  get lineFormat() {
+    const record = this.record;
+    return {
+      set visible(value: boolean) {
+        record.lineVisible = value;
+      },
+    };
+  }
+
+  get textFrame() {
+    const record = this.record;
+    return {
+      set horizontalAlignment(value: string) {
+        record.textFrame.horizontalAlignment = value;
+      },
+      set verticalAlignment(value: string) {
+        record.textFrame.verticalAlignment = value;
+      },
+      textRange: { font: new ChartFontProxy(record.textFrame.font) },
+    };
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Worksheet
+// ---------------------------------------------------------------------------
+
+class WorksheetProxy {
+  isNullObject = false;
+
+  constructor(
+    private runtime: FakeRuntime,
+    private ctx: FakeContext,
+    public sheet: FakeSheet,
+  ) {}
+
+  load(): this {
+    return this;
+  }
+
+  get id(): string {
+    return this.sheet.id;
+  }
+
+  get name(): string {
+    return this.sheet.name;
+  }
+
+  set name(value: string) {
+    this.sheet.name = value;
+  }
+
+  get visibility(): string {
+    return this.sheet.visibility;
+  }
+
+  set visibility(value: string) {
+    this.sheet.visibility = value;
+  }
+
+  get position(): number {
+    return this.sheet.position;
+  }
+
+  set position(value: number) {
+    this.runtime.workbook.move(this.sheet, value);
+  }
+
+  get showGridlines(): boolean {
+    return this.sheet.showGridlines;
+  }
+
+  set showGridlines(value: boolean) {
+    this.sheet.showGridlines = value;
+  }
+
+  activate(): void {
+    this.runtime.workbook.activeSheetId = this.sheet.id;
+  }
+
+  getRange(address: string): RangeProxy {
+    return new RangeProxy(this.runtime, this.ctx, this.sheet, parseA1(address));
+  }
+
+  getRangeByIndexes(
+    row: number,
+    col: number,
+    rowCount: number,
+    colCount: number,
+  ): RangeProxy {
+    return new RangeProxy(this.runtime, this.ctx, this.sheet, {
+      row,
+      col,
+      rowCount,
+      colCount,
+    });
+  }
+
+  getUsedRangeOrNullObject(): RangeProxy & { isNullObject: boolean } {
+    const used = this.sheet.usedRect();
+    const proxy = new RangeProxy(
+      this.runtime,
+      this.ctx,
+      this.sheet,
+      used ?? { row: 0, col: 0, rowCount: 1, colCount: 1 },
+    ) as RangeProxy & { isNullObject: boolean };
+    proxy.isNullObject = used === null;
+    return proxy;
+  }
+
+  get charts() {
+    const runtime = this.runtime;
+    const sheet = this.sheet;
+    return {
+      add(chartType: string, source: RangeProxy, seriesBy: string): ChartProxy {
+        const record: FakeChart = {
+          sheetName: sheet.name,
+          chartType,
+          sourceAddress: source.address,
+          seriesBy,
+          title: null,
+          titleFont: {},
+          font: {},
+          legend: { font: {} },
+          axes: { category: {}, value: {} },
+          dataLabels: {},
+          seriesCount: Math.max(1, source.columnCount - 1),
+          series: [],
+        };
+        runtime.workbook.charts.push(record);
+        runtime.workbook.activeChart = record;
+        return new ChartProxy(record);
+      },
+    };
+  }
+
+  get shapes() {
+    const runtime = this.runtime;
+    const sheet = this.sheet;
+    return {
+      addTextBox(text: string): ShapeProxy {
+        const record: FakeShape = {
+          sheetName: sheet.name,
+          text,
+          fillCleared: false,
+          textFrame: { font: {} },
+        };
+        runtime.workbook.shapes.push(record);
+        return new ShapeProxy(record);
+      },
+    };
+  }
+}
+
+// A worksheet that is not there: same shape, isNullObject true, never touched
+// past the check in src/excel.ts.
+function nullWorksheet(
+  runtime: FakeRuntime,
+  ctx: FakeContext,
+): WorksheetProxy & { isNullObject: true } {
+  const proxy = new WorksheetProxy(
+    runtime,
+    ctx,
+    new FakeSheet("__missing__", "__missing__"),
+  ) as WorksheetProxy & { isNullObject: true };
+  proxy.isNullObject = true;
+  return proxy;
+}
+
+// ---------------------------------------------------------------------------
+// Workbook and request context
+// ---------------------------------------------------------------------------
+
+class WorksheetCollectionProxy {
+  constructor(
+    private runtime: FakeRuntime,
+    private ctx: FakeContext,
+  ) {}
+
+  load(): this {
+    return this;
+  }
+
+  get items(): WorksheetProxy[] {
+    return this.runtime.workbook
+      .ordered()
+      .map((sheet) => new WorksheetProxy(this.runtime, this.ctx, sheet));
+  }
+
+  getItem(nameOrId: string): WorksheetProxy {
+    const sheet = this.runtime.workbook.find(nameOrId);
+    if (!sheet) {
+      throw hostError(ErrorCodes.itemNotFound, `No sheet named ${nameOrId}.`);
+    }
+    return new WorksheetProxy(this.runtime, this.ctx, sheet);
+  }
+
+  getItemOrNullObject(nameOrId: string): WorksheetProxy {
+    const sheet = this.runtime.workbook.find(nameOrId);
+    return sheet
+      ? new WorksheetProxy(this.runtime, this.ctx, sheet)
+      : nullWorksheet(this.runtime, this.ctx);
+  }
+
+  getActiveWorksheet(): WorksheetProxy {
+    const workbook = this.runtime.workbook;
+    const sheet = workbook.find(workbook.activeSheetId) ?? workbook.sheets[0];
+    if (!sheet) throw hostError(ErrorCodes.itemNotFound, "No sheets.");
+    return new WorksheetProxy(this.runtime, this.ctx, sheet);
+  }
+
+  add(name?: string): WorksheetProxy {
+    const workbook = this.runtime.workbook;
+    const chosen = name ?? `Sheet${workbook.sheets.length + 1}`;
+    if (workbook.find(chosen)) {
+      throw hostError(ErrorCodes.itemAlreadyExists, `${chosen} already exists.`);
+    }
+    return new WorksheetProxy(this.runtime, this.ctx, workbook.addSheet(chosen));
+  }
+
+  // Registration is committed by the sync that follows, so a failed sync leaves
+  // no handler behind — the same contract the real host offers.
+  get onChanged() {
+    const runtime = this.runtime;
+    const ctx = this.ctx;
+    return {
+      add(handler: (args: unknown) => unknown) {
+        const registration: Registration = { handler };
+        ctx.queueEvent({ kind: "add", registration });
+        return {
+          context: ctx,
+          remove() {
+            ctx.queueEvent({ kind: "remove", registration });
+          },
+        };
+      },
+    };
+  }
+}
+
+class WorkbookProxy {
+  constructor(
+    private runtime: FakeRuntime,
+    private ctx: FakeContext,
+  ) {}
+
+  get worksheets(): WorksheetCollectionProxy {
+    return new WorksheetCollectionProxy(this.runtime, this.ctx);
+  }
+
+  private sheetOf(id: string): FakeSheet {
+    const sheet = this.runtime.workbook.find(id) ?? this.runtime.workbook.sheets[0];
+    if (!sheet) throw hostError(ErrorCodes.itemNotFound, "No sheets.");
+    return sheet;
+  }
+
+  getSelectedRange(): RangeProxy {
+    const { sheetId, rect } = this.runtime.workbook.selection;
+    return new RangeProxy(this.runtime, this.ctx, this.sheetOf(sheetId), {
+      ...rect,
+    });
+  }
+
+  getActiveCell(): RangeProxy {
+    const workbook = this.runtime.workbook;
+    const active = workbook.activeCell;
+    if (active) {
+      return new RangeProxy(this.runtime, this.ctx, this.sheetOf(active.sheetId), {
+        row: active.row,
+        col: active.col,
+        rowCount: 1,
+        colCount: 1,
+      });
+    }
+    const { sheetId, rect } = workbook.selection;
+    return new RangeProxy(this.runtime, this.ctx, this.sheetOf(sheetId), {
+      row: rect.row,
+      col: rect.col,
+      rowCount: 1,
+      colCount: 1,
+    });
+  }
+
+  getActiveChartOrNullObject(): ChartProxy {
+    const record = this.runtime.workbook.activeChart;
+    if (record) return new ChartProxy(record);
+    const empty = new ChartProxy({
+      sheetName: "",
+      chartType: "",
+      sourceAddress: "",
+      seriesBy: "",
+      title: null,
+      titleFont: {},
+      font: {},
+      legend: { font: {} },
+      axes: { category: {}, value: {} },
+      dataLabels: {},
+      seriesCount: 0,
+      series: [],
+    });
+    empty.isNullObject = true;
+    return empty;
+  }
+
+  get settings() {
+    const store = this.runtime.workbook.settings;
+    return {
+      add(key: string, value: unknown) {
+        store.set(key, typeof value === "string" ? value : JSON.stringify(value));
+        return { key, value, load: () => undefined };
+      },
+      getItemOrNullObject(key: string) {
+        const has = store.has(key);
+        return {
+          isNullObject: !has,
+          value: store.get(key) ?? "",
+          load: () => undefined,
+        };
+      },
+    };
+  }
+
+  get names() {
+    const list = this.runtime.workbook.names;
+    return {
+      load: () => undefined,
+      get items() {
+        return list.map((entry) => ({
+          name: entry.name,
+          formula: entry.formula,
+          delete() {
+            const index = list.indexOf(entry);
+            if (index >= 0) list.splice(index, 1);
+          },
+        }));
+      },
+    };
+  }
+}
+
+class FakeContext {
+  workbook: WorkbookProxy;
+  private pending: PendingEvent[] = [];
+  private error: Error | null = null;
+
+  constructor(private runtime: FakeRuntime) {
+    this.workbook = new WorkbookProxy(runtime, this);
+  }
+
+  queueEvent(event: PendingEvent): void {
+    this.pending.push(event);
+  }
+
+  queueError(error: Error): void {
+    this.error = error;
+  }
+
+  // No-op flush: the model is already current. Pending event registrations and
+  // a queued host error are the only things a sync really decides.
+  async sync(): Promise<void> {
+    const queued = this.error ?? this.runtime.failSync;
+    if (queued) {
+      this.error = null;
+      this.runtime.failSync = null;
+      this.pending.length = 0;
+      throw queued;
+    }
+    for (const event of this.pending) {
+      const handlers = this.runtime.changeHandlers;
+      if (event.kind === "add") handlers.push(event.registration);
+      else {
+        const index = handlers.indexOf(event.registration);
+        if (index >= 0) handlers.splice(index, 1);
+      }
+    }
+    this.pending.length = 0;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Install
+// ---------------------------------------------------------------------------
+
+export type SeedEntry =
+  | CellValue
+  | { value?: CellValue; formula?: CellValue; r1c1?: CellValue };
+
+export interface FakeHelpers {
+  sheet(name: string): FakeSheet;
+  addSheet(name: string): FakeSheet;
+  deleteSheet(name: string): void;
+  addName(name: string, formula: string): void;
+  select(address: string): void;
+  setActiveCell(address: string): void;
+  seed(address: string, grid: SeedEntry[][]): void;
+  setNumberFormat(address: string, format: string): void;
+  setFill(address: string, fill: Partial<FakeFill>): void;
+  setFont(address: string, font: Partial<FakeFont>): void;
+  cell(address: string): FakeCell;
+  fill(address: string): FakeFill;
+  font(address: string): FakeFont;
+  border(address: string, edge: BorderEdge): FakeBorder;
+  numberFormat(address: string): string;
+  value(address: string): CellValue;
+  formula(address: string): CellValue;
+  cellMap(sheetName: string): Record<string, FakeCell>;
+  rowHeight(sheetName: string, row: number): number;
+  columnWidth(sheetName: string, col: number): number;
+  setPrecedents(address: string, config: TraceConfig): void;
+  setDependents(address: string, config: TraceConfig): void;
+  setActiveChart(chart: FakeChart | null): void;
+  setSupported(check: (set: string, version: string) => boolean): void;
+  failNextSync(error?: Error): void;
+  changeHandlerCount(): number;
+  fireChanged(sheetIdOrName: string, address: string): Promise<void>;
+  actions(): Map<string, (event?: { completed: () => void }) => void>;
+}
+
+function resolve(
+  workbook: FakeWorkbook,
+  address: string,
+): { sheet: FakeSheet; rect: Rect } {
+  const cut = address.lastIndexOf("!");
+  const name =
+    cut < 0
+      ? ""
+      : address
+          .slice(0, cut)
+          .replace(/^'|'$/g, "")
+          .replace(/''/g, "'");
+  const local = cut < 0 ? address : address.slice(cut + 1);
+  const sheet = name ? workbook.find(name) : workbook.find(workbook.activeSheetId);
+  if (!sheet) throw new Error(`fake host: no sheet for "${address}"`);
+  return { sheet, rect: parseA1(local) };
+}
+
+export function installFakeHost(options: FakeHostOptions = {}): {
+  workbook: FakeWorkbook;
+  helpers: FakeHelpers;
+} {
+  const workbook = options.workbook ?? new FakeWorkbook(options.sheets);
+  const runtime = new FakeRuntime(workbook, options);
+
+  const excel = {
+    run(first: unknown, second?: unknown): Promise<unknown> {
+      const callback = (typeof first === "function" ? first : second) as (
+        context: FakeContext,
+      ) => unknown;
+      const context =
+        first instanceof FakeContext ? first : new FakeContext(runtime);
+      return Promise.resolve().then(() => callback(context));
+    },
+    RequestContext: FakeContext,
+    FillPattern,
+    BorderIndex,
+    BorderLineStyle,
+    BorderWeight,
+    HorizontalAlignment,
+    VerticalAlignment,
+    RangeCopyType,
+    ChartType,
+    ChartSeriesBy,
+    SheetVisibility,
+    ClearApplyTo,
+    ShapeTextHorizontalAlignment,
+    ShapeTextVerticalAlignment,
+    ChartLineStyle,
+    ChartLegendPosition,
+    RangeUnderlineStyle,
+    ErrorCodes,
+  };
+
+  const office = {
+    actions: {
+      associate(id: string, handler: (event?: { completed: () => void }) => void) {
+        runtime.actions.set(id, handler);
+      },
+    },
+    addin: { showAsTaskpane: () => Promise.resolve() },
+    context: {
+      requirements: {
+        isSetSupported: (set: string, version: string) =>
+          runtime.supported(set, version),
+      },
+      document: { addHandlerAsync: () => undefined },
+    },
+    HostType: { Excel: "Excel", Word: "Word", PowerPoint: "PowerPoint" },
+    EventType: { DocumentSelectionChanged: "documentSelectionChanged" },
+    onReady: (callback?: (info: { host: string }) => unknown) =>
+      Promise.resolve(callback?.({ host: "Excel" })),
+  };
+
+  const scope = globalThis as unknown as Record<string, unknown>;
+  scope.Excel = excel;
+  scope.Office = office;
+
+  const at = (address: string) => {
+    const { sheet, rect } = resolve(workbook, address);
+    return sheet.peek(rect.row, rect.col);
+  };
+
+  const helpers: FakeHelpers = {
+    sheet(name) {
+      const sheet = workbook.find(name);
+      if (!sheet) throw new Error(`fake host: no sheet "${name}"`);
+      return sheet;
+    },
+    addSheet: (name) => workbook.addSheet(name),
+    deleteSheet: (name) => workbook.deleteSheet(name),
+    addName(name, formula) {
+      workbook.names.push({ name, formula });
+    },
+    select(address) {
+      const { sheet, rect } = resolve(workbook, address);
+      workbook.selection = { sheetId: sheet.id, rect };
+      workbook.activeSheetId = sheet.id;
+      workbook.activeCell = null;
+    },
+    setActiveCell(address) {
+      const { sheet, rect } = resolve(workbook, address);
+      workbook.activeCell = { sheetId: sheet.id, row: rect.row, col: rect.col };
+    },
+    seed(address, grid) {
+      const { sheet, rect } = resolve(workbook, address);
+      grid.forEach((row, r) => {
+        row.forEach((entry, c) => {
+          const cell = sheet.edit(rect.row + r, rect.col + c);
+          if (entry !== null && typeof entry === "object") {
+            if (entry.value !== undefined) cell.value = entry.value;
+            if (entry.formula !== undefined) cell.formula = entry.formula;
+            if (entry.r1c1 !== undefined) cell.formulaR1C1 = entry.r1c1;
+            sheet.remember(rect.row + r, rect.col + c, cell.formula, cell.value);
+            return;
+          }
+          cell.value = entry;
+          cell.formula = entry;
+        });
+      });
+    },
+    setNumberFormat(address, format) {
+      const { sheet, rect } = resolve(workbook, address);
+      for (let r = 0; r < rect.rowCount; r += 1) {
+        for (let c = 0; c < rect.colCount; c += 1) {
+          sheet.edit(rect.row + r, rect.col + c).numberFormat =
+            runtime.format(format);
+        }
+      }
+    },
+    setFill(address, fill) {
+      const { sheet, rect } = resolve(workbook, address);
+      for (let r = 0; r < rect.rowCount; r += 1) {
+        for (let c = 0; c < rect.colCount; c += 1) {
+          Object.assign(sheet.edit(rect.row + r, rect.col + c).fill, fill);
+        }
+      }
+    },
+    setFont(address, font) {
+      const { sheet, rect } = resolve(workbook, address);
+      for (let r = 0; r < rect.rowCount; r += 1) {
+        for (let c = 0; c < rect.colCount; c += 1) {
+          Object.assign(sheet.edit(rect.row + r, rect.col + c).font, font);
+        }
+      }
+    },
+    cell: (address) => clone(at(address)),
+    fill: (address) => clone(at(address).fill),
+    font: (address) => clone(at(address).font),
+    border: (address, edge) => clone(at(address).borders[edge]),
+    numberFormat: (address) => at(address).numberFormat,
+    value: (address) => at(address).value,
+    formula: (address) => at(address).formula,
+    cellMap(sheetName) {
+      const sheet = helpers.sheet(sheetName);
+      const out: Record<string, FakeCell> = {};
+      // Untouched and reverted-to-default cells are the same observable state.
+      for (const [key, cell] of sheet.cells) {
+        if (!isDefaultCell(cell)) out[key] = clone(cell);
+      }
+      return out;
+    },
+    rowHeight: (sheetName, row) =>
+      helpers.sheet(sheetName).rowHeights.get(row) ?? DEFAULT_ROW_HEIGHT,
+    columnWidth: (sheetName, col) =>
+      helpers.sheet(sheetName).columnWidths.get(col) ?? DEFAULT_COLUMN_WIDTH,
+    setPrecedents(address, config) {
+      workbook.precedents.set(address, config);
+    },
+    setDependents(address, config) {
+      workbook.dependents.set(address, config);
+    },
+    setActiveChart(chart) {
+      workbook.activeChart = chart;
+    },
+    setSupported(check) {
+      runtime.supported = check;
+    },
+    failNextSync(error) {
+      runtime.failSync =
+        error ?? hostError(ErrorCodes.generalException, "The sync failed.");
+    },
+    changeHandlerCount: () => runtime.changeHandlers.length,
+    async fireChanged(sheetIdOrName, address) {
+      const sheet = workbook.find(sheetIdOrName);
+      if (!sheet) throw new Error(`fake host: no sheet "${sheetIdOrName}"`);
+      const rect = parseA1(address);
+      const local = formatA1(rect);
+      const args = {
+        address: `${quoteSheet(sheet.name)}!${local}`,
+        worksheetId: sheet.id,
+        changeType: "RangeEdited",
+        source: "Local",
+        type: "WorksheetChanged",
+        getRange: (context: FakeContext) =>
+          context.workbook.worksheets.getItem(sheet.id).getRange(local),
+        getRangeOrNullObject: (context: FakeContext) =>
+          context.workbook.worksheets.getItem(sheet.id).getRange(local),
+      };
+      for (const registration of [...runtime.changeHandlers]) {
+        await registration.handler(args);
+      }
+    },
+    actions: () => runtime.actions,
+  };
+
+  return { workbook, helpers };
+}
+
+export function uninstallFakeHost(): void {
+  const scope = globalThis as unknown as Record<string, unknown>;
+  delete scope.Excel;
+  delete scope.Office;
+}
