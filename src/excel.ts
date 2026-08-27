@@ -1,4 +1,18 @@
 import {
+  type BorderSpec,
+  buildFillCycle,
+  buildFontCycle,
+  buildNumberCycles,
+  buildRowStyleCycles,
+  type CellStyle,
+  CLEAR_FILL,
+  matchStyleIndex,
+  nextInCycle,
+  type NumberCycleFamily,
+  type RowStyleKind,
+  type StyleSpec,
+} from "./cycles";
+import {
   analyzeGrid,
   type CellValue,
   makeFormatGrid,
@@ -123,6 +137,125 @@ export async function applyNumberFormat(name: NumberFormatName): Promise<void> {
       range.rowCount,
       range.columnCount,
       numberFormat(name),
+    );
+    await context.sync();
+  });
+}
+
+// Cycle state lives in the cell: every run reads the active cell and steps once.
+function readFill(cell: Excel.Range): string {
+  const { fill } = cell.format;
+  // Excel reports white for unfilled cells, so the pattern decides.
+  return fill.pattern === Excel.FillPattern.none
+    ? CLEAR_FILL
+    : fill.color.toUpperCase();
+}
+
+function readCellStyle(cell: Excel.Range): CellStyle {
+  const fill = readFill(cell);
+  return {
+    fill: fill === CLEAR_FILL ? null : fill,
+    fontColor: cell.format.font.color.toUpperCase(),
+    bold: cell.format.font.bold,
+  };
+}
+
+function applyBorder(
+  format: Excel.RangeFormat,
+  index: Excel.BorderIndex,
+  spec: BorderSpec | null | undefined,
+): void {
+  if (spec === undefined) return;
+  const border = format.borders.getItem(index);
+  if (spec === null) {
+    border.style = Excel.BorderLineStyle.none;
+    return;
+  }
+  if (spec.style === "double") {
+    border.style = Excel.BorderLineStyle.double;
+  } else {
+    border.style = Excel.BorderLineStyle.continuous;
+    border.weight = Excel.BorderWeight.thin;
+  }
+  border.color = spec.color;
+}
+
+function applyStyleSpec(format: Excel.RangeFormat, spec: StyleSpec): void {
+  if (spec.fill === CLEAR_FILL) format.fill.clear();
+  else if (spec.fill !== undefined) format.fill.color = spec.fill;
+  if (spec.fontColor !== undefined) format.font.color = spec.fontColor;
+  if (spec.bold !== undefined) format.font.bold = spec.bold;
+  applyBorder(format, Excel.BorderIndex.edgeTop, spec.topBorder);
+  applyBorder(format, Excel.BorderIndex.edgeBottom, spec.bottomBorder);
+}
+
+export async function applyNumberCycle(
+  family: NumberCycleFamily,
+): Promise<void> {
+  await Excel.run(async (context) => {
+    const range = context.workbook.getSelectedRange();
+    const active = range.getCell(0, 0);
+    range.load("rowCount,columnCount");
+    active.load("numberFormat");
+    await context.sync();
+
+    const current = active.numberFormat[0]?.[0];
+    const next = nextInCycle(
+      typeof current === "string" ? current : "",
+      buildNumberCycles(getActiveSettings())[family],
+    );
+
+    range.numberFormat = makeFormatGrid(range.rowCount, range.columnCount, next);
+    await context.sync();
+  });
+}
+
+export async function applyRowStyleCycle(kind: RowStyleKind): Promise<void> {
+  await Excel.run(async (context) => {
+    const range = context.workbook.getSelectedRange();
+    const active = range.getCell(0, 0);
+    active.load(
+      "format/fill/color,format/fill/pattern,format/font/color,format/font/bold",
+    );
+    await context.sync();
+
+    const variants = buildRowStyleCycles(getActiveSettings())[kind];
+    const index = matchStyleIndex(readCellStyle(active), variants);
+    const next = variants[(index + 1) % variants.length];
+    if (next) applyStyleSpec(range.format, next);
+
+    await context.sync();
+  });
+}
+
+export async function applyFillCycle(): Promise<void> {
+  await Excel.run(async (context) => {
+    const range = context.workbook.getSelectedRange();
+    const active = range.getCell(0, 0);
+    active.load("format/fill/color,format/fill/pattern");
+    await context.sync();
+
+    const next = nextInCycle(
+      readFill(active),
+      buildFillCycle(getActiveSettings()),
+    );
+    if (next === CLEAR_FILL) range.format.fill.clear();
+    else range.format.fill.color = next;
+
+    await context.sync();
+  });
+}
+
+export async function applyFontColorCycle(): Promise<void> {
+  await Excel.run(async (context) => {
+    const range = context.workbook.getSelectedRange();
+    const active = range.getCell(0, 0);
+    active.load("format/font/color");
+    await context.sync();
+
+    range.format.font.color = nextInCycle(
+      active.format.font.color.toUpperCase(),
+      buildFontCycle(getActiveSettings()),
     );
     await context.sync();
   });

@@ -64,6 +64,30 @@
           </div>
         </section>
 
+        <section aria-labelledby="cycles-heading">
+          <div class="section-heading">
+            <div>
+              <p class="kicker">REPEAT TO STEP</p>
+              <h2 id="cycles-heading">Format cycles</h2>
+            </div>
+          </div>
+          <div class="number-strip cycle-strip" role="group" aria-label="Number format cycles">
+            <button data-action="cycle-number-general" type="button" title="General numbers: 1,234 / 1,234.0 / 1,234.00 (Ctrl+Shift+1)">1,234</button>
+            <button data-action="cycle-number-date" type="button" title="Dates: 31.12.2026 / Dec-26 / 2026 (Ctrl+Shift+2)">Date</button>
+            <button data-action="cycle-number-currency" type="button" title="Currency: whole / one decimal / thousands (Ctrl+Shift+4)">Cur.</button>
+            <button data-action="cycle-number-percent" type="button" title="Percentages: 12.3% / 12% / 12.34% (Ctrl+Shift+5)">%</button>
+            <button data-action="cycle-number-multiple" type="button" title="Multiples: 1.5x / 1.50x (Ctrl+Shift+6)">0.0x</button>
+          </div>
+          <div class="number-strip cycle-strip" role="group" aria-label="Style cycles">
+            <button data-action="cycle-row-title" type="button" title="Title row styles (Ctrl+Shift+H)">Title</button>
+            <button data-action="cycle-row-result" type="button" title="Result row styles (Ctrl+Shift+R)">Result</button>
+            <button data-action="cycle-row-item" type="button" title="Item row styles (Ctrl+Shift+E)">Item</button>
+            <button data-action="cycle-fill" type="button" title="Brand fill colors (Ctrl+Shift+F)">Fill</button>
+            <button data-action="cycle-font" type="button" title="Brand font colors (Ctrl+Shift+G)">Font</button>
+          </div>
+          <p class="hint">Press the same button or shortcut again to step to the next look.</p>
+        </section>
+
         <section aria-labelledby="tools-heading">
           <div class="section-heading">
             <div>
@@ -192,7 +216,7 @@
       <footer>
         <span class="privacy-dot"></span>
         Workbook data stays inside Excel
-        <span>v0.3</span>
+        <span>v0.4</span>
       </footer>
     </main>
 

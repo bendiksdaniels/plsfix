@@ -1,8 +1,13 @@
 import "./styles.css";
+import type { NumberCycleFamily, RowStyleKind } from "./cycles";
 import {
   addIfError,
+  applyFillCycle,
+  applyFontColorCycle,
+  applyNumberCycle,
   applyNumberFormat,
   applyPreset,
+  applyRowStyleCycle,
   autocolorSelection,
   clearFormats,
   fastFill,
@@ -79,8 +84,20 @@ async function runAction(action: string): Promise<void> {
       await applyPreset(action.replace("style-", "") as PresetName);
     } else if (action.startsWith("number-")) {
       await applyNumberFormat(action.replace("number-", "") as NumberFormatName);
+    } else if (action.startsWith("cycle-number-")) {
+      await applyNumberCycle(
+        action.replace("cycle-number-", "") as NumberCycleFamily,
+      );
+    } else if (action.startsWith("cycle-row-")) {
+      await applyRowStyleCycle(action.replace("cycle-row-", "") as RowStyleKind);
     } else {
       switch (action) {
+        case "cycle-fill":
+          await applyFillCycle();
+          break;
+        case "cycle-font":
+          await applyFontColorCycle();
+          break;
         case "clear-formats":
           await clearFormats();
           break;
@@ -134,6 +151,16 @@ function registerCommands(): void {
     SMT_IFERROR: addIfError,
     SMT_SCALEUP: () => scaleSelection(1000),
     SMT_SCALEDOWN: () => scaleSelection(0.001),
+    SMT_CYC_GENERAL: () => applyNumberCycle("general"),
+    SMT_CYC_DATE: () => applyNumberCycle("date"),
+    SMT_CYC_CURRENCY: () => applyNumberCycle("currency"),
+    SMT_CYC_PERCENT: () => applyNumberCycle("percent"),
+    SMT_CYC_MULTIPLE: () => applyNumberCycle("multiple"),
+    SMT_CYC_TITLE: () => applyRowStyleCycle("title"),
+    SMT_CYC_RESULT: () => applyRowStyleCycle("result"),
+    SMT_CYC_ITEM: () => applyRowStyleCycle("item"),
+    SMT_CYC_FILL: applyFillCycle,
+    SMT_CYC_FONT: applyFontColorCycle,
   };
 
   for (const [id, run] of Object.entries(commands)) {
