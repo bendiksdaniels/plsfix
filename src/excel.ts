@@ -5,6 +5,11 @@ import {
   scaleCells,
   wrapFormulasWithIfError,
 } from "./model";
+import {
+  activeTheme,
+  currencyNumberFormat,
+  getActiveSettings,
+} from "./settings";
 
 export type PresetName = "title" | "header" | "input" | "formula" | "result";
 export type NumberFormatName = "whole" | "decimal" | "currency" | "percent";
@@ -17,12 +22,18 @@ export interface SelectionSummary {
   blanks: number;
 }
 
-const numberFormats: Record<NumberFormatName, string> = {
+const staticNumberFormats = {
   whole: "#,##0;[Red](#,##0);-",
   decimal: "#,##0.0;[Red](#,##0.0);-",
-  currency: "€ #,##0;[Red](€ #,##0);-",
   percent: "0.0%;[Red](0.0%);-",
-};
+} as const;
+
+function numberFormat(name: NumberFormatName): string {
+  if (name === "currency") {
+    return currencyNumberFormat(getActiveSettings().currency);
+  }
+  return staticNumberFormats[name];
+}
 
 export async function inspectSelection(): Promise<SelectionSummary> {
   return Excel.run(async (context) => {
@@ -47,44 +58,45 @@ export async function applyPreset(name: PresetName): Promise<void> {
     const range = context.workbook.getSelectedRange();
     const { format } = range;
 
-    format.font.name = "Aptos";
+    const theme = activeTheme();
+    format.font.name = getActiveSettings().font;
     format.font.size = 10;
     format.font.bold = false;
     format.font.italic = false;
-    format.font.color = "#172A3A";
+    format.font.color = theme.formulaFont;
     format.fill.clear();
     format.horizontalAlignment = Excel.HorizontalAlignment.left;
     format.verticalAlignment = Excel.VerticalAlignment.center;
 
     switch (name) {
       case "title":
-        format.fill.color = "#172A3A";
-        format.font.color = "#FFFFFF";
+        format.fill.color = theme.titleFill;
+        format.font.color = theme.titleText;
         format.font.size = 15;
         format.font.bold = true;
         format.rowHeight = 25;
         break;
       case "header": {
-        format.fill.color = "#E8EEF3";
+        format.fill.color = theme.headerFill;
         format.font.bold = true;
         const bottom = format.borders.getItem(Excel.BorderIndex.edgeBottom);
         bottom.style = Excel.BorderLineStyle.continuous;
-        bottom.color = "#8293A1";
+        bottom.color = theme.headerBorder;
         bottom.weight = Excel.BorderWeight.thin;
         break;
       }
       case "input":
-        format.font.color = "#0057B8";
+        format.font.color = theme.inputFont;
         break;
       case "formula":
-        format.font.color = "#172A3A";
+        format.font.color = theme.formulaFont;
         break;
       case "result": {
-        format.fill.color = "#E8F3EC";
+        format.fill.color = theme.resultFill;
         format.font.bold = true;
         const top = format.borders.getItem(Excel.BorderIndex.edgeTop);
         top.style = Excel.BorderLineStyle.double;
-        top.color = "#2F6B4F";
+        top.color = theme.resultBorder;
         break;
       }
     }
@@ -110,7 +122,7 @@ export async function applyNumberFormat(name: NumberFormatName): Promise<void> {
     range.numberFormat = makeFormatGrid(
       range.rowCount,
       range.columnCount,
-      numberFormats[name],
+      numberFormat(name),
     );
     await context.sync();
   });
@@ -177,6 +189,7 @@ export async function autocolorSelection(): Promise<void> {
       throw new Error("Autocolor supports up to 5,000 selected cells at once.");
     }
 
+    const theme = activeTheme();
     const formulas = range.formulas as CellValue[][];
     const values = range.values as CellValue[][];
 
@@ -188,9 +201,11 @@ export async function autocolorSelection(): Promise<void> {
 
         const cell = range.getCell(row, column);
         if (typeof formula === "string" && formula.startsWith("=")) {
-          cell.format.font.color = formula.includes("[") ? "#17823B" : "#172A3A";
+          cell.format.font.color = formula.includes("[")
+            ? theme.linkFont
+            : theme.formulaFont;
         } else {
-          cell.format.font.color = "#0057B8";
+          cell.format.font.color = theme.inputFont;
         }
       }
     }

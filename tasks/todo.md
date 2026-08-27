@@ -8,6 +8,14 @@
 - [x] Build green: src/vite-env.d.ts for vite/client types
 - [x] git init + initial commit
 
+## Brand dashboard (2026-08-27)
+
+- [x] Tabbed task pane (Tools | Brand), charcoal/bronze reskin
+- [x] Palette editor: 5 semantic slots, pickers + hex, logo upload -> local dominant-color extraction
+- [x] Font + currency settings; presets/autocolor/currency format read the palette (src/settings.ts, TDD, 17 tests)
+- [x] localStorage persistence + JSON import/export, live ledger preview
+- [ ] Code review pass on the diff
+
 ## Competitor feature research
 
 - [ ] Macabacus (deep) + UpSlide feature inventory (research agent)

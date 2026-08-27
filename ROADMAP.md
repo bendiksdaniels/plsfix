@@ -6,7 +6,7 @@
 - [x] Selection inspector
 - [x] Branded cell presets and number formats
 - [x] Formula fill, IFERROR, scaling, and autocolor
-- [ ] User-editable brand palette and font settings
+- [x] User-editable brand palette and font settings
 - [ ] Workbook table of contents
 - [ ] Precedent/dependent navigation
 - [ ] Waterfall chart builder
