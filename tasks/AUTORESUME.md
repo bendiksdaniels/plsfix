@@ -1,16 +1,20 @@
-# AUTORESUME - Model Tools (v2.1.0 LIVE 2026-08-29)
+# AUTORESUME - Model Tools (v2.1.5 LIVE 2026-08-29)
 
 ## State
 
-v2.1.0 is deployed at dbautomatizacijas.com/modelis/ (`/version` -> 2.1.0): Excel pane with the
+v2.1.5 is deployed at dbautomatizacijas.com/modelis/ (`/version` -> 2.1.5): Excel pane with the
 new **Links** tab, PowerPoint pane (`pptpane.html`), and the end-to-end encrypted link relay
 (`/api/links`, `/api/inbox`, sqlite at `/opt/plsfix/data`). `npm run check` green on
-main (384 vitest, 19 cargo, tsc, eslint, prettier, manifest and version gates); GitHub Actions
-runs the same gate. Tags `v2.0.0`, `v2.0.4`, `v2.1.0`. Since v2.0.0 (loop, `tasks/v2-backlog.md`):
+main (441 vitest, 23 cargo, tsc, eslint, prettier, manifest and version gates); GitHub Actions
+runs the same gate. Tags `v2.0.0`, `v2.0.4`, `v2.1.0`, `v2.1.2`, `v2.1.5`. Since v2.0.0 (loop, `tasks/v2-backlog.md`):
 link-record split, shared time/clipboard helpers, active-slide update, server minors, links inside
 groups (PowerPointApi 1.8), brand palette saved in the workbook, 12 more ribbon buttons (5 groups),
-tornado chart + unpivot selection. The loop continues with C1-C7 (whole-branch review, update-all
-speed, pane UX pass, SMT.ROUND research, P2 leftovers, test split, FEATURES.md refresh).
+tornado chart + unpivot selection; then the whole-branch review fix wave (v2.1.2: stale-rev
+status, ETag parsing, inbox squatting, anchor rollback, revoke-first remove, masked key, guards),
+update-all in one sync, border + row/column size cycles, Latvian user guide
+(`docs/lietotaja-rokasgramata-saites.md`), FEATURES.md status refresh, custom-functions research
+(GO). The loop continues with C3 (pane UX pass), C8 (SMT.ROUND custom functions) and the remaining
+C5 leftovers (paintbrush slots, Super Find, unused-style scrubber, prepare for sharing).
 
 Design: `docs/superpowers/specs/2026-08-28-ppt-links-design.md`. Plans (all tasks done):
 `docs/superpowers/plans/2026-08-28-tier1-groundwork.md`, `2026-08-28-ppt-links.md`.
