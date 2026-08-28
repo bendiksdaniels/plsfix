@@ -20,12 +20,8 @@
   </AppDomains>
   <Hosts>
     <Host Name="Workbook"/>
+    <Host Name="Presentation"/>
   </Hosts>
-  <Requirements>
-    <Sets DefaultMinVersion="1.9">
-      <Set Name="ExcelApi" MinVersion="1.9"/>
-    </Sets>
-  </Requirements>
   <DefaultSettings>
     <SourceLocation DefaultValue="https://localhost:3000/taskpane.html"/>
   </DefaultSettings>
@@ -134,6 +130,43 @@
           </ExtensionPoint>
         </DesktopFormFactor>
       </Host>
+      <Host xsi:type="Presentation">
+        <Runtimes>
+          <Runtime resid="SMT.Pptpane.Url" lifetime="long"/>
+        </Runtimes>
+        <DesktopFormFactor>
+          <FunctionFile resid="SMT.Pptpane.Url"/>
+          <ExtensionPoint xsi:type="PrimaryCommandSurface">
+            <CustomTab id="SMT.Tab">
+              <Group id="SMT.Group.Links">
+                <Label resid="SMT.Group.Links.Label"/>
+                <Icon>
+                  <bt:Image size="16" resid="SMT.Icon.16"/>
+                  <bt:Image size="32" resid="SMT.Icon.32"/>
+                  <bt:Image size="80" resid="SMT.Icon.80"/>
+                </Icon>
+                <Control xsi:type="Button" id="SMT.Button.OpenLinks">
+                  <Label resid="SMT.OpenLinks.Label"/>
+                  <Supertip>
+                    <Title resid="SMT.OpenLinks.Label"/>
+                    <Description resid="SMT.OpenLinks.Tip"/>
+                  </Supertip>
+                  <Icon>
+                    <bt:Image size="16" resid="SMT.Icon.16"/>
+                    <bt:Image size="32" resid="SMT.Icon.32"/>
+                    <bt:Image size="80" resid="SMT.Icon.80"/>
+                  </Icon>
+                  <Action xsi:type="ShowTaskpane">
+                    <TaskpaneId>SMT.Pptpane</TaskpaneId>
+                    <SourceLocation resid="SMT.Pptpane.Url"/>
+                  </Action>
+                </Control>
+              </Group>
+              <Label resid="SMT.Tab.Label"/>
+            </CustomTab>
+          </ExtensionPoint>
+        </DesktopFormFactor>
+      </Host>
     </Hosts>
     <Resources>
       <bt:Images>
@@ -143,6 +176,7 @@
       </bt:Images>
       <bt:Urls>
         <bt:Url id="SMT.Taskpane.Url" DefaultValue="https://localhost:3000/taskpane.html"/>
+        <bt:Url id="SMT.Pptpane.Url" DefaultValue="https://localhost:3000/pptpane.html"/>
       </bt:Urls>
       <bt:ShortStrings>
         <bt:String id="SMT.Tab.Label" DefaultValue="Model Tools"/>
@@ -152,6 +186,8 @@
         <bt:String id="SMT.FillRight.Label" DefaultValue="Fill Right"/>
         <bt:String id="SMT.FillDown.Label" DefaultValue="Fill Down"/>
         <bt:String id="SMT.IfError.Label" DefaultValue="IFERROR"/>
+        <bt:String id="SMT.Group.Links.Label" DefaultValue="Model Tools Links"/>
+        <bt:String id="SMT.OpenLinks.Label" DefaultValue="Links"/>
       </bt:ShortStrings>
       <bt:LongStrings>
         <bt:String id="SMT.OpenPane.Tip" DefaultValue="Open the Model Tools task pane."/>
@@ -159,6 +195,7 @@
         <bt:String id="SMT.FillRight.Tip" DefaultValue="Fill the formula from the left cell across the selection."/>
         <bt:String id="SMT.FillDown.Tip" DefaultValue="Fill the formula from the top cell down the selection."/>
         <bt:String id="SMT.IfError.Tip" DefaultValue="Wrap selected formulas with IFERROR."/>
+        <bt:String id="SMT.OpenLinks.Tip" DefaultValue="Open the Model Tools linked-objects pane."/>
       </bt:LongStrings>
     </Resources>
     <VersionOverrides xmlns="http://schemas.microsoft.com/office/taskpaneappversionoverrides/1.1" xsi:type="VersionOverridesV1_1">
@@ -265,6 +302,43 @@
             </ExtensionPoint>
           </DesktopFormFactor>
         </Host>
+        <Host xsi:type="Presentation">
+          <Runtimes>
+            <Runtime resid="SMT.Pptpane.Url" lifetime="long"/>
+          </Runtimes>
+          <DesktopFormFactor>
+            <FunctionFile resid="SMT.Pptpane.Url"/>
+            <ExtensionPoint xsi:type="PrimaryCommandSurface">
+              <CustomTab id="SMT.Tab">
+                <Group id="SMT.Group.Links">
+                  <Label resid="SMT.Group.Links.Label"/>
+                  <Icon>
+                    <bt:Image size="16" resid="SMT.Icon.16"/>
+                    <bt:Image size="32" resid="SMT.Icon.32"/>
+                    <bt:Image size="80" resid="SMT.Icon.80"/>
+                  </Icon>
+                  <Control xsi:type="Button" id="SMT.Button.OpenLinks">
+                    <Label resid="SMT.OpenLinks.Label"/>
+                    <Supertip>
+                      <Title resid="SMT.OpenLinks.Label"/>
+                      <Description resid="SMT.OpenLinks.Tip"/>
+                    </Supertip>
+                    <Icon>
+                      <bt:Image size="16" resid="SMT.Icon.16"/>
+                      <bt:Image size="32" resid="SMT.Icon.32"/>
+                      <bt:Image size="80" resid="SMT.Icon.80"/>
+                    </Icon>
+                    <Action xsi:type="ShowTaskpane">
+                      <TaskpaneId>SMT.Pptpane</TaskpaneId>
+                      <SourceLocation resid="SMT.Pptpane.Url"/>
+                    </Action>
+                  </Control>
+                </Group>
+                <Label resid="SMT.Tab.Label"/>
+              </CustomTab>
+            </ExtensionPoint>
+          </DesktopFormFactor>
+        </Host>
       </Hosts>
       <Resources>
         <bt:Images>
@@ -274,6 +348,7 @@
         </bt:Images>
         <bt:Urls>
           <bt:Url id="SMT.Taskpane.Url" DefaultValue="https://localhost:3000/taskpane.html"/>
+          <bt:Url id="SMT.Pptpane.Url" DefaultValue="https://localhost:3000/pptpane.html"/>
         </bt:Urls>
         <bt:ShortStrings>
           <bt:String id="SMT.Tab.Label" DefaultValue="Model Tools"/>
@@ -283,6 +358,8 @@
           <bt:String id="SMT.FillRight.Label" DefaultValue="Fill Right"/>
           <bt:String id="SMT.FillDown.Label" DefaultValue="Fill Down"/>
           <bt:String id="SMT.IfError.Label" DefaultValue="IFERROR"/>
+          <bt:String id="SMT.Group.Links.Label" DefaultValue="Model Tools Links"/>
+          <bt:String id="SMT.OpenLinks.Label" DefaultValue="Links"/>
         </bt:ShortStrings>
         <bt:LongStrings>
           <bt:String id="SMT.OpenPane.Tip" DefaultValue="Open the Model Tools task pane."/>
@@ -290,6 +367,7 @@
           <bt:String id="SMT.FillRight.Tip" DefaultValue="Fill the formula from the left cell across the selection."/>
           <bt:String id="SMT.FillDown.Tip" DefaultValue="Fill the formula from the top cell down the selection."/>
           <bt:String id="SMT.IfError.Tip" DefaultValue="Wrap selected formulas with IFERROR."/>
+          <bt:String id="SMT.OpenLinks.Tip" DefaultValue="Open the Model Tools linked-objects pane."/>
         </bt:LongStrings>
       </Resources>
       <ExtendedOverrides Url="https://localhost:3000/shortcuts.json"/>

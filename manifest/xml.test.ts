@@ -38,10 +38,14 @@ describe("buildManifest", () => {
   });
 
   it("drops the top-level ExcelApi requirement once a second host exists, keeps SharedRuntime", () => {
+    // Built from WORKBOOK_HOST directly, not ADDIN.hosts: ADDIN itself is
+    // already two hosts, so this isolates the renderer's host-count behavior
+    // from what the real spec currently declares.
+    const singleHost: AddinSpec = { ...ADDIN, hosts: [WORKBOOK_HOST] };
     const withPpt: AddinSpec = {
       ...ADDIN,
       hosts: [
-        ...ADDIN.hosts,
+        WORKBOOK_HOST,
         {
           name: "Presentation",
           page: "pptpane.html",
@@ -53,7 +57,7 @@ describe("buildManifest", () => {
         },
       ],
     };
-    const single = buildManifest(prod, ADDIN);
+    const single = buildManifest(prod, singleHost);
     const multi = buildManifest(prod, withPpt);
     // Exactly-2-space indent targets the OfficeApp-level block only; the
     // VersionOverrides SharedRuntime blocks sit at 4/6-space indent and stay.
@@ -62,6 +66,16 @@ describe("buildManifest", () => {
     expect(multi).not.toMatch(/^ {2}<Requirements>$/m);
     expect(multi).not.toContain(`<Set Name="ExcelApi"`);
     expect(multi).toContain(`<bt:Set Name="SharedRuntime"`);
+  });
+
+  it("declares the Presentation host in both blocks and drops the top-level ExcelApi requirement", () => {
+    const xml = buildManifest(prod, ADDIN);
+    expect(xml.match(/<Host xsi:type="Presentation">/g)).toHaveLength(2);
+    expect(xml).toContain('<Host Name="Presentation"/>');
+    expect(xml).not.toContain('<Set Name="ExcelApi"');
+    expect(xml).toContain(
+      '<bt:Url id="SMT.Pptpane.Url" DefaultValue="https://dbautomatizacijas.com/modelis/pptpane.html"/>',
+    );
   });
 
   it('escapes & and " in interpolated text', () => {

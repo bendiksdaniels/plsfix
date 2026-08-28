@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <title>Model Tools</title>
+    <script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="masthead">
+        <div class="brand-mark" aria-hidden="true">S</div>
+        <div>
+          <div class="eyebrow">MODEL TOOLS</div>
+          <h1>Linked objects.</h1>
+        </div>
+        <span id="connection-status" class="connection waiting"
+          >Connecting</span
+        >
+      </header>
+
+      <nav
+        id="tab-bar"
+        class="tab-bar"
+        role="tablist"
+        aria-label="Task pane views"
+      >
+        <button
+          id="tab-links"
+          class="tab active"
+          role="tab"
+          aria-selected="true"
+          aria-controls="view-links"
+          type="button"
+        >
+          Links
+        </button>
+        <button
+          id="tab-inbox"
+          class="tab"
+          role="tab"
+          aria-selected="false"
+          aria-controls="view-inbox"
+          type="button"
+        >
+          Inbox
+        </button>
+        <button
+          id="tab-settings"
+          class="tab"
+          role="tab"
+          aria-selected="false"
+          aria-controls="view-settings"
+          type="button"
+        >
+          Settings
+        </button>
+      </nav>
+
+      <div
+        id="view-links"
+        class="view"
+        role="tabpanel"
+        aria-labelledby="tab-links"
+      ></div>
+
+      <div
+        id="view-inbox"
+        class="view"
+        role="tabpanel"
+        aria-labelledby="tab-inbox"
+        hidden
+      ></div>
+
+      <div
+        id="view-settings"
+        class="view"
+        role="tabpanel"
+        aria-labelledby="tab-settings"
+        hidden
+      ></div>
+
+      <footer>
+        <span class="privacy-dot"></span>
+        Linked objects stay inside PowerPoint
+        <span id="app-version"></span>
+      </footer>
+    </main>
+
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+    <script type="module" src="/src/ppt/main.ts"></script>
+  </body>
+</html>

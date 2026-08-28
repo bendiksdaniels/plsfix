@@ -852,8 +852,21 @@ renderActionState();
 renderNames(false);
 
 Office.onReady(async ({ host }) => {
+  if (host === Office.HostType.PowerPoint) {
+    location.replace("pptpane.html");
+    return;
+  }
+
   if (host !== Office.HostType.Excel) {
     connectionStatus.textContent = "Excel required";
+    connectionStatus.className = "connection error";
+    return;
+  }
+
+  // The manifest no longer guarantees ExcelApi 1.9 at the top level now that
+  // PowerPoint is a second host, so the pane checks for itself.
+  if (!Office.context.requirements.isSetSupported("ExcelApi", "1.9")) {
+    connectionStatus.textContent = "Excel 2021 / Microsoft 365 required";
     connectionStatus.className = "connection error";
     return;
   }
