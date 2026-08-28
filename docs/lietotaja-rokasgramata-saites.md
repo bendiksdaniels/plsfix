@@ -1,0 +1,61 @@
+# Excel un PowerPoint saistītie objekti (v2.1)
+
+Model Tools ļauj eksportēt Excel šūnu apgabalu vai diagrammu uz PowerPoint kā saistītu attēlu. Attēlu pēc tam var atjaunināt vietā, nemainot tā pozīciju un izmēru, arī tad, kad avota dati Excel darbgrāmatā ir mainījušies. Šī rokasgrāmata apraksta eksportu, ievietošanu, atjaunināšanu, saites atslēgas iestatīšanu, drošības prasības un biežākās kļūdas.
+
+## Pirms sākt
+
+- Nepieciešams Microsoft 365: PowerPoint 2504 vai jaunāka versija Windows datoram, PowerPoint 16.96 vai jaunāka versija Mac datoram.
+- Saites atslēga jāievada vienreiz katrā datorā: izveidojiet to Excel pusē un ielīmējiet PowerPoint pusē (skatiet sadaļu "Saites atslēga").
+
+## Eksports no Excel
+
+Excel cilnē "Links" atlasiet šūnu apgabalu vai diagrammu, ko vēlaties nosūtīt uz PowerPoint.
+
+- Šūnu apgabalam nospiediet "Export selection".
+- Diagrammai nospiediet "Export active chart".
+
+Excel izveido avotam slēptu nosaukumu, kas seko tam arī tad, kad virs apgabala tiek ievietotas rindas vai lapa tiek pārdēvēta. Attēls tiek nosūtīts uz releju un PowerPoint pusē parādās kā gaidošs vienums.
+
+## Ievietošana PowerPoint
+
+PowerPoint lentē atveriet cilni "Model Tools" un nospiediet "Links": atvērsies saišu panelis. Pārslēdzieties uz cilni "Inbox", kur redzami no Excel nosūtītie, vēl neievietotie attēli.
+
+Atlasiet slaidu, kurā attēls jāievieto, un pie vajadzīgā vienuma nospiediet "Insert". Attēls tiek ievietots atlasītajā slaidā un pielāgots tā izmēram.
+
+## Atjaunināšana
+
+Kad avota dati Excel mainās, saites jāatjaunina abās pusēs.
+
+- Excel pusē cilnē "Links" nospiediet "Push all": visas saites tiek pārrēķinātas no to avotiem un nosūtītas uz releju.
+- PowerPoint pusē cilnē "Links" nospiediet "Update all": visi izsekotie attēli tiek pārzīmēti vietā. Var atjaunināt arī atsevišķas saites ("Update selected") vai visas aktīvā slaida saites ("Update this slide").
+
+Pozīcija un platums saglabājas nemainīgi. Augstums mainās tikai tad, kad attēla proporcijas Excel pusē ir mainījušās. Ja attēls ir ievietots grupā, atjaunināšana to tomēr atrod un atjauno.
+
+## Saites atslēga
+
+Saite starp Excel un PowerPoint darbojas tikai tad, kad abām pusēm ir viena un tā pati atslēga.
+
+1. Excel cilnē "Links" sadaļā "Link key" nospiediet "Generate", lai izveidotu jaunu atslēgu.
+2. Nospiediet "Copy", lai to nokopētu.
+3. PowerPoint cilnē "Settings" ielīmējiet atslēgu un nospiediet "Save key".
+
+Šī darbība jāveic tikai vienreiz katrā datorā. Jauna atslēga atvieno visas prezentācijas, kurās ielīmēta vecā atslēga.
+
+## Drošība
+
+Relejs glabā eksportētos attēlus tikai šifrētā veidā un ne ilgāk kā 7 dienas. Ikviens, kam ir pieejama prezentācija, šajā laikā var lejupielādēt saites jaunāko attēlu, pat ja saite prezentācijā vairs nav redzama. Tāpēc pirms prezentācijas nosūtīšanas ārpus bankas katrai saitei PowerPoint cilnē "Links" jānospiež "Break link".
+
+## Biežākās kļūdas
+
+| Ziņojums | Cēlonis | Ko darīt |
+|---|---|---|
+| "Source missing" | Excel pusē avota nosaukums vai diagramma ir dzēsta. | Excel cilnē "Links" pārbaudiet rindu ar "Go to source" un, ja nepieciešams, eksportējiet saiti no jauna. |
+| "Wrong link key" | PowerPoint pusē saglabātā atslēga neatbilst Excel darbgrāmatas pašreizējai atslēgai. | Excel cilnē "Links" nospiediet "Copy" un ielīmējiet atslēgu PowerPoint cilnē "Settings", tad nospiediet "Save key". |
+| "Select a slide first." | PowerPoint slaidu rādītājā nav atlasīts neviens slaids. | Atlasiet slaidu, kurā jāievieto vai jāatjaunina attēls, un mēģiniet vēlreiz. |
+| "select a single range" | Excel atlasē ir vairāki nesaistīti apgabali, piemēram, atlasīti ar Ctrl taustiņu. | Atlasiet vienu nepārtrauktu šūnu apgabalu un nospiediet "Export selection" vēlreiz. |
+
+## Ierobežojumi
+
+- Pēc "Update all" nav atsaukšanas: PowerPoint pievienojumprogrammu darbības Ctrl+Z neatceļ.
+- PowerPoint tabulas vēl netiek atbalstītas: saitē var būt tikai attēls.
+- Darbgrāmatas versiju maiņa (piemēram, cita faila nosaukums vai atrašanās vieta) vēl nav pieejama.
