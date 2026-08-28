@@ -105,6 +105,23 @@ export const WORKBOOK_HOST: HostSpec = {
   ],
 };
 
+export const PRESENTATION_HOST: HostSpec = {
+  name: "Presentation",
+  page: "pptpane.html",
+  urlResid: "SMT.Pptpane.Url",
+  taskpaneId: "SMT.Pptpane",
+  groupId: "SMT.Group.Links",
+  groupLabel: "Model Tools Links",
+  buttons: [
+    {
+      id: "OpenLinks",
+      label: "Links",
+      tip: "Open the Model Tools linked-objects pane.",
+      action: { kind: "showPane" },
+    },
+  ],
+};
+
 const packageVersion = pkg.version;
 
 export const ADDIN: AddinSpec = {
@@ -117,5 +134,5 @@ export const ADDIN: AddinSpec = {
   appDomain: "https://dbautomatizacijas.com",
   tabLabel: "Model Tools",
   iconResids: { 16: "SMT.Icon.16", 32: "SMT.Icon.32", 80: "SMT.Icon.80" },
-  hosts: [WORKBOOK_HOST],
+  hosts: [WORKBOOK_HOST, PRESENTATION_HOST],
 };

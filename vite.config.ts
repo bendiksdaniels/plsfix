@@ -35,7 +35,7 @@ export default defineConfig(async ({ command }) => {
       outDir: "dist",
       emptyOutDir: true,
       rollupOptions: {
-        input: "taskpane.html",
+        input: { taskpane: "taskpane.html", pptpane: "pptpane.html" },
       },
     },
   };

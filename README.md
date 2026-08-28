@@ -89,7 +89,7 @@ npm run validate
 npm start
 ```
 
-The first start installs a trusted local HTTPS development certificate and sideloads `manifest.xml` into desktop Excel. Use `npm stop` when finished.
+The first start installs a trusted local HTTPS development certificate and sideloads `manifest.xml` into desktop Excel. Use `npm stop` when finished. To sideload the same manifest into desktop PowerPoint instead, use `npm run start:ppt` and `npm run stop:ppt`.
 
 For browser-only UI development, use `npm run dev` and open `https://localhost:3000/taskpane.html`. Excel actions only work when the page is hosted inside Excel.
 

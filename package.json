@@ -20,6 +20,8 @@
     "start": "office-addin-debugging start manifest.xml desktop",
     "stop": "office-addin-debugging stop manifest.xml",
     "poststop": "sh scripts/wef-restore-prod.sh",
+    "start:ppt": "office-addin-debugging start manifest.xml desktop --app powerpoint",
+    "stop:ppt": "office-addin-debugging stop manifest.xml --app powerpoint && sh scripts/wef-restore-prod.sh",
     "validate": "office-addin-manifest validate manifest.xml && office-addin-manifest validate manifest.prod.xml",
     "manifest:build": "tsx scripts/build-manifests.ts",
     "manifest:check": "tsx scripts/build-manifests.ts --check",
