@@ -39,7 +39,7 @@ Modules (what each owns):
 - `src/link/` (planned, core, pure): `model` (types + codecs), `crypto` (HKDF/AES-GCM), `status` (link state rules, slide fitting), `png` (IHDR size), `workspace` (pairing key), `relay` (fetch client, typed errors).
 - `src/ppt/` (planned): `host.ts` (the only PowerPoint Office.js code: scan by tags, insert, refresh, break), `links.ts` (orchestration), `views.ts` (DOM renderers), `main.ts`.
 - `src/pane/links-tab.ts` (planned): the Excel "Links" tab.
-- `server/`: `lib.rs` router + cache middleware (planned split), `store.rs` sqlite (planned), `relay.rs` `/api` routes (planned), `main.rs` env + bind + sweeper.
+- `server/`: `lib.rs` router + cache middleware, `store.rs` sqlite (WAL, auth hash, 2 revs, TTL sweep), `relay.rs` `/api` routes (bearer, ETag, body limits), `main.rs` env + bind + hourly sweeper.
 - `test/`: `fakehost.ts` (in-memory Excel host, strict load semantics), `fakeppt/` (PowerPoint fake, planned), `fakerelay.ts`, `fakepng.ts` (planned), `*.integration.test.ts`.
 
 Data flow, link export (v2): selection -> `src/excel/links.ts` (hidden name anchor + registry in `workbook.settings`) -> `Range.getImage` -> `src/link/model` encodePayload -> `src/link/crypto` seal -> `src/link/relay` putLink -> `server/relay.rs` -> `store.rs` (ciphertext only) -> inbox item sealed with the workspace key. PowerPoint: `src/ppt/links.ts` listInbox -> open -> `src/ppt/host.ts` insertLink (rectangle + picture fill + tags). Update: scanLinks (tags) -> relay status -> getLink -> open -> refreshLink (`fill.setImage`, geometry untouched).
