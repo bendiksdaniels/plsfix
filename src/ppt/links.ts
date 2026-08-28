@@ -7,10 +7,16 @@ import { deriveLinkKeys, open } from "../link/crypto";
 import {
   decodeInboxItem,
   decodePayload,
+  sourceLabel,
   type InboxItem,
   type Payload,
 } from "../link/model";
-import { RelayError, type RelayApi } from "../link/relay";
+import {
+  isRelayError,
+  RelayError,
+  type RelayApi,
+  type StatusQuery,
+} from "../link/relay";
 import {
   deriveStatus,
   sourceChanged,
@@ -40,47 +46,75 @@ export interface UpdateSummary {
   wrongKey: number;
   failed: number;
   sourceChanges: string[];
+  failures: string[];
+}
+
+interface Keyed {
+  link: FoundLink;
+  auth: string | null;
 }
 
 // One auth per distinct token, derived once: a deck can hold the same link on
-// twenty slides, and HKDF is not free.
-async function authsFor(found: FoundLink[]): Promise<Map<string, string>> {
-  const auths = new Map<string, string>();
+// twenty slides, and HKDF is not free. A token that will not derive is a broken
+// key on that one shape, not a broken pane - it gets a null auth, reports
+// wrongKey below and never reaches the relay, and its neighbours carry on.
+async function keyLinks(found: FoundLink[]): Promise<Keyed[]> {
+  const auths = new Map<string, string | null>();
   for (const link of found) {
-    if (!auths.has(link.token)) {
+    if (auths.has(link.token)) continue;
+    try {
       auths.set(link.token, (await deriveLinkKeys(link.token)).auth);
+    } catch {
+      auths.set(link.token, null);
     }
   }
-  return auths;
+  return found.map((link) => ({ link, auth: auths.get(link.token) ?? null }));
+}
+
+function pairKey(id: string, auth: string): string {
+  return `${id}/${auth}`;
 }
 
 // The relay answers per (id, auth) and in request order: copies of a shape
-// share both and are queried once; a re-keyed copy gets its own query.
+// share both and are queried once; a re-keyed copy gets its own query. A reply
+// that does not line up row for row cannot be read positionally at all.
+async function statusByPair(
+  keyed: Keyed[],
+  relay: RelayApi,
+): Promise<Map<string, RelayStatus | undefined>> {
+  const pairs = new Map<string, StatusQuery>();
+  for (const { link, auth } of keyed) {
+    if (auth !== null)
+      pairs.set(pairKey(link.tag.id, auth), { id: link.tag.id, auth });
+  }
+  if (pairs.size === 0) return new Map();
+  const keys = [...pairs.keys()];
+  const statuses = await relay.status([...pairs.values()]);
+  if (statuses.length !== keys.length) {
+    throw new RelayError(
+      "server",
+      `relay status: expected ${String(keys.length)} rows, got ${String(statuses.length)}`,
+    );
+  }
+  return new Map<string, RelayStatus | undefined>(
+    keys.map((key, index) => [key, statuses[index]]),
+  );
+}
+
 export async function listLinks(
   relay: RelayApi,
   host: PptHost = realHost,
 ): Promise<LinkRow[]> {
   const found = await host.scanLinks();
   if (found.length === 0) return [];
-  const auths = await authsFor(found);
-  const pairKey = (link: FoundLink): string =>
-    `${link.tag.id}/${auths.get(link.token)!}`;
-  const pairs = [
-    ...new Map<string, FoundLink>(
-      found.map((link) => [pairKey(link), link]),
-    ).values(),
-  ];
-  const statuses = await relay.status(
-    pairs.map((link) => ({ id: link.tag.id, auth: auths.get(link.token)! })),
-  );
-  const byPair = new Map<string, RelayStatus | undefined>(
-    pairs.map((link, index) => [pairKey(link), statuses[index]]),
-  );
-  return found.map((link) => {
-    const status = byPair.get(pairKey(link));
+  const keyed = await keyLinks(found);
+  const byPair = await statusByPair(keyed, relay);
+  return keyed.map(({ link, auth }) => {
+    const status =
+      auth === null ? undefined : byPair.get(pairKey(link.tag.id, auth));
     return {
       found: link,
-      status: deriveStatus(link.tag.rev, status),
+      status: auth === null ? "wrongKey" : deriveStatus(link.tag.rev, status),
       relayRev: status?.rev ?? null,
       pushedAt: status?.pushedAt ?? null,
     };
@@ -114,6 +148,7 @@ export async function updateLinks(
     wrongKey: 0,
     failed: 0,
     sourceChanges: [],
+    failures: [],
   };
   for (const row of rows) {
     if (row.status !== "updateAvailable") {
@@ -130,7 +165,7 @@ export async function updateLinks(
       await host.refreshLink(row.found, fetched.payload, fetched.rev);
       summary.updated += 1;
     } catch (error) {
-      countFailure(summary, error);
+      countFailure(summary, row.found, error);
     }
   }
   return summary;
@@ -155,14 +190,30 @@ function noteSourceChange(
   );
 }
 
-function countFailure(summary: UpdateSummary, error: unknown): void {
-  if (error instanceof RelayError && error.kind === "missing") {
+// A relay answer the pane already has a column for is only counted; anything
+// else keeps its message, because "3 failed" with no reason is unactionable.
+function countFailure(
+  summary: UpdateSummary,
+  found: FoundLink,
+  error: unknown,
+): void {
+  const kind = isRelayError(error) ? error.kind : null;
+  if (kind === "missing") {
     summary.missing += 1;
-  } else if (error instanceof RelayError && error.kind === "auth") {
+  } else if (kind === "auth") {
     summary.wrongKey += 1;
   } else {
     summary.failed += 1;
+    summary.failures.push(failureLine(found, error));
   }
+}
+
+// Every failure names its link. The host already stages its own errors as
+// "refresh <label>: ...", so the label is not stuttered back onto those.
+function failureLine(found: FoundLink, error: unknown): string {
+  const label = sourceLabel(found.tag.src, found.tag.kind);
+  const message = error instanceof Error ? error.message : String(error);
+  return message.includes(label) ? message : `${label}: ${message}`;
 }
 
 export function summarize(summary: UpdateSummary): string {

@@ -213,6 +213,51 @@ describe("scan and status", () => {
       "wrongKey",
     ]);
   });
+
+  // The invariant behind querying per (id, auth) rather than per id: one link
+  // id can sit in the deck under two keys, and only one of them opens it.
+  it("keeps a re-keyed copy apart from the original it shares an id with", async () => {
+    const ws = await createWorkspace(memoryStore());
+    const item = await seedLink(fakePng(800, 400));
+    await links.insertFromInbox(item, ws, relay);
+    const original = presentation.slides[0]!.shapes[0]!;
+    const copy = presentation.copyShape(
+      original.id,
+      presentation.slides[1]!.id,
+    );
+    copy.tags.set(TAG_KEY, newToken());
+    await pushAgain(item, fakePng(800, 400));
+    const rows = await links.listLinks(relay);
+    expect(rows.map((r) => r.found.slideIndex)).toEqual([0, 1]);
+    expect(rows.map((r) => r.status)).toEqual(["updateAvailable", "wrongKey"]);
+    expect(rows[1]!.relayRev).toBeNull();
+    const summary = await links.updateLinks(rows, relay);
+    expect(summary).toMatchObject({ updated: 1, wrongKey: 1, failed: 0 });
+    expect(original.setImageCalls).toBe(2);
+    expect(copy.setImageCalls).toBe(1);
+  });
+
+  it("flags one unusable key as wrong and still reports its neighbours", async () => {
+    const ws = await createWorkspace(memoryStore());
+    const a = await seedLink(fakePng(10, 10));
+    const b = await seedLink(fakePng(10, 10));
+    for (const item of [a, b]) await links.insertFromInbox(item, ws, relay);
+    presentation.slides[0]!.shapes[0]!.tags.set(TAG_KEY, "not a token");
+    const rows = await links.listLinks(relay);
+    expect(rows.map((r) => r.status)).toEqual(["wrongKey", "current"]);
+    expect(rows[0]!.relayRev).toBeNull();
+    expect(rows[1]!.relayRev).toBe(1);
+  });
+
+  it("refuses a status answer that does not line up with the request", async () => {
+    const ws = await createWorkspace(memoryStore());
+    const item = await seedLink(fakePng(10, 10));
+    await links.insertFromInbox(item, ws, relay);
+    vi.spyOn(relay, "status").mockResolvedValue([]);
+    await expect(links.listLinks(relay)).rejects.toThrow(
+      "relay status: expected 1 rows, got 0",
+    );
+  });
 });
 
 describe("update", () => {
@@ -269,6 +314,28 @@ describe("update", () => {
     expect(again.current).toBe(1);
     expect(links.summarize(summary)).toBe("1 updated");
   });
+
+  it("keeps the reason a row failed, and the other rows still update", async () => {
+    const ws = await createWorkspace(memoryStore());
+    const item = await seedLink(fakePng(10, 10));
+    await links.insertFromInbox(item, ws, relay);
+    await pushAgain(item, fakePng(10, 10));
+    const refusing: LinksModule.PptHost = {
+      scanLinks: () => Promise.resolve([]),
+      insertLink: () => Promise.reject(new Error("unused")),
+      refreshLink: () =>
+        Promise.reject(new Error("PowerPoint refused the picture")),
+      breakLink: () => Promise.resolve(),
+      goToSlide: () => Promise.resolve(),
+    };
+    const rows = await links.listLinks(relay);
+    const summary = await links.updateLinks(rows, relay, refusing);
+    expect(summary.failed).toBe(1);
+    expect(summary.failures).toEqual([
+      "Model!B4:F12: PowerPoint refused the picture",
+    ]);
+    expect(links.summarize(summary)).toBe("1 failed");
+  });
 });
 
 describe("break link", () => {
@@ -314,5 +381,29 @@ describe("hosts below PowerPointApi 1.8", () => {
       before.height,
     ]);
     expect(JSON.parse(after.tags.get(TAG_LINK)!).rev).toBe(2);
+  });
+
+  // The reinsertion inserts before it deletes, so a host that refuses the new
+  // picture cannot take the old one - and both tags - down with it.
+  it("keeps the old picture and its tags when the reinsertion fails", async () => {
+    const ws = await createWorkspace(memoryStore());
+    const item = await seedLink(fakePng(800, 400));
+    await links.insertFromInbox(item, ws, relay);
+    const before = presentation.slides[0]!.shapes[0]!;
+    await pushAgain(item, fakePng(800, 400));
+    helpers.failNextSelectionInsert("the host is out of memory");
+    const summary = await links.updateLinks(
+      await links.listLinks(relay),
+      relay,
+    );
+    expect(summary).toMatchObject({ updated: 0, failed: 1 });
+    expect(summary.failures).toEqual([
+      "refresh Model!B4:F12: the host is out of memory",
+    ]);
+    expect(presentation.slides[0]!.shapes).toHaveLength(1);
+    expect(presentation.slides[0]!.shapes[0]).toBe(before);
+    expect(before.fillImage).toBe(fakePng(800, 400));
+    expect(before.tags.get(TAG_KEY)).toBe(item.token);
+    expect(JSON.parse(before.tags.get(TAG_LINK)!).rev).toBe(1);
   });
 });

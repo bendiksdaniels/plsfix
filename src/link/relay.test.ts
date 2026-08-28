@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { RelayClient, relayBaseUrl, type RelayError } from "./relay";
+import { isRelayError, RelayClient, relayBaseUrl, RelayError } from "./relay";
 
 type Handler = (url: string, init: RequestInit) => Response;
 function client(handler: Handler): {
@@ -28,6 +28,36 @@ describe("relayBaseUrl", () => {
     expect(relayBaseUrl("https://localhost:3000/taskpane.html").href).toBe(
       "https://localhost:3000/api/",
     );
+  });
+});
+
+describe("isRelayError", () => {
+  it("recognises a relay error the class identity no longer matches", () => {
+    const real = new RelayError("missing", "not found", 404);
+    expect(isRelayError(real)).toBe(true);
+    // What a second module graph hands back: same shape, another constructor.
+    const foreign = Object.assign(new Error("forbidden"), {
+      name: "RelayError",
+      kind: "auth",
+    });
+    expect(foreign instanceof RelayError).toBe(false);
+    expect(isRelayError(foreign)).toBe(true);
+    expect(isRelayError(foreign) && foreign.kind).toBe("auth");
+  });
+
+  it("rejects anything that is not one", () => {
+    expect(isRelayError(new Error("plain"))).toBe(false);
+    expect(
+      isRelayError(Object.assign(new Error("x"), { name: "RelayError" })),
+    ).toBe(false);
+    expect(
+      isRelayError(
+        Object.assign(new Error("x"), { name: "RelayError", kind: "teapot" }),
+      ),
+    ).toBe(false);
+    expect(isRelayError({ name: "RelayError", kind: "auth" })).toBe(false);
+    expect(isRelayError(null)).toBe(false);
+    expect(isRelayError("RelayError")).toBe(false);
   });
 });
 

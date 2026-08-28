@@ -20,6 +20,7 @@ class FakeRuntime {
   supported: (set: string, version: string) => boolean;
   storage: Map<string, string>;
   insertions: SelectionInsert[] = [];
+  nextInsertFailure: string | null = null;
 
   constructor(
     public presentation: FakePresentation,
@@ -88,6 +89,11 @@ function insertViaSelection(
   png: string,
   options: SelectionOptions,
 ): void {
+  const failure = runtime.nextInsertFailure;
+  if (failure !== null) {
+    runtime.nextInsertFailure = null;
+    throw new Error(failure);
+  }
   const deck = runtime.presentation;
   const slideId = deck.selectedSlideIds[0] ?? deck.slides[0]?.id ?? "";
   const slide = deck.findSlideOrThrow(slideId);
@@ -196,6 +202,11 @@ function makeHelpers(runtime: FakeRuntime): FakePptHelpers {
       runtime.supported = check;
     },
     storage: () => runtime.storage,
+    failNextSelectionInsert(
+      message = "PowerPoint could not insert the image.",
+    ) {
+      runtime.nextInsertFailure = message;
+    },
     insertedViaSelection: () =>
       runtime.insertions.map((insert) => ({
         ...insert,

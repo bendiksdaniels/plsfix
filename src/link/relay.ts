@@ -21,6 +21,24 @@ export class RelayError extends Error {
   }
 }
 
+// instanceof fails across module graphs - a test that resets modules, or two
+// bundles each holding their own copy - so a RelayError is recognised by its
+// name plus a kind the union knows. The record keeps the two in step: a kind
+// added to the union and not listed here stops the build.
+const RELAY_ERROR_KINDS: Record<RelayErrorKind, true> = {
+  network: true,
+  auth: true,
+  missing: true,
+  tooLarge: true,
+  server: true,
+};
+
+export function isRelayError(error: unknown): error is RelayError {
+  if (!(error instanceof Error) || error.name !== "RelayError") return false;
+  const kind: unknown = (error as { readonly kind?: unknown }).kind;
+  return typeof kind === "string" && Object.hasOwn(RELAY_ERROR_KINDS, kind);
+}
+
 export interface StatusQuery {
   id: string;
   auth: string;

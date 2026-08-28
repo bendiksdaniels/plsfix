@@ -271,8 +271,12 @@ export async function refreshLink(
   });
 }
 
-// The fallback repaint: the old shape goes, the new picture lands on the same
-// slide at the same box, and the tags are written again onto the new shape.
+// The fallback repaint, in the only safe order: the new picture lands on the
+// same slide at the same box and is tagged first, and the old shape goes last.
+// A failure before the delete leaves a duplicate the user can remove; a delete
+// first would lose the picture and both tags for good. The new shape is still
+// the last one on the slide while the old one is there, so it is found the
+// same way as on a first insert.
 async function reinsertLink(
   stage: string,
   found: FoundLink,
@@ -280,13 +284,6 @@ async function reinsertLink(
   tag: LinkTag,
   height: number,
 ): Promise<void> {
-  await PowerPoint.run(async (context) => {
-    context.presentation.slides
-      .getItem(found.slideId)
-      .shapes.getItem(found.shapeId)
-      .delete();
-    await context.sync();
-  });
   const box = { left: found.left, top: found.top, width: found.width, height };
   const shapeId = await insertPictureBySelection(
     stage,
@@ -295,6 +292,13 @@ async function reinsertLink(
     box,
   );
   await writeTags(found.slideId, shapeId, tag, found.token);
+  await PowerPoint.run(async (context) => {
+    context.presentation.slides
+      .getItem(found.slideId)
+      .shapes.getItem(found.shapeId)
+      .delete();
+    await context.sync();
+  });
 }
 
 // Breaking a link leaves the picture exactly where it is; only the identity

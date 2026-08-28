@@ -41,6 +41,9 @@ export interface FakePptHelpers {
   setSupported(check: (set: string, version: string) => boolean): void;
   storage(): Map<string, string>;
   insertedViaSelection(): SelectionInsert[];
+  // Makes the next setSelectedDataAsync report failure, the way a host that is
+  // out of memory or has the slide locked does. Consumed by that one call.
+  failNextSelectionInsert(message?: string): void;
 }
 
 let strictByDefault = false;
