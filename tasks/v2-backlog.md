@@ -53,6 +53,6 @@ each item. Stop when Daniel intervenes or the list is empty.
       paintbrush slots, Super Find, unused-style scrubber, "prepare for sharing".
 - [x] C6 Test debt: split `test/ppt.integration.test.ts` (>400 lines) by feature; keep every
       test file under 400 lines.
-- [ ] C7 Docs: `docs/FEATURES.md` status column refreshed from what shipped (ROADMAP.md stays
+- [x] C7 Docs: `docs/FEATURES.md` status column refreshed from what shipped (ROADMAP.md stays
       Daniel's; deltas listed for sign-off).
 - Milestone after every 3 merged items: deploy + tag + AUTORESUME refresh.
