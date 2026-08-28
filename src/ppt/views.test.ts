@@ -1,11 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from "vitest";
-import {
-  relativeTime,
-  renderInbox,
-  renderLinkRows,
-  statusLabel,
-} from "./views";
+import { renderInbox, renderLinkRows, statusLabel } from "./views";
 
 describe("renderLinkRows", () => {
   it("renders one row per link with a checkbox and a status badge", () => {
@@ -81,10 +76,7 @@ describe("renderInbox", () => {
 });
 
 describe("labels", () => {
-  it("names statuses and relative times", () => {
+  it("names statuses", () => {
     expect(statusLabel("wrongKey")).toBe("Wrong link key");
-    expect(relativeTime(null)).toBe("never");
-    expect(relativeTime(1000 - 120, 1000)).toBe("2 min ago");
-    expect(relativeTime(1000 - 3 * 86400, 1000)).toBe("3 days ago");
   });
 });

@@ -19,7 +19,9 @@ import {
   type KeyStore,
   type Workspace,
 } from "../link/workspace";
+import { copyText } from "../ui/clipboard";
 import type { Guard } from "../ui/guard";
+import { relativeTime } from "../ui/time";
 import type { Toast } from "../ui/toast";
 
 const EMPTY_MESSAGE = "No linked objects in this workbook yet.";
@@ -27,7 +29,6 @@ const MISSING_BADGE = "Source missing";
 const NO_KEY = "No link key yet.";
 const NO_KEY_ERROR = "Generate a link key first (Links > Settings).";
 const NO_SELECTION_ERROR = "Select a link in the list first.";
-const COPY_BLOCKED = "Copying is blocked here: select the key and copy it.";
 const ROW_COLUMNS = 3;
 
 export interface LinksTabDeps {
@@ -272,31 +273,6 @@ function element<T extends Element>(root: ParentNode, id: string): T {
   return found;
 }
 
-// Office webviews can deny the async clipboard; the hidden textarea is the same
-// fallback the toast uses. A host with neither says so rather than pretending.
-async function copyText(text: string): Promise<void> {
-  if (navigator.clipboard?.writeText) {
-    try {
-      await navigator.clipboard.writeText(text);
-      return;
-    } catch {
-      // Fall through to the textarea.
-    }
-  }
-  if (typeof document.execCommand !== "function") {
-    throw new Error(COPY_BLOCKED);
-  }
-  const area = document.createElement("textarea");
-  area.value = text;
-  area.style.position = "fixed";
-  area.style.opacity = "0";
-  document.body.append(area);
-  area.select();
-  const copied = document.execCommand("copy");
-  area.remove();
-  if (!copied) throw new Error(COPY_BLOCKED);
-}
-
 // ---------------------------------------------------------------------------
 // Rendering
 // ---------------------------------------------------------------------------
@@ -364,17 +340,7 @@ function objectCell(row: WorkbookLinkRow): HTMLTableCellElement {
 // as an age. An unparseable stamp is treated as no push at all.
 function pushedLabel(lastPushedAt: string | null): string {
   if (lastPushedAt === null) return "never";
-  const seconds = Math.max(0, (Date.now() - Date.parse(lastPushedAt)) / 1000);
+  const seconds = Date.parse(lastPushedAt) / 1000;
   if (!Number.isFinite(seconds)) return "never";
-  return `Pushed ${elapsed(seconds)}`;
-}
-
-function elapsed(seconds: number): string {
-  if (seconds < 60) return "just now";
-  const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return `${minutes} min ago`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours} h ago`;
-  const days = Math.floor(hours / 24);
-  return `${days} ${days === 1 ? "day" : "days"} ago`;
+  return `Pushed ${relativeTime(seconds)}`;
 }

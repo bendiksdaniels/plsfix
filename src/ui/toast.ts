@@ -3,6 +3,8 @@
 // button so a failure can be pasted into a bug report. No Office.js here -
 // this module only ever touches the DOM node it is given.
 
+import { copyText } from "./clipboard";
+
 export type ToastKind = "success" | "error";
 
 export interface Toast {
@@ -10,31 +12,6 @@ export interface Toast {
 }
 
 const DEFAULT_HIDE_AFTER_MS = 3200;
-
-async function copyDetails(details: string): Promise<void> {
-  if (navigator.clipboard?.writeText) {
-    try {
-      await navigator.clipboard.writeText(details);
-      return;
-    } catch {
-      // Office webviews can deny clipboard access; fall back below.
-    }
-  }
-  copyViaHiddenTextarea(details);
-}
-
-// execCommand("copy") only acts on a selected, focused element, so the
-// fallback needs a real (if invisible) textarea in the document.
-function copyViaHiddenTextarea(details: string): void {
-  const area = document.createElement("textarea");
-  area.value = details;
-  area.style.position = "fixed";
-  area.style.opacity = "0";
-  document.body.append(area);
-  area.select();
-  document.execCommand("copy");
-  area.remove();
-}
 
 export function createToast(
   container: HTMLElement,
@@ -60,7 +37,7 @@ export function createToast(
       button.type = "button";
       button.className = "toast-copy";
       button.textContent = "Copy details";
-      button.addEventListener("click", () => void copyDetails(details));
+      button.addEventListener("click", () => void copyText(details));
       container.append(button);
     }
 

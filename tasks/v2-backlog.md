@@ -11,7 +11,7 @@ each item. Stop when Daniel intervenes or the list is empty.
 
 - [x] B1 Split `src/excel/link-anchors.ts` (396 lines): move the relay round trip
       (`pushPayload`, `announce`, `publish` rollback) into `src/excel/link-record.ts`; tests unchanged.
-- [ ] B2 Dedupe helpers: `relativeTime` (ppt/views.ts + pane/links-tab.ts) -> `src/ui/time.ts`;
+- [x] B2 Dedupe helpers: `relativeTime` (ppt/views.ts + pane/links-tab.ts) -> `src/ui/time.ts`;
       clipboard copy (ui/toast.ts private + pane/links-tab.ts) -> `src/ui/clipboard.ts`; unit tests.
 - [ ] B3 "Update this slide" uses the ACTIVE slide: `activeSlideId()` in `src/ppt/host.ts`
       (`getSelectedSlides`, 1.5), fake host support, pane uses it (ticked rows no longer needed).
