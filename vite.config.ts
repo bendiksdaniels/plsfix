@@ -25,6 +25,11 @@ export default defineConfig(async ({ command }) => {
       headers: {
         "Access-Control-Allow-Origin": "*",
       },
+      // The dev pane reaches a locally running relay:
+      // MODELIS_DATA=./data cargo run --manifest-path server/Cargo.toml
+      proxy: {
+        "/api": { target: "http://127.0.0.1:8804", changeOrigin: true },
+      },
     },
     build: {
       outDir: "dist",

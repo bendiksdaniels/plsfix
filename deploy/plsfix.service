@@ -5,6 +5,7 @@ After=network-online.target
 WorkingDirectory=/opt/plsfix
 Environment=MODELIS_PORT=8804
 Environment=MODELIS_STATIC=/opt/plsfix/static
+Environment=MODELIS_DATA=/opt/plsfix/data
 ExecStart=/opt/plsfix/bin/plsfix-server
 Restart=always
 RestartSec=3
