@@ -2,7 +2,11 @@
 // color, row style, number). Every mutating action captures SMT Undo first and
 // enforces the selection cell cap before touching the grid.
 
-import { numberFormat, SELECTION_CELL_CAP, selectionWithinCap } from "./internal";
+import {
+  numberFormat,
+  SELECTION_CELL_CAP,
+  selectionWithinCap,
+} from "./internal";
 import {
   type NumberFormatName,
   type PresetName,
@@ -201,7 +205,11 @@ export async function applyNumberCycle(
       buildNumberCycles(getActiveSettings())[family],
     );
 
-    range.numberFormat = makeFormatGrid(range.rowCount, range.columnCount, next);
+    range.numberFormat = makeFormatGrid(
+      range.rowCount,
+      range.columnCount,
+      next,
+    );
     await context.sync();
   });
 }

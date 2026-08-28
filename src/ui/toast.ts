@@ -42,7 +42,11 @@ export function createToast(
 ): Toast {
   let timer: number | undefined;
 
-  function show(message: string, kind: ToastKind = "success", details?: string): void {
+  function show(
+    message: string,
+    kind: ToastKind = "success",
+    details?: string,
+  ): void {
     window.clearTimeout(timer);
     container.replaceChildren();
 

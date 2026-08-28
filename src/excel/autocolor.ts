@@ -6,7 +6,11 @@ import { EDIT_CELL_CAP, SELECTION_CELL_CAP, writeRuns } from "./internal";
 import { captureUndo } from "./undo";
 import { type CellClass, classifyCell } from "../classify";
 import { type CellValue } from "../model";
-import { activeTheme, getActiveSettings, type WorkbookTheme } from "../settings";
+import {
+  activeTheme,
+  getActiveSettings,
+  type WorkbookTheme,
+} from "../settings";
 
 function classFont(kind: CellClass, theme: WorkbookTheme): string | null {
   switch (kind) {
@@ -140,9 +144,8 @@ export async function insertColorKey(): Promise<void> {
   });
 }
 
-let editHandler:
-  | OfficeExtension.EventHandlerResult<Excel.WorksheetChangedEventArgs>
-  | null = null;
+let editHandler: OfficeExtension.EventHandlerResult<Excel.WorksheetChangedEventArgs> | null =
+  null;
 let coloringEdit = false;
 let handlerQueue: Promise<void> = Promise.resolve();
 
@@ -186,7 +189,8 @@ async function applyEditHandler(enabled: boolean): Promise<void> {
     await Excel.run(async (context) => {
       // Commit only after the sync that actually registers the handler; a
       // failed sync must not leave a phantom registration behind.
-      const handle = context.workbook.worksheets.onChanged.add(colorChangedRange);
+      const handle =
+        context.workbook.worksheets.onChanged.add(colorChangedRange);
       await context.sync();
       editHandler = handle;
     });

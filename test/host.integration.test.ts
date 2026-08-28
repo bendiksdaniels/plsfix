@@ -828,7 +828,13 @@ describe("fast fill", () => {
   });
 
   it("fills down as far as the neighbour column runs", async () => {
-    helpers.seed("Model!A2", [["Rent"], ["Wages"], ["Fuel"], ["Other"], ["Tax"]]);
+    helpers.seed("Model!A2", [
+      ["Rent"],
+      ["Wages"],
+      ["Fuel"],
+      ["Other"],
+      ["Tax"],
+    ]);
     helpers.seed("Model!B2", [[{ formula: "=B1*2", value: 4 }]]);
     helpers.select("Model!B2");
 
@@ -901,9 +907,7 @@ describe("formula edits", () => {
   });
 
   it("toggles the IFERROR guard on and back off", async () => {
-    helpers.seed("Model!A1", [
-      [{ formula: "=A9/B9", value: 1 }, 5],
-    ]);
+    helpers.seed("Model!A1", [[{ formula: "=A9/B9", value: 1 }, 5]]);
     helpers.select("Model!A1:B1");
 
     await smt.toggleIfErrorGuard();
@@ -969,7 +973,10 @@ describe("charts", () => {
       title: "EBITDA bridge",
     });
     expect(chart?.font.name).toBe(palette.font);
-    expect(chart?.titleFont).toMatchObject({ bold: true, color: palette.primary });
+    expect(chart?.titleFont).toMatchObject({
+      bold: true,
+      color: palette.primary,
+    });
     expect(chart?.legend.visible).toBe(false);
     expect(chart?.dataLabels.showValue).toBe(true);
     expect(chart?.axes.category.majorGridlines).toBe(false);
@@ -1343,7 +1350,11 @@ describe("autocolor on edit", () => {
   it("colours the changed range on whichever sheet it happened", async () => {
     helpers.seed("Model!A1", [[42]]);
     helpers.seed("Data!A1", [
-      [42, { formula: "=A1+C1", value: 84 }, { formula: "=A1*1.05", value: 44 }],
+      [
+        42,
+        { formula: "=A1+C1", value: 84 },
+        { formula: "=A1*1.05", value: 44 },
+      ],
     ]);
     helpers.select("Model!A1");
     await smt.setAutocolorOnEdit(true);

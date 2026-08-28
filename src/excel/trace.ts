@@ -32,7 +32,9 @@ export async function traceActiveCell(
 
     // The hosted office.js always defines the method, so the host API set decides.
     const method =
-      direction === "precedents" ? "getDirectPrecedents" : "getDirectDependents";
+      direction === "precedents"
+        ? "getDirectPrecedents"
+        : "getDirectDependents";
     const callable = (cell as unknown as Record<string, unknown>)[method];
     if (
       typeof callable !== "function" ||

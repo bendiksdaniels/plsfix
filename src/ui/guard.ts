@@ -8,13 +8,19 @@ import type { ToastKind } from "./toast";
 export interface GuardDeps {
   setBusy(busy: boolean): void;
   notify(message: string, kind?: ToastKind, details?: string): void;
-  describe(error: unknown, action: string | undefined): { message: string; details: string };
+  describe(
+    error: unknown,
+    action: string | undefined,
+  ): { message: string; details: string };
   after?(): Promise<void>;
   decorate?(message: string): string;
   finally?(): void;
 }
 
-export type Guard = (run: () => Promise<string>, action?: string) => Promise<void>;
+export type Guard = (
+  run: () => Promise<string>,
+  action?: string,
+) => Promise<void>;
 
 export function makeGuard(deps: GuardDeps): Guard {
   return async (run, action) => {

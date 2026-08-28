@@ -183,7 +183,11 @@ export async function formatSelectedChart(): Promise<void> {
     chart.series.load("count");
     await context.sync();
 
-    styleChartShell(chart, null, !AXIS_FREE_CHARTS.includes(String(chart.chartType)));
+    styleChartShell(
+      chart,
+      null,
+      !AXIS_FREE_CHARTS.includes(String(chart.chartType)),
+    );
 
     const colors = chartSeriesColors();
     for (let index = 0; index < chart.series.count; index += 1) {
@@ -223,8 +227,13 @@ export async function addCagrLabel(): Promise<string> {
       throw new Error("The first and last cells must hold numbers.");
     }
 
-    const shapes = (sheet as unknown as { shapes?: Excel.ShapeCollection }).shapes;
-    if (!shapes || typeof shapes.addTextBox !== "function" || !hostSupports("1.9")) {
+    const shapes = (sheet as unknown as { shapes?: Excel.ShapeCollection })
+      .shapes;
+    if (
+      !shapes ||
+      typeof shapes.addTextBox !== "function" ||
+      !hostSupports("1.9")
+    ) {
       throw new Error("Chart labels need a newer Excel build.");
     }
 

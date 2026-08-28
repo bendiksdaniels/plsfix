@@ -44,7 +44,8 @@ function persistOverlaySetting(context: Excel.RequestContext): void {
 
 export async function restorePersistedOverlay(): Promise<boolean> {
   return Excel.run(async (context) => {
-    const setting = context.workbook.settings.getItemOrNullObject(OVERLAY_SETTING);
+    const setting =
+      context.workbook.settings.getItemOrNullObject(OVERLAY_SETTING);
     setting.load("isNullObject,value");
     await context.sync();
     if (setting.isNullObject || !setting.value) return false;
@@ -78,9 +79,13 @@ export async function restorePersistedOverlay(): Promise<boolean> {
 function overlayKey(mark: AuditMark, patternColor: string): string | null {
   switch (mark) {
     case "horizontal":
-      return [Excel.FillPattern.lightHorizontal, BASE_WHITE, patternColor].join("|");
+      return [Excel.FillPattern.lightHorizontal, BASE_WHITE, patternColor].join(
+        "|",
+      );
     case "vertical":
-      return [Excel.FillPattern.lightVertical, BASE_WHITE, patternColor].join("|");
+      return [Excel.FillPattern.lightVertical, BASE_WHITE, patternColor].join(
+        "|",
+      );
     case "both":
       return [Excel.FillPattern.crissCross, BASE_WHITE, patternColor].join("|");
     case "lone":
@@ -112,7 +117,9 @@ export async function snapshotFills(
   });
 }
 
-export async function restoreFills(context: Excel.RequestContext): Promise<void> {
+export async function restoreFills(
+  context: Excel.RequestContext,
+): Promise<void> {
   if (fillSnapshots.size === 0) return;
 
   const pending = [...fillSnapshots.values()].map((snapshot) => ({

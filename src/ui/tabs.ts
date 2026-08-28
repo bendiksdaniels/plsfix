@@ -3,7 +3,9 @@
 // panel and hides the rest. It never touches panel contents - a stale
 // listener inside a panel is the caller's problem to solve on re-render.
 
-export function installTabs(bar: HTMLElement): { activate(tabId: string): void } {
+export function installTabs(bar: HTMLElement): {
+  activate(tabId: string): void;
+} {
   const tabs = Array.from(bar.querySelectorAll<HTMLElement>("[role=tab]"));
 
   function activate(tabId: string): void {

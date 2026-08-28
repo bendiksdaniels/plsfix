@@ -215,6 +215,10 @@ export function extractPaletteFromPixels(
     .sort((a, b) => b.count - a.count)
     .slice(0, maxColors)
     .map((bucket) =>
-      toHex(bucket.r / bucket.count, bucket.g / bucket.count, bucket.b / bucket.count),
+      toHex(
+        bucket.r / bucket.count,
+        bucket.g / bucket.count,
+        bucket.b / bucket.count,
+      ),
     );
 }

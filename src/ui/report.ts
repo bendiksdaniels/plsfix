@@ -11,7 +11,8 @@ export interface ReportContext {
 const FALLBACK_MESSAGE = "The add-in could not complete that action.";
 
 function readProp(error: unknown, key: string): unknown {
-  if (typeof error !== "object" || error === null || !(key in error)) return undefined;
+  if (typeof error !== "object" || error === null || !(key in error))
+    return undefined;
   return (error as Record<string, unknown>)[key];
 }
 
@@ -24,13 +25,18 @@ export function describeError(
 
   const lines = [String(error)];
   if (action !== undefined) lines.push(`action: ${action}`);
-  lines.push(`host: ${ctx.host}`, `version: ${ctx.version}`, `platform: ${navigator.userAgent}`);
+  lines.push(
+    `host: ${ctx.host}`,
+    `version: ${ctx.version}`,
+    `platform: ${navigator.userAgent}`,
+  );
 
   const code = readProp(error, "code");
   if (typeof code === "string") lines.push(`code: ${code}`);
 
   const debugInfo = readProp(error, "debugInfo");
-  if (debugInfo !== undefined) lines.push(`debugInfo: ${JSON.stringify(debugInfo)}`);
+  if (debugInfo !== undefined)
+    lines.push(`debugInfo: ${JSON.stringify(debugInfo)}`);
 
   if (error instanceof Error && error.stack) lines.push(error.stack);
 
