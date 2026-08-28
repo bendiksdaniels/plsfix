@@ -11,6 +11,10 @@
 //   * formulasR1C1 mirrors the A1 text unless a test seeds it (seedR1C1).
 //   * getSelectedRange models one rectangular area, never a multi-area selection.
 //   * copyFrom(..., formulas) copies text verbatim; Excel rewrites relative refs.
+//   * getImage() hands back a signature-only PNG sized from the fake grid (64pt
+//     columns, 20pt rows) or from the requested chart size, never a real picture.
+
+import { fakePng } from "./fakepng";
 
 export type CellValue = string | number | boolean | null;
 
@@ -90,6 +94,15 @@ export function formatA1(rect: Rect): string {
   if (rect.rowCount === 1 && rect.colCount === 1) return start;
   const end = `${columnName(rect.col + rect.colCount - 1)}${rect.row + rect.rowCount}`;
   return `${start}:${end}`;
+}
+
+// The form Excel stores a defined name in: every column letter and row number
+// pinned, so inserting rows above the anchor moves it instead of breaking it.
+export function absoluteA1(rect: Rect): string {
+  return formatA1(rect)
+    .split(":")
+    .map((part) => part.replace(/([A-Z]+)/, "$$$1").replace(/(\d+)/, "$$$1"))
+    .join(":");
 }
 
 // Excel quotes a sheet name that is not a bare identifier and doubles apostrophes.
@@ -296,6 +309,9 @@ export interface FakeSeries {
 
 export interface FakeChart {
   sheetName: string;
+  name: string;
+  width: number;
+  height: number;
   chartType: string;
   sourceAddress: string;
   seriesBy: string;
@@ -314,6 +330,36 @@ export interface FakeChart {
   dataLabels: { showValue?: boolean };
   seriesCount: number;
   series: FakeSeries[];
+}
+
+const DEFAULT_CHART_WIDTH = 480;
+const DEFAULT_CHART_HEIGHT = 288;
+
+// One place the chart defaults live, so a new field cannot be forgotten at one
+// of the three sites that mint a chart record.
+export function newChart(
+  sheetName: string,
+  name: string,
+  over: Partial<FakeChart> = {},
+): FakeChart {
+  return {
+    sheetName,
+    name,
+    width: DEFAULT_CHART_WIDTH,
+    height: DEFAULT_CHART_HEIGHT,
+    chartType: "",
+    sourceAddress: "",
+    seriesBy: "",
+    title: null,
+    titleFont: {},
+    font: {},
+    legend: { font: {} },
+    axes: { category: {}, value: {} },
+    dataLabels: {},
+    seriesCount: 0,
+    series: [],
+    ...over,
+  };
 }
 
 export interface FakeShape {
@@ -335,6 +381,7 @@ export interface FakeShape {
 export interface FakeName {
   name: string;
   formula: string;
+  visible: boolean;
 }
 
 export interface TraceArea {
@@ -347,6 +394,8 @@ export type TraceConfig = TraceArea[] | "itemNotFound";
 export class FakeWorkbook {
   sheets: FakeSheet[] = [];
   settings = new Map<string, string>();
+  // What getFilePropertiesAsync reports; empty means an unsaved workbook.
+  fileUrl = "";
   names: FakeName[] = [];
   charts: FakeChart[] = [];
   shapes: FakeShape[] = [];
@@ -414,6 +463,12 @@ export class FakeWorkbook {
     this.ordered().forEach((sheet, index) => {
       sheet.position = index;
     });
+  }
+
+  selectionAddress(): string {
+    const sheet = this.find(this.selection.sheetId);
+    if (!sheet) return "";
+    return `${quoteSheet(sheet.name)}!${formatA1(this.selection.rect)}`;
   }
 }
 
@@ -523,7 +578,7 @@ const SHAPES: Record<string, Shape> = {
       getUsedRangeOrNullObject: "range",
     },
   },
-  charts: { returns: { add: "chart" } },
+  charts: { returns: { add: "chart", getItemOrNullObject: "chart" } },
   shapes: { returns: { addTextBox: "shape" } },
   range: {
     scalars: [
@@ -553,6 +608,7 @@ const SHAPES: Record<string, Shape> = {
       getSurroundingRegion: "range",
       getUsedRangeOrNullObject: "range",
       getCellProperties: "clientResult",
+      getImage: "clientResult",
       getDirectPrecedents: "trace",
       getDirectDependents: "trace",
     },
@@ -577,8 +633,10 @@ const SHAPES: Record<string, Shape> = {
   rangeCollection: { scalars: ["items"], items: "traceArea" },
   traceArea: { scalars: ["address", "cellCount"] },
   chart: {
-    scalars: ["chartType", "isNullObject"],
+    scalars: ["chartType", "name", "width", "height", "isNullObject"],
+    returns: { getImage: "clientResult" },
     children: {
+      worksheet: "worksheet",
       format: "chartFormat",
       title: "chartTitle",
       axes: "chartAxes",
@@ -639,8 +697,19 @@ const SHAPES: Record<string, Shape> = {
   shapeTextRange: { scalars: ["text"], children: { font: "chartFont" } },
   settings: { returns: { add: "setting", getItemOrNullObject: "setting" } },
   setting: { scalars: ["key", "value", "isNullObject"] },
-  names: { scalars: ["items"], items: "namedItem" },
-  namedItem: { scalars: ["name", "formula"] },
+  names: {
+    scalars: ["items"],
+    items: "namedItem",
+    returns: {
+      add: "namedItem",
+      getItem: "namedItem",
+      getItemOrNullObject: "namedItem",
+    },
+  },
+  namedItem: {
+    scalars: ["name", "formula", "visible", "isNullObject"],
+    returns: { getRange: "range", getRangeOrNullObject: "range" },
+  },
 };
 
 interface LoadState {
@@ -1040,6 +1109,12 @@ const ChartLegendPosition = {
   right: "Right",
   corner: "Corner",
   custom: "Custom",
+} as const;
+
+const ImageFittingMode = {
+  fit: "Fit",
+  fitAndCenter: "FitAndCenter",
+  fill: "Fill",
 } as const;
 
 const RangeUnderlineStyle = {
@@ -1578,6 +1653,12 @@ class RangeProxy {
     });
   }
 
+  // Excel renders the range at its on-screen size; the fake grid is a fixed
+  // 64pt column by a 20pt row, so the rectangle is the picture.
+  getImage(): { value: string } {
+    return { value: fakePng(this.width, this.height) };
+  }
+
   select(): void {
     this.runtime.workbook.selection = {
       sheetId: this.sheet.id,
@@ -1961,7 +2042,11 @@ class ChartAxisProxy {
 class ChartProxy {
   isNullObject = false;
 
-  constructor(public record: FakeChart) {}
+  constructor(
+    private runtime: FakeRuntime,
+    private ctx: FakeContext,
+    public record: FakeChart,
+  ) {}
 
   load(): this {
     return this;
@@ -1969,6 +2054,55 @@ class ChartProxy {
 
   get chartType(): string {
     return this.record.chartType;
+  }
+
+  get name(): string {
+    return this.record.name;
+  }
+
+  set name(value: string) {
+    this.record.name = value;
+  }
+
+  get width(): number {
+    return this.record.width;
+  }
+
+  set width(value: number) {
+    this.record.width = value;
+  }
+
+  get height(): number {
+    return this.record.height;
+  }
+
+  set height(value: number) {
+    this.record.height = value;
+  }
+
+  get worksheet(): WorksheetProxy {
+    const sheet = this.runtime.workbook.find(this.record.sheetName);
+    return sheet
+      ? new WorksheetProxy(this.runtime, this.ctx, sheet)
+      : nullWorksheet(this.runtime, this.ctx);
+  }
+
+  // The fitting mode is signature parity only: the fake draws exactly the size
+  // it was asked for.
+  getImage(
+    width: number,
+    height: number,
+    _fittingMode?: string,
+  ): { value: string } {
+    void _fittingMode;
+    return { value: fakePng(width, height) };
+  }
+
+  activate(): void {
+    const workbook = this.runtime.workbook;
+    workbook.activeChart = this.record;
+    const sheet = workbook.find(this.record.sheetName);
+    if (sheet) workbook.activeSheetId = sheet.id;
   }
 
   get format() {
@@ -2121,6 +2255,84 @@ class ShapeProxy {
 }
 
 // ---------------------------------------------------------------------------
+// Defined names
+// ---------------------------------------------------------------------------
+
+class NamedItemProxy {
+  isNullObject = false;
+
+  constructor(
+    private runtime: FakeRuntime,
+    private ctx: FakeContext,
+    private record: FakeName,
+  ) {}
+
+  load(): this {
+    return this;
+  }
+
+  get name(): string {
+    return this.record.name;
+  }
+
+  get formula(): string {
+    return this.record.formula;
+  }
+
+  get visible(): boolean {
+    return this.record.visible;
+  }
+
+  set visible(value: boolean) {
+    this.record.visible = value;
+  }
+
+  delete(): void {
+    const list = this.runtime.workbook.names;
+    const index = list.indexOf(this.record);
+    if (index >= 0) list.splice(index, 1);
+  }
+
+  // A name Excel rewrote to #REF! (the rows under it went away), or one
+  // pointing at a sheet that is gone, refers to nothing: that is the null
+  // object, not a throw.
+  private target(): RangeProxy | null {
+    const reference = this.record.formula.replace(/^=/, "");
+    if (reference.includes("#REF!")) return null;
+    try {
+      const { sheet, rect } = resolve(this.runtime.workbook, reference);
+      return new RangeProxy(this.runtime, this.ctx, sheet, rect);
+    } catch {
+      return null;
+    }
+  }
+
+  getRange(): RangeProxy {
+    const range = this.target();
+    if (!range) {
+      throw hostError(
+        ErrorCodes.generalException,
+        `${this.record.name} does not refer to a range.`,
+      );
+    }
+    return range;
+  }
+
+  getRangeOrNullObject(): RangeProxy & { isNullObject: boolean } {
+    const found = this.target();
+    const range = (found ??
+      new RangeProxy(
+        this.runtime,
+        this.ctx,
+        new FakeSheet("__missing__", "__missing__"),
+        { row: 0, col: 0, rowCount: 1, colCount: 1 },
+      )) as RangeProxy & { isNullObject: boolean };
+    range.isNullObject = found === null;
+    return range;
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Worksheet
 // ---------------------------------------------------------------------------
 
@@ -2209,26 +2421,34 @@ class WorksheetProxy {
 
   get charts() {
     const runtime = this.runtime;
+    const ctx = this.ctx;
     const sheet = this.sheet;
     return {
       add(chartType: string, source: RangeProxy, seriesBy: string): ChartProxy {
-        const record: FakeChart = {
-          sheetName: sheet.name,
-          chartType,
-          sourceAddress: source.address,
-          seriesBy,
-          title: null,
-          titleFont: {},
-          font: {},
-          legend: { font: {} },
-          axes: { category: {}, value: {} },
-          dataLabels: {},
-          seriesCount: Math.max(1, source.columnCount - 1),
-          series: [],
-        };
+        const record = newChart(
+          sheet.name,
+          `Chart ${runtime.workbook.charts.length + 1}`,
+          {
+            chartType,
+            sourceAddress: source.address,
+            seriesBy,
+            seriesCount: Math.max(1, source.columnCount - 1),
+          },
+        );
         runtime.workbook.charts.push(record);
         runtime.workbook.activeChart = record;
-        return new ChartProxy(record);
+        return new ChartProxy(runtime, ctx, record);
+      },
+      // Charts are named workbook-wide but looked up sheet by sheet, which is
+      // how a chart that was moved is found again.
+      getItemOrNullObject(name: string): ChartProxy {
+        const record = runtime.workbook.charts.find(
+          (chart) => chart.sheetName === sheet.name && chart.name === name,
+        );
+        if (record) return new ChartProxy(runtime, ctx, record);
+        const missing = new ChartProxy(runtime, ctx, newChart("", ""));
+        missing.isNullObject = true;
+        return missing;
       },
     };
   }
@@ -2394,21 +2614,8 @@ class WorkbookProxy {
 
   getActiveChartOrNullObject(): ChartProxy {
     const record = this.runtime.workbook.activeChart;
-    if (record) return new ChartProxy(record);
-    const empty = new ChartProxy({
-      sheetName: "",
-      chartType: "",
-      sourceAddress: "",
-      seriesBy: "",
-      title: null,
-      titleFont: {},
-      font: {},
-      legend: { font: {} },
-      axes: { category: {}, value: {} },
-      dataLabels: {},
-      seriesCount: 0,
-      series: [],
-    });
+    if (record) return new ChartProxy(this.runtime, this.ctx, record);
+    const empty = new ChartProxy(this.runtime, this.ctx, newChart("", ""));
     empty.isNullObject = true;
     return empty;
   }
@@ -2435,18 +2642,47 @@ class WorkbookProxy {
   }
 
   get names() {
-    const list = this.runtime.workbook.names;
+    const runtime = this.runtime;
+    const ctx = this.ctx;
+    const list = runtime.workbook.names;
+    const wrap = (record: FakeName) => new NamedItemProxy(runtime, ctx, record);
     return {
       load: () => undefined,
       get items() {
-        return list.map((entry) => ({
-          name: entry.name,
-          formula: entry.formula,
-          delete() {
-            const index = list.indexOf(entry);
-            if (index >= 0) list.splice(index, 1);
-          },
-        }));
+        return list.map(wrap);
+      },
+      // Excel stores a range reference absolutely, so the name survives rows
+      // being inserted above it; a string reference is taken as given.
+      add(name: string, reference: RangeProxy | string): NamedItemProxy {
+        if (list.some((entry) => entry.name === name)) {
+          throw hostError(
+            ErrorCodes.itemAlreadyExists,
+            `${name} already exists.`,
+          );
+        }
+        const formula =
+          typeof reference === "string"
+            ? reference.startsWith("=")
+              ? reference
+              : `=${reference}`
+            : `=${quoteSheet(reference.sheet.name)}!${absoluteA1(reference.rect)}`;
+        const record: FakeName = { name, formula, visible: true };
+        list.push(record);
+        return wrap(record);
+      },
+      getItem(name: string): NamedItemProxy {
+        const record = list.find((entry) => entry.name === name);
+        if (!record) {
+          throw hostError(ErrorCodes.itemNotFound, `No name ${name}.`);
+        }
+        return wrap(record);
+      },
+      getItemOrNullObject(name: string): NamedItemProxy {
+        const record = list.find((entry) => entry.name === name);
+        if (record) return wrap(record);
+        const missing = wrap({ name, formula: "", visible: false });
+        missing.isNullObject = true;
+        return missing;
       },
     };
   }
@@ -2506,6 +2742,8 @@ export interface FakeHelpers {
   addSheet(name: string): FakeSheet;
   deleteSheet(name: string): void;
   addName(name: string, formula: string): void;
+  setNameFormula(name: string, formula: string): void;
+  breakName(name: string): void;
   select(address: string): void;
   setActiveCell(address: string): void;
   seed(address: string, grid: SeedEntry[][]): void;
@@ -2524,7 +2762,10 @@ export interface FakeHelpers {
   columnWidth(sheetName: string, col: number): number;
   setPrecedents(address: string, config: TraceConfig): void;
   setDependents(address: string, config: TraceConfig): void;
+  addChart(sheetName: string, chart?: Partial<FakeChart>): FakeChart;
+  moveChart(name: string, toSheet: string): void;
   setActiveChart(chart: FakeChart | null): void;
+  setting(key: string): string | null;
   setSupported(check: (set: string, version: string) => boolean): void;
   failNextSync(error?: Error): void;
   changeHandlerCount(): number;
@@ -2586,6 +2827,7 @@ export function installFakeHost(options: FakeHostOptions = {}): {
     ChartLineStyle,
     ChartLegendPosition,
     RangeUnderlineStyle,
+    ImageFittingMode,
     ErrorCodes,
   };
 
@@ -2604,8 +2846,21 @@ export function installFakeHost(options: FakeHostOptions = {}): {
         isSetSupported: (set: string, version: string) =>
           runtime.supported(set, version),
       },
-      document: { addHandlerAsync: () => undefined },
+      document: {
+        addHandlerAsync: () => undefined,
+        // Always synchronous here; the real call is async and can fail, which
+        // is why the adapter reads the status rather than the value alone.
+        getFilePropertiesAsync(
+          callback: (result: {
+            status: string;
+            value: { url: string };
+          }) => void,
+        ) {
+          callback({ status: "succeeded", value: { url: workbook.fileUrl } });
+        },
+      },
     },
+    AsyncResultStatus: { Succeeded: "succeeded", Failed: "failed" },
     HostType: { Excel: "Excel", Word: "Word", PowerPoint: "PowerPoint" },
     EventType: { DocumentSelectionChanged: "documentSelectionChanged" },
     onReady: (callback?: (info: { host: string }) => unknown) =>
@@ -2630,7 +2885,17 @@ export function installFakeHost(options: FakeHostOptions = {}): {
     addSheet: (name) => workbook.addSheet(name),
     deleteSheet: (name) => workbook.deleteSheet(name),
     addName(name, formula) {
-      workbook.names.push({ name, formula });
+      workbook.names.push({ name, formula, visible: true });
+    },
+    // Excel rewrites a name's formula on its own when rows move under it; this
+    // is how a test replays that without an insert-rows API.
+    setNameFormula(name, formula) {
+      const record = workbook.names.find((entry) => entry.name === name);
+      if (!record) throw new Error(`fake host: no name "${name}"`);
+      record.formula = formula;
+    },
+    breakName(name) {
+      helpers.setNameFormula(name, "=#REF!");
     },
     select(address) {
       const { sheet, rect } = resolve(workbook, address);
@@ -2715,9 +2980,27 @@ export function installFakeHost(options: FakeHostOptions = {}): {
     setDependents(address, config) {
       workbook.dependents.set(address, config);
     },
+    addChart(sheetName, chart = {}) {
+      const record = newChart(
+        sheetName,
+        `Chart ${workbook.charts.length + 1}`,
+        chart,
+      );
+      workbook.charts.push(record);
+      return record;
+    },
+    moveChart(name, toSheet) {
+      const record = workbook.charts.find((chart) => chart.name === name);
+      if (!record) throw new Error(`fake host: no chart "${name}"`);
+      if (!workbook.find(toSheet)) {
+        throw new Error(`fake host: no sheet "${toSheet}"`);
+      }
+      record.sheetName = toSheet;
+    },
     setActiveChart(chart) {
       workbook.activeChart = chart;
     },
+    setting: (key) => workbook.settings.get(key) ?? null,
     setSupported(check) {
       runtime.supported = check;
     },
