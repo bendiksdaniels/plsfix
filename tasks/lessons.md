@@ -42,3 +42,19 @@ reason. Debug shortcuts learned: a missing
 registered (failure is BEFORE Excel); `npm start -- --no-sideload` runs the whole tooling
 pipeline headlessly; the strict-load fake host + deleting `.load()` calls one at a time
 (mutation sweep) proves load-ordering correctness without touching Excel.
+
+## 2026-08-29: agent worktrees fork from the session-start HEAD, not from main
+
+Every `isolation: worktree` agent started at the commit the session opened on (9e4b7f4), five
+commits behind main; three of them noticed, one built on the stale tree. Rule: the first line
+of every dispatch is `git reset --hard <current main sha>` and the report must name that sha.
+Merging a branch whose conflict hunk cuts through a CSS rule must be resolved from the two
+full file versions (main + the branch's appended block), never by keeping both hunk sides.
+
+## 2026-08-29: fix rounds cost more than the build
+
+A 6-line fix through a resumed implementer cost 313k tokens (it re-verified everything).
+Rules now in the ledgers: fixes under ~10 lines with an unambiguous spec are applied by the
+controller and covered by the named tests; doc/script-only tasks and pure-logic tasks whose
+tests were fully specified in the plan get a controller review, opus reviews go to adapters,
+crypto and the server. One review pass per task; scoped re-reviews only when a gate fails.
