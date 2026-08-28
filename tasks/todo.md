@@ -76,14 +76,14 @@ Tier 1 groundwork (clean code the feature needs anyway)
 
 Tier 2 feature (v2.0.000)
 - [ ] T2.0 spike in real PowerPoint/Excel (spec section 10) -> research corrections + fallback go/no-go
-- [ ] T2.1 src/link/{model,crypto,status}.ts + tests
-- [ ] T2.2 src/link/relay.ts RelayClient + fetch-stub tests
-- [ ] T2.3 server: store.rs (sqlite) + relay.rs routes + sweeper + tests; MODELIS_DATA; systemd unit
-- [ ] T2.4 test/fakeppt.ts fake PowerPoint host (strict load semantics)
-- [ ] T2.5 src/ppt/host.ts adapter (scan/insert/refresh/break, <1.8 fallback) + integration tests
-- [ ] T2.6 src/excel/links.ts adapter (anchors, registry, render, export/push/remove) + integration tests
-- [ ] T2.7 PowerPoint pane (pptpane.html, src/ppt/main.ts: Inbox, Links, Update, Settings) + Excel Links tab
-- [ ] T2.8 manifest: Presentation host + ribbon; Vite second entry; server cache prefix; deploy
+- [x] T2.1 src/link/{model,crypto,status}.ts + tests
+- [x] T2.2 src/link/relay.ts RelayClient + fetch-stub tests
+- [x] T2.3 server: store.rs (sqlite) + relay.rs routes + sweeper + tests; MODELIS_DATA; systemd unit
+- [x] T2.4 test/fakeppt.ts fake PowerPoint host (strict load semantics)
+- [x] T2.5 src/ppt/host.ts adapter (scan/insert/refresh/break, <1.8 fallback) + integration tests
+- [x] T2.6 src/excel/links.ts adapter (anchors, registry, render, export/push/remove) + integration tests
+- [x] T2.7 PowerPoint pane (pptpane.html, src/ppt/main.ts: Inbox, Links, Update, Settings) + Excel Links tab
+- [x] T2.8 manifest: Presentation host + ribbon; Vite second entry; server cache prefix; deploy
 - [ ] T2.9 docs: feasibility corrections, CLAUDE.md relay exception, README (surgical), AUTORESUME; tag v2.0.000
 - [ ] DANIEL: real Office pass (spec section 11) after deploy
 
