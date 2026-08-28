@@ -13,7 +13,7 @@
   "scripts": {
     "dev": "vite",
     "dev-server": "vite",
-    "build": "tsc --noEmit && vite build",
+    "build": "tsc --noEmit && tsx scripts/build-functions-metadata.ts && vite build && vite build --config vite.functions.config.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:server": "cargo test --manifest-path server/Cargo.toml",
@@ -25,16 +25,19 @@
     "validate": "office-addin-manifest validate manifest.xml && office-addin-manifest validate manifest.prod.xml",
     "manifest:build": "tsx scripts/build-manifests.ts",
     "manifest:check": "tsx scripts/build-manifests.ts --check",
+    "functions:build": "tsx scripts/build-functions-metadata.ts",
+    "functions:check": "tsx scripts/build-functions-metadata.ts --check",
     "version:check": "tsx scripts/check-version.ts",
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "check": "npm run typecheck && npm run lint && npm run format:check && npm test && npm run test:server && npm run manifest:check && npm run version:check"
+    "check": "npm run typecheck && npm run lint && npm run format:check && npm test && npm run test:server && npm run manifest:check && npm run functions:check && npm run version:check"
   },
   "dependencies": {
     "office-js": "0.1.0"
   },
   "devDependencies": {
+    "@types/custom-functions-runtime": "1.6.13",
     "@types/office-js": "1.0.606",
     "@typescript/native": "npm:typescript@7.0.2",
     "eslint": "9.39.5",
