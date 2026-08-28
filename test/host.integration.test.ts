@@ -448,6 +448,88 @@ describe("style cycles", () => {
       }
     });
   });
+
+  // Sizes are sheet state, not cell state: the first row or column of the
+  // selection carries the rung, the whole band is written, and SMT Undo can
+  // reach neither.
+  describe("sizes", () => {
+    it("steps the selected rows through the height ladder and wraps", async () => {
+      helpers.select("Model!B2:C4");
+      const rungs = cycles.buildSizeCycles().rowHeight.length;
+      const walked: number[] = [];
+
+      for (let press = 0; press < rungs; press += 1) {
+        await smt.applyRowHeightCycle();
+        // The whole band moves together, first row to last.
+        expect(helpers.rowHeight("Model", 3)).toBe(
+          helpers.rowHeight("Model", 1),
+        );
+        walked.push(helpers.rowHeight("Model", 1));
+      }
+
+      expect(walked).toEqual([18, 21, 24, 30, 15]);
+    });
+
+    it("widens the selected columns and comes back narrow", async () => {
+      helpers.select("Model!B2:C4");
+      const rungs = cycles.buildSizeCycles().columnWidth.length;
+      const walked: number[] = [];
+
+      for (let press = 0; press < rungs; press += 1) {
+        await smt.applyColumnWidthCycle();
+        walked.push(helpers.columnWidth("Model", 2));
+      }
+
+      expect(walked).toEqual([80, 96, 120, 48, 64]);
+    });
+
+    it("leaves the rows and columns outside the selection alone", async () => {
+      helpers.select("Model!B2:C4");
+      await smt.applyRowHeightCycle();
+      await smt.applyColumnWidthCycle();
+
+      expect(helpers.rowHeight("Model", 1)).toBe(18);
+      expect(helpers.rowHeight("Model", 4)).toBe(15);
+      expect(helpers.columnWidth("Model", 1)).toBe(80);
+      expect(helpers.columnWidth("Model", 3)).toBe(64);
+    });
+
+    it("reads the rung off the first row of the selection", async () => {
+      helpers.sheet("Model").rowHeights.set(1, 21);
+      helpers.select("Model!B2:C4");
+      await smt.applyRowHeightCycle();
+
+      for (const row of [1, 2, 3]) {
+        expect(helpers.rowHeight("Model", row)).toBe(24);
+      }
+    });
+
+    // Clicking the column headers is how a modeller reaches this: a cell cap
+    // would refuse the selection the action is made for.
+    it("takes a whole-column selection", async () => {
+      helpers.select("Model!B:C");
+      await smt.applyColumnWidthCycle();
+
+      expect(helpers.columnWidth("Model", 1)).toBe(80);
+      expect(helpers.columnWidth("Model", 2)).toBe(80);
+      expect(helpers.columnWidth("Model", 3)).toBe(64);
+    });
+
+    it("runs outside SMT Undo, which cannot reach sheet state", async () => {
+      helpers.select("Model!A1:C1");
+      await smt.applyPreset("title");
+      expect(helpers.rowHeight("Model", 0)).toBe(25);
+
+      // The preset's 25 pt is no rung of ours, so the ladder starts at its foot.
+      await smt.applyRowHeightCycle();
+      expect(helpers.rowHeight("Model", 0)).toBe(15);
+      // The cycle captured nothing, so the slot still holds the preset.
+      expect(smt.undoTarget()).toBe("Model!A1:C1");
+
+      await smt.undoLastAction();
+      expect(helpers.rowHeight("Model", 0)).toBe(15);
+    });
+  });
 });
 
 // ---------------------------------------------------------------------------

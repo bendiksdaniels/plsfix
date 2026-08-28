@@ -103,6 +103,16 @@ describe("a multi-area selection", () => {
     ]);
   });
 
+  it("is refused by the size cycles", async () => {
+    helpers.selectAreas(["Model!A2:C4", "Model!A6:C8"]);
+    await expect(smt.applyRowHeightCycle()).rejects.toThrow(
+      "row height: select a single range",
+    );
+    await expect(smt.applyColumnWidthCycle()).rejects.toThrow(
+      "column width: select a single range",
+    );
+  });
+
   it("still works as one block", async () => {
     helpers.selectAreas(["Model!A2:C4"]);
     expect(await smt.unpivotSelection()).toBe("Unpivot: 4 rows on Unpivot");

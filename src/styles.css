@@ -322,6 +322,10 @@ button:disabled {
 .cycle-strip.style-strip {
   grid-template-columns: repeat(6, 1fr);
 }
+/* The size cycles are two wide labels, so they take half the strip each. */
+.cycle-strip.size-strip {
+  grid-template-columns: repeat(2, 1fr);
+}
 
 .action-list {
   display: grid;
