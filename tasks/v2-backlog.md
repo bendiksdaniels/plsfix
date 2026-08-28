@@ -15,9 +15,9 @@ each item. Stop when Daniel intervenes or the list is empty.
       clipboard copy (ui/toast.ts private + pane/links-tab.ts) -> `src/ui/clipboard.ts`; unit tests.
 - [x] B3 "Update this slide" uses the ACTIVE slide: `activeSlideId()` in `src/ppt/host.ts`
       (`getSelectedSlides`, 1.5), fake host support, pane uses it (ticked rows no longer needed).
-- [ ] B4 Server minors: cache rule `starts_with("/assets/")`; split `inbox_lifecycle` test under
+- [x] B4 Server minors: cache rule `starts_with("/assets/")`; split `inbox_lifecycle` test under
       50 lines; startup prints the data path (verify), `cargo clippy` clean.
-- [ ] MILESTONE v2.0.x deploy.
+- [x] MILESTONE v2.0.x deploy (v2.0.4, 29.08).
 
 ## Features (v2.1)
 
