@@ -47,7 +47,7 @@ each item. Stop when Daniel intervenes or the list is empty.
       readable, keyboard focus order sane; fix what is found.
 - [ ] C4 FEATURES.md section 11 next: `=SMT.ROUND` custom functions (research the CustomFunctions
       runtime + manifest requirements first; implement only if it fits the shared runtime).
-- [ ] C5 FEATURES.md P2 leftovers, one per iteration: border cycles, row-height/column-width cycles,
+- [ ] C5 FEATURES.md P2 leftovers, one per iteration: border cycles (done v2.1.3), row-height/column-width cycles,
       paintbrush slots, Super Find, unused-style scrubber, "prepare for sharing".
 - [x] C6 Test debt: split `test/ppt.integration.test.ts` (>400 lines) by feature; keep every
       test file under 400 lines.
