@@ -37,7 +37,7 @@ Modules (what each owns):
 - `src/excel/`: the Excel Office.js adapter, one file per feature area behind an `index.ts` barrel that keeps the import path `./excel`: `shared.ts` (public types + `parseAddress`), `internal.ts` (private range/fill/host-capability helpers, not barrel-exported), `undo.ts`, `selection.ts`, `formulas.ts`, `paste.ts`, `autocolor.ts`, `audit.ts`, `trace.ts`, `charts.ts`, `workbook.ts`; `links.ts` (v2, planned).
 - Pure model modules (typed in/out, no I/O): `settings` (brand palette), `cycles`, `paste` (fill maths), `classify`, `audit`, `chartmath`, `model`, `workbook`.
 - `src/link/` (core, pure): `model` (types + codecs), `crypto` (HKDF/AES-GCM, base64url, tokens), `status` (link state rules, slide fitting), `png` (IHDR size), `workspace` (pairing key + host key store), `relay` (fetch client, typed errors).
-- `src/ppt/` (planned): `host.ts` (the only PowerPoint Office.js code: scan by tags, insert, refresh, break), `links.ts` (orchestration), `views.ts` (DOM renderers), `main.ts`.
+- `src/ppt/`: `host.ts` (the only PowerPoint Office.js code: scan by tags, insert, refresh in place or by reinsertion below PowerPointApi 1.8, break), `links.ts` (orchestration: status rows, update summary, inbox); `views.ts` (DOM renderers) and `main.ts` planned.
 - `src/pane/links-tab.ts` (planned): the Excel "Links" tab.
 - `server/`: `lib.rs` router + cache middleware (planned split), `store.rs` sqlite (planned), `relay.rs` `/api` routes (planned), `main.rs` env + bind + sweeper.
 - `test/`: `fakehost.ts` (in-memory Excel host, strict load semantics), `fakeppt/` (PowerPoint fake: model, strict, office, index), `fakerelay.ts`, `fakepng.ts`, `*.integration.test.ts`.
