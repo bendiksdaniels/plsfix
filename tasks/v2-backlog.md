@@ -28,7 +28,7 @@ each item. Stop when Daniel intervenes or the list is empty.
       fallback (user-gap #6); pure settings codec already exists in `src/settings.ts`.
 - [x] B7 Ribbon coverage: expose the top 12 Excel actions as ribbon buttons through
       `manifest/spec.ts` (data change + icons reuse), validate both manifests.
-- [ ] B8 Tornado chart + unpivot selection (docs/FEATURES.md section 11), pure logic + adapter,
+- [x] B8 Tornado chart + unpivot selection (docs/FEATURES.md section 11), pure logic + adapter,
       fake-host tests.
 - [ ] MILESTONE v2.1.0 deploy; AUTORESUME rewrite.
 

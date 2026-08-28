@@ -9,6 +9,8 @@ export * from "./autocolor";
 export * from "./audit";
 export * from "./trace";
 export * from "./charts";
+export * from "./tornado";
+export * from "./reshape";
 export * from "./workbook";
 export * from "./links";
 export * from "./brand-store";

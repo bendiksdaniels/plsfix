@@ -336,6 +336,20 @@
                 ><small>Drops the legend at the active cell</small></span
               >
             </button>
+            <button
+              data-action="unpivot"
+              type="button"
+              title="Turn a cross-tab selection into a long table"
+            >
+              <span class="action-icon">⇲</span
+              ><span
+                ><strong>Unpivot selection</strong
+                ><small
+                  >Header row and first column become Row / Column / Value lines
+                  on a new sheet, so nothing here is overwritten</small
+                ></span
+              >
+            </button>
           </div>
           <div
             class="number-strip paste-strip"
@@ -510,6 +524,21 @@
                   closing totals</small
                 ></span
               ><kbd>Ctrl+Shift+B</kbd>
+            </button>
+            <button
+              data-action="tornado"
+              type="button"
+              title="Tornado chart from a driver, low, high table"
+            >
+              <span class="action-icon bridge">◧</span
+              ><span
+                ><strong>Tornado from selection</strong
+                ><small
+                  >Driver, low and high in three columns, ranked by swing. The
+                  base is the number above the low and high columns, or their
+                  mean; the deltas land in a helper block on the right</small
+                ></span
+              >
             </button>
             <button
               data-action="chart-format"

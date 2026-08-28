@@ -1124,6 +1124,211 @@ describe("charts", () => {
 
 // ---------------------------------------------------------------------------
 
+describe("tornado", () => {
+  // A title over the labels, the base over the outcomes, then a header row.
+  function seedDrivers(): void {
+    helpers.seed("Model!A1", [["EBITDA sensitivity", 100]]);
+    helpers.seed("Model!A2", [
+      ["Driver", "Low", "High"],
+      ["Volume", 90, 115],
+      ["Price", 60, 140],
+      ["Mix", 95, 105],
+    ]);
+    helpers.select("Model!A2:C5");
+  }
+
+  it("ranks the drivers into a helper block and charts it", async () => {
+    seedDrivers();
+    expect(await smt.insertTornado()).toBe(
+      "Tornado added: 3 drivers, base 100",
+    );
+
+    // Widest swing first, both series as deltas from the base.
+    expect(helpers.value("Model!D2")).toBe("Driver");
+    expect(helpers.value("Model!E2")).toBe("Low");
+    expect(helpers.value("Model!F2")).toBe("High");
+    expect(
+      ["D3", "E3", "F3"].map((at) => helpers.value(`Model!${at}`)),
+    ).toEqual(["Price", -40, 40]);
+    expect(
+      ["D4", "E4", "F4"].map((at) => helpers.value(`Model!${at}`)),
+    ).toEqual(["Volume", -10, 15]);
+    expect(
+      ["D5", "E5", "F5"].map((at) => helpers.value(`Model!${at}`)),
+    ).toEqual(["Mix", -5, 5]);
+
+    const chart = workbook.charts[0];
+    expect(chart).toMatchObject({
+      chartType: "BarClustered",
+      sourceAddress: "Model!D2:F5",
+      seriesBy: "Columns",
+      seriesCount: 2,
+      title: "EBITDA sensitivity",
+    });
+    // Categories reversed, so the widest swing sits on top of the bars.
+    expect(chart?.axes.category.reversePlotOrder).toBe(true);
+    expect(chart?.series).toEqual([
+      {
+        fillColor: palette.external,
+        overlap: 100,
+        gapWidth: 40,
+        pointColors: {},
+      },
+      {
+        fillColor: palette.accent,
+        overlap: 100,
+        gapWidth: 40,
+        pointColors: {},
+      },
+    ]);
+  });
+
+  it("reads a header-free table and falls back to the mean base", async () => {
+    helpers.seed("Model!A1", [
+      ["Volume", 80, 120],
+      ["Price", 90, 110],
+    ]);
+    helpers.select("Model!A1:C2");
+
+    expect(await smt.insertTornado()).toBe(
+      "Tornado added: 2 drivers, base 100",
+    );
+    expect(
+      ["D2", "E2", "F2"].map((at) => helpers.value(`Model!${at}`)),
+    ).toEqual(["Volume", -20, 20]);
+    expect(
+      ["D3", "E3", "F3"].map((at) => helpers.value(`Model!${at}`)),
+    ).toEqual(["Price", -10, 10]);
+    expect(workbook.charts[0]?.title).toBe("Sensitivity");
+  });
+
+  it("puts the helper block back on undo", async () => {
+    helpers.seed("Model!D2", [["keep me"]]);
+    seedDrivers();
+    await expectExactUndo(() => smt.insertTornado());
+  });
+
+  it("leaves the bar shaping alone on an older host", async () => {
+    helpers.setSupported(
+      (_set, version) => version !== "1.7" && version !== "1.8",
+    );
+    seedDrivers();
+    await smt.insertTornado();
+
+    expect(workbook.charts[0]?.axes.category.reversePlotOrder).toBeUndefined();
+    expect(workbook.charts[0]?.series[0]?.overlap).toBeUndefined();
+    expect(workbook.charts[0]?.series[0]?.gapWidth).toBeUndefined();
+  });
+
+  it("refuses anything that is not a driver, low, high table", async () => {
+    const shape =
+      "tornado: need 3 columns (label, low, high) and at least 2 rows";
+    helpers.select("Model!A1:B5");
+    expect(await rejects(() => smt.insertTornado())).toBe(shape);
+
+    // Three columns, but the header leaves a single driver behind.
+    helpers.seed("Model!A1", [
+      ["Driver", "Low", "High"],
+      ["Volume", 90, 115],
+    ]);
+    helpers.select("Model!A1:C2");
+    expect(await rejects(() => smt.insertTornado())).toBe(shape);
+
+    helpers.seed("Model!A1", [
+      ["Volume", 90, "n/a"],
+      ["Price", 60, 140],
+    ]);
+    helpers.select("Model!A1:C2");
+    expect(await rejects(() => smt.insertTornado())).toBe(
+      "tornado: the low and high columns must hold numbers",
+    );
+
+    helpers.select("Model!A1:C101");
+    expect(await rejects(() => smt.insertTornado())).toBe(
+      "tornado: supports up to 100 drivers",
+    );
+  });
+});
+
+// ---------------------------------------------------------------------------
+
+describe("unpivot", () => {
+  function seedCrossTab(): void {
+    helpers.seed("Model!A1", [
+      ["", "North", "South"],
+      ["Q1", 10, 20],
+      ["Q2", 30, ""],
+    ]);
+    helpers.select("Model!A1:C3");
+  }
+
+  it("writes the long table on a new sheet and goes there", async () => {
+    seedCrossTab();
+    expect(await smt.unpivotSelection()).toBe("Unpivot: 3 rows on Unpivot");
+
+    expect(
+      ["A1", "B1", "C1"].map((at) => helpers.value(`Unpivot!${at}`)),
+    ).toEqual(["Row", "Column", "Value"]);
+    expect(
+      ["A2", "B2", "C2"].map((at) => helpers.value(`Unpivot!${at}`)),
+    ).toEqual(["Q1", "North", 10]);
+    expect(
+      ["A3", "B3", "C3"].map((at) => helpers.value(`Unpivot!${at}`)),
+    ).toEqual(["Q1", "South", 20]);
+    expect(
+      ["A4", "B4", "C4"].map((at) => helpers.value(`Unpivot!${at}`)),
+    ).toEqual(["Q2", "North", 30]);
+    // The blank cell writes no line at all.
+    expect(helpers.value("Unpivot!A5")).toBe("");
+
+    expect(helpers.font("Unpivot!A1")).toMatchObject({
+      name: palette.font,
+      size: 10,
+      bold: true,
+      color: theme.titleText,
+    });
+    expect(helpers.fill("Unpivot!A1").color).toBe(theme.titleFill);
+    expect(helpers.font("Unpivot!C4")).toMatchObject({
+      name: palette.font,
+      bold: false,
+    });
+    expect(workbook.activeSheetId).toBe(helpers.sheet("Unpivot").id);
+    // The source is read, never rewritten.
+    expect(helpers.value("Model!B2")).toBe(10);
+  });
+
+  it("takes the next free name when an Unpivot sheet exists", async () => {
+    helpers.addSheet("unpivot");
+    seedCrossTab();
+
+    expect(await smt.unpivotSelection()).toBe("Unpivot: 3 rows on Unpivot 2");
+    expect(helpers.value("Unpivot 2!A2")).toBe("Q1");
+  });
+
+  it("refuses a selection it cannot key, empty or oversized", async () => {
+    helpers.select("Model!A1:B1");
+    expect(await rejects(() => smt.unpivotSelection())).toBe(
+      "unpivot: need a header row, a key column and one column of values",
+    );
+
+    helpers.seed("Model!A1", [
+      ["", "North"],
+      ["Q1", ""],
+    ]);
+    helpers.select("Model!A1:B2");
+    expect(await rejects(() => smt.unpivotSelection())).toBe(
+      "unpivot: the selection holds no values",
+    );
+
+    helpers.select("Model!A1:Z500");
+    expect(await rejects(() => smt.unpivotSelection())).toBe(
+      "Unpivot supports up to 5,000 selected cells at once.",
+    );
+  });
+});
+
+// ---------------------------------------------------------------------------
+
 describe("contents sheet", () => {
   beforeEach(async () => {
     await boot({ sheets: ["Model", "Data", "Notes"] });

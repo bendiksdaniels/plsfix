@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { bridgeSeries, cagr, formatCagrLabel } from "./chartmath";
+import {
+  bridgeSeries,
+  cagr,
+  formatCagrLabel,
+  type TornadoDriver,
+  tornadoSeries,
+} from "./chartmath";
 
 describe("bridgeSeries", () => {
   it("splits a bridge into base, rise and fall", () => {
@@ -83,5 +89,100 @@ describe("formatCagrLabel", () => {
 
   it("never prints a negative zero", () => {
     expect(formatCagrLabel(-0.0004)).toBe("CAGR +0.0%");
+  });
+});
+
+describe("tornadoSeries", () => {
+  const drivers: TornadoDriver[] = [
+    { label: "Volume", low: 90, high: 115 },
+    { label: "Price", low: 60, high: 140 },
+    { label: "Mix", low: 95, high: 105 },
+  ];
+
+  it("ranks drivers by swing and reports deltas from the stated base", () => {
+    expect(tornadoSeries(drivers, 100)).toEqual({
+      labels: ["Price", "Volume", "Mix"],
+      low: [-40, -10, -5],
+      high: [40, 15, 5],
+      base: 100,
+    });
+  });
+
+  it("falls back to the mean of every low and high", () => {
+    const { base, low, high } = tornadoSeries(
+      [
+        { label: "A", low: 80, high: 120 },
+        { label: "B", low: 90, high: 110 },
+      ],
+      null,
+    );
+    expect(base).toBe(100);
+    expect(low).toEqual([-20, -10]);
+    expect(high).toEqual([20, 10]);
+  });
+
+  it("keeps tied drivers in the order they were selected in", () => {
+    expect(
+      tornadoSeries(
+        [
+          { label: "First", low: 95, high: 105 },
+          { label: "Second", low: 90, high: 100 },
+          { label: "Third", low: 0, high: 10 },
+        ],
+        100,
+      ).labels,
+    ).toEqual(["First", "Second", "Third"]);
+  });
+
+  it("ranks an inverted driver by the size of its swing, not its sign", () => {
+    expect(
+      tornadoSeries(
+        [
+          { label: "Normal", low: 95, high: 105 },
+          { label: "Inverted", low: 130, high: 70 },
+        ],
+        100,
+      ),
+    ).toEqual({
+      labels: ["Inverted", "Normal"],
+      low: [30, -5],
+      high: [-30, 5],
+      base: 100,
+    });
+  });
+
+  it("leaves a driver that moves nothing flat at the base", () => {
+    const { low, high } = tornadoSeries(
+      [
+        { label: "Flat", low: 100, high: 100 },
+        { label: "Live", low: 80, high: 120 },
+      ],
+      100,
+    );
+    expect(low).toEqual([-20, 0]);
+    expect(high).toEqual([20, 0]);
+  });
+
+  it("keeps a negative base and its deltas", () => {
+    expect(tornadoSeries(drivers, -50).low).toEqual([110, 140, 145]);
+  });
+
+  it("refuses a chart nothing can be ranked in", () => {
+    expect(() => tornadoSeries([], null)).toThrow(
+      "tornado: need at least two drivers",
+    );
+    expect(() => tornadoSeries([drivers[0]!], null)).toThrow(
+      "tornado: need at least two drivers",
+    );
+  });
+
+  it("refuses outcomes and bases that are not finite numbers", () => {
+    const broken = [{ label: "A", low: Number.NaN, high: 1 }, drivers[0]!];
+    expect(() => tornadoSeries(broken, null)).toThrow(
+      "tornado: every low and high must be a finite number",
+    );
+    expect(() => tornadoSeries(drivers, Number.POSITIVE_INFINITY)).toThrow(
+      "tornado: the base must be a finite number",
+    );
   });
 });

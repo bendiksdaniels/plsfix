@@ -1,15 +1,13 @@
-// Charts: the brand shell every chart gets (font, title, legend, no gridlines),
-// the native waterfall/bridge builder, chart-selection formatting and the
-// floating CAGR label shape.
+// Charts: the native waterfall/bridge builder, chart-selection formatting and
+// the floating CAGR label shape. The brand shell they share lives in
+// internal.ts, next to the other helpers src/excel/tornado.ts also needs.
 
-import { hostSupports } from "./internal";
+import { formatChartAmount, hostSupports, styleChartShell } from "./internal";
 import { bridgeSeries, cagr, formatCagrLabel } from "../chartmath";
 import { type CellValue } from "../model";
-import { activeTheme, getActiveSettings, tint } from "../settings";
+import { getActiveSettings, tint } from "../settings";
 
 const BRIDGE_ROW_CAP = 100;
-const CHART_TEXT_SIZE = 9;
-const CHART_TITLE_SIZE = 12;
 const CAGR_LABEL_WIDTH = 104;
 const CAGR_LABEL_HEIGHT = 20;
 const CAGR_LABEL_GAP = 8;
@@ -39,48 +37,6 @@ function chartSeriesColors(): string[] {
     tint(primary, 0.78),
     tint(accent, 0.7),
   ];
-}
-
-// The brand shell every chart gets: our font everywhere, a bold primary title,
-// no gridlines, no chart-area frame, legend under the plot.
-function styleChartShell(
-  chart: Excel.Chart,
-  title: string | null,
-  withAxes: boolean,
-): void {
-  const settings = getActiveSettings();
-  const theme = activeTheme();
-
-  chart.format.font.name = settings.font;
-  chart.format.font.size = CHART_TEXT_SIZE;
-  chart.format.font.color = theme.formulaFont;
-  chart.format.border.lineStyle = Excel.ChartLineStyle.none;
-  chart.format.roundedCorners = false;
-
-  if (title !== null) chart.title.text = title;
-  chart.title.format.font.name = settings.font;
-  chart.title.format.font.size = CHART_TITLE_SIZE;
-  chart.title.format.font.bold = true;
-  chart.title.format.font.color = settings.primary;
-
-  if (withAxes) {
-    for (const axis of [chart.axes.categoryAxis, chart.axes.valueAxis]) {
-      axis.format.font.name = settings.font;
-      axis.format.font.size = CHART_TEXT_SIZE;
-      axis.format.font.color = theme.formulaFont;
-      axis.majorGridlines.visible = false;
-    }
-  }
-
-  chart.legend.position = Excel.ChartLegendPosition.bottom;
-  chart.legend.overlay = false;
-  chart.legend.format.font.name = settings.font;
-  chart.legend.format.font.size = CHART_TEXT_SIZE;
-  chart.legend.format.font.color = theme.formulaFont;
-}
-
-function formatAmount(value: number): string {
-  return value.toLocaleString(undefined, { maximumFractionDigits: 1 });
 }
 
 // Native Excel waterfall from a two-column bridge table: labels left, values
@@ -158,9 +114,9 @@ export async function insertWaterfall(): Promise<string> {
     const ties = Math.abs(implied - stated) <= Math.abs(stated) * 1e-12 + 1e-9;
 
     if (ties) {
-      return `Waterfall added: ${values.length} points, ties at ${formatAmount(stated)}`;
+      return `Waterfall added: ${values.length} points, ties at ${formatChartAmount(stated)}`;
     }
-    return `Waterfall added: deltas imply ${formatAmount(implied)}, closing total says ${formatAmount(stated)}`;
+    return `Waterfall added: deltas imply ${formatChartAmount(implied)}, closing total says ${formatChartAmount(stated)}`;
   });
 }
 

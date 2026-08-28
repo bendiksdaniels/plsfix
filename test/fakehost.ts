@@ -299,11 +299,14 @@ export interface FakeAxis {
   fontSize?: number;
   fontColor?: string;
   majorGridlines?: boolean;
+  reversePlotOrder?: boolean;
 }
 
 export interface FakeSeries {
   showConnectorLines?: boolean;
   fillColor?: string;
+  overlap?: number;
+  gapWidth?: number;
   pointColors: Record<number, string>;
 }
 
@@ -661,6 +664,7 @@ const SHAPES: Record<string, Shape> = {
     children: { categoryAxis: "chartAxis", valueAxis: "chartAxis" },
   },
   chartAxis: {
+    scalars: ["reversePlotOrder"],
     children: { format: "chartFormat", majorGridlines: "chartGridlines" },
   },
   chartGridlines: { scalars: ["visible"] },
@@ -674,7 +678,7 @@ const SHAPES: Record<string, Shape> = {
     returns: { getItemAt: "chartSeriesItem" },
   },
   chartSeriesItem: {
-    scalars: ["name", "showConnectorLines"],
+    scalars: ["name", "showConnectorLines", "overlap", "gapWidth"],
     children: { format: "chartFormat", points: "chartPoints" },
   },
   chartPoints: { scalars: ["count"], returns: { getItemAt: "chartPoint" } },
@@ -1035,6 +1039,7 @@ const RangeCopyType = {
 
 const ChartType = {
   columnClustered: "ColumnClustered",
+  barClustered: "BarClustered",
   line: "Line",
   pie: "Pie",
   pieExploded: "PieExploded",
@@ -2046,6 +2051,10 @@ class ChartAxisProxy {
       },
     };
   }
+
+  set reversePlotOrder(value: boolean) {
+    this.axis.reversePlotOrder = value;
+  }
 }
 
 class ChartProxy {
@@ -2188,6 +2197,12 @@ class ChartProxy {
         return {
           set showConnectorLines(value: boolean) {
             series.showConnectorLines = value;
+          },
+          set overlap(value: number) {
+            series.overlap = value;
+          },
+          set gapWidth(value: number) {
+            series.gapWidth = value;
           },
           format: {
             fill: {

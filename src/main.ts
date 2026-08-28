@@ -19,6 +19,7 @@ import {
   formatSelectedChart,
   insertCagr,
   insertColorKey,
+  insertTornado,
   insertWaterfall,
   insertToc,
   inspectSelection,
@@ -40,6 +41,7 @@ import {
   traceActiveCell,
   undoLastAction,
   undoTarget,
+  unpivotSelection,
   writeWorkbookBrand,
   type NumberFormatName,
   type PresetName,
@@ -313,6 +315,10 @@ async function dispatch(action: string): Promise<string> {
         break;
       case "chart-waterfall":
         return insertWaterfall();
+      case "tornado":
+        return insertTornado();
+      case "unpivot":
+        return unpivotSelection();
       case "chart-format":
         await formatSelectedChart();
         return "Chart restyled to your brand";
@@ -396,8 +402,10 @@ function registerCommands(): void {
     SMT_CYC_FILL: applyFillCycle,
     SMT_CYC_FONT: applyFontColorCycle,
     SMT_WATERFALL: insertWaterfall,
+    SMT_TORNADO: insertTornado,
     SMT_CHARTFMT: formatSelectedChart,
     SMT_CHART_CAGR: addCagrLabel,
+    SMT_UNPIVOT: unpivotSelection,
     SMT_TOC: insertTocSheet,
   };
 
