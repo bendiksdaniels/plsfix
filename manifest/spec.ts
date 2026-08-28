@@ -3,6 +3,8 @@
 // only renders it. Invariant: both environments share one AddinSpec (same
 // GUID, same hosts) - only ManifestEnvironment (base URL, header comment) differs.
 
+import pkg from "../package.json" with { type: "json" };
+
 export interface ManifestEnvironment {
   name: "dev" | "prod";
   file: string;
@@ -78,9 +80,11 @@ export const WORKBOOK_HOST: HostSpec = {
   ],
 };
 
+const packageVersion = pkg.version;
+
 export const ADDIN: AddinSpec = {
   id: "FF1B34D8-DD7D-4B39-8FA9-6248CA09DB6E",
-  version: "1.0.0.0", // Task 4 switches this to package.json
+  version: `${packageVersion}.0`,
   provider: "Daniels Bendiks",
   displayName: "Model Tools",
   description: "Fast, consistent financial modelling tools for Excel.",
