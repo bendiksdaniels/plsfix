@@ -39,7 +39,7 @@ each item. Stop when Daniel intervenes or the list is empty.
 
 ## Continuous improvement (after v2.1.0, loop keeps going until Daniel stops it)
 
-- [ ] C1 Whole-branch opus review of everything since v1.1.0 (adapters, relay, panes) -> ONE fix
+- [x] C1 Whole-branch opus review of everything since v1.1.0 (adapters, relay, panes) -> ONE fix
       wave -> v2.1.1 deploy.
 - [ ] C2 Update-all speed: measure `scanLinks` + `status` on a 60-slide fake deck; batch tag loads
       across slides in one sync where the API allows; target under 3 syncs per update-all.
