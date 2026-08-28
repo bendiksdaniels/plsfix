@@ -1114,3 +1114,77 @@ footer span:last-child {
   border-color: var(--bronze);
   outline: none;
 }
+
+/* Links tab: one row per tracked link, plus the pairing key block. */
+.wl-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.wl-table td {
+  padding: 6px 4px;
+  border-bottom: 1px solid var(--line);
+  vertical-align: top;
+}
+.wl-table tr:last-child td {
+  border-bottom: 0;
+}
+.wl-pick {
+  width: 22px;
+  padding-left: 0;
+}
+.wl-pick input {
+  width: 15px;
+  height: 15px;
+  margin: 0;
+  accent-color: var(--bronze);
+}
+.wl-object strong {
+  display: block;
+  font-size: 11px;
+}
+.wl-object small {
+  display: block;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 9px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.wl-badge {
+  display: inline-block;
+  margin-top: 3px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  color: var(--red);
+  background: rgba(163, 63, 50, 0.1);
+  font-size: 9px;
+  font-weight: 750;
+}
+.wl-pushed {
+  color: var(--muted);
+  font-size: 9px;
+  text-align: right;
+  white-space: nowrap;
+}
+.wl-empty {
+  color: var(--muted);
+  font-size: 9px;
+}
+
+.wl-key {
+  display: block;
+  overflow-wrap: anywhere;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.72);
+  font-family: "Cascadia Mono", "Consolas", monospace;
+  font-size: 10px;
+}
+.wl-keys {
+  grid-template-columns: repeat(3, 1fr);
+}
+.action-icon.links {
+  color: var(--bronze);
+}

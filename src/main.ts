@@ -46,6 +46,9 @@ import {
   type TraceDirection,
   type TraceResult,
 } from "./excel";
+import { RelayClient, relayBaseUrl } from "./link/relay";
+import { officeKeyStore } from "./link/workspace";
+import { installLinksTab } from "./pane/links-tab";
 import {
   activeTheme,
   type BrandSettings,
@@ -877,6 +880,14 @@ Office.onReady(async ({ host }) => {
 
   registerCommands();
   syncAutocolorOnEdit();
+
+  installLinksTab({
+    guard,
+    toast,
+    relay: new RelayClient(relayBaseUrl(document.baseURI)),
+    keyStore: officeKeyStore(),
+    root: document,
+  });
 
   for (const button of actionButtons) {
     button.addEventListener("click", () => {

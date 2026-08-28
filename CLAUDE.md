@@ -45,7 +45,7 @@ Modules (what each owns):
 - Pure model modules (typed in/out, no I/O): `settings` (brand palette), `cycles`, `paste` (fill maths), `classify`, `audit`, `chartmath`, `model`, `workbook`.
 - `src/link/` (core, pure): `model` (types + codecs), `crypto` (HKDF/AES-GCM, base64url, tokens), `status` (link state rules, slide fitting), `png` (IHDR size), `workspace` (pairing key + host key store), `relay` (fetch client, typed errors).
 - `src/ppt/`: `host.ts` (the only PowerPoint Office.js code: scan by tags, insert, refresh in place or by reinsertion, break, go to slide), `links.ts` (orchestration: list, update, inbox), `main.ts` (pane boot, state and one guarded handler per button), `views.ts` (DOM renderers: link table, inbox list, status and age labels), `actions.ts` (pure: row keys, which rows a button acts on, update detail lines).
-- `src/pane/links-tab.ts` (planned): the Excel "Links" tab.
+- `src/pane/links-tab.ts`: the Excel "Links" tab (export, workbook link list, push, go to source, remove, link key); `installLinksTab` is the only thing `main.ts` adds for it.
 - `server/`: `lib.rs` router + cache middleware, `store.rs` sqlite (WAL, auth hash, 2 revs, TTL sweep), `relay.rs` `/api` routes (bearer, ETag, body limits), `main.rs` env + bind + hourly sweeper.
 - `test/`: `fakehost.ts` (in-memory Excel host, strict load semantics), `fakeppt/` (PowerPoint fake, planned), `fakerelay.ts`, `fakepng.ts` (planned), `*.integration.test.ts`.
 

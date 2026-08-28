@@ -47,6 +47,16 @@
           Workbook
         </button>
         <button
+          id="tab-links"
+          class="tab"
+          role="tab"
+          aria-selected="false"
+          aria-controls="view-links"
+          type="button"
+        >
+          Links
+        </button>
+        <button
           id="tab-brand"
           class="tab"
           role="tab"
@@ -898,6 +908,83 @@
           <button id="delete-names" class="danger" type="button" hidden>
             Delete broken names
           </button>
+        </section>
+      </div>
+
+      <div
+        id="view-links"
+        class="view"
+        role="tabpanel"
+        aria-labelledby="tab-links"
+        hidden
+      >
+        <section aria-labelledby="export-heading">
+          <div class="section-heading">
+            <div>
+              <p class="kicker">SEND TO POWERPOINT</p>
+              <h2 id="export-heading">Export</h2>
+            </div>
+          </div>
+          <div class="action-list">
+            <button id="export-selection" type="button">
+              <span class="action-icon links">⇱</span
+              ><span
+                ><strong>Export selection</strong
+                ><small>The selected range as a linked picture</small></span
+              >
+            </button>
+            <button id="export-chart" type="button">
+              <span class="action-icon links">▥</span
+              ><span
+                ><strong>Export active chart</strong
+                ><small>The selected chart as a linked picture</small></span
+              >
+            </button>
+          </div>
+        </section>
+
+        <section aria-labelledby="links-heading">
+          <div class="section-heading">
+            <div>
+              <p class="kicker">THIS WORKBOOK</p>
+              <h2 id="links-heading">Linked objects</h2>
+            </div>
+          </div>
+          <table class="wl-table">
+            <tbody id="workbook-links"></tbody>
+          </table>
+          <div class="io-row">
+            <button id="push-selected" type="button">Push selected</button>
+            <button id="push-all" type="button">Push all</button>
+            <button id="go-to-source" type="button">Go to source</button>
+            <button id="remove-link" type="button">Remove link</button>
+          </div>
+          <p class="hint">
+            Anyone holding a deck can pull a link's latest picture for up to
+            seven days. Break the links in PowerPoint before sending a deck
+            outside.
+          </p>
+        </section>
+
+        <section aria-labelledby="linkkey-heading">
+          <div class="section-heading">
+            <div>
+              <p class="kicker">PAIRING</p>
+              <h2 id="linkkey-heading">Link key</h2>
+            </div>
+          </div>
+          <code id="workspace-key-display" class="wl-key"
+            >No link key yet.</code
+          >
+          <div class="io-row wl-keys">
+            <button id="generate-key" type="button">Generate</button>
+            <button id="copy-key" type="button">Copy</button>
+            <button id="forget-key" type="button">Forget</button>
+          </div>
+          <p class="hint">
+            Paste this key once in PowerPoint &gt; Model Tools &gt; Links &gt;
+            Settings. A new key unpairs decks that hold the old one.
+          </p>
         </section>
       </div>
 
