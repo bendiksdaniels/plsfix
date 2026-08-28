@@ -1,27 +1,21 @@
-// Everything behind the link flows that is not a flow: the registry kept in a
-// document setting, the hidden name (or a chart's own name) that keeps pointing
-// at a source after rows move under it, the PNG a source renders to, and the
-// sealed round trip that puts one record on the relay and in the inbox.
+// The registry kept in a document setting, and the anchor that keeps pointing
+// at a source after rows move under it: a hidden name, or a chart's own name.
+// Owns registry read/write, workbookName, anchor create/resolve/delete and
+// render. The relay round trip that ships a render lives in link-record.ts.
 
-import { deriveLinkKeys, newToken, seal, sha256Hex } from "../link/crypto";
+import { deriveLinkKeys, newToken } from "../link/crypto";
 import {
   ANCHOR_PREFIX,
   emptyRegistry,
-  encodeInboxItem,
-  encodePayload,
   encodeRegistry,
   REGISTRY_SETTING,
   tryDecodeRegistry,
-  type InboxItem,
   type LinkKind,
-  type Payload,
   type Registry,
   type RegistryEntry,
   type Source,
 } from "../link/model";
-import { base64ToBytes, pngSize } from "../link/png";
 import { RelayError, type RelayApi } from "../link/relay";
-import type { Workspace } from "../link/workspace";
 import { hostSupports } from "./internal";
 import { parseAddress } from "./shared";
 
@@ -47,18 +41,6 @@ export interface ResolvedChart {
 }
 
 export type ResolvedSource = ResolvedRange | ResolvedChart;
-
-export interface NewLink {
-  entry: RegistryEntry;
-  src: Source;
-  png: string;
-  // The registry as it was read before the anchor was bound: what publish
-  // appends to, and what a rollback puts back.
-  registry: Registry;
-  // Undoes the anchor: deletes the hidden name, or gives the chart its own
-  // name back. Queued only - the caller's next sync commits it.
-  release: () => void;
-}
 
 // Every failure says which flow it came from and which link; the token is never
 // part of a label or a message.
@@ -291,93 +273,6 @@ export async function releaseAnchor(
   }
   const chart = await findChart(context, entry.anchor);
   if (chart) chart.name = chartRef(entry.label);
-}
-
-export async function pushPayload(
-  entry: RegistryEntry,
-  src: Source,
-  png: string,
-  relay: RelayApi,
-): Promise<number> {
-  const size = pngSize(base64ToBytes(png));
-  const payload: Payload = {
-    v: 1,
-    kind: "picture",
-    mime: "image/png",
-    width: size.width,
-    height: size.height,
-    png,
-    src,
-    pushedAt: new Date().toISOString(),
-    hash: await sha256Hex(png),
-  };
-  const keys = await deriveLinkKeys(entry.token);
-  const blob = await seal(keys.enc, entry.id, encodePayload(payload));
-  return (await relay.putLink(entry.id, keys.auth, blob)).rev;
-}
-
-// The note PowerPoint picks up: it carries the token, which is why it is sealed
-// with the workspace key the two panes were paired with.
-async function announce(
-  entry: RegistryEntry,
-  src: Source,
-  ws: Workspace,
-  relay: RelayApi,
-): Promise<void> {
-  const item: InboxItem = {
-    id: entry.id,
-    token: entry.token,
-    kind: entry.kind,
-    label: entry.label,
-    src,
-    createdAt: entry.createdAt,
-  };
-  const blob = await seal(ws.enc, ws.id, encodeInboxItem(item));
-  await relay.postInbox(ws.id, ws.auth, entry.id, blob);
-}
-
-// The anchor is already bound when this runs - it has to be, so the picture and
-// the name describe the same object - so every failure from here on has to put
-// the workbook back rather than leave an anchor nothing points at.
-export async function publish(
-  context: Excel.RequestContext,
-  link: NewLink,
-  ws: Workspace,
-  relay: RelayApi,
-): Promise<void> {
-  const { entry, src, registry } = link;
-  let recorded = false;
-  try {
-    entry.rev = await pushPayload(entry, src, link.png, relay);
-    entry.lastPushedAt = new Date().toISOString();
-    // Recorded before the inbox note goes out, so PowerPoint is never told
-    // about a link this workbook has no record of.
-    writeRegistry(context, { ...registry, links: [...registry.links, entry] });
-    recorded = true;
-    await context.sync();
-    await announce(entry, src, ws, relay);
-  } catch (error) {
-    await rollback(context, link, recorded);
-    throw staged(`export ${entry.label}`, error);
-  }
-}
-
-// The setting is only rewritten if this flow had already written it: a failed
-// export leaves a workbook that never had a registry exactly as it was. Best
-// effort by design - if the workbook will not take the undo, the export error
-// the caller is about to see is the one worth reporting.
-async function rollback(
-  context: Excel.RequestContext,
-  link: NewLink,
-  recorded: boolean,
-): Promise<void> {
-  try {
-    link.release();
-    if (recorded) writeRegistry(context, link.registry);
-    await context.sync();
-  } catch {
-    return;
-  }
 }
 
 // A link the relay never had, or has already dropped, is the outcome we want.
