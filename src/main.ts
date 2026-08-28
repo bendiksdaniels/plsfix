@@ -58,6 +58,14 @@ import {
   serializeSettings,
   setActiveSettings,
 } from "./settings";
+import { makeGuard } from "./ui/guard";
+import { describeError, installErrorReporting } from "./ui/report";
+import { installTabs } from "./ui/tabs";
+import { createToast } from "./ui/toast";
+
+// Swapped for __APP_VERSION__ once the build defines it (a later task); every
+// describeError call reads this one constant so that swap is a one-liner.
+const APP_VERSION = "v1.1.000";
 
 const STORAGE_KEY = "smt.brand.v1";
 const PALETTE_SLOTS = [
@@ -78,20 +86,10 @@ const getElement = <T extends HTMLElement>(id: string): T => {
 };
 
 const connectionStatus = getElement<HTMLSpanElement>("connection-status");
-const toast = getElement<HTMLDivElement>("toast");
 const actionButtons = Array.from(
   document.querySelectorAll<HTMLButtonElement>("[data-action]"),
 );
-let toastTimer: number | undefined;
-
-function showToast(message: string, kind: "success" | "error" = "success"): void {
-  window.clearTimeout(toastTimer);
-  toast.textContent = message;
-  toast.className = `toast visible ${kind}`;
-  toastTimer = window.setTimeout(() => {
-    toast.className = "toast";
-  }, 3200);
-}
+const toast = createToast(getElement("toast"));
 
 function setBusy(busy: boolean): void {
   for (const button of actionButtons) button.disabled = busy;
@@ -114,7 +112,7 @@ async function refreshSelection(): Promise<void> {
     getElement("metric-errors").textContent = metric(summary.errors);
     getElement("metric-blanks").textContent = metric(summary.blanks);
   } catch (error) {
-    showToast(errorMessage(error), "error");
+    toast.show(errorMessage(error), "error");
   }
 }
 
@@ -333,22 +331,18 @@ async function dispatch(action: string): Promise<string> {
 }
 
 // Every pane interaction runs through here: buttons off, toast on, busy cleared.
-async function guard(run: () => Promise<string>): Promise<void> {
-  setBusy(true);
-  try {
-    const message = await run();
-    await refreshSelection();
-    showToast(
-      lastUndoSkipped() ? `${message} (too large for undo)` : message,
-    );
-  } catch (error) {
-    showToast(errorMessage(error), "error");
-  } finally {
-    // Also after a failure: a capture may have replaced the undo slot already.
-    renderActionState();
-    setBusy(false);
-  }
-}
+// renderActionState also runs after a failure: a capture may have replaced
+// the undo slot already.
+const guard = makeGuard({
+  setBusy,
+  notify: toast.show,
+  describe: (error, action) =>
+    describeError(error, { host: "Excel", version: APP_VERSION }, action),
+  after: refreshSelection,
+  decorate: (message) =>
+    lastUndoSkipped() ? `${message} (too large for undo)` : message,
+  finally: renderActionState,
+});
 
 // ---------------------------------------------------------------------------
 // Ribbon commands and keyboard shortcuts (shared runtime)
@@ -403,7 +397,14 @@ function registerCommands(): void {
     Office.actions.associate(id, (event?: CommandEvent) => {
       void run()
         .then(() => refreshSelection())
-        .catch((error) => showToast(errorMessage(error), "error"))
+        .catch((error: unknown) => {
+          const { message, details } = describeError(
+            error,
+            { host: "Excel", version: APP_VERSION },
+            id,
+          );
+          toast.show(message, "error", details);
+        })
         .finally(() => {
           // Drain the skip flag so a later pane toast cannot inherit it.
           lastUndoSkipped();
@@ -482,7 +483,7 @@ function renderBrand(): void {
 // Excel is only there when the pane runs inside the host; the toast reports the rest.
 function syncAutocolorOnEdit(): void {
   setAutocolorOnEdit(getActiveSettings().autocolorOnEdit).catch((error) => {
-    showToast(errorMessage(error), "error");
+    toast.show(errorMessage(error), "error");
   });
 }
 
@@ -491,7 +492,7 @@ function applySettings(next: BrandSettings, message?: string): void {
   persistSettings();
   renderBrand();
   syncAutocolorOnEdit();
-  if (message) showToast(message);
+  if (message) toast.show(message);
 }
 
 function updateSetting(patch: Partial<BrandSettings>, message?: string): void {
@@ -509,7 +510,7 @@ function renderLogoSwatches(colors: string[]): void {
   if (colors.length === 0) {
     strip.hidden = true;
     hint.hidden = true;
-    showToast("No usable colors found in that image.", "error");
+    toast.show("No usable colors found in that image.", "error");
     return;
   }
 
@@ -546,7 +547,7 @@ function extractLogoColors(file: File): void {
     canvas.height = height;
     const context = canvas.getContext("2d");
     if (!context) {
-      showToast("Could not read that image.", "error");
+      toast.show("Could not read that image.", "error");
       return;
     }
     context.drawImage(image, 0, 0, width, height);
@@ -555,7 +556,7 @@ function extractLogoColors(file: File): void {
   };
   image.onerror = () => {
     URL.revokeObjectURL(url);
-    showToast("That file is not a readable image.", "error");
+    toast.show("That file is not a readable image.", "error");
   };
   image.src = url;
 }
@@ -564,7 +565,7 @@ async function copyPaletteJson(): Promise<void> {
   const json = serializeSettings(getActiveSettings());
   try {
     await navigator.clipboard.writeText(json);
-    showToast("Palette JSON copied");
+    toast.show("Palette JSON copied");
   } catch {
     const area = document.createElement("textarea");
     area.value = json;
@@ -572,38 +573,7 @@ async function copyPaletteJson(): Promise<void> {
     area.select();
     const copied = document.execCommand("copy");
     area.remove();
-    showToast(copied ? "Palette JSON copied" : "Copy failed", copied ? "success" : "error");
-  }
-}
-
-interface TabView {
-  tab: HTMLButtonElement;
-  view: HTMLElement;
-  onShow?: () => void;
-}
-
-function wireTabs(): void {
-  const tabs: TabView[] = [
-    { tab: getElement<HTMLButtonElement>("tab-tools"), view: getElement("view-tools") },
-    { tab: getElement<HTMLButtonElement>("tab-brand"), view: getElement("view-brand") },
-    {
-      tab: getElement<HTMLButtonElement>("tab-workbook"),
-      view: getElement("view-workbook"),
-      // Sheets change without the pane hearing about it, so the explorer is
-      // read when it comes into view rather than on every selection change.
-      onShow: () => void refreshSheets(),
-    },
-  ];
-  for (const current of tabs) {
-    current.tab.addEventListener("click", () => {
-      for (const other of tabs) {
-        const active = other === current;
-        other.tab.classList.toggle("active", active);
-        other.tab.setAttribute("aria-selected", String(active));
-        other.view.hidden = !active;
-      }
-      current.onShow?.();
-    });
+    toast.show(copied ? "Palette JSON copied" : "Copy failed", copied ? "success" : "error");
   }
 }
 
@@ -622,7 +592,7 @@ function wireBrand(): void {
     hex?.addEventListener("change", () => {
       const value = normalizeHex(hex.value);
       if (!value) {
-        showToast(`"${hex.value}" is not a hex color like #B27E54.`, "error");
+        toast.show(`"${hex.value}" is not a hex color like #B27E54.`, "error");
         renderBrand();
         return;
       }
@@ -674,7 +644,7 @@ function wireBrand(): void {
     if (!file) return;
     const parsed = parsePalette(await file.text());
     if (!parsed) {
-      showToast("That file is not a valid palette JSON.", "error");
+      toast.show("That file is not a valid palette JSON.", "error");
       return;
     }
     applySettings(parsed, "Palette imported");
@@ -771,7 +741,7 @@ async function refreshSheets(): Promise<void> {
     const sheets = await listSheets();
     for (const sheet of sheets) list.append(sheetRow(sheet));
   } catch (error) {
-    showToast(errorMessage(error), "error");
+    toast.show(errorMessage(error), "error");
   }
 }
 
@@ -833,8 +803,18 @@ async function insertTocSheet(): Promise<string> {
   return "Contents sheet updated";
 }
 
+// Installed first so a throw during the rest of boot is still reported.
+installErrorReporting({ host: "Excel", version: APP_VERSION }, (message, details) =>
+  toast.show(message, "error", details),
+);
 loadSettings();
-wireTabs();
+installTabs(getElement("tab-bar"));
+getElement<HTMLButtonElement>("tab-workbook").addEventListener(
+  "click",
+  // Sheets change without the pane hearing about it, so the explorer is
+  // read when it comes into view rather than on every selection change.
+  () => void refreshSheets(),
+);
 wireBrand();
 renderBrand();
 renderAuditState();
@@ -858,7 +838,7 @@ Office.onReady(async ({ host }) => {
   for (const button of actionButtons) {
     button.addEventListener("click", () => {
       const action = button.dataset.action;
-      if (action) void guard(() => dispatch(action));
+      if (action) void guard(() => dispatch(action), action);
     });
   }
 
@@ -899,7 +879,7 @@ Office.onReady(async ({ host }) => {
   void restorePersistedOverlay()
     .then((restored) => {
       if (restored) {
-        showToast("Audit overlay fills from the last session were restored.");
+        toast.show("Audit overlay fills from the last session were restored.");
       }
     })
     .catch(() => undefined);

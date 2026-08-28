@@ -496,6 +496,9 @@ footer span:last-child { margin-left: auto; }
   bottom: 14px;
   left: 14px;
   z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 10px;
   padding: 11px 13px;
   border-radius: 10px;
   color: white;
@@ -508,8 +511,23 @@ footer span:last-child { margin-left: auto; }
   transform: translateY(10px);
   transition: opacity .18s, transform .18s;
 }
-.toast.visible { opacity: 1; transform: translateY(0); }
+.toast-text { flex: 1; }
+/* Re-enable pointer events only while visible, so the copy button is
+   clickable but the hidden toast never blocks clicks underneath it. */
+.toast.visible { opacity: 1; transform: translateY(0); pointer-events: auto; }
 .toast.error { background: var(--red); }
+.toast-copy {
+  flex: none;
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  border-radius: 7px;
+  padding: 5px 9px;
+  color: inherit;
+  background: rgba(255, 255, 255, 0.14);
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.toast-copy:hover { background: rgba(255, 255, 255, 0.26); }
 
 @media (max-width: 330px) {
   .app-shell { padding-right: 12px; padding-left: 12px; }
