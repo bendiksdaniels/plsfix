@@ -8,6 +8,7 @@ import { installGlobals, removeGlobals } from "./office";
 
 export type {
   FakePptShape,
+  FakeShapeGroup,
   FakeShapeInit,
   FakeSlide,
   ShapeSite,

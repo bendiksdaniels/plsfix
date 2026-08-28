@@ -59,8 +59,24 @@ const KINDS: Record<string, Descriptor> = {
       "zOrderPosition",
       "isNullObject",
     ],
-    children: { fill: "fill", lineFormat: "lineFormat", tags: "tags" },
+    children: {
+      fill: "fill",
+      lineFormat: "lineFormat",
+      tags: "tags",
+      group: "group",
+    },
     returns: { getParentSlideOrNullObject: "slide" },
+  },
+  // A shape of type Group and the shapes inside it: one more level of the same
+  // items/<property> load paths, which is how office.js reads a group too.
+  group: { scalars: ["id"], children: { shapes: "groupShapes" } },
+  groupShapes: {
+    items: "shape",
+    returns: {
+      getItem: "shape",
+      getItemOrNullObject: "shape",
+      getCount: "clientResult",
+    },
   },
   fill: {},
   lineFormat: { scalars: ["visible"] },

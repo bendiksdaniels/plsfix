@@ -170,6 +170,7 @@ function powerPointGlobal(runtime: FakeRuntime): Record<string, unknown> {
       unsupported: "Unsupported",
       image: "Image",
       geometricShape: "GeometricShape",
+      group: "Group",
       table: "Table",
     },
   };
