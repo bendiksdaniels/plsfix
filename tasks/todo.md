@@ -1,5 +1,9 @@
 # Todo
 
+PROJECT PARKED 2026-08-28 (Daniel: "close this project for now"). v1.1.0 hosted live
+at dbautomatizacijas.com/modelis/. Open gates (Daniel's): tonight's Excel visual pass
+(calendar 19:00) + M365 admin upload. Resume from tasks/AUTORESUME.md.
+
 ## Rename + relocate (2026-08-27)
 
 - [x] Move to `~/plsfix`, Desktop symlink kept

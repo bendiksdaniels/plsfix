@@ -1,6 +1,17 @@
-# AUTORESUME - Model Tools (pinned 2026-08-27 night, post-hosting)
+# AUTORESUME - Model Tools (PARKED 2026-08-28)
 
-## State: v1.1.0, HOSTED LIVE at dbautomatizacijas.com/modelis/, M365 upload = last gate
+## State: v1.1.0, HOSTED LIVE at dbautomatizacijas.com/modelis/, project parked by Daniel
+
+PARKED 28.08 ("close this project for now") with two open gates, both Daniel's:
+1. Visual pass in Excel - calendar event on his Mac (Work calendar, Fri 28.08 19:00):
+   quit Excel fully, reopen, the add-in's tab loads from the server (prod manifest already in
+   the wef folder - nothing to run). Checklist in tasks/v1-plan.md "Remaining for
+   launch". Report anything odd; fixes are cheap.
+2. M365 centralized deployment for the team (admin.microsoft.com > Settings >
+   Integrated apps > Upload custom apps > Office Add-in > manifest.prod.xml > assign
+   group; 24-72h propagation). Then tag v1.1.0.
+On resume: read this file, then tasks/v1-plan.md; suite side is in
+the hosting gateway (key modelis, deploy.sh modelis).
 
 - HOSTING LIVE (Daniel: "make it easier to show up"): Rust static host `server/`
   (axum :8804) serves dist/ on the suite as key `modelis` (hidden, no sidebar
