@@ -512,9 +512,7 @@ footer span:last-child { margin-left: auto; }
   transition: opacity .18s, transform .18s;
 }
 .toast-text { flex: 1; }
-/* Re-enable pointer events only while visible, so the copy button is
-   clickable but the hidden toast never blocks clicks underneath it. */
-.toast.visible { opacity: 1; transform: translateY(0); pointer-events: auto; }
+.toast.visible { opacity: 1; transform: translateY(0); }
 .toast.error { background: var(--red); }
 .toast-copy {
   flex: none;
@@ -527,6 +525,11 @@ footer span:last-child { margin-left: auto; }
   font-weight: 700;
   cursor: pointer;
 }
+/* Scoped to the button, not the whole .toast.visible bar: the fixed toast
+   spans the pane width and can sit over real controls (e.g. "Delete broken
+   names" above the footer) - only the copy button should intercept clicks
+   while a toast is showing; the rest of the bar stays click-through. */
+.toast.visible .toast-copy { pointer-events: auto; }
 .toast-copy:hover { background: rgba(255, 255, 255, 0.26); }
 
 @media (max-width: 330px) {
