@@ -187,15 +187,28 @@ export function encodeRegistry(registry: Registry): string {
   return JSON.stringify(registry);
 }
 
-export function decodeRegistry(value: string | null | undefined): Registry {
-  const empty: Registry = { v: 1, links: [] };
-  if (value === null || value === undefined) return empty;
+// Null says "this is not a registry we understand" - unparseable, or a shape a
+// future schema wrote. A caller that is about to write the setting back must
+// tell that apart from an absent one, or it erases every link record.
+export function tryDecodeRegistry(
+  value: string | null | undefined,
+): Registry | null {
+  if (value === null || value === undefined) return null;
   try {
     const parsed: unknown = JSON.parse(value);
-    return isRegistry(parsed) ? parsed : empty;
+    return isRegistry(parsed) ? parsed : null;
   } catch {
-    return empty;
+    return null;
   }
+}
+
+export function emptyRegistry(): Registry {
+  return { v: 1, links: [] };
+}
+
+// Forgiving by design, for readers that only need a list to show.
+export function decodeRegistry(value: string | null | undefined): Registry {
+  return tryDecodeRegistry(value) ?? emptyRegistry();
 }
 
 function decodeJson(bytes: Uint8Array, stage: string): unknown {
