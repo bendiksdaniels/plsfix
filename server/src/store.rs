@@ -5,7 +5,7 @@
 
 use std::{path::Path, sync::Mutex, sync::MutexGuard};
 
-use rusqlite::{params, Connection, OptionalExtension};
+use rusqlite::{params, Connection};
 use sha2::{Digest, Sha256};
 
 /// A link lives seven days from its last push.
@@ -13,9 +13,17 @@ pub const LINK_TTL: i64 = 7 * 24 * 3600;
 /// An inbox item lives a day - long enough to reach the deck, not to linger.
 pub const INBOX_TTL: i64 = 24 * 3600;
 
+// The inbox key carries the writer's hash: the server cannot tell that a
+// bearer belongs to a workspace (the two are independent HKDF branches of a
+// secret it never sees), so any key may POST to any `ws` path. With the hash
+// in the primary key a foreign writer gets its own row, which nobody else can
+// list or delete, instead of squatting the real pane's `(ws, id)` slot.
+// inbox_v2 replaces the `PRIMARY KEY (ws, id)` table; the inbox is a 24-hour
+// buffer, so the old rows are dropped rather than migrated.
 const SCHEMA: &str = "
 CREATE TABLE IF NOT EXISTS links (id TEXT NOT NULL, rev INTEGER NOT NULL, auth_hash BLOB NOT NULL, pushed_at INTEGER NOT NULL, expires_at INTEGER NOT NULL, blob BLOB NOT NULL, PRIMARY KEY (id, rev));
-CREATE TABLE IF NOT EXISTS inbox (ws TEXT NOT NULL, id TEXT NOT NULL, auth_hash BLOB NOT NULL, created_at INTEGER NOT NULL, expires_at INTEGER NOT NULL, blob BLOB NOT NULL, PRIMARY KEY (ws, id));
+CREATE TABLE IF NOT EXISTS inbox_v2 (ws TEXT NOT NULL, id TEXT NOT NULL, auth_hash BLOB NOT NULL, created_at INTEGER NOT NULL, expires_at INTEGER NOT NULL, blob BLOB NOT NULL, PRIMARY KEY (ws, id, auth_hash));
+DROP TABLE IF EXISTS inbox;
 ";
 
 const INSERT_REV: &str = "INSERT INTO links (id, rev, auth_hash, pushed_at, expires_at, blob) VALUES (?1, ?2, ?3, ?4, ?5, ?6)";
@@ -107,7 +115,7 @@ fn head(conn: &Connection, id: &str, now: i64) -> rusqlite::Result<Option<Head>>
 /// Expiry is enforced on read and on write, so an unswept row is still dead.
 fn sweep_locked(conn: &Connection, now: i64) -> rusqlite::Result<usize> {
     let links = conn.execute("DELETE FROM links WHERE expires_at <= ?1", params![now])?;
-    let inbox = conn.execute("DELETE FROM inbox WHERE expires_at <= ?1", params![now])?;
+    let inbox = conn.execute("DELETE FROM inbox_v2 WHERE expires_at <= ?1", params![now])?;
     Ok(links + inbox)
 }
 
@@ -263,7 +271,10 @@ impl Store {
         Ok(rows)
     }
 
-    /// Drops a sealed item into a workspace inbox; a re-export replaces the row.
+    /// Drops a sealed item into a workspace inbox; a re-export from the same
+    /// key replaces its own row. A foreign key writes a row of its own, which
+    /// only that key can list or delete, so it can neither block nor shadow
+    /// the pane's item.
     pub fn post_inbox(
         &self,
         ws: &str,
@@ -271,27 +282,15 @@ impl Store {
         id: &str,
         blob: &[u8],
         now: i64,
-    ) -> rusqlite::Result<bool> {
+    ) -> rusqlite::Result<()> {
         let conn = self.conn();
         sweep_locked(&conn, now)?;
-        // A live row already owned by another key is never overwritten: the
-        // first writer of a (ws, id) keeps it until it expires. Returns false then.
-        let owner: Option<Vec<u8>> = conn
-            .query_row(
-                "SELECT auth_hash FROM inbox WHERE ws = ?1 AND id = ?2 AND expires_at > ?3",
-                params![ws, id, now],
-                |row| row.get(0),
-            )
-            .optional()?;
-        if matches!(owner, Some(ref hash) if hash.as_slice() != auth_hash.as_slice()) {
-            return Ok(false);
-        }
         conn.execute(
-            "INSERT INTO inbox (ws, id, auth_hash, created_at, expires_at, blob) VALUES (?1, ?2, ?3, ?4, ?5, ?6)
-             ON CONFLICT (ws, id) DO UPDATE SET auth_hash = excluded.auth_hash, created_at = excluded.created_at, expires_at = excluded.expires_at, blob = excluded.blob",
+            "INSERT INTO inbox_v2 (ws, id, auth_hash, created_at, expires_at, blob) VALUES (?1, ?2, ?3, ?4, ?5, ?6)
+             ON CONFLICT (ws, id, auth_hash) DO UPDATE SET created_at = excluded.created_at, expires_at = excluded.expires_at, blob = excluded.blob",
             params![ws, id, auth_hash.as_slice(), now, now + INBOX_TTL, blob],
         )?;
-        Ok(true)
+        Ok(())
     }
 
     /// Live items of a workspace, newest first; a foreign key simply sees none.
@@ -303,7 +302,7 @@ impl Store {
     ) -> rusqlite::Result<Vec<InboxRow>> {
         let conn = self.conn();
         let mut statement = conn.prepare(
-            "SELECT id, created_at, blob FROM inbox WHERE ws = ?1 AND auth_hash = ?2 AND expires_at > ?3 ORDER BY created_at DESC, id DESC",
+            "SELECT id, created_at, blob FROM inbox_v2 WHERE ws = ?1 AND auth_hash = ?2 AND expires_at > ?3 ORDER BY created_at DESC, id DESC",
         )?;
         let rows = statement.query_map(params![ws, auth_hash.as_slice(), now], |row| {
             Ok(InboxRow {
@@ -315,38 +314,23 @@ impl Store {
         rows.collect()
     }
 
-    /// Removes one inbox item once its deck has taken it.
+    /// Removes one inbox item once its deck has taken it. Only the key that
+    /// wrote the row can see it, so a foreign key deletes nothing and is told
+    /// the item is missing - never that someone else owns it.
     pub fn delete_inbox(
         &self,
         ws: &str,
         auth_hash: &[u8; 32],
         id: &str,
         now: i64,
-    ) -> rusqlite::Result<Delete> {
+    ) -> rusqlite::Result<bool> {
         let conn = self.conn();
         sweep_locked(&conn, now)?;
-        let owner: Option<Vec<u8>> = conn
-            .query_row(
-                "SELECT auth_hash FROM inbox WHERE ws = ?1 AND id = ?2 AND expires_at > ?3",
-                params![ws, id, now],
-                |row| row.get(0),
-            )
-            .map(Some)
-            .or_else(|error| match error {
-                rusqlite::Error::QueryReturnedNoRows => Ok(None),
-                other => Err(other),
-            })?;
-        let Some(owner) = owner else {
-            return Ok(Delete::Missing);
-        };
-        if owner != auth_hash.as_slice() {
-            return Ok(Delete::Forbidden);
-        }
-        conn.execute(
-            "DELETE FROM inbox WHERE ws = ?1 AND id = ?2",
-            params![ws, id],
+        let removed = conn.execute(
+            "DELETE FROM inbox_v2 WHERE ws = ?1 AND id = ?2 AND auth_hash = ?3",
+            params![ws, id, auth_hash.as_slice()],
         )?;
-        Ok(Delete::Deleted)
+        Ok(removed > 0)
     }
 
     /// Deletes expired rows from both tables; runs on every write and hourly.

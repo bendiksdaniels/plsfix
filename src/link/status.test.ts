@@ -20,6 +20,16 @@ describe("deriveStatus", () => {
       deriveStatus(3, { id: "a", rev: null, pushedAt: null, error: "auth" }),
     ).toBe("wrongKey");
   });
+
+  it("treats a relay rev below the tag rev as an update", () => {
+    // The store sweeps a link seven days after its last push, and the next PUT
+    // starts again at rev 1 while the deck's tag still holds the old rev. A
+    // "greater than" test would call that stale deck current for ever.
+    expect(deriveStatus(12, { id: "a", rev: 1, pushedAt: 1 })).toBe(
+      "updateAvailable",
+    );
+    expect(deriveStatus(1, { id: "a", rev: 1, pushedAt: 1 })).toBe("current");
+  });
 });
 
 describe("sourceChanged", () => {

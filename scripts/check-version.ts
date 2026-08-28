@@ -14,8 +14,12 @@ for (const file of ["manifest.xml", "manifest.prod.xml"]) {
   if (!read(file).includes(`<Version>${version}.0</Version>`))
     problems.push(`${file} is not ${version}.0`);
 }
-if (read("taskpane.html").match(/v\d+\.\d+\.\d{3}/))
-  problems.push("taskpane.html hard-codes a version; use #app-version");
+// Both panes show the version through #app-version; either one could hard-code
+// it and go stale, so the gate looks at both.
+for (const page of ["taskpane.html", "pptpane.html"]) {
+  if (read(page).match(/v\d+\.\d+\.\d{3}/))
+    problems.push(`${page} hard-codes a version; use #app-version`);
+}
 
 if (problems.length) {
   process.stderr.write(problems.join("\n") + "\n");

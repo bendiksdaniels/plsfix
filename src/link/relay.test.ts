@@ -20,6 +20,15 @@ function client(handler: Handler): {
   };
 }
 
+// What a call rejected with, so a test can assert on the kind and the message
+// of the same object rather than matching a shape twice.
+function rejection(call: Promise<unknown>): Promise<unknown> {
+  return call.then(
+    () => undefined,
+    (error: unknown) => error,
+  );
+}
+
 describe("relayBaseUrl", () => {
   it("sits beside the pane page", () => {
     expect(
@@ -101,6 +110,35 @@ describe("RelayClient", () => {
     const result = await relay.getLink("a".repeat(32), "AUTH");
     expect(result).toEqual({ rev: 7, blob: new Uint8Array([9, 9]) });
   });
+  it("GET accepts the weak ETag an intermediary may hand back", async () => {
+    const { relay } = client(
+      () =>
+        new Response(new Uint8Array([9]), {
+          status: 200,
+          headers: { ETag: 'W/"12"' },
+        }),
+    );
+    expect(await relay.getLink("a".repeat(32), "AUTH")).toEqual({
+      rev: 12,
+      blob: new Uint8Array([9]),
+    });
+  });
+  it("GET refuses a missing or unparsable ETag instead of reading rev 0", async () => {
+    const headerSets: Record<string, string>[] = [
+      {},
+      { ETag: "" },
+      { ETag: '"x"' },
+      { ETag: "7" },
+    ];
+    for (const headers of headerSets) {
+      const { relay } = client(
+        () => new Response(new Uint8Array([9]), { status: 200, headers }),
+      );
+      const error = await rejection(relay.getLink("a".repeat(32), "AUTH"));
+      expect(isRelayError(error) && error.kind).toBe("server");
+      expect(String(error)).toContain("bad ETag");
+    }
+  });
   it("maps statuses to error kinds", async () => {
     for (const [status, kind] of [
       [403, "auth"],
@@ -173,4 +211,89 @@ describe("RelayClient", () => {
     );
     expect(calls[0]!.init.body).toEqual(new Uint8Array([5, 6]));
   });
+});
+
+// A 200 is not a promise that the body is what the route documents: a captive
+// portal, an Access interstitial or the dev proxy answering with index.html
+// all arrive as 200. Every one of these must reach the pane as a RelayError
+// with a kind, never as the SyntaxError a bare response.json() would throw.
+describe("RelayClient rejects a 200 whose body is not the promised shape", () => {
+  const id = "a".repeat(32);
+  const garbage = () => new Response("<!doctype html><html></html>");
+
+  const cases: {
+    name: string;
+    body: Response;
+    method: string;
+    call: (relay: RelayClient) => Promise<unknown>;
+    path: string;
+  }[] = [
+    {
+      name: "PUT answered with HTML",
+      body: garbage(),
+      method: "PUT",
+      call: (relay) => relay.putLink(id, "AUTH", new Uint8Array([1])),
+      path: `/modelis/api/links/${id}`,
+    },
+    {
+      name: "PUT answered with JSON that has no rev",
+      body: new Response(JSON.stringify({ ok: true })),
+      method: "PUT",
+      call: (relay) => relay.putLink(id, "AUTH", new Uint8Array([1])),
+      path: `/modelis/api/links/${id}`,
+    },
+    {
+      name: "status answered with HTML",
+      body: garbage(),
+      method: "POST",
+      call: (relay) => relay.status([{ id, auth: "x" }]),
+      path: "/modelis/api/links/status",
+    },
+    {
+      name: "status answered with an object instead of rows",
+      body: new Response(JSON.stringify({ id, rev: 2 })),
+      method: "POST",
+      call: (relay) => relay.status([{ id, auth: "x" }]),
+      path: "/modelis/api/links/status",
+    },
+    {
+      name: "a status row whose rev is a string",
+      body: new Response(JSON.stringify([{ id, rev: "2", pushedAt: 1 }])),
+      method: "POST",
+      call: (relay) => relay.status([{ id, auth: "x" }]),
+      path: "/modelis/api/links/status",
+    },
+    {
+      name: "inbox answered with HTML",
+      body: garbage(),
+      method: "GET",
+      call: (relay) => relay.listInbox("WS", "AUTH"),
+      path: "/modelis/api/inbox/WS",
+    },
+    {
+      name: "an inbox row with a null blob",
+      body: new Response(JSON.stringify([{ id, createdAt: 5, blob: null }])),
+      method: "GET",
+      call: (relay) => relay.listInbox("WS", "AUTH"),
+      path: "/modelis/api/inbox/WS",
+    },
+    {
+      name: "an inbox blob outside the base64url alphabet",
+      body: new Response(JSON.stringify([{ id, createdAt: 5, blob: "a*b" }])),
+      method: "GET",
+      call: (relay) => relay.listInbox("WS", "AUTH"),
+      path: "/modelis/api/inbox/WS",
+    },
+  ];
+
+  for (const { name, body, method, call, path } of cases) {
+    it(`fails as kind "server" for ${name}`, async () => {
+      const { relay } = client(() => body.clone());
+      const error = await rejection(call(relay));
+      expect(isRelayError(error) && error.kind).toBe("server");
+      expect(String(error)).toBe(
+        `RelayError: relay ${method} ${path}: bad response`,
+      );
+    });
+  }
 });

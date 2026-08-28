@@ -1,7 +1,10 @@
 // PNG size reader: the fixed 8-byte signature plus the IHDR chunk's
 // fixed-offset width and height fields, nothing else. No decoding, no image
 // library - callers only need pixel dimensions before a picture from
-// Range.getImage or the relay is ever drawn.
+// Range.getImage or the relay is ever drawn. The bytes-from-base64 loop is
+// crypto.ts's decodeBase64; only the data: prefix belongs here.
+
+import { decodeBase64 } from "./crypto";
 
 const PNG_SIGNATURE = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
 const IHDR_WIDTH_OFFSET = 16;
@@ -25,17 +28,13 @@ export function pngSize(bytes: Uint8Array): { width: number; height: number } {
   };
 }
 
+// Office hands a picture back either as bare base64 or as a data: URL; the
+// bytes after the comma are the same standard-alphabet base64 either way.
 export function base64ToBytes(base64: string): Uint8Array {
   const commaIndex = base64.indexOf(",");
   const raw =
     base64.startsWith("data:") && commaIndex >= 0
       ? base64.slice(commaIndex + 1)
       : base64;
-
-  const binary = atob(raw);
-  const bytes = new Uint8Array(binary.length);
-  for (let index = 0; index < binary.length; index += 1) {
-    bytes[index] = binary.charCodeAt(index);
-  }
-  return bytes;
+  return decodeBase64(raw);
 }

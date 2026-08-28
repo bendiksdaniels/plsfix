@@ -2,6 +2,9 @@
 // routes, mapping every non-success HTTP outcome (and a fetch rejection) to
 // one RelayError kind so callers branch on `.kind` instead of status codes.
 // Owns wire shape only; auth, encryption and retry policy live above this.
+// Invariant: every failure leaves this module as a RelayError - a 200 whose
+// body is not the JSON shape the route promises is one too, never a raw parse
+// error, so the pane's toast always has a `kind` to render.
 
 import { fromBase64Url } from "./crypto";
 import type { RelayStatus } from "./status";
@@ -93,6 +96,60 @@ function toBody(bytes: Uint8Array): Uint8Array<ArrayBuffer> {
   return bytes.slice();
 }
 
+// `"3"` from the relay, `W/"3"` once an intermediary (Cloudflare weakens a
+// strong tag whenever it rewrites a body) has been through it. Anything else -
+// including a missing header, which Number("") would have made rev 0 - is a
+// bad response, never a revision.
+const ETAG_REV = /^(?:W\/)?"(\d+)"$/;
+
+// The relay is the untrusted half of this design (its path carries an Access
+// bypass), so a JSON body is checked against the shape the caller expects
+// instead of cast. A body that fails becomes a typed RelayError like any other
+// bad response, so no caller ever sees a raw SyntaxError.
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function isNumberOrNull(value: unknown): boolean {
+  return value === null || typeof value === "number";
+}
+
+function isPutResult(value: unknown): value is { rev: number } {
+  return isRecord(value) && typeof value.rev === "number";
+}
+
+function isStatusRow(value: unknown): value is RelayStatus {
+  return (
+    isRecord(value) &&
+    typeof value.id === "string" &&
+    isNumberOrNull(value.rev) &&
+    isNumberOrNull(value.pushedAt) &&
+    (value.error === undefined || value.error === "auth")
+  );
+}
+
+interface InboxJson {
+  id: string;
+  createdAt: number;
+  blob: string;
+}
+
+function isInboxJson(value: unknown): value is InboxJson {
+  return (
+    isRecord(value) &&
+    typeof value.id === "string" &&
+    typeof value.createdAt === "number" &&
+    typeof value.blob === "string"
+  );
+}
+
+function arrayOf<T>(
+  guard: (value: unknown) => value is T,
+): (value: unknown) => value is T[] {
+  return (value: unknown): value is T[] =>
+    Array.isArray(value) && value.every(guard);
+}
+
 export class RelayClient implements RelayApi {
   private readonly baseUrl: URL;
   private readonly fetchImpl: typeof fetch;
@@ -133,13 +190,40 @@ export class RelayClient implements RelayApi {
     );
   }
 
+  // One message for every way a 200 can still be unusable: not JSON at all (a
+  // captive portal, an Access interstitial, the dev proxy answering with
+  // index.html), the wrong shape, or a blob that is not base64url.
+  private badResponse(method: string, path: string): RelayError {
+    return new RelayError(
+      "server",
+      `relay ${method} ${this.resolve(path).pathname}: bad response`,
+    );
+  }
+
+  private async json<T>(
+    response: Response,
+    method: string,
+    path: string,
+    guard: (value: unknown) => value is T,
+  ): Promise<T> {
+    let parsed: unknown;
+    try {
+      parsed = await response.json();
+    } catch {
+      throw this.badResponse(method, path);
+    }
+    if (!guard(parsed)) throw this.badResponse(method, path);
+    return parsed;
+  }
+
   async putLink(
     id: string,
     auth: string,
     blob: Uint8Array,
   ): Promise<{ rev: number }> {
+    const path = `links/${id}`;
     const response = await this.request(
-      `links/${id}`,
+      path,
       {
         method: "PUT",
         headers: {
@@ -150,7 +234,7 @@ export class RelayClient implements RelayApi {
       },
       [200],
     );
-    const body = (await response.json()) as { rev: number };
+    const body = await this.json(response, "PUT", path, isPutResult);
     return { rev: body.rev };
   }
 
@@ -168,14 +252,14 @@ export class RelayClient implements RelayApi {
       [200, 304],
     );
     if (response.status === 304) return "unchanged";
-    const etag = response.headers.get("ETag") ?? "";
-    const rev = Number(etag.replace(/^"|"$/g, ""));
-    if (!Number.isFinite(rev)) {
+    const match = ETAG_REV.exec(response.headers.get("ETag") ?? "");
+    if (match === null) {
       throw new RelayError(
         "server",
         `relay GET ${this.resolve(path).pathname}: bad ETag`,
       );
     }
+    const rev = Number(match[1]);
     const blob = new Uint8Array(await response.arrayBuffer());
     return { rev, blob };
   }
@@ -189,8 +273,9 @@ export class RelayClient implements RelayApi {
   }
 
   async status(items: StatusQuery[]): Promise<RelayStatus[]> {
+    const path = "links/status";
     const response = await this.request(
-      "links/status",
+      path,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -198,7 +283,7 @@ export class RelayClient implements RelayApi {
       },
       [200],
     );
-    return (await response.json()) as RelayStatus[];
+    return this.json(response, "POST", path, arrayOf(isStatusRow));
   }
 
   async postInbox(
@@ -223,21 +308,28 @@ export class RelayClient implements RelayApi {
   }
 
   async listInbox(ws: string, auth: string): Promise<InboxRow[]> {
+    const path = `inbox/${ws}`;
     const response = await this.request(
-      `inbox/${ws}`,
+      path,
       { method: "GET", headers: { Authorization: bearer(auth) } },
       [200],
     );
-    const rows = (await response.json()) as {
-      id: string;
-      createdAt: number;
-      blob: string;
-    }[];
+    const rows = await this.json(response, "GET", path, arrayOf(isInboxJson));
     return rows.map((row) => ({
       id: row.id,
       createdAt: row.createdAt,
-      blob: fromBase64Url(row.blob),
+      // fromBase64Url throws a plain Error on anything outside the alphabet;
+      // one bad row must not leave the listing untyped.
+      blob: this.decode(row.blob, path),
     }));
+  }
+
+  private decode(blob: string, path: string): Uint8Array {
+    try {
+      return fromBase64Url(blob);
+    } catch {
+      throw this.badResponse("GET", path);
+    }
   }
 
   async deleteInbox(ws: string, auth: string, id: string): Promise<void> {
