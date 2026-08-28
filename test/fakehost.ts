@@ -208,8 +208,8 @@ export class FakeSheet {
   constructor(
     public name: string,
     public id: string,
-    public visibility: string = "Visible",
-    public position: number = 0,
+    public visibility = "Visible",
+    public position = 0,
   ) {}
 
   key(row: number, col: number): string {
@@ -795,17 +795,16 @@ class StrictLoads {
     // A kind nobody described would police nothing, which is the one failure
     // this layer must never have: say so instead of passing everything through.
     if (!shape) throw new Error(`fake host has no strict shape for "${kind}"`);
-    const loads = this;
 
     return new Proxy(value as Record<string, unknown>, {
-      get(target, property, receiver) {
+      get: (target, property, receiver) => {
         if (property === RAW) return target;
         if (typeof property === "symbol") return Reflect.get(target, property);
 
         const path = prefix + property;
         const childKind = shape.children?.[property];
         if (childKind !== undefined) {
-          return loads.wrap(
+          return this.wrap(
             Reflect.get(target, property),
             childKind,
             root,
@@ -815,22 +814,22 @@ class StrictLoads {
 
         const raw = Reflect.get(target, property);
         if (typeof raw === "function") {
-          return loads.method(target, property, shape, root, prefix, receiver);
+          return this.method(target, property, shape, root, prefix, receiver);
         }
 
         if (property === "items" && shape.items !== undefined) {
-          loads.require(root, path, property, true);
+          this.require(root, path, property, true);
           const items = shape.items;
           return (raw as unknown[]).map((item) =>
-            loads.wrap(item, items, root, `${path}/`),
+            this.wrap(item, items, root, `${path}/`),
           );
         }
         if (property === "value" && shape.result) {
-          if (!loads.state(root).result) throw notSynced();
+          if (!this.state(root).result) throw notSynced();
           return raw;
         }
         if (shape.scalars?.includes(property)) {
-          loads.require(root, path, property, false);
+          this.require(root, path, property, false);
           return raw;
         }
         // Not part of the office.js surface: the fake's own fields, and the
@@ -853,13 +852,12 @@ class StrictLoads {
     prefix: string,
     self: unknown,
   ): (...args: unknown[]) => unknown {
-    const loads = this;
     return (...args: unknown[]): unknown => {
       // Host-side calls take objects, not property reads: hand the fake its own
       // unwrapped proxies so its internals are not policed as add-in reads.
       const plain = args.map((argument) => rawOf(argument));
       if (property === "load") {
-        loads.record(root, prefix, plain[0]);
+        this.record(root, prefix, plain[0]);
         return self;
       }
       const result = (target[property] as (...a: unknown[]) => unknown).apply(
@@ -867,7 +865,7 @@ class StrictLoads {
         plain,
       );
       const returnKind = shape.returns?.[property];
-      if (returnKind !== undefined) return loads.root(result, returnKind);
+      if (returnKind !== undefined) return this.root(result, returnKind);
       return result;
     };
   }
@@ -1396,6 +1394,8 @@ class RangeProxy {
     _skipBlanks = false,
     transpose = false,
   ): void {
+    // Kept for signature parity with Range.copyFrom; the fake never skips blanks.
+    void _skipBlanks;
     const rows = transpose ? source.rect.colCount : source.rect.rowCount;
     const columns = transpose ? source.rect.rowCount : source.rect.colCount;
     const target = this.at({
@@ -2327,7 +2327,6 @@ class WorksheetCollectionProxy {
   // Registration is committed by the sync that follows, so a failed sync leaves
   // no handler behind — the same contract the real host offers.
   get onChanged() {
-    const runtime = this.runtime;
     const ctx = this.ctx;
     return {
       add(handler: (args: unknown) => unknown) {

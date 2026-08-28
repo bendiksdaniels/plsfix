@@ -7,22 +7,21 @@ import {
   installFakeHost,
   uninstallFakeHost,
 } from "./fakehost";
+import type * as ExcelModule from "../src/excel";
+import type * as SettingsModule from "../src/settings";
+import type * as CyclesModule from "../src/cycles";
 
 // Every host in this file answers like the real one: a scalar property read
 // without a load() plus a context.sync() throws instead of quietly working.
 enableStrictLoadSemantics();
 
-type ExcelModule = typeof import("../src/excel");
-type SettingsModule = typeof import("../src/settings");
-type CyclesModule = typeof import("../src/cycles");
-
 let helpers: FakeHelpers;
 let workbook: FakeWorkbook;
-let smt: ExcelModule;
-let brand: SettingsModule;
-let cycles: CyclesModule;
-let theme: ReturnType<SettingsModule["deriveTheme"]>;
-let palette: SettingsModule["DEFAULT_SETTINGS"];
+let smt: typeof ExcelModule;
+let brand: typeof SettingsModule;
+let cycles: typeof CyclesModule;
+let theme: ReturnType<(typeof SettingsModule)["deriveTheme"]>;
+let palette: (typeof SettingsModule)["DEFAULT_SETTINGS"];
 
 // A fresh runtime plus a fresh module graph: the undo slot, the copy source, the
 // overlay snapshots and the edit handler all start clean.
