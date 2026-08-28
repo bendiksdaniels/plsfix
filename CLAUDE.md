@@ -13,8 +13,9 @@ DB Automatizācijas suite at `dbautomatizacijas.com/modelis/` (key `modelis`).
 - Deploys go through the gateway's audited flow (`db deploy modelis`), which builds the
   pane locally (`npm run build`) and the server binary on the VPS. Never hand-copy files
   to production.
-- `manifest.xml` = dev (localhost:3000), `manifest.prod.xml` = production URLs; both carry
-  duplicated VersionOverrides V1_0 + nested V1_1 blocks - edit BOTH or they drift.
+- `manifest.xml` (dev, localhost:3000) and `manifest.prod.xml` (prod, server URLs) are
+  both generated from `manifest/spec.ts` via `npm run manifest:build` - never edit
+  either file by hand.
 - `README.md` and `ROADMAP.md` are Daniel's hand-curated files: surgical edits only.
 - Versioning: package.json + server crate stay in lockstep; pane footer shows
   vMAJOR.MINOR.PATCH with a 3-digit patch.
