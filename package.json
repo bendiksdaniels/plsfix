@@ -19,7 +19,8 @@
     "stop": "office-addin-debugging stop manifest.xml",
     "validate": "office-addin-manifest validate manifest.xml && office-addin-manifest validate manifest.prod.xml",
     "manifest:build": "tsx scripts/build-manifests.ts",
-    "manifest:check": "tsx scripts/build-manifests.ts --check"
+    "manifest:check": "tsx scripts/build-manifests.ts --check",
+    "version:check": "tsx scripts/check-version.ts"
   },
   "dependencies": {
     "office-js": "0.1.0"

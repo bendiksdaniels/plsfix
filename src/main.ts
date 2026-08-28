@@ -62,10 +62,10 @@ import { makeGuard } from "./ui/guard";
 import { describeError, installErrorReporting } from "./ui/report";
 import { installTabs } from "./ui/tabs";
 import { createToast } from "./ui/toast";
+import { formatVersion } from "./ui/version";
 
-// Swapped for __APP_VERSION__ once the build defines it (a later task); every
-// describeError call reads this one constant so that swap is a one-liner.
-const APP_VERSION = "v1.1.000";
+// Every describeError call and the footer read this one formatted constant.
+const APP_VERSION = formatVersion(__APP_VERSION__);
 
 const STORAGE_KEY = "smt.brand.v1";
 const PALETTE_SLOTS = [
@@ -802,6 +802,8 @@ async function insertTocSheet(): Promise<string> {
   await refreshSheets();
   return "Contents sheet updated";
 }
+
+getElement("app-version").textContent = APP_VERSION;
 
 // Installed first so a throw during the rest of boot is still reported.
 installErrorReporting({ host: "Excel", version: APP_VERSION }, (message, details) =>
