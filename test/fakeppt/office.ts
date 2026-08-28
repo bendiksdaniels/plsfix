@@ -21,6 +21,9 @@ class FakeRuntime {
   storage: Map<string, string>;
   insertions: SelectionInsert[] = [];
   nextInsertFailure: string | null = null;
+  // Every context.sync() this host served: one round trip to PowerPoint, and
+  // the only cost a deck's size is allowed to multiply.
+  syncs = 0;
 
   constructor(
     public presentation: FakePresentation,
@@ -43,7 +46,9 @@ class FakeContext extends Loadable {
   }
 
   // A no-op flush: reads come from the deck, so only load state moves here.
+  // Counted, because a batch that syncs per shape is the performance bug.
   sync(): Promise<void> {
+    this.runtime.syncs += 1;
     this.runtime.strict?.commit();
     return Promise.resolve();
   }
@@ -206,6 +211,7 @@ function makeHelpers(runtime: FakeRuntime): FakePptHelpers {
       runtime.supported = check;
     },
     storage: () => runtime.storage,
+    syncCount: () => runtime.syncs,
     failNextSelectionInsert(
       message = "PowerPoint could not insert the image.",
     ) {
