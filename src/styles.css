@@ -931,3 +931,186 @@ footer span:last-child {
   color: #fff;
   background: var(--red);
 }
+
+/* --------------------------------------------------------------------------
+   PowerPoint pane: link table, status badges, inbox, pairing key
+   -------------------------------------------------------------------------- */
+
+.link-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.link-actions button {
+  min-height: 34px;
+  padding: 4px 8px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.72);
+  font-size: 10.5px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.link-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-size: 10px;
+}
+.link-table th {
+  overflow: hidden;
+  padding: 0 3px 5px;
+  border-bottom: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-align: left;
+  text-transform: uppercase;
+}
+.link-table td {
+  overflow: hidden;
+  padding: 6px 3px;
+  border-bottom: 1px solid rgba(226, 221, 212, 0.7);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* Fixed layout, so the first row's widths rule: the tick, the slide number,
+   the status and the age get exactly what they need and the two names share
+   what is left - both are ellipsised with the full text in their title. */
+.link-table th:first-child,
+.link-select {
+  width: 20px;
+  padding-left: 0;
+}
+.link-table th:nth-child(2) {
+  width: 28px;
+}
+.link-table th:nth-child(4) {
+  width: 14%;
+}
+.link-table th:nth-child(5) {
+  width: 88px;
+}
+.link-table th:nth-child(6) {
+  width: 60px;
+}
+.link-select input {
+  width: 14px;
+  height: 14px;
+  margin: 0;
+  accent-color: var(--bronze);
+}
+.link-slide {
+  color: var(--muted);
+}
+.link-label {
+  font-weight: 700;
+}
+.link-source,
+.link-updated {
+  color: var(--muted);
+}
+.link-updated {
+  font-size: 9px;
+}
+
+.badge {
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  padding: 2px 5px;
+  border-radius: 999px;
+  background: #f0ece5;
+  font-size: 8px;
+  font-weight: 750;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.badge.current {
+  color: var(--green);
+  background: rgba(47, 107, 79, 0.12);
+}
+.badge.update {
+  color: var(--bronze);
+  background: rgba(178, 126, 84, 0.16);
+}
+.badge.missing,
+.badge.wrong {
+  color: var(--red);
+  background: rgba(163, 63, 50, 0.12);
+}
+
+.inbox-list {
+  display: grid;
+  gap: 8px;
+}
+.inbox-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+  align-items: center;
+  padding: 8px 8px 8px 11px;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  background: rgba(255, 255, 255, 0.68);
+}
+.inbox-text {
+  overflow: hidden;
+}
+.inbox-text strong {
+  display: block;
+  overflow: hidden;
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.inbox-text small {
+  display: block;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 9px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.inbox-insert {
+  min-height: 28px;
+  padding: 4px 12px;
+  border: 1px solid var(--bronze);
+  border-radius: 9px;
+  color: var(--bronze);
+  background: rgba(178, 126, 84, 0.1);
+  font-size: 10.5px;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.key-label {
+  display: grid;
+  gap: 4px;
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.key-input {
+  min-height: 34px;
+  padding: 6px 9px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  color: var(--ink);
+  background: #fff;
+  font:
+    600 11px/1.2 ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    monospace;
+}
+.key-input:focus {
+  border-color: var(--bronze);
+  outline: none;
+}
