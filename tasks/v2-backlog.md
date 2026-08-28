@@ -21,7 +21,7 @@ each item. Stop when Daniel intervenes or the list is empty.
 
 ## Features (v2.1)
 
-- [ ] B5 Shapes inside groups: verify `Shape.group` / `ShapeGroup.shapes` availability on
+- [x] B5 Shapes inside groups: verify `Shape.group` / `ShapeGroup.shapes` availability on
       learn.microsoft.com (requirement set), scan recursively in `scanLinks`, fake-host group
       support, tests; document the floor.
 - [x] B6 Brand settings per workbook: `workbook.settings["smt.brand.v1"]` with localStorage
