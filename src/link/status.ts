@@ -21,7 +21,10 @@ export function deriveStatus(
   if (relay === undefined) return "missing";
   if (relay.error === "auth") return "wrongKey";
   if (relay.rev === null) return "missing";
-  if (relay.rev > tagRev) return "updateAvailable";
+  // Any inequality, not just a higher rev: a link swept at its 7-day TTL comes
+  // back from the next push as rev 1, so a relay rev *below* the tag's is the
+  // ordinary "the deck is stale" case, not an impossibility.
+  if (relay.rev !== tagRev) return "updateAvailable";
   return "current";
 }
 

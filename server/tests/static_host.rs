@@ -2,7 +2,7 @@
 //! that lets an Office webview pick up a redeploy (hashed bundles immutable,
 //! everything else no-cache).
 
-use std::{path::PathBuf, sync::Arc};
+use std::{path::PathBuf, sync::Arc, sync::OnceLock};
 
 use plsfix_server::{app, relay::AppState, store::Store};
 
@@ -13,20 +13,27 @@ mod tests {
     use http_body_util::BodyExt;
     use tower::ServiceExt;
 
+    /// One directory per test process, written exactly once: these tests run
+    /// on separate threads, and re-writing a file while another thread's
+    /// ServeDir was reading it served an empty pane every so often.
     fn test_dir() -> PathBuf {
-        let dir = std::env::temp_dir().join(format!("modelis-test-{}", std::process::id()));
-        let assets = dir.join("assets");
-        std::fs::create_dir_all(&assets).unwrap();
-        std::fs::write(
-            dir.join("taskpane.html"),
-            "<title>Model Tools</title>",
-        )
-        .unwrap();
-        std::fs::write(dir.join("shortcuts.json"), "{\"actions\":[]}").unwrap();
-        std::fs::write(assets.join("taskpane-Bfs8s79m.js"), "// bundle").unwrap();
-        std::fs::write(assets.join("pptpane-abc.js"), "// bundle").unwrap();
-        std::fs::write(assets.join("icon-32.png"), [0x89, 0x50]).unwrap();
-        dir
+        static DIR: OnceLock<PathBuf> = OnceLock::new();
+        DIR.get_or_init(|| {
+            let dir = std::env::temp_dir().join(format!("modelis-test-{}", std::process::id()));
+            let assets = dir.join("assets");
+            std::fs::create_dir_all(&assets).unwrap();
+            std::fs::write(
+                dir.join("taskpane.html"),
+                "<title>Model Tools</title>",
+            )
+            .unwrap();
+            std::fs::write(dir.join("shortcuts.json"), "{\"actions\":[]}").unwrap();
+            std::fs::write(assets.join("taskpane-Bfs8s79m.js"), "// bundle").unwrap();
+            std::fs::write(assets.join("pptpane-abc.js"), "// bundle").unwrap();
+            std::fs::write(assets.join("icon-32.png"), [0x89, 0x50]).unwrap();
+            dir
+        })
+        .clone()
     }
 
     fn test_state() -> Arc<AppState> {

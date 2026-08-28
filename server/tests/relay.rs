@@ -243,44 +243,137 @@ mod tests {
     }
 }
 
-#[tokio::test]
-async fn inbox_bodies_over_64k_are_413_and_foreign_keys_are_403() {
+// Body limits that are not the payload's, and what a foreign bearer can do to
+// a workspace inbox. These build their own requests (several keys, several
+// methods), so they sit apart from the shared `req` helper above.
+mod limits_and_keys {
+    use super::*;
     use axum::body::Body;
     use axum::http::{header, Request, StatusCode};
+    use axum::response::Response;
+    use axum::Router;
+    use http_body_util::BodyExt;
     use tower::ServiceExt;
-    let app = routes(std::sync::Arc::new(AppState {
-        store: Store::in_memory().unwrap(),
-    }));
-    let ws = "CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC";
-    let id = "0123456789abcdef0123456789abcdef";
-    let build = |auth: &str, size: usize| {
+
+    const WS: &str = "CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC";
+    const LINK: &str = "0123456789abcdef0123456789abcdef";
+    const MINE: &str = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+    const THEIRS: &str = "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB";
+
+    fn app() -> Router {
+        routes(std::sync::Arc::new(AppState {
+            store: Store::in_memory().unwrap(),
+        }))
+    }
+
+    fn post_item(auth: &str, body: Vec<u8>) -> Request<Body> {
         Request::builder()
             .method("POST")
-            .uri(format!("/api/inbox/{ws}"))
+            .uri(format!("/api/inbox/{WS}"))
             .header(header::AUTHORIZATION, format!("Bearer {auth}"))
-            .header("x-smt-link-id", id)
+            .header("x-smt-link-id", LINK)
             .header(header::CONTENT_TYPE, "application/octet-stream")
-            .body(Body::from(vec![0u8; size]))
+            .body(Body::from(body))
             .unwrap()
-    };
-    let mine = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
-    let theirs = "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB";
-    let status = |r: axum::response::Response| r.status();
-    assert_eq!(
-        status(app.clone().oneshot(build(mine, 60 * 1024)).await.unwrap()),
-        StatusCode::OK
-    );
-    assert_eq!(
-        status(
-            app.clone()
-                .oneshot(build(mine, 64 * 1024 + 1))
+    }
+
+    fn call(auth: &str, method: &str, path: String) -> Request<Body> {
+        Request::builder()
+            .method(method)
+            .uri(path)
+            .header(header::AUTHORIZATION, format!("Bearer {auth}"))
+            .body(Body::empty())
+            .unwrap()
+    }
+
+    async fn send(app: &Router, request: Request<Body>) -> Response {
+        app.clone().oneshot(request).await.unwrap()
+    }
+
+    async fn listing(app: &Router, auth: &str) -> String {
+        let response = send(app, call(auth, "GET", format!("/api/inbox/{WS}"))).await;
+        let bytes = response.into_body().collect().await.unwrap().to_bytes();
+        String::from_utf8(bytes.to_vec()).unwrap()
+    }
+
+    #[tokio::test]
+    async fn inbox_bodies_over_64k_are_413() {
+        let app = app();
+        assert_eq!(
+            send(&app, post_item(MINE, b"item".to_vec())).await.status(),
+            StatusCode::OK
+        );
+        assert_eq!(
+            send(&app, post_item(MINE, vec![0u8; 64 * 1024 + 1]))
                 .await
+                .status(),
+            StatusCode::PAYLOAD_TOO_LARGE
+        );
+    }
+
+    #[tokio::test]
+    async fn a_foreign_key_writes_only_its_own_inbox_row() {
+        let app = app();
+        assert_eq!(
+            send(&app, post_item(MINE, b"item".to_vec())).await.status(),
+            StatusCode::OK
+        );
+        // A bearer that is not the workspace's is accepted - the server cannot
+        // tell the two apart - but it lands in a row of its own, and the
+        // owner's listing is untouched.
+        assert_eq!(
+            send(&app, post_item(THEIRS, b"squat".to_vec()))
+                .await
+                .status(),
+            StatusCode::OK
+        );
+        let mine = listing(&app, MINE).await;
+        assert!(mine.contains("\"blob\":\"aXRlbQ\""));
+        assert!(!mine.contains("c3F1YXQ"));
+        // A DELETE from the squatter takes its own row and leaves the owner's.
+        let path = format!("/api/inbox/{WS}/{LINK}");
+        assert_eq!(
+            send(&app, call(THEIRS, "DELETE", path.clone()))
+                .await
+                .status(),
+            StatusCode::OK
+        );
+        assert!(listing(&app, MINE).await.contains("\"blob\":\"aXRlbQ\""));
+        // A key that wrote nothing sees no row to delete: 404, never 403.
+        let stranger = "DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD";
+        assert_eq!(
+            send(&app, call(stranger, "DELETE", path.clone()))
+                .await
+                .status(),
+            StatusCode::NOT_FOUND
+        );
+        assert_eq!(
+            send(&app, call(MINE, "DELETE", path)).await.status(),
+            StatusCode::OK
+        );
+    }
+
+    #[tokio::test]
+    async fn an_oversize_status_batch_is_refused_at_the_socket() {
+        // The status route has no bearer and sits behind the Access bypass: it
+        // must not inherit the 4 MiB payload limit and parse an attacker's JSON.
+        let app = app();
+        let batch = |body: Vec<u8>| {
+            Request::builder()
+                .method("POST")
+                .uri("/api/links/status")
+                .header(header::CONTENT_TYPE, "application/json")
+                .body(Body::from(body))
                 .unwrap()
-        ),
-        StatusCode::PAYLOAD_TOO_LARGE
-    );
-    assert_eq!(
-        status(app.oneshot(build(theirs, 10)).await.unwrap()),
-        StatusCode::FORBIDDEN
-    );
+        };
+        assert_eq!(
+            send(&app, batch(vec![b'x'; 70 * 1024])).await.status(),
+            StatusCode::PAYLOAD_TOO_LARGE
+        );
+        // A real batch is nowhere near the limit and still answers.
+        assert_eq!(
+            send(&app, batch(b"[]".to_vec())).await.status(),
+            StatusCode::OK
+        );
+    }
 }

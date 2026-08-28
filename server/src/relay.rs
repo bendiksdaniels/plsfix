@@ -1,6 +1,7 @@
-//! `/api` routes for the relay: sealed link revisions (4 MiB) and workspace
-//! inbox items (64 KiB). Owns bearer extraction, id validation, the JSON error
-//! shape and the ETag/304 contract; all state lives in `store`.
+//! `/api` routes for the relay: sealed link revisions (4 MiB), workspace inbox
+//! items (64 KiB) and the status batch (64 KiB). Owns bearer extraction, id
+//! validation, the JSON error shape and the ETag/304 contract; all state lives
+//! in `store`.
 //! Invariant: a request is answered from the bearer's hash, never its key.
 
 use std::sync::Arc;
@@ -22,6 +23,11 @@ use crate::store::{auth_hash, Delete, Found, Get, Put, StatusRow, Store};
 const LINK_LIMIT: usize = 4 * 1024 * 1024;
 /// Inbox items carry metadata only.
 const INBOX_LIMIT: usize = 64 * 1024;
+/// The status batch is the one route with no bearer (it carries a key per
+/// item) and it sits behind the Access bypass, so it must not inherit the
+/// payload limit: a full 200-item batch is about 20 KiB, and anything past
+/// this is refused at the socket instead of parsed on the shared connection.
+const STATUS_LIMIT: usize = 64 * 1024;
 /// One poll covers a deck; a longer batch is a client bug.
 const MAX_STATUS_ITEMS: usize = 200;
 /// The inbox POST names its link here - the body is the sealed item.
@@ -78,18 +84,20 @@ pub fn now() -> i64 {
         .unwrap_or(0)
 }
 
-/// Two nested routers so the inbox keeps its own, much smaller body limit.
+/// One router per body limit, so only the payload route carries 4 MiB.
 pub fn routes(state: Arc<AppState>) -> Router {
     let links = Router::new()
         .route("/:id", get(get_link).put(put_link).delete(delete_link))
-        .route("/status", post(status))
         .layer(DefaultBodyLimit::max(LINK_LIMIT));
+    let batch = Router::new()
+        .route("/status", post(status))
+        .layer(DefaultBodyLimit::max(STATUS_LIMIT));
     let inbox = Router::new()
         .route("/:ws", get(list_inbox).post(post_inbox))
         .route("/:ws/:id", delete(delete_inbox))
         .layer(DefaultBodyLimit::max(INBOX_LIMIT));
     Router::new()
-        .nest("/api/links", links)
+        .nest("/api/links", links.merge(batch))
         .nest("/api/inbox", inbox)
         .with_state(state)
 }
@@ -275,13 +283,12 @@ async fn post_inbox(
         .and_then(|value| value.to_str().ok())
         .filter(|id| is_link_id(id))
         .ok_or(Refused::BadId)?;
-    let accepted = state
+    // No ownership check: the row is keyed by the writer's hash, so a foreign
+    // key writes beside the pane's item rather than over it, and never sees it.
+    state
         .store
         .post_inbox(&ws, &auth, id, &body, now())
         .map_err(|error| failed("post_inbox", id, &error))?;
-    if !accepted {
-        return Err(Refused::Forbidden);
-    }
     Ok(ok_json())
 }
 
@@ -315,9 +322,10 @@ async fn delete_inbox(
         .store
         .delete_inbox(&ws, &auth, &id, now())
         .map_err(|error| failed("delete_inbox", &id, &error))?;
-    match deleted {
-        Delete::Deleted => Ok(ok_json()),
-        Delete::Forbidden => Err(Refused::Forbidden),
-        Delete::Missing => Err(Refused::Missing),
+    // A row this key did not write is invisible, so "not yours" is 404 here.
+    if deleted {
+        Ok(ok_json())
+    } else {
+        Err(Refused::Missing)
     }
 }
