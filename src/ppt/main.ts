@@ -27,7 +27,7 @@ import {
   toRowViews,
   updateDetails,
 } from "./actions";
-import { breakLink, goToSlide } from "./host";
+import { activeSlideId, breakLink, goToSlide } from "./host";
 import {
   insertFromInbox,
   listInbox,
@@ -169,6 +169,17 @@ async function updateRows(subset: LinkRow[]): Promise<string> {
   return summarize(summary);
 }
 
+// "Update this slide" reads PowerPoint's own selection, not a tick: the pane
+// cannot see it any other way, so a slide with nothing selected or nothing
+// linked on it is reported rather than silently falling back to a tick.
+async function updateSlide(): Promise<string> {
+  const slideId = await activeSlideId();
+  if (slideId === null) throw new Error("Select a slide first.");
+  const subset = slideRows(rows, slideId);
+  if (subset.length === 0) throw new Error("No links on this slide");
+  return updateRows(subset);
+}
+
 async function breakSelected(): Promise<string> {
   const subset = requireSelection(selectedRows(rows, selected));
   try {
@@ -271,7 +282,7 @@ const BUTTON_ACTIONS: Record<string, () => Promise<string>> = {
   "refresh-links": refreshLinks,
   "update-selected": () =>
     updateRows(requireSelection(selectedRows(rows, selected))),
-  "update-slide": () => updateRows(requireSelection(slideRows(rows, selected))),
+  "update-slide": updateSlide,
   "update-all": () => updateRows(rows),
   "break-selected": breakSelected,
   "go-to-slide": goToSelectedSlide,

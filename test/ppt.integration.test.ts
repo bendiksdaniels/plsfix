@@ -353,6 +353,20 @@ describe("break link", () => {
   });
 });
 
+describe("active slide", () => {
+  it("reports PowerPoint's active slide, not a ticked link", async () => {
+    const host = await import("../src/ppt/host");
+    helpers.selectSlide(presentation.slides[1]!.id);
+    expect(await host.activeSlideId()).toBe(presentation.slides[1]!.id);
+  });
+
+  it("reports null once the selection is cleared", async () => {
+    const host = await import("../src/ppt/host");
+    helpers.clearSelection();
+    expect(await host.activeSlideId()).toBeNull();
+  });
+});
+
 describe("hosts below PowerPointApi 1.8", () => {
   beforeEach(() => {
     helpers.setSupported(

@@ -73,15 +73,21 @@ describe("selection", () => {
     expect(views[1]!.status).toBe("missing");
   });
 
-  it("takes the slide from the first ticked row, and none when nothing is", () => {
+  it("selects rows by shape key from the ticked set", () => {
     const rows = [row("s1", "sh1"), row("s2", "sh2"), row("s2", "sh3")];
     expect(
       selectedRows(rows, new Set(["s2/sh3"])).map((r) => r.found.shapeId),
     ).toEqual(["sh3"]);
-    expect(
-      slideRows(rows, new Set(["s2/sh3"])).map((r) => r.found.shapeId),
-    ).toEqual(["sh2", "sh3"]);
-    expect(slideRows(rows, new Set())).toEqual([]);
+  });
+
+  it("returns every row on the given slide, ticked or not, and none for a slide with no links", () => {
+    const rows = [row("s1", "sh1"), row("s2", "sh2"), row("s2", "sh3")];
+    expect(slideRows(rows, "s2").map((r) => r.found.shapeId)).toEqual([
+      "sh2",
+      "sh3",
+    ]);
+    expect(slideRows(rows, "s1").map((r) => r.found.shapeId)).toEqual(["sh1"]);
+    expect(slideRows(rows, "s9")).toEqual([]);
   });
 
   it("drops keys whose shape is gone after a rescan", () => {

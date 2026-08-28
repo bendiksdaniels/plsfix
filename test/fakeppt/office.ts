@@ -198,6 +198,9 @@ function makeHelpers(runtime: FakeRuntime): FakePptHelpers {
       runtime.presentation.findSlideOrThrow(id);
       runtime.presentation.selectedSlideIds = [id];
     },
+    clearSelection() {
+      runtime.presentation.selectedSlideIds = [];
+    },
     setSupported(check) {
       runtime.supported = check;
     },
