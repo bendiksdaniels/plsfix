@@ -42,6 +42,9 @@ export interface FakePptHelpers {
   clearSelection(): void;
   setSupported(check: (set: string, version: string) => boolean): void;
   storage(): Map<string, string>;
+  // Round trips to the host since this fake was installed: what a batching
+  // change is measured in, counted from zero per installFakePpt.
+  syncCount(): number;
   insertedViaSelection(): SelectionInsert[];
   // Makes the next setSelectedDataAsync report failure, the way a host that is
   // out of memory or has the slide locked does. Consumed by that one call.

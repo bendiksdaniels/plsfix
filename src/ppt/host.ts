@@ -1,8 +1,9 @@
 // The only PowerPoint Office.js code: scan the deck for shapes carrying the
-// link tags, insert a linked picture, repaint one in place (or reinsert it on
-// hosts below PowerPointApi 1.8), break a link by dropping its tags, and read
-// or set which slide is active. Identity is always the SMT_LINK tag - never a
-// shape id, name or position.
+// link tags, insert a linked picture, repaint one or a whole batch of them in
+// place (or reinsert on hosts below PowerPointApi 1.8), break a link by
+// dropping its tags, and read or set which slide is active. Identity is always
+// the SMT_LINK tag - never a shape id, name or position. Every flow here is
+// counted in round trips: one sync per batch, never one per shape.
 
 import {
   decodeTag,
@@ -265,33 +266,71 @@ function refreshedHeight(found: FoundLink, size: Size): number {
     : found.height;
 }
 
+export interface RefreshRequest {
+  found: FoundLink;
+  payload: Payload;
+  rev: number;
+}
+
+// One link repainted: the batch of one on a host with fill.setImage, and the
+// reinsertion fallback below it.
 export async function refreshLink(
   found: FoundLink,
   payload: Payload,
   rev: number,
 ): Promise<void> {
-  const stage = `refresh ${sourceLabel(found.tag.src, found.tag.kind)}`;
-  const size = pngSize(base64ToBytes(payload.png));
-  const tag = tagFor(found.tag, payload, rev);
-  const height = refreshedHeight(found, size);
-  if (!supportsInPlaceRefresh()) {
-    // Reinsertion drops the picture on the slide, not back into its group, so
-    // a grouped link is left alone and the row says why.
-    if (isGrouped(found)) {
-      throw new Error(
-        `${stage}: grouped pictures need PowerPoint 2504/16.96 or newer`,
-      );
-    }
-    await reinsertLink(stage, found, payload.png, tag, height);
+  if (supportsInPlaceRefresh()) {
+    await refreshLinks([{ found, payload, rev }]);
     return;
   }
+  const stage = `refresh ${sourceLabel(found.tag.src, found.tag.kind)}`;
+  // Reinsertion drops the picture on the slide, not back into its group, so
+  // a grouped link is left alone and the row says why.
+  if (isGrouped(found)) {
+    throw new Error(
+      `${stage}: grouped pictures need PowerPoint 2504/16.96 or newer`,
+    );
+  }
+  const size = pngSize(base64ToBytes(payload.png));
+  const tag = tagFor(found.tag, payload, rev);
+  await reinsertLink(
+    stage,
+    found,
+    payload.png,
+    tag,
+    refreshedHeight(found, size),
+  );
+}
+
+// Every in-place repaint of an "Update all" in one round trip: the pictures,
+// the tags and the heights are queued for the whole batch and sent with a
+// single sync, because a sync per shape is what makes a sixty-link deck crawl.
+// False when the host has no fill.setImage, so the caller repaints row by row
+// through the reinsertion above. A host that refuses one shape rejects the
+// whole batch; retrying those rows one at a time is safe, because a repaint
+// writes the same picture, tag and height however often it runs.
+export async function refreshLinks(batch: RefreshRequest[]): Promise<boolean> {
+  if (!supportsInPlaceRefresh()) return false;
+  if (batch.length === 0) return true;
   await PowerPoint.run(async (context) => {
-    const shape = shapeAt(context, found);
-    shape.fill.setImage(payload.png);
-    if (height !== found.height) shape.height = height;
-    shape.tags.add(TAG_LINK, encodeTag(tag));
+    for (const entry of batch) queueRefresh(context, entry);
     await context.sync();
   });
+  return true;
+}
+
+// One picture repainted where it sits. Nothing here reads a shape property, so
+// no entry in the batch needs a load: the geometry it compares against is the
+// one the scan already read.
+function queueRefresh(
+  context: PowerPoint.RequestContext,
+  { found, payload, rev }: RefreshRequest,
+): void {
+  const height = refreshedHeight(found, pngSize(base64ToBytes(payload.png)));
+  const shape = shapeAt(context, found);
+  shape.fill.setImage(payload.png);
+  if (height !== found.height) shape.height = height;
+  shape.tags.add(TAG_LINK, encodeTag(tagFor(found.tag, payload, rev)));
 }
 
 // The fallback repaint, in the only safe order: the new picture lands on the

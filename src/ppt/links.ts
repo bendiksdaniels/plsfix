@@ -25,12 +25,15 @@ import {
 } from "../link/status";
 import type { Workspace } from "../link/workspace";
 import * as realHost from "./host";
-import type { FoundLink } from "./host";
+import type { FoundLink, RefreshRequest } from "./host";
 
+// refreshLinks is optional: a stub host is a handful of functions, and without
+// it every row is simply refreshed on its own - what a host below
+// PowerPointApi 1.8 does anyway.
 export type PptHost = Pick<
   typeof realHost,
   "scanLinks" | "insertLink" | "refreshLink" | "breakLink" | "goToSlide"
->;
+> & { refreshLinks?: typeof realHost.refreshLinks };
 
 export interface LinkRow {
   found: FoundLink;
@@ -135,7 +138,8 @@ async function fetchPayload(
 }
 
 // A row the deck already agrees with is never fetched, and one row's failure
-// never stops the rest: the summary is what the pane reports afterwards.
+// never stops the rest: the summary is what the pane reports afterwards. The
+// fetches run row by row, the repaints they earn all travel together.
 export async function updateLinks(
   rows: LinkRow[],
   relay: RelayApi,
@@ -150,6 +154,7 @@ export async function updateLinks(
     sourceChanges: [],
     failures: [],
   };
+  const batch: RefreshRequest[] = [];
   for (const row of rows) {
     if (row.status !== "updateAvailable") {
       countSkipped(summary, row.status);
@@ -162,13 +167,48 @@ export async function updateLinks(
         continue;
       }
       noteSourceChange(summary, row.found, fetched.payload);
-      await host.refreshLink(row.found, fetched.payload, fetched.rev);
-      summary.updated += 1;
+      batch.push({
+        found: row.found,
+        payload: fetched.payload,
+        rev: fetched.rev,
+      });
     } catch (error) {
       countFailure(summary, row.found, error);
     }
   }
+  await applyRefreshes(summary, batch, host);
   return summary;
+}
+
+// Every picture the relay had something new for, repainted in one round trip.
+// The batch is a speed-up, never a new failure mode: a host that refuses one
+// shape rejects the whole run, so the rows go through one at a time and only
+// the bad one is counted as a failure. Replaying a row the batch had already
+// applied costs nothing - a repaint writes the same picture, tag and height.
+async function applyRefreshes(
+  summary: UpdateSummary,
+  batch: RefreshRequest[],
+  host: PptHost,
+): Promise<void> {
+  if (batch.length === 0) return;
+  if (host.refreshLinks) {
+    try {
+      if (await host.refreshLinks(batch)) {
+        summary.updated += batch.length;
+        return;
+      }
+    } catch {
+      // One shape in the batch; the rows below name it.
+    }
+  }
+  for (const entry of batch) {
+    try {
+      await host.refreshLink(entry.found, entry.payload, entry.rev);
+      summary.updated += 1;
+    } catch (error) {
+      countFailure(summary, entry.found, error);
+    }
+  }
 }
 
 function countSkipped(summary: UpdateSummary, status: LinkStatus): void {

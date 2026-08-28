@@ -112,6 +112,20 @@ describe("fake PowerPoint host", () => {
     });
   });
 
+  // What a batching change is measured in: the count starts at zero for every
+  // installed host, so one test's round trips never land in another's budget.
+  it("counts the round trips since it was installed", async () => {
+    const { helpers } = installFakePpt({ slides: 1 });
+    expect(helpers.syncCount()).toBe(0);
+    await PowerPoint.run(async (context) => {
+      const slides = context.presentation.slides;
+      slides.load("items/id");
+      await context.sync();
+      await context.sync();
+    });
+    expect(helpers.syncCount()).toBe(2);
+  });
+
   it("delete removes the shape from the model", async () => {
     const { presentation } = installFakePpt({ slides: 1 });
     await PowerPoint.run(async (context) => {
