@@ -2,7 +2,12 @@
 // manifest/spec.ts data into manifest text. Owns whitespace, attribute order,
 // the V1_0/V1_1 VersionOverrides duplication, and escaping every interpolated
 // value; has no I/O and no knowledge of dev vs prod beyond what it is given.
-import type { AddinSpec, ButtonSpec, HostSpec, ManifestEnvironment } from "./spec";
+import type {
+  AddinSpec,
+  ButtonSpec,
+  HostSpec,
+  ManifestEnvironment,
+} from "./spec";
 
 const pad = (block: string, spaces: number): string =>
   block
@@ -92,12 +97,16 @@ function resources(env: ManifestEnvironment, spec: AddinSpec): string {
     ...spec.hosts.flatMap((host) => [
       `<bt:String id="${escapeXml(host.groupId)}.Label" DefaultValue="${escapeXml(host.groupLabel)}"/>`,
       ...host.buttons.map(
-        (b) => `<bt:String id="SMT.${escapeXml(b.id)}.Label" DefaultValue="${escapeXml(b.label)}"/>`,
+        (b) =>
+          `<bt:String id="SMT.${escapeXml(b.id)}.Label" DefaultValue="${escapeXml(b.label)}"/>`,
       ),
     ]),
   ];
   const longs = spec.hosts.flatMap((host) =>
-    host.buttons.map((b) => `<bt:String id="SMT.${escapeXml(b.id)}.Tip" DefaultValue="${escapeXml(b.tip)}"/>`),
+    host.buttons.map(
+      (b) =>
+        `<bt:String id="SMT.${escapeXml(b.id)}.Tip" DefaultValue="${escapeXml(b.tip)}"/>`,
+    ),
   );
   return [
     `<Resources>`,
@@ -108,7 +117,8 @@ function resources(env: ManifestEnvironment, spec: AddinSpec): string {
     `  </bt:Images>`,
     `  <bt:Urls>`,
     ...spec.hosts.map(
-      (host) => `    <bt:Url id="${escapeXml(host.urlResid)}" DefaultValue="${escapeXml(env.baseUrl)}${escapeXml(host.page)}"/>`,
+      (host) =>
+        `    <bt:Url id="${escapeXml(host.urlResid)}" DefaultValue="${escapeXml(env.baseUrl)}${escapeXml(host.page)}"/>`,
     ),
     `  </bt:Urls>`,
     `  <bt:ShortStrings>`,
@@ -121,10 +131,15 @@ function resources(env: ManifestEnvironment, spec: AddinSpec): string {
   ].join("\n");
 }
 
-function overrides(env: ManifestEnvironment, spec: AddinSpec, nested: string | null): string {
-  const xmlns = nested === null
-    ? `xmlns="http://schemas.microsoft.com/office/taskpaneappversionoverrides/1.1" xsi:type="VersionOverridesV1_1"`
-    : `xmlns="http://schemas.microsoft.com/office/taskpaneappversionoverrides" xsi:type="VersionOverridesV1_0"`;
+function overrides(
+  env: ManifestEnvironment,
+  spec: AddinSpec,
+  nested: string | null,
+): string {
+  const xmlns =
+    nested === null
+      ? `xmlns="http://schemas.microsoft.com/office/taskpaneappversionoverrides/1.1" xsi:type="VersionOverridesV1_1"`
+      : `xmlns="http://schemas.microsoft.com/office/taskpaneappversionoverrides" xsi:type="VersionOverridesV1_0"`;
   return [
     `<VersionOverrides ${xmlns}>`,
     `  <Requirements>`,
@@ -143,7 +158,10 @@ function overrides(env: ManifestEnvironment, spec: AddinSpec, nested: string | n
   ].join("\n");
 }
 
-export function buildManifest(env: ManifestEnvironment, spec: AddinSpec): string {
+export function buildManifest(
+  env: ManifestEnvironment,
+  spec: AddinSpec,
+): string {
   const inner = overrides(env, spec, null);
   const outer = overrides(env, spec, inner);
   const primary = spec.hosts[0]!;

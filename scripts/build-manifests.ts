@@ -18,7 +18,9 @@ for (const env of ENVIRONMENTS) {
   }
   if (current === expected) continue;
   if (check) {
-    process.stderr.write(`${env.file} differs from manifest/spec.ts - run npm run manifest:build\n`);
+    process.stderr.write(
+      `${env.file} differs from manifest/spec.ts - run npm run manifest:build\n`,
+    );
     drift += 1;
     continue;
   }

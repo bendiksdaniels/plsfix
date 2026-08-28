@@ -13,7 +13,10 @@ const dev = ENVIRONMENTS.find((env) => env.name === "dev")!;
 
 describe("buildManifest", () => {
   it("reproduces the committed production manifest byte for byte", () => {
-    const committed = readFileSync(new URL("../manifest.prod.xml", import.meta.url), "utf8");
+    const committed = readFileSync(
+      new URL("../manifest.prod.xml", import.meta.url),
+      "utf8",
+    );
     expect(buildManifest(prod, ADDIN)).toBe(committed);
   });
 
@@ -23,7 +26,9 @@ describe("buildManifest", () => {
         .replace(/<!--[\s\S]*?-->/, "")
         .replaceAll("https://localhost:3000/", "BASE/")
         .replaceAll("https://dbautomatizacijas.com/modelis/", "BASE/");
-    expect(normalise(buildManifest(dev, ADDIN))).toBe(normalise(buildManifest(prod, ADDIN)));
+    expect(normalise(buildManifest(dev, ADDIN))).toBe(
+      normalise(buildManifest(prod, ADDIN)),
+    );
   });
 
   it("emits every host in both VersionOverrides blocks", () => {
@@ -59,14 +64,19 @@ describe("buildManifest", () => {
     expect(multi).toContain(`<bt:Set Name="SharedRuntime"`);
   });
 
-  it("escapes & and \" in interpolated text", () => {
+  it('escapes & and " in interpolated text', () => {
     const spec: AddinSpec = {
       ...ADDIN,
       hosts: [
         {
           ...WORKBOOK_HOST,
           buttons: [
-            { id: "OpenPane", label: "Model Tools", tip: 'Fill & go "now"', action: { kind: "showPane" } },
+            {
+              id: "OpenPane",
+              label: "Model Tools",
+              tip: 'Fill & go "now"',
+              action: { kind: "showPane" },
+            },
           ],
         },
       ],

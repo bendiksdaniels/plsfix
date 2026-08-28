@@ -13,7 +13,9 @@ const MIN_BRIDGE_POINTS = 3;
 // every point, which is what reconciles the deltas against the closing total.
 export function bridgeSeries(values: number[]): BridgeSeries {
   if (values.length < MIN_BRIDGE_POINTS) {
-    throw new Error("A bridge needs an opening total, a delta and a closing total.");
+    throw new Error(
+      "A bridge needs an opening total, a delta and a closing total.",
+    );
   }
 
   const base: number[] = [];

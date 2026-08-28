@@ -72,7 +72,9 @@ describe("string literals", () => {
   });
 
   it("handles doubled quotes inside a literal", () => {
-    expect(classifyCell('="say ""99"" now"&A1', 'say "99" now')).toBe("formula");
+    expect(classifyCell('="say ""99"" now"&A1', 'say "99" now')).toBe(
+      "formula",
+    );
   });
 
   it("survives an unterminated literal", () => {

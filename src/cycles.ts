@@ -6,11 +6,7 @@ import {
 } from "./settings";
 
 export type NumberCycleFamily =
-  | "general"
-  | "currency"
-  | "percent"
-  | "multiple"
-  | "date";
+  "general" | "currency" | "percent" | "multiple" | "date";
 export type RowStyleKind = "title" | "result" | "item";
 
 export type NumberCycles = Record<NumberCycleFamily, string[]>;
@@ -50,11 +46,7 @@ export function buildNumberCycles(settings: BrandSettings): NumberCycles {
   const { currency } = settings;
 
   return {
-    general: [
-      financial("#,##0"),
-      financial("#,##0.0"),
-      financial("#,##0.00"),
-    ],
+    general: [financial("#,##0"), financial("#,##0.0"), financial("#,##0.00")],
     // Trailing comma divides the displayed value by a thousand.
     currency: [
       currencyNumberFormat(currency),
@@ -170,7 +162,10 @@ export function matchStyleIndex(
   return variants.findIndex((variant) => {
     const fill = variant.fill === CLEAR_FILL ? null : variant.fill;
     if (variant.fill !== undefined && fill !== current.fill) return false;
-    if (variant.fontColor !== undefined && variant.fontColor !== current.fontColor) {
+    if (
+      variant.fontColor !== undefined &&
+      variant.fontColor !== current.fontColor
+    ) {
       return false;
     }
     return variant.bold === undefined || variant.bold === current.bold;

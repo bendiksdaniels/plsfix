@@ -1,12 +1,7 @@
 import { type CellValue, isFormula } from "./model";
 
 export type CellClass =
-  | "blank"
-  | "input"
-  | "formula"
-  | "crossSheet"
-  | "external"
-  | "partial";
+  "blank" | "input" | "formula" | "crossSheet" | "external" | "partial";
 
 // Cell references ($B$12), function names (LOG10) and range operators all read as
 // word tokens; whatever digits survive their removal were typed by the modeller.

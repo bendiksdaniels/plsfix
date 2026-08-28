@@ -5,8 +5,14 @@ describe("model helpers", () => {
   it("summarizes formulas, errors and blank cells", () => {
     expect(
       analyzeGrid(
-        [["=A1+B1", 10], ["", "=1/0"]],
-        [[15, 10], ["", "#DIV/0!"]],
+        [
+          ["=A1+B1", 10],
+          ["", "=1/0"],
+        ],
+        [
+          [15, 10],
+          ["", "#DIV/0!"],
+        ],
       ),
     ).toEqual({ cells: 4, formulas: 2, errors: 1, blanks: 1 });
   });

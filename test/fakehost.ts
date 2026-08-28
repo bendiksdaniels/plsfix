@@ -123,12 +123,7 @@ export interface FakeBorder {
 }
 
 export type BorderEdge =
-  | "top"
-  | "bottom"
-  | "left"
-  | "right"
-  | "diagonalDown"
-  | "diagonalUp";
+  "top" | "bottom" | "left" | "right" | "diagonalDown" | "diagonalUp";
 
 const BORDER_EDGES: BorderEdge[] = [
   "top",
@@ -213,8 +208,8 @@ export class FakeSheet {
   constructor(
     public name: string,
     public id: string,
-    public visibility: string = "Visible",
-    public position: number = 0,
+    public visibility = "Visible",
+    public position = 0,
   ) {}
 
   key(row: number, col: number): string {
@@ -236,7 +231,12 @@ export class FakeSheet {
     return cell;
   }
 
-  remember(row: number, col: number, formula: CellValue, value: CellValue): void {
+  remember(
+    row: number,
+    col: number,
+    formula: CellValue,
+    value: CellValue,
+  ): void {
     if (typeof formula !== "string" || !formula.startsWith("=")) return;
     const key = this.key(row, col);
     let memo = this.formulaValues.get(key);
@@ -374,7 +374,12 @@ export class FakeWorkbook {
   }
 
   addSheet(name: string): FakeSheet {
-    const sheet = new FakeSheet(name, `sid-${this.nextId}`, "Visible", this.sheets.length);
+    const sheet = new FakeSheet(
+      name,
+      `sid-${this.nextId}`,
+      "Visible",
+      this.sheets.length,
+    );
     this.nextId += 1;
     this.sheets.push(sheet);
     this.renumber();
@@ -478,7 +483,11 @@ interface Shape {
 const SHAPES: Record<string, Shape> = {
   context: { children: { workbook: "workbook" } },
   workbook: {
-    children: { worksheets: "worksheets", settings: "settings", names: "names" },
+    children: {
+      worksheets: "worksheets",
+      settings: "settings",
+      names: "names",
+    },
     returns: {
       getSelectedRange: "range",
       getActiveCell: "range",
@@ -602,7 +611,10 @@ const SHAPES: Record<string, Shape> = {
     children: { format: "chartFormat" },
   },
   chartDataLabels: { scalars: ["showValue"] },
-  chartSeries: { scalars: ["count"], returns: { getItemAt: "chartSeriesItem" } },
+  chartSeries: {
+    scalars: ["count"],
+    returns: { getItemAt: "chartSeriesItem" },
+  },
   chartSeriesItem: {
     scalars: ["name", "showConnectorLines"],
     children: { format: "chartFormat", points: "chartPoints" },
@@ -783,17 +795,16 @@ class StrictLoads {
     // A kind nobody described would police nothing, which is the one failure
     // this layer must never have: say so instead of passing everything through.
     if (!shape) throw new Error(`fake host has no strict shape for "${kind}"`);
-    const loads = this;
 
     return new Proxy(value as Record<string, unknown>, {
-      get(target, property, receiver) {
+      get: (target, property, receiver) => {
         if (property === RAW) return target;
         if (typeof property === "symbol") return Reflect.get(target, property);
 
         const path = prefix + property;
         const childKind = shape.children?.[property];
         if (childKind !== undefined) {
-          return loads.wrap(
+          return this.wrap(
             Reflect.get(target, property),
             childKind,
             root,
@@ -803,22 +814,22 @@ class StrictLoads {
 
         const raw = Reflect.get(target, property);
         if (typeof raw === "function") {
-          return loads.method(target, property, shape, root, prefix, receiver);
+          return this.method(target, property, shape, root, prefix, receiver);
         }
 
         if (property === "items" && shape.items !== undefined) {
-          loads.require(root, path, property, true);
+          this.require(root, path, property, true);
           const items = shape.items;
           return (raw as unknown[]).map((item) =>
-            loads.wrap(item, items, root, `${path}/`),
+            this.wrap(item, items, root, `${path}/`),
           );
         }
         if (property === "value" && shape.result) {
-          if (!loads.state(root).result) throw notSynced();
+          if (!this.state(root).result) throw notSynced();
           return raw;
         }
         if (shape.scalars?.includes(property)) {
-          loads.require(root, path, property, false);
+          this.require(root, path, property, false);
           return raw;
         }
         // Not part of the office.js surface: the fake's own fields, and the
@@ -841,13 +852,12 @@ class StrictLoads {
     prefix: string,
     self: unknown,
   ): (...args: unknown[]) => unknown {
-    const loads = this;
     return (...args: unknown[]): unknown => {
       // Host-side calls take objects, not property reads: hand the fake its own
       // unwrapped proxies so its internals are not policed as add-in reads.
       const plain = args.map((argument) => rawOf(argument));
       if (property === "load") {
-        loads.record(root, prefix, plain[0]);
+        this.record(root, prefix, plain[0]);
         return self;
       }
       const result = (target[property] as (...a: unknown[]) => unknown).apply(
@@ -855,7 +865,7 @@ class StrictLoads {
         plain,
       );
       const returnKind = shape.returns?.[property];
-      if (returnKind !== undefined) return loads.root(result, returnKind);
+      if (returnKind !== undefined) return this.root(result, returnKind);
       return result;
     };
   }
@@ -969,7 +979,11 @@ const ChartType = {
   waterfall: "Waterfall",
 } as const;
 
-const ChartSeriesBy = { auto: "Auto", columns: "Columns", rows: "Rows" } as const;
+const ChartSeriesBy = {
+  auto: "Auto",
+  columns: "Columns",
+  rows: "Rows",
+} as const;
 
 const SheetVisibility = {
   visible: "Visible",
@@ -1217,7 +1231,11 @@ class RangeProxy {
       cell.formula = entry;
       cell.formulaR1C1 = null;
       if (typeof entry === "string" && entry.startsWith("=")) {
-        const known = this.sheet.recall(this.rect.row + r, this.rect.col + c, entry);
+        const known = this.sheet.recall(
+          this.rect.row + r,
+          this.rect.col + c,
+          entry,
+        );
         if (known !== undefined) cell.value = known;
         return;
       }
@@ -1376,6 +1394,8 @@ class RangeProxy {
     _skipBlanks = false,
     transpose = false,
   ): void {
+    // Kept for signature parity with Range.copyFrom; the fake never skips blanks.
+    void _skipBlanks;
     const rows = transpose ? source.rect.colCount : source.rect.rowCount;
     const columns = transpose ? source.rect.rowCount : source.rect.colCount;
     const target = this.at({
@@ -1407,7 +1427,10 @@ class RangeProxy {
         cell.formula = value ?? "";
         cell.formulaR1C1 = null;
       }
-      if (copyType === RangeCopyType.formulas || copyType === RangeCopyType.all) {
+      if (
+        copyType === RangeCopyType.formulas ||
+        copyType === RangeCopyType.all
+      ) {
         cell.value = value ?? "";
         cell.formula = formula ?? "";
         cell.formulaR1C1 = null;
@@ -1418,7 +1441,10 @@ class RangeProxy {
           cell.value,
         );
       }
-      if (copyType === RangeCopyType.formats || copyType === RangeCopyType.all) {
+      if (
+        copyType === RangeCopyType.formats ||
+        copyType === RangeCopyType.all
+      ) {
         cell.font = clone(from.font);
         cell.fill = clone(from.fill);
         cell.borders = clone(from.borders);
@@ -1428,7 +1454,8 @@ class RangeProxy {
         cell.indentLevel = from.indentLevel;
         cell.numberFormat = String(numberFormat ?? "General");
       }
-      if (copyType === RangeCopyType.all) cell.hyperlink = clone(from.hyperlink);
+      if (copyType === RangeCopyType.all)
+        cell.hyperlink = clone(from.hyperlink);
     });
   }
 
@@ -1539,7 +1566,8 @@ class RangeProxy {
         if (format.verticalAlignment !== undefined) {
           cell.verticalAlignment = String(format.verticalAlignment);
         }
-        if (format.wrapText !== undefined) cell.wrapText = Boolean(format.wrapText);
+        if (format.wrapText !== undefined)
+          cell.wrapText = Boolean(format.wrapText);
         if (format.indentLevel !== undefined) {
           cell.indentLevel = Number(format.indentLevel);
         }
@@ -1600,7 +1628,8 @@ class RangeFormatProxy {
       );
     }
     for (let r = 0; r < rowCount; r += 1) {
-      for (let c = 0; c < colCount; c += 1) write(this.sheet.edit(row + r, col + c));
+      for (let c = 0; c < colCount; c += 1)
+        write(this.sheet.edit(row + r, col + c));
     }
   }
 
@@ -2283,15 +2312,21 @@ class WorksheetCollectionProxy {
     const workbook = this.runtime.workbook;
     const chosen = name ?? `Sheet${workbook.sheets.length + 1}`;
     if (workbook.find(chosen)) {
-      throw hostError(ErrorCodes.itemAlreadyExists, `${chosen} already exists.`);
+      throw hostError(
+        ErrorCodes.itemAlreadyExists,
+        `${chosen} already exists.`,
+      );
     }
-    return new WorksheetProxy(this.runtime, this.ctx, workbook.addSheet(chosen));
+    return new WorksheetProxy(
+      this.runtime,
+      this.ctx,
+      workbook.addSheet(chosen),
+    );
   }
 
   // Registration is committed by the sync that follows, so a failed sync leaves
   // no handler behind — the same contract the real host offers.
   get onChanged() {
-    const runtime = this.runtime;
     const ctx = this.ctx;
     return {
       add(handler: (args: unknown) => unknown) {
@@ -2319,7 +2354,8 @@ class WorkbookProxy {
   }
 
   private sheetOf(id: string): FakeSheet {
-    const sheet = this.runtime.workbook.find(id) ?? this.runtime.workbook.sheets[0];
+    const sheet =
+      this.runtime.workbook.find(id) ?? this.runtime.workbook.sheets[0];
     if (!sheet) throw hostError(ErrorCodes.itemNotFound, "No sheets.");
     return sheet;
   }
@@ -2335,12 +2371,17 @@ class WorkbookProxy {
     const workbook = this.runtime.workbook;
     const active = workbook.activeCell;
     if (active) {
-      return new RangeProxy(this.runtime, this.ctx, this.sheetOf(active.sheetId), {
-        row: active.row,
-        col: active.col,
-        rowCount: 1,
-        colCount: 1,
-      });
+      return new RangeProxy(
+        this.runtime,
+        this.ctx,
+        this.sheetOf(active.sheetId),
+        {
+          row: active.row,
+          col: active.col,
+          rowCount: 1,
+          colCount: 1,
+        },
+      );
     }
     const { sheetId, rect } = workbook.selection;
     return new RangeProxy(this.runtime, this.ctx, this.sheetOf(sheetId), {
@@ -2376,7 +2417,10 @@ class WorkbookProxy {
     const store = this.runtime.workbook.settings;
     return {
       add(key: string, value: unknown) {
-        store.set(key, typeof value === "string" ? value : JSON.stringify(value));
+        store.set(
+          key,
+          typeof value === "string" ? value : JSON.stringify(value),
+        );
         return { key, value, load: () => undefined };
       },
       getItemOrNullObject(key: string) {
@@ -2455,8 +2499,7 @@ class FakeContext {
 // ---------------------------------------------------------------------------
 
 export type SeedEntry =
-  | CellValue
-  | { value?: CellValue; formula?: CellValue; r1c1?: CellValue };
+  CellValue | { value?: CellValue; formula?: CellValue; r1c1?: CellValue };
 
 export interface FakeHelpers {
   sheet(name: string): FakeSheet;
@@ -2497,12 +2540,11 @@ function resolve(
   const name =
     cut < 0
       ? ""
-      : address
-          .slice(0, cut)
-          .replace(/^'|'$/g, "")
-          .replace(/''/g, "'");
+      : address.slice(0, cut).replace(/^'|'$/g, "").replace(/''/g, "'");
   const local = cut < 0 ? address : address.slice(cut + 1);
-  const sheet = name ? workbook.find(name) : workbook.find(workbook.activeSheetId);
+  const sheet = name
+    ? workbook.find(name)
+    : workbook.find(workbook.activeSheetId);
   if (!sheet) throw new Error(`fake host: no sheet for "${address}"`);
   return { sheet, rect: parseA1(local) };
 }
@@ -2549,7 +2591,10 @@ export function installFakeHost(options: FakeHostOptions = {}): {
 
   const office = {
     actions: {
-      associate(id: string, handler: (event?: { completed: () => void }) => void) {
+      associate(
+        id: string,
+        handler: (event?: { completed: () => void }) => void,
+      ) {
         runtime.actions.set(id, handler);
       },
     },
@@ -2606,7 +2651,12 @@ export function installFakeHost(options: FakeHostOptions = {}): {
             if (entry.value !== undefined) cell.value = entry.value;
             if (entry.formula !== undefined) cell.formula = entry.formula;
             if (entry.r1c1 !== undefined) cell.formulaR1C1 = entry.r1c1;
-            sheet.remember(rect.row + r, rect.col + c, cell.formula, cell.value);
+            sheet.remember(
+              rect.row + r,
+              rect.col + c,
+              cell.formula,
+              cell.value,
+            );
             return;
           }
           cell.value = entry;

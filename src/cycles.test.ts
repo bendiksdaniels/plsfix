@@ -24,7 +24,9 @@ describe("number format cycles", () => {
     expect(cycles.general[0]).toBe("#,##0;[Red](#,##0);-");
     expect(cycles.general[1]).toBe("#,##0.0;[Red](#,##0.0);-");
     expect(cycles.percent[0]).toBe("0.0%;[Red](0.0%);-");
-    expect(cycles.currency[0]).toBe(currencyNumberFormat(DEFAULT_SETTINGS.currency));
+    expect(cycles.currency[0]).toBe(
+      currencyNumberFormat(DEFAULT_SETTINGS.currency),
+    );
   });
 
   it("steps general through whole, one and two decimals", () => {
@@ -149,9 +151,12 @@ describe("row style cycles", () => {
     for (const variants of Object.values(cycles)) {
       for (const variant of variants) {
         if (variant.fill) expect(palette.has(variant.fill)).toBe(true);
-        if (variant.fontColor) expect(palette.has(variant.fontColor)).toBe(true);
-        if (variant.topBorder) expect(palette.has(variant.topBorder.color)).toBe(true);
-        if (variant.bottomBorder) expect(palette.has(variant.bottomBorder.color)).toBe(true);
+        if (variant.fontColor)
+          expect(palette.has(variant.fontColor)).toBe(true);
+        if (variant.topBorder)
+          expect(palette.has(variant.topBorder.color)).toBe(true);
+        if (variant.bottomBorder)
+          expect(palette.has(variant.bottomBorder.color)).toBe(true);
       }
     }
   });
@@ -166,19 +171,31 @@ describe("style matching", () => {
 
   it("matches on the properties a variant defines", () => {
     expect(
-      matchStyleIndex({ fill: "#282623", fontColor: "#FFFFFF", bold: true }, variants),
+      matchStyleIndex(
+        { fill: "#282623", fontColor: "#FFFFFF", bold: true },
+        variants,
+      ),
     ).toBe(0);
     expect(
-      matchStyleIndex({ fill: null, fontColor: "#1F1D1B", bold: false }, variants),
+      matchStyleIndex(
+        { fill: null, fontColor: "#1F1D1B", bold: false },
+        variants,
+      ),
     ).toBe(1);
     expect(
-      matchStyleIndex({ fill: "#B27E54", fontColor: "#1F1D1B", bold: true }, variants),
+      matchStyleIndex(
+        { fill: "#B27E54", fontColor: "#1F1D1B", bold: true },
+        variants,
+      ),
     ).toBe(2);
   });
 
   it("ignores font color when the variant does not set one", () => {
     expect(
-      matchStyleIndex({ fill: null, fontColor: "#B27E54", bold: false }, variants),
+      matchStyleIndex(
+        { fill: null, fontColor: "#B27E54", bold: false },
+        variants,
+      ),
     ).toBe(1);
   });
 

@@ -22,7 +22,12 @@ describe("detectFillExtent", () => {
   });
 
   it("returns zero when every neighbour starts blank", () => {
-    expect(detectFillExtent([[null, 1, 2], ["", "x"]])).toBe(0);
+    expect(
+      detectFillExtent([
+        [null, 1, 2],
+        ["", "x"],
+      ]),
+    ).toBe(0);
     expect(detectFillExtent([])).toBe(0);
   });
 
@@ -34,7 +39,9 @@ describe("detectFillExtent", () => {
 
 describe("flipSign", () => {
   it("negates numbers and leaves text alone", () => {
-    expect(flipSign([[10, -4, "Text", null]])).toEqual([[-10, 4, "Text", null]]);
+    expect(flipSign([[10, -4, "Text", null]])).toEqual([
+      [-10, 4, "Text", null],
+    ]);
   });
 
   it("wraps a formula and unwraps it again", () => {
@@ -62,9 +69,7 @@ describe("stepDecimals", () => {
     expect(stepDecimals("#,##0;[Red](#,##0);-", 1)).toBe(
       "#,##0.0;[Red](#,##0.0);-",
     );
-    expect(stepDecimals("0.0%;[Red](0.0%);-", 1)).toBe(
-      "0.00%;[Red](0.00%);-",
-    );
+    expect(stepDecimals("0.0%;[Red](0.0%);-", 1)).toBe("0.00%;[Red](0.00%);-");
     expect(stepDecimals('0.0"x";[Red](0.0"x");-', 1)).toBe(
       '0.00"x";[Red](0.00"x");-',
     );

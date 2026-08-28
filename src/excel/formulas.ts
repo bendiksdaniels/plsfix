@@ -38,8 +38,12 @@ export async function fastFillAuto(direction: "right" | "down"): Promise<void> {
       FILL_SCAN_LIMIT,
       down ? SHEET_ROWS - rowIndex : SHEET_COLUMNS - columnIndex,
     );
-    const lines = (down ? [columnIndex - 1, columnIndex + 1] : [rowIndex - 1, rowIndex + 1])
-      .filter((index) => index >= 0 && index < (down ? SHEET_COLUMNS : SHEET_ROWS))
+    const lines = (
+      down ? [columnIndex - 1, columnIndex + 1] : [rowIndex - 1, rowIndex + 1]
+    )
+      .filter(
+        (index) => index >= 0 && index < (down ? SHEET_COLUMNS : SHEET_ROWS),
+      )
       .map((index) =>
         down
           ? sheet.getRangeByIndexes(rowIndex, index, span, 1)
@@ -51,7 +55,7 @@ export async function fastFillAuto(direction: "right" | "down"): Promise<void> {
     const extent = detectFillExtent(
       lines.map((line) => {
         const values = line.values as CellValue[][];
-        return down ? values.map((row) => row[0] ?? null) : values[0] ?? [];
+        return down ? values.map((row) => row[0] ?? null) : (values[0] ?? []);
       }),
     );
     if (extent === 0) throw new Error("No neighbor data to size the fill.");
@@ -73,10 +77,9 @@ export async function toggleIfErrorGuard(): Promise<void> {
     await context.sync();
     await captureUndo(context, range);
 
-    range.formulas = toggleIfError(
-      range.formulas as CellValue[][],
-      "0",
-    ) as (string | number | boolean)[][];
+    range.formulas = toggleIfError(range.formulas as CellValue[][], "0") as (
+      string | number | boolean
+    )[][];
     await context.sync();
   });
 }
@@ -88,10 +91,9 @@ export async function scaleSelection(factor: 1000 | 0.001): Promise<void> {
     await context.sync();
     await captureUndo(context, range);
 
-    range.formulas = scaleCells(
-      range.formulas as CellValue[][],
-      factor,
-    ) as (string | number | boolean)[][];
+    range.formulas = scaleCells(range.formulas as CellValue[][], factor) as (
+      string | number | boolean
+    )[][];
     await context.sync();
   });
 }
@@ -103,9 +105,9 @@ export async function applySignFlip(): Promise<void> {
     await context.sync();
     await captureUndo(context, range);
 
-    range.formulas = flipSign(
-      range.formulas as CellValue[][],
-    ) as (string | number | boolean)[][];
+    range.formulas = flipSign(range.formulas as CellValue[][]) as (
+      string | number | boolean
+    )[][];
     await context.sync();
   });
 }

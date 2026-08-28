@@ -72,11 +72,36 @@ export const WORKBOOK_HOST: HostSpec = {
   groupId: "SMT.Group.Tools",
   groupLabel: "Model Tools",
   buttons: [
-    { id: "OpenPane", label: "Model Tools", tip: "Open the Model Tools task pane.", action: { kind: "showPane" } },
-    { id: "Autocolor", label: "Autocolor", tip: "Color inputs, formulas and links in your palette.", action: { kind: "function", name: "SMT_AUTOCOLOR" } },
-    { id: "FillRight", label: "Fill Right", tip: "Fill the formula from the left cell across the selection.", action: { kind: "function", name: "SMT_FILLRIGHT" } },
-    { id: "FillDown", label: "Fill Down", tip: "Fill the formula from the top cell down the selection.", action: { kind: "function", name: "SMT_FILLDOWN" } },
-    { id: "IfError", label: "IFERROR", tip: "Wrap selected formulas with IFERROR.", action: { kind: "function", name: "SMT_IFERROR" } },
+    {
+      id: "OpenPane",
+      label: "Model Tools",
+      tip: "Open the Model Tools task pane.",
+      action: { kind: "showPane" },
+    },
+    {
+      id: "Autocolor",
+      label: "Autocolor",
+      tip: "Color inputs, formulas and links in your palette.",
+      action: { kind: "function", name: "SMT_AUTOCOLOR" },
+    },
+    {
+      id: "FillRight",
+      label: "Fill Right",
+      tip: "Fill the formula from the left cell across the selection.",
+      action: { kind: "function", name: "SMT_FILLRIGHT" },
+    },
+    {
+      id: "FillDown",
+      label: "Fill Down",
+      tip: "Fill the formula from the top cell down the selection.",
+      action: { kind: "function", name: "SMT_FILLDOWN" },
+    },
+    {
+      id: "IfError",
+      label: "IFERROR",
+      tip: "Wrap selected formulas with IFERROR.",
+      action: { kind: "function", name: "SMT_IFERROR" },
+    },
   ],
 };
 

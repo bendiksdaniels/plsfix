@@ -1,0 +1,9 @@
+dist
+node_modules
+server/target
+package-lock.json
+*.md
+manifest*.xml
+.superpowers
+.claude
+public

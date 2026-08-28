@@ -7,22 +7,21 @@ import {
   installFakeHost,
   uninstallFakeHost,
 } from "./fakehost";
+import type * as ExcelModule from "../src/excel";
+import type * as SettingsModule from "../src/settings";
+import type * as CyclesModule from "../src/cycles";
 
 // Every host in this file answers like the real one: a scalar property read
 // without a load() plus a context.sync() throws instead of quietly working.
 enableStrictLoadSemantics();
 
-type ExcelModule = typeof import("../src/excel");
-type SettingsModule = typeof import("../src/settings");
-type CyclesModule = typeof import("../src/cycles");
-
 let helpers: FakeHelpers;
 let workbook: FakeWorkbook;
-let smt: ExcelModule;
-let brand: SettingsModule;
-let cycles: CyclesModule;
-let theme: ReturnType<SettingsModule["deriveTheme"]>;
-let palette: SettingsModule["DEFAULT_SETTINGS"];
+let smt: typeof ExcelModule;
+let brand: typeof SettingsModule;
+let cycles: typeof CyclesModule;
+let theme: ReturnType<(typeof SettingsModule)["deriveTheme"]>;
+let palette: (typeof SettingsModule)["DEFAULT_SETTINGS"];
 
 // A fresh runtime plus a fresh module graph: the undo slot, the copy source, the
 // overlay snapshots and the edit handler all start clean.
@@ -828,7 +827,13 @@ describe("fast fill", () => {
   });
 
   it("fills down as far as the neighbour column runs", async () => {
-    helpers.seed("Model!A2", [["Rent"], ["Wages"], ["Fuel"], ["Other"], ["Tax"]]);
+    helpers.seed("Model!A2", [
+      ["Rent"],
+      ["Wages"],
+      ["Fuel"],
+      ["Other"],
+      ["Tax"],
+    ]);
     helpers.seed("Model!B2", [[{ formula: "=B1*2", value: 4 }]]);
     helpers.select("Model!B2");
 
@@ -901,9 +906,7 @@ describe("formula edits", () => {
   });
 
   it("toggles the IFERROR guard on and back off", async () => {
-    helpers.seed("Model!A1", [
-      [{ formula: "=A9/B9", value: 1 }, 5],
-    ]);
+    helpers.seed("Model!A1", [[{ formula: "=A9/B9", value: 1 }, 5]]);
     helpers.select("Model!A1:B1");
 
     await smt.toggleIfErrorGuard();
@@ -969,7 +972,10 @@ describe("charts", () => {
       title: "EBITDA bridge",
     });
     expect(chart?.font.name).toBe(palette.font);
-    expect(chart?.titleFont).toMatchObject({ bold: true, color: palette.primary });
+    expect(chart?.titleFont).toMatchObject({
+      bold: true,
+      color: palette.primary,
+    });
     expect(chart?.legend.visible).toBe(false);
     expect(chart?.dataLabels.showValue).toBe(true);
     expect(chart?.axes.category.majorGridlines).toBe(false);
@@ -1343,7 +1349,11 @@ describe("autocolor on edit", () => {
   it("colours the changed range on whichever sheet it happened", async () => {
     helpers.seed("Model!A1", [[42]]);
     helpers.seed("Data!A1", [
-      [42, { formula: "=A1+C1", value: 84 }, { formula: "=A1*1.05", value: 44 }],
+      [
+        42,
+        { formula: "=A1+C1", value: 84 },
+        { formula: "=A1*1.05", value: 44 },
+      ],
     ]);
     helpers.select("Model!A1");
     await smt.setAutocolorOnEdit(true);

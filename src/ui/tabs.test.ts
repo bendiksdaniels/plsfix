@@ -12,8 +12,12 @@ describe("installTabs", () => {
     tabs.activate("t2");
     expect(document.getElementById("p1")!.hidden).toBe(true);
     expect(document.getElementById("p2")!.hidden).toBe(false);
-    expect(document.getElementById("t2")!.getAttribute("aria-selected")).toBe("true");
-    expect(document.getElementById("t1")!.classList.contains("active")).toBe(false);
+    expect(document.getElementById("t2")!.getAttribute("aria-selected")).toBe(
+      "true",
+    );
+    expect(document.getElementById("t1")!.classList.contains("active")).toBe(
+      false,
+    );
   });
   it("activates on a real click, not just via activate()", () => {
     document.body.innerHTML = `
@@ -24,7 +28,11 @@ describe("installTabs", () => {
     document.getElementById("t2")!.click();
     expect(document.getElementById("p1")!.hidden).toBe(true);
     expect(document.getElementById("p2")!.hidden).toBe(false);
-    expect(document.getElementById("t2")!.getAttribute("aria-selected")).toBe("true");
-    expect(document.getElementById("t1")!.classList.contains("active")).toBe(false);
+    expect(document.getElementById("t2")!.getAttribute("aria-selected")).toBe(
+      "true",
+    );
+    expect(document.getElementById("t1")!.classList.contains("active")).toBe(
+      false,
+    );
   });
 });

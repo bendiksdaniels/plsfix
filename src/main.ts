@@ -138,8 +138,7 @@ function renderAuditState(): void {
 // The undo slot and the copy source are module state in excel.ts; the pane
 // reads them back after every action so both rows say what they will do.
 function renderActionState(): void {
-  getElement("undo-target").textContent =
-    undoTarget() ?? "Nothing to undo yet";
+  getElement("undo-target").textContent = undoTarget() ?? "Nothing to undo yet";
   const source = copySourceLabel();
   getElement("paste-source").textContent = source
     ? `Copy source: ${source}`
@@ -160,7 +159,8 @@ function renderTrace(): void {
 
   const { direction, result } = traceView;
   getElement("trace-origin").textContent = `${result.origin} · ${direction}`;
-  getElement<HTMLButtonElement>("trace-back").disabled = traceStack.length === 0;
+  getElement<HTMLButtonElement>("trace-back").disabled =
+    traceStack.length === 0;
 
   if (result.areas.length === 0) {
     const empty = document.createElement("p");
@@ -317,7 +317,10 @@ async function dispatch(action: string): Promise<string> {
         return toggleAudit();
       case "trace-precedents":
       case "trace-dependents":
-        return startTrace(action.replace("trace-", "") as TraceDirection, false);
+        return startTrace(
+          action.replace("trace-", "") as TraceDirection,
+          false,
+        );
       case "insert-toc":
         return insertTocSheet();
       case "scan-names":
@@ -522,7 +525,8 @@ function renderLogoSwatches(colors: string[]): void {
     button.title = color;
     button.setAttribute("aria-label", `Use ${color}`);
     button.addEventListener("click", () => {
-      const slot: PaletteSlot = logoAssignIndex % 2 === 0 ? "primary" : "accent";
+      const slot: PaletteSlot =
+        logoAssignIndex % 2 === 0 ? "primary" : "accent";
       logoAssignIndex += 1;
       const label = slot === "primary" ? "Primary" : "Accent";
       updateSetting({ [slot]: color }, `${label} set to ${color}`);
@@ -573,7 +577,10 @@ async function copyPaletteJson(): Promise<void> {
     area.select();
     const copied = document.execCommand("copy");
     area.remove();
-    toast.show(copied ? "Palette JSON copied" : "Copy failed", copied ? "success" : "error");
+    toast.show(
+      copied ? "Palette JSON copied" : "Copy failed",
+      copied ? "success" : "error",
+    );
   }
 }
 
@@ -600,12 +607,18 @@ function wireBrand(): void {
     });
   }
 
-  getElement<HTMLSelectElement>("setting-font").addEventListener("change", (event) => {
-    updateSetting({ font: (event.target as HTMLSelectElement).value });
-  });
-  getElement<HTMLSelectElement>("setting-currency").addEventListener("change", (event) => {
-    updateSetting({ currency: (event.target as HTMLSelectElement).value });
-  });
+  getElement<HTMLSelectElement>("setting-font").addEventListener(
+    "change",
+    (event) => {
+      updateSetting({ font: (event.target as HTMLSelectElement).value });
+    },
+  );
+  getElement<HTMLSelectElement>("setting-currency").addEventListener(
+    "change",
+    (event) => {
+      updateSetting({ currency: (event.target as HTMLSelectElement).value });
+    },
+  );
 
   getElement<HTMLInputElement>("setting-autocolor-edit").addEventListener(
     "change",
@@ -626,29 +639,38 @@ function wireBrand(): void {
     getElement<HTMLParagraphElement>("logo-hint").hidden = true;
   });
 
-  getElement<HTMLInputElement>("logo-file").addEventListener("change", (event) => {
-    const input = event.target as HTMLInputElement;
-    const file = input.files?.[0];
-    if (file) extractLogoColors(file);
-    input.value = "";
-  });
+  getElement<HTMLInputElement>("logo-file").addEventListener(
+    "change",
+    (event) => {
+      const input = event.target as HTMLInputElement;
+      const file = input.files?.[0];
+      if (file) extractLogoColors(file);
+      input.value = "";
+    },
+  );
 
-  getElement<HTMLButtonElement>("export-brand").addEventListener("click", () => {
-    void copyPaletteJson();
-  });
+  getElement<HTMLButtonElement>("export-brand").addEventListener(
+    "click",
+    () => {
+      void copyPaletteJson();
+    },
+  );
 
-  getElement<HTMLInputElement>("import-file").addEventListener("change", async (event) => {
-    const input = event.target as HTMLInputElement;
-    const file = input.files?.[0];
-    input.value = "";
-    if (!file) return;
-    const parsed = parsePalette(await file.text());
-    if (!parsed) {
-      toast.show("That file is not a valid palette JSON.", "error");
-      return;
-    }
-    applySettings(parsed, "Palette imported");
-  });
+  getElement<HTMLInputElement>("import-file").addEventListener(
+    "change",
+    async (event) => {
+      const input = event.target as HTMLInputElement;
+      const file = input.files?.[0];
+      input.value = "";
+      if (!file) return;
+      const parsed = parsePalette(await file.text());
+      if (!parsed) {
+        toast.show("That file is not a valid palette JSON.", "error");
+        return;
+      }
+      applySettings(parsed, "Palette imported");
+    },
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -693,7 +715,10 @@ function sheetRow(sheet: SheetEntry): HTMLDivElement {
   if (name instanceof HTMLButtonElement) {
     name.type = "button";
     name.title = `Go to ${sheet.name}`;
-    name.addEventListener("click", () => void guard(() => goToSheet(sheet.name)));
+    name.addEventListener(
+      "click",
+      () => void guard(() => goToSheet(sheet.name)),
+    );
   }
   row.append(name);
 
@@ -717,8 +742,9 @@ function sheetRow(sheet: SheetEntry): HTMLDivElement {
   eye.textContent = visible ? "◉" : "○";
   eye.title = visible ? `Hide ${sheet.name}` : `Show ${sheet.name}`;
   eye.setAttribute("aria-label", eye.title);
-  eye.addEventListener("click", () =>
-    void guard(() => toggleSheet(sheet.name, !visible)),
+  eye.addEventListener(
+    "click",
+    () => void guard(() => toggleSheet(sheet.name, !visible)),
   );
   row.append(eye);
   return row;
@@ -781,7 +807,8 @@ function renderNames(scanned: boolean): void {
   else result.textContent = `${brokenCount()}: ${listed}${rest}`;
 
   disarmDelete();
-  getElement<HTMLButtonElement>("delete-names").hidden = brokenList.length === 0;
+  getElement<HTMLButtonElement>("delete-names").hidden =
+    brokenList.length === 0;
 }
 
 async function scanNames(): Promise<string> {
@@ -806,8 +833,9 @@ async function insertTocSheet(): Promise<string> {
 getElement("app-version").textContent = APP_VERSION;
 
 // Installed first so a throw during the rest of boot is still reported.
-installErrorReporting({ host: "Excel", version: APP_VERSION }, (message, details) =>
-  toast.show(message, "error", details),
+installErrorReporting(
+  { host: "Excel", version: APP_VERSION },
+  (message, details) => toast.show(message, "error", details),
 );
 loadSettings();
 installTabs(getElement("tab-bar"));
@@ -859,14 +887,17 @@ Office.onReady(async ({ host }) => {
     () => void refreshSheets(),
   );
 
-  getElement<HTMLButtonElement>("delete-names").addEventListener("click", () => {
-    if (!deleteArmed) {
-      armDelete();
-      return;
-    }
-    disarmDelete();
-    void guard(deleteNames);
-  });
+  getElement<HTMLButtonElement>("delete-names").addEventListener(
+    "click",
+    () => {
+      if (!deleteArmed) {
+        armDelete();
+        return;
+      }
+      disarmDelete();
+      void guard(deleteNames);
+    },
+  );
 
   // Debounced: dragging a selection fires the event continuously.
   let selectionTimer: number | undefined;

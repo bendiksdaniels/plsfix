@@ -145,7 +145,8 @@ function stepSection(section: string, delta: 1 | -1): string {
     if (delta === -1) return section;
     return `${section.slice(0, end + 1)}.0${section.slice(end + 1)}`;
   }
-  if (delta === 1) return `${section.slice(0, end + 1)}0${section.slice(end + 1)}`;
+  if (delta === 1)
+    return `${section.slice(0, end + 1)}0${section.slice(end + 1)}`;
   // Dropping the last decimal drops the separator with it.
   if (end - dot <= 1) return section.slice(0, dot) + section.slice(end + 1);
   return section.slice(0, end) + section.slice(end + 1);
