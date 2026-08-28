@@ -49,7 +49,7 @@ each item. Stop when Daniel intervenes or the list is empty.
       runtime + manifest requirements first; implement only if it fits the shared runtime).
 - [ ] C5 FEATURES.md P2 leftovers, one per iteration: border cycles, row-height/column-width cycles,
       paintbrush slots, Super Find, unused-style scrubber, "prepare for sharing".
-- [ ] C6 Test debt: split `test/ppt.integration.test.ts` (>400 lines) by feature; keep every
+- [x] C6 Test debt: split `test/ppt.integration.test.ts` (>400 lines) by feature; keep every
       test file under 400 lines.
 - [ ] C7 Docs: `docs/FEATURES.md` status column refreshed from what shipped (ROADMAP.md stays
       Daniel's; deltas listed for sign-off).
