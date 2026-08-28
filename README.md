@@ -110,7 +110,9 @@ add-in (same GUID) served live from `https://dbautomatizacijas.com/modelis/` (su
 pane cannot load inside Office webviews - so availability is restricted through
 Microsoft 365 centralized deployment group assignment instead. Hosted JS updates need
 no admin action; manifest changes need a re-upload. Details and sources:
-`docs/research/launch-path.md`.
+`docs/research/launch-path.md`. `npm stop` restores `manifest.prod.xml` into Excel's
+local sideload folder (`scripts/wef-restore-prod.sh`), so ending a dev session never
+leaves the desktop add-in pointed at `localhost`.
 
 ## Architecture
 
