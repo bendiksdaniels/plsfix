@@ -176,4 +176,3 @@ export async function toggleAuditOverlay(): Promise<boolean> {
     return true;
   });
 }
-

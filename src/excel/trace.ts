@@ -80,4 +80,3 @@ export async function selectArea(area: {
     await context.sync();
   });
 }
-

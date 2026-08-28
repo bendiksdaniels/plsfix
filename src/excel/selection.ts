@@ -2,7 +2,7 @@
 // color, row style, number). Every mutating action captures SMT Undo first and
 // enforces the selection cell cap before touching the grid.
 
-import { numberFormat, SELECTION_CELL_CAP } from "./internal";
+import { numberFormat, SELECTION_CELL_CAP, selectionWithinCap } from "./internal";
 import {
   type NumberFormatName,
   type PresetName,
@@ -25,24 +25,6 @@ import {
 } from "../cycles";
 import { analyzeGrid, type CellValue, makeFormatGrid } from "../model";
 import { activeTheme, getActiveSettings } from "../settings";
-
-// A whole-column click selects a million cells; reading or writing their grids
-// would freeze the pane or overflow the request payload.
-// Exported: formulas.ts enforces the same cap on its selection-based actions.
-export async function selectionWithinCap(
-  context: Excel.RequestContext,
-  what: string,
-): Promise<Excel.Range> {
-  const range = context.workbook.getSelectedRange();
-  range.load("cellCount");
-  await context.sync();
-  if (range.cellCount > SELECTION_CELL_CAP) {
-    throw new Error(
-      `${what} supports up to ${SELECTION_CELL_CAP.toLocaleString()} selected cells at once.`,
-    );
-  }
-  return range;
-}
 
 export async function inspectSelection(): Promise<SelectionSummary> {
   return Excel.run(async (context) => {
@@ -296,4 +278,3 @@ export async function applyFontColorCycle(): Promise<void> {
     await context.sync();
   });
 }
-

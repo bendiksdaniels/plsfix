@@ -140,7 +140,6 @@ export async function insertColorKey(): Promise<void> {
   });
 }
 
-// Autocolor on edit (worksheet onChanged, off by default)
 let editHandler:
   | OfficeExtension.EventHandlerResult<Excel.WorksheetChangedEventArgs>
   | null = null;
@@ -213,4 +212,3 @@ export function setAutocolorOnEdit(enabled: boolean): Promise<void> {
   handlerQueue = task.catch(() => undefined);
   return task;
 }
-

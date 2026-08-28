@@ -110,4 +110,3 @@ export async function undoLastAction(): Promise<string> {
     return slot.label;
   });
 }
-

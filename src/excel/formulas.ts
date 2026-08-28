@@ -2,8 +2,7 @@
 // decimal stepping and CAGR insertion. Shares the selection cap and undo capture
 // with selection.ts rather than duplicating either.
 
-import { numberFormat } from "./internal";
-import { selectionWithinCap } from "./selection";
+import { numberFormat, selectionWithinCap } from "./internal";
 import { parseAddress } from "./shared";
 import { captureUndo } from "./undo";
 import { type CellValue, scaleCells } from "../model";
@@ -167,4 +166,3 @@ export async function insertCagr(): Promise<void> {
     await context.sync();
   });
 }
-

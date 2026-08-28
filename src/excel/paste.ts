@@ -111,4 +111,3 @@ export async function pastePreserveFormulas(): Promise<void> {
     await context.sync();
   });
 }
-

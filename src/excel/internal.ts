@@ -24,6 +24,23 @@ export const EDIT_CELL_CAP = 500;
 const NO_FILL = "none";
 export const BASE_WHITE = "#FFFFFF";
 
+// A whole-column click selects a million cells; reading or writing their grids
+// would freeze the pane or overflow the request payload.
+export async function selectionWithinCap(
+  context: Excel.RequestContext,
+  what: string,
+): Promise<Excel.Range> {
+  const range = context.workbook.getSelectedRange();
+  range.load("cellCount");
+  await context.sync();
+  if (range.cellCount > SELECTION_CELL_CAP) {
+    throw new Error(
+      `${what} supports up to ${SELECTION_CELL_CAP.toLocaleString()} selected cells at once.`,
+    );
+  }
+  return range;
+}
+
 // One write per run of same-key cells instead of one per cell: model rows are
 // usually uniform, so this keeps the batch small on wide selections. A null key
 // leaves the cell untouched.

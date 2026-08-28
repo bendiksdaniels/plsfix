@@ -253,4 +253,3 @@ export async function addCagrLabel(): Promise<string> {
     return `${label} over ${periods} ${periods === 1 ? "period" : "periods"}`;
   });
 }
-
