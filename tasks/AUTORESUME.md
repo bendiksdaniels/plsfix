@@ -1,12 +1,16 @@
-# AUTORESUME - Model Tools (v2.0.0 LIVE 2026-08-29)
+# AUTORESUME - Model Tools (v2.1.0 LIVE 2026-08-29)
 
 ## State
 
-v2.0.0 is deployed at dbautomatizacijas.com/modelis/ (`/version` -> 2.0.0): Excel pane with the
+v2.1.0 is deployed at dbautomatizacijas.com/modelis/ (`/version` -> 2.1.0): Excel pane with the
 new **Links** tab, PowerPoint pane (`pptpane.html`), and the end-to-end encrypted link relay
 (`/api/links`, `/api/inbox`, sqlite at `/opt/plsfix/data`). `npm run check` green on
-main (334 vitest, 17 cargo, tsc, eslint, prettier, manifest and version gates); GitHub Actions
-runs the same gate. Tag `v2.0.0`.
+main (384 vitest, 19 cargo, tsc, eslint, prettier, manifest and version gates); GitHub Actions
+runs the same gate. Tags `v2.0.0`, `v2.0.4`, `v2.1.0`. Since v2.0.0 (loop, `tasks/v2-backlog.md`):
+link-record split, shared time/clipboard helpers, active-slide update, server minors, links inside
+groups (PowerPointApi 1.8), brand palette saved in the workbook, 12 more ribbon buttons (5 groups),
+tornado chart + unpivot selection. The loop continues with C1-C7 (whole-branch review, update-all
+speed, pane UX pass, SMT.ROUND research, P2 leftovers, test split, FEATURES.md refresh).
 
 Design: `docs/superpowers/specs/2026-08-28-ppt-links-design.md`. Plans (all tasks done):
 `docs/superpowers/plans/2026-08-28-tier1-groundwork.md`, `2026-08-28-ppt-links.md`.
