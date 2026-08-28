@@ -121,6 +121,62 @@ describe("buildManifest", () => {
     }
   });
 
+  // The generated-bytes gate compares the build to the committed file, so it
+  // cannot see a duplicate id: both sides would carry it. Only the renderer can.
+  it("refuses a spec whose two hosts reuse one button id", () => {
+    const pptWithOpenPane: AddinSpec = {
+      ...ADDIN,
+      hosts: [
+        WORKBOOK_HOST,
+        {
+          name: "Presentation",
+          page: "pptpane.html",
+          urlResid: "SMT.Pptpane.Url",
+          taskpaneId: "SMT.Pptpane",
+          groups: [
+            {
+              id: "SMT.Group.Links",
+              label: "Model Tools Links",
+              // The obvious next edit: the same pane button on both hosts.
+              buttons: [
+                {
+                  id: "OpenPane",
+                  label: "Links",
+                  tip: "Open the Model Tools linked-objects pane.",
+                  action: { kind: "showPane" },
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    };
+    expect(() => buildManifest(prod, pptWithOpenPane)).toThrow(
+      "manifest: duplicate resource id SMT.OpenPane.Label",
+    );
+  });
+
+  it("refuses a spec whose two hosts reuse one group id", () => {
+    const sharedGroup: AddinSpec = {
+      ...ADDIN,
+      hosts: [
+        WORKBOOK_HOST,
+        {
+          name: "Presentation",
+          page: "pptpane.html",
+          urlResid: "SMT.Pptpane.Url",
+          taskpaneId: "SMT.Pptpane",
+          groups: [
+            { id: "SMT.Group.Tools", label: "Model Tools", buttons: [] },
+          ],
+        },
+      ],
+    };
+    expect(() => buildManifest(prod, sharedGroup)).toThrow(
+      "manifest: duplicate resource id SMT.Group.Tools.Label",
+    );
+  });
+
   it("every ribbon FunctionName is registered in src/main.ts registerCommands", () => {
     const xml = buildManifest(prod, ADDIN);
     const functionNames = new Set(

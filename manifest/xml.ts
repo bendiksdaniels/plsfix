@@ -101,7 +101,32 @@ function hostBlock(spec: AddinSpec, host: HostSpec): string {
   ].join("\n");
 }
 
+const ICON_SIZES = [16, 32, 80] as const;
+
+// One <Resources> block serves every host in its VersionOverrides, and the ids
+// are built from button and group ids, so two hosts that share a button id (a
+// second OpenPane, a Push button on both) would emit one id twice. Office
+// rejects that manifest, and the generated-bytes gate cannot see it because
+// both sides are equally wrong - so the generator refuses to emit it at all.
+function assertUniqueResourceIds(lines: string[]): void {
+  const seen = new Set<string>();
+  for (const line of lines) {
+    const id = /\bid="([^"]*)"/.exec(line)?.[1];
+    if (id === undefined) continue;
+    if (seen.has(id)) throw new Error(`manifest: duplicate resource id ${id}`);
+    seen.add(id);
+  }
+}
+
 function resources(env: ManifestEnvironment, spec: AddinSpec): string {
+  const images = ICON_SIZES.map(
+    (size) =>
+      `<bt:Image id="${escapeXml(spec.iconResids[size])}" DefaultValue="${escapeXml(env.baseUrl)}assets/icon-${size}.png"/>`,
+  );
+  const urls = spec.hosts.map(
+    (host) =>
+      `<bt:Url id="${escapeXml(host.urlResid)}" DefaultValue="${escapeXml(env.baseUrl)}${escapeXml(host.page)}"/>`,
+  );
   const shorts = [
     `<bt:String id="SMT.Tab.Label" DefaultValue="${escapeXml(spec.tabLabel)}"/>`,
     ...spec.hosts.flatMap((host) =>
@@ -122,18 +147,14 @@ function resources(env: ManifestEnvironment, spec: AddinSpec): string {
       ),
     ),
   );
+  assertUniqueResourceIds([...images, ...urls, ...shorts, ...longs]);
   return [
     `<Resources>`,
     `  <bt:Images>`,
-    `    <bt:Image id="${escapeXml(spec.iconResids[16])}" DefaultValue="${escapeXml(env.baseUrl)}assets/icon-16.png"/>`,
-    `    <bt:Image id="${escapeXml(spec.iconResids[32])}" DefaultValue="${escapeXml(env.baseUrl)}assets/icon-32.png"/>`,
-    `    <bt:Image id="${escapeXml(spec.iconResids[80])}" DefaultValue="${escapeXml(env.baseUrl)}assets/icon-80.png"/>`,
+    ...images.map((line) => `    ${line}`),
     `  </bt:Images>`,
     `  <bt:Urls>`,
-    ...spec.hosts.map(
-      (host) =>
-        `    <bt:Url id="${escapeXml(host.urlResid)}" DefaultValue="${escapeXml(env.baseUrl)}${escapeXml(host.page)}"/>`,
-    ),
+    ...urls.map((line) => `    ${line}`),
     `  </bt:Urls>`,
     `  <bt:ShortStrings>`,
     ...shorts.map((line) => `    ${line}`),

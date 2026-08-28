@@ -45,6 +45,19 @@ export function toBase64Url(bytes: Uint8Array): string {
     .replace(/=+$/, "");
 }
 
+// The one atob-to-bytes loop in the link core: the standard alphabet, no
+// validation and no prefix handling, so both decoders (this file's base64url
+// and png.ts's data: URL) own only what actually differs between them.
+// Throws whatever atob throws on text outside the alphabet.
+export function decodeBase64(base64: string): Uint8Array {
+  const binary = atob(base64);
+  const out = new Uint8Array(new ArrayBuffer(binary.length));
+  for (let index = 0; index < binary.length; index += 1) {
+    out[index] = binary.charCodeAt(index);
+  }
+  return out;
+}
+
 // Rejects anything outside the alphabet before atob sees it; the text itself is
 // never quoted back, because a token or a workspace key is exactly this text.
 export function fromBase64Url(text: string): Uint8Array {
@@ -52,17 +65,11 @@ export function fromBase64Url(text: string): Uint8Array {
   const base64 =
     text.replace(/-/g, "+").replace(/_/g, "/") +
     "=".repeat((4 - (text.length % 4)) % 4);
-  let binary: string;
   try {
-    binary = atob(base64);
+    return decodeBase64(base64);
   } catch {
     throw new Error("fromBase64Url: not base64url");
   }
-  const out = new Uint8Array(new ArrayBuffer(binary.length));
-  for (let index = 0; index < binary.length; index += 1) {
-    out[index] = binary.charCodeAt(index);
-  }
-  return out;
 }
 
 // Info separates the purposes of one secret ("smt-link-enc" vs "smt-link-auth").
