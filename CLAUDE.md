@@ -29,7 +29,7 @@ Entry points: `taskpane.html` + `src/main.ts` (Excel pane, web edge), `pptpane.h
 Modules (what each owns):
 - `src/main.ts`: Excel pane wiring: `dispatch(action)` switch, ribbon/shortcut command table, brand dashboard, sheet explorer, boot in `Office.onReady`. Web edge, no business logic.
 - `src/ui/` (planned): shared pane pieces without Office.js: toast, guard, tabs, report (error surface), version.
-- `src/excel.ts` today; `src/excel/` after the split (planned): the Excel Office.js adapter, one file per feature area: shared/internal, undo, selection, formulas, paste, autocolor, audit, trace, charts, workbook, links (v2). `index.ts` barrel keeps the import path `./excel`.
+- `src/excel/`: the Excel Office.js adapter, one file per feature area behind an `index.ts` barrel that keeps the import path `./excel`: `shared.ts` (public types + `parseAddress`), `internal.ts` (private range/fill/host-capability helpers, not barrel-exported), `undo.ts`, `selection.ts`, `formulas.ts`, `paste.ts`, `autocolor.ts`, `audit.ts`, `trace.ts`, `charts.ts`, `workbook.ts`; `links.ts` (v2, planned).
 - Pure model modules (typed in/out, no I/O): `settings` (brand palette), `cycles`, `paste` (fill maths), `classify`, `audit`, `chartmath`, `model`, `workbook`.
 - `src/link/` (planned, core, pure): `model` (types + codecs), `crypto` (HKDF/AES-GCM), `status` (link state rules, slide fitting), `png` (IHDR size), `workspace` (pairing key), `relay` (fetch client, typed errors).
 - `src/ppt/` (planned): `host.ts` (the only PowerPoint Office.js code: scan by tags, insert, refresh, break), `links.ts` (orchestration), `views.ts` (DOM renderers), `main.ts`.
