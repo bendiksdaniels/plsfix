@@ -37,7 +37,7 @@ fn healthz() -> Json<serde_json::Value> {
 async fn cache_control(request: Request, next: Next) -> Response {
     let hashed = {
         let path = request.uri().path();
-        path.contains("/assets/") && (path.ends_with(".js") || path.ends_with(".css"))
+        path.starts_with("/assets/") && (path.ends_with(".js") || path.ends_with(".css"))
     };
     let mut response = next.run(request).await;
     let value = if hashed {

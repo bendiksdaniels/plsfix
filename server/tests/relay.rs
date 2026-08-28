@@ -164,7 +164,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn inbox_lifecycle() {
+    async fn inbox_post_is_idempotent_and_lists_latest() {
         let app = app();
         let ws = "CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC";
         assert_eq!(
@@ -195,7 +195,6 @@ mod tests {
             StatusCode::OK
         );
         let response = app
-            .clone()
             .oneshot(req("GET", &format!("/api/inbox/{ws}"), Some(AUTH), vec![]))
             .await
             .unwrap();
@@ -210,6 +209,25 @@ mod tests {
         )
         .unwrap();
         assert!(text.contains("\"blob\":\"aXRlbTI\""));
+    }
+
+    #[tokio::test]
+    async fn inbox_delete_removes_the_item() {
+        let app = app();
+        let ws = "CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC";
+        assert_eq!(
+            app.clone()
+                .oneshot(req(
+                    "POST",
+                    &format!("/api/inbox/{ws}"),
+                    Some(AUTH),
+                    b"item".to_vec()
+                ))
+                .await
+                .unwrap()
+                .status(),
+            StatusCode::OK
+        );
         assert_eq!(
             app.oneshot(req(
                 "DELETE",

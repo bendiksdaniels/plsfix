@@ -39,8 +39,9 @@ async fn main() {
         );
     }
 
-    let database = PathBuf::from(env::var("MODELIS_DATA").unwrap_or_else(|_| "data".to_string()))
-        .join("relay.sqlite");
+    let data_dir = PathBuf::from(env::var("MODELIS_DATA").unwrap_or_else(|_| "data".to_string()));
+    let database = data_dir.join("relay.sqlite");
+    // Store::open creates data_dir (create_dir_all) before opening the file.
     let store = Store::open(&database)
         .unwrap_or_else(|error| panic!("cannot open {}: {error}", database.display()));
     let state = Arc::new(AppState { store });
@@ -51,9 +52,9 @@ async fn main() {
         .await
         .unwrap_or_else(|error| panic!("cannot bind {addr}: {error}"));
     println!(
-        "plsfix-server serving {} on {addr}, relay data in {}",
+        "plsfix-server serving {} on {addr}, data in {}",
         static_dir.display(),
-        database.display()
+        data_dir.display()
     );
     axum::serve(listener, app(static_dir, state))
         .await

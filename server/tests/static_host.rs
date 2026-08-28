@@ -91,6 +91,20 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn assets_prefix_is_matched_not_just_contained() {
+        // A path that merely embeds "/assets/" past its start (e.g. a bad
+        // gateway prefix) must not be treated as a hashed, immutable bundle.
+        let (_, cache, _) = call("/nope/assets/taskpane-x.js").await;
+        assert_eq!(cache.as_deref(), Some("no-cache"));
+
+        let (_, cache, _) = call("/assets/pptpane-x.js").await;
+        assert_eq!(
+            cache.as_deref(),
+            Some("public, max-age=31536000, immutable")
+        );
+    }
+
+    #[tokio::test]
     async fn root_redirects_to_the_pane_relatively() {
         let response = app(test_dir(), test_state())
             .oneshot(Request::get("/").body(Body::empty()).unwrap())
