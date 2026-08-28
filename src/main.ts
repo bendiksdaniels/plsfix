@@ -4,12 +4,14 @@ import {
   addCagrLabel,
   activateSheet,
   applyBorderCycle,
+  applyColumnWidthCycle,
   applyDecimalStep,
   applyFillCycle,
   applyFontColorCycle,
   applyNumberCycle,
   applyNumberFormat,
   applyPreset,
+  applyRowHeightCycle,
   applyRowStyleCycle,
   applySignFlip,
   autocolorSelection,
@@ -265,6 +267,12 @@ async function dispatch(action: string): Promise<string> {
       case "cycle-border":
         await applyBorderCycle();
         break;
+      case "cycle-row-height":
+        await applyRowHeightCycle();
+        break;
+      case "cycle-col-width":
+        await applyColumnWidthCycle();
+        break;
       case "clear-formats":
         await clearFormats();
         break;
@@ -406,6 +414,8 @@ function registerCommands(): void {
     SMT_CYC_FILL: applyFillCycle,
     SMT_CYC_FONT: applyFontColorCycle,
     SMT_CYC_BORDER: applyBorderCycle,
+    SMT_CYC_ROWH: applyRowHeightCycle,
+    SMT_CYC_COLW: applyColumnWidthCycle,
     SMT_WATERFALL: insertWaterfall,
     SMT_TORNADO: insertTornado,
     SMT_CHARTFMT: formatSelectedChart,

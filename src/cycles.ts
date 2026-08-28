@@ -298,3 +298,43 @@ export function matchBorderIndex(
   }
   return 0;
 }
+
+// ---------------------------------------------------------------------------
+// Size cycles: the row heights and column widths a model uses, stepped one
+// press at a time. Both lists are in POINTS, the unit Office.js takes for
+// `range.format.rowHeight` and `range.format.columnWidth` - not Excel's
+// character-count column width, whose 8.43-character default is the 64 points
+// this cycle starts on. The numbers are the ones Excel's own Row Height and
+// Column Width dialogs show.
+// ---------------------------------------------------------------------------
+
+export interface SizeCycles {
+  rowHeight: number[];
+  columnWidth: number[];
+}
+
+// Rows start on Excel's default 15 pt and climb through the bands a model
+// uses - a roomier line, a header, a title - before coming home. Columns start
+// on the default 64 pt, widen for labels, then end narrow for a spacer column.
+export function buildSizeCycles(): SizeCycles {
+  return {
+    rowHeight: [15, 18, 21, 24, 30],
+    columnWidth: [64, 80, 96, 120, 48],
+  };
+}
+
+// Excel stores sizes in points but snaps them to whole screen pixels, so a
+// height we wrote as 21 can read back as 20.75: a size counts as one of ours
+// when it is within half a point of it.
+export function nextSize(
+  current: number,
+  cycle: number[],
+  tolerance = 0.5,
+): number {
+  const index = cycle.findIndex(
+    (entry) => Math.abs(entry - current) <= tolerance,
+  );
+  // -1 for a size we did not set - a hand-dragged row - which steps to entry 0.
+  const next = cycle[(index + 1) % cycle.length];
+  return next ?? current;
+}

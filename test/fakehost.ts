@@ -15,6 +15,9 @@
 //   * copyFrom(..., formulas) copies text verbatim; Excel rewrites relative refs.
 //   * getImage() hands back a signature-only PNG sized from the fake grid (64pt
 //     columns, 20pt rows) or from the requested chart size, never a real picture.
+//   * getEntireRow()/getEntireColumn() serve the whole-sheet band Excel does,
+//     but a size write spanning more than maxCells rows or columns is refused
+//     rather than filling a million map entries.
 
 import { fakePng } from "./fakepng";
 
@@ -617,6 +620,8 @@ const SHAPES: Record<string, Shape> = {
       getCell: "range",
       getRow: "range",
       getColumn: "range",
+      getEntireRow: "range",
+      getEntireColumn: "range",
       getResizedRange: "range",
       getOffsetRange: "range",
       getSurroundingRegion: "range",
@@ -1412,6 +1417,17 @@ class RangeProxy {
     });
   }
 
+  // The bands a size belongs to: a height is a property of whole rows, a width
+  // of whole columns. Only the sheet-level size properties make sense on one -
+  // a grid read this wide trips the cell guard, which is the point.
+  getEntireRow(): RangeProxy {
+    return this.at({ ...this.rect, col: 0, colCount: COLUMN_LIMIT });
+  }
+
+  getEntireColumn(): RangeProxy {
+    return this.at({ ...this.rect, row: 0, rowCount: ROW_LIMIT });
+  }
+
   getResizedRange(deltaRows: number, deltaColumns: number): RangeProxy {
     return this.at({
       ...this.rect,
@@ -1815,6 +1831,16 @@ class RangeFormatProxy {
     });
   }
 
+  // Sizes are sheet state, so they skip the cell guard in each() - but an
+  // entire-row or entire-column band spans the whole sheet, and filling a
+  // million map entries would hang instead of failing.
+  private band(count: number, unit: string): number {
+    if (count > this.runtime.maxCells) {
+      throw new Error(`fake host refused a ${count}-${unit} size write`);
+    }
+    return count;
+  }
+
   // Row height and column width are sheet state, not cell state: SMT Undo
   // cannot reach them, which the suite asserts explicitly.
   get rowHeight(): number {
@@ -1822,7 +1848,8 @@ class RangeFormatProxy {
   }
 
   set rowHeight(value: number) {
-    for (let r = 0; r < this.rect.rowCount; r += 1) {
+    const rows = this.band(this.rect.rowCount, "row");
+    for (let r = 0; r < rows; r += 1) {
       this.sheet.rowHeights.set(this.rect.row + r, value);
     }
   }
@@ -1832,7 +1859,8 @@ class RangeFormatProxy {
   }
 
   set columnWidth(value: number) {
-    for (let c = 0; c < this.rect.colCount; c += 1) {
+    const columns = this.band(this.rect.colCount, "column");
+    for (let c = 0; c < columns; c += 1) {
       this.sheet.columnWidths.set(this.rect.col + c, value);
     }
   }

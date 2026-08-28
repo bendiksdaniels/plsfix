@@ -8,11 +8,13 @@ import {
   buildFontCycle,
   buildNumberCycles,
   buildRowStyleCycles,
+  buildSizeCycles,
   canonicalNumberFormat,
   CLEAR_FILL,
   matchBorderIndex,
   matchStyleIndex,
   nextInCycle,
+  nextSize,
   type StyleSpec,
 } from "./cycles";
 import {
@@ -353,5 +355,45 @@ describe("border cycle", () => {
     // the grid wins and the next press clears instead of redrawing the box.
     const box = readback(states[4] ?? [], OUTER);
     expect(matchBorderIndex(box, states)).toBe(5);
+  });
+});
+
+describe("size cycles", () => {
+  const { rowHeight, columnWidth } = buildSizeCycles();
+
+  // Points, the unit Office.js takes: 15 pt and 64 pt are Excel's own defaults.
+  it("starts both ladders on the Excel default", () => {
+    expect(rowHeight).toEqual([15, 18, 21, 24, 30]);
+    expect(columnWidth).toEqual([64, 80, 96, 120, 48]);
+  });
+
+  function walk(cycle: number[]): number[] {
+    let size = cycle[0] ?? 0;
+    return cycle.map(() => {
+      size = nextSize(size, cycle);
+      return size;
+    });
+  }
+
+  it("steps each ladder through every rung and wraps home", () => {
+    expect(walk(rowHeight)).toEqual([18, 21, 24, 30, 15]);
+    // Columns widen for labels, then end narrow on the spacer width.
+    expect(walk(columnWidth)).toEqual([80, 96, 120, 48, 64]);
+  });
+
+  it("recognises a height Excel rounded to the screen pixel", () => {
+    expect(nextSize(20.75, rowHeight)).toBe(24);
+    expect(nextSize(21.4, rowHeight)).toBe(24);
+    // Half a point is the whole allowance: 20.4 is nobody's 21.
+    expect(nextSize(20.4, rowHeight)).toBe(15);
+    expect(nextSize(20.4, rowHeight, 1)).toBe(24);
+  });
+
+  it("starts a hand-dragged size at the foot of the ladder", () => {
+    expect(nextSize(9, rowHeight)).toBe(15);
+    expect(nextSize(255, rowHeight)).toBe(15);
+    expect(nextSize(34, columnWidth)).toBe(64);
+    // Nothing to step to leaves the size exactly as it is.
+    expect(nextSize(18, [])).toBe(18);
   });
 });
