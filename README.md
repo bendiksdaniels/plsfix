@@ -114,6 +114,24 @@ no admin action; manifest changes need a re-upload. Details and sources:
 local sideload folder (`scripts/wef-restore-prod.sh`), so ending a dev session never
 leaves the desktop add-in pointed at `localhost`.
 
+## Linked objects in PowerPoint (v2)
+
+Export a range or a chart from Excel and keep it fresh in a deck without re-pasting.
+
+- Excel, tab **Links**: *Export selection* or *Export chart* renders a picture, anchors the
+  source with a hidden defined name (`SMT_LINK_<id>`, so rows can be inserted above it) or the
+  chart's name, and sends the picture to the relay. *Push all* re-renders every link through
+  its anchor. Generate the **link key** once under Links > Settings and paste it into
+  PowerPoint once.
+- PowerPoint, tab **Model Tools > Links**: the **Inbox** lists exports waiting to be placed;
+  *Insert* puts a picture on the selected slide with a tracker in the shape's tags. The
+  **Links** list shows every tracked picture in the deck (slide, source, status) and
+  *Update selected / slide / all* repaints them in place: position and size are kept, only
+  the height follows when the picture's aspect ratio changed. *Break link* removes the
+  tracker and leaves the picture.
+- The relay stores only encrypted blobs for 7 days; anyone holding the deck can pull a
+  linked picture for that long, so **break links before sending a deck outside**.
+
 ## Architecture
 
 - `taskpane.html` and `src/main.ts`: task-pane UI and action routing

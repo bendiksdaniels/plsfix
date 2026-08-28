@@ -1,15 +1,22 @@
 # Model Tools
 
-Office.js Excel task-pane add-in for financial modelling (TypeScript/Vite/Vitest) plus a
-tiny Rust static host (`server/`, axum, port 8804) that serves the built pane to the
-DB Automatizācijas suite at `dbautomatizacijas.com/modelis/` (key `modelis`).
+Office.js add-in for financial modelling with two hosts: the Excel task pane
+(`taskpane.html`, model tools + Links tab) and the PowerPoint pane (`pptpane.html`, tracked
+Excel->PowerPoint links), TypeScript/Vite/Vitest, plus a Rust axum host (`server/`, port
+8804) that serves both panes AND the end-to-end encrypted link relay (`/api/links`,
+`/api/inbox`, sqlite at `MODELIS_DATA`) to the DB Automatizācijas suite at
+`dbautomatizacijas.com/modelis/` (key `modelis`).
 
 - Pane code in `src/`, tests in `src/` + `test/` (fake Office.js host with strict load
-  semantics). `npm test`, `npm run build`, `npm run validate`. Dev sideload: `npm start`.
+  semantics). `npm run check` (all gates), `npm run build`, `npm run validate`. Dev sideload:
+  `npm start` (Excel) / `npm run start:ppt` (PowerPoint); `npm stop` / `npm run stop:ppt`.
 - `server/`: `cargo test --manifest-path server/Cargo.toml`. Serves `dist/` (env
   `MODELIS_STATIC`), `/healthz`, `/version`; gateway strips the `/modelis/` prefix.
   The public path carries a Cloudflare Access bypass - Office webviews cannot pass
-  Access, so nothing private may ever be served here.
+  Access, so nothing readable may ever be served here. The one exception, by design:
+  relay blobs under `/api/` are encrypted in the pane (AES-GCM, keys derived from a
+  per-link token that exists only inside a deck's tags and the workbook registry); the
+  server stores ciphertext and `sha256(authKey)` only, never plaintext or file names.
 - Deploys go through the gateway's audited flow (`db deploy modelis`), which builds the
   pane locally (`npm run build`) and the server binary on the VPS. Never hand-copy files
   to production.
