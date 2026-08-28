@@ -60,7 +60,7 @@ mod tests {
     async fn version_names_a_version() {
         let (status, _, body) = call("/version").await;
         assert_eq!(status, StatusCode::OK);
-        assert!(body.contains("\"version\":\"1.1.0\""));
+        assert!(body.contains(&format!("\"version\":\"{}\"", env!("CARGO_PKG_VERSION"))));
     }
 
     #[tokio::test]
