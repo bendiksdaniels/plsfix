@@ -26,7 +26,7 @@ each item. Stop when Daniel intervenes or the list is empty.
       support, tests; document the floor.
 - [x] B6 Brand settings per workbook: `workbook.settings["smt.brand.v1"]` with localStorage
       fallback (user-gap #6); pure settings codec already exists in `src/settings.ts`.
-- [ ] B7 Ribbon coverage: expose the top 12 Excel actions as ribbon buttons through
+- [x] B7 Ribbon coverage: expose the top 12 Excel actions as ribbon buttons through
       `manifest/spec.ts` (data change + icons reuse), validate both manifests.
 - [ ] B8 Tornado chart + unpivot selection (docs/FEATURES.md section 11), pure logic + adapter,
       fake-host tests.
