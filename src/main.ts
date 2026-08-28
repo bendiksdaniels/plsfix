@@ -454,6 +454,8 @@ function persistSettings(): void {
   }
   // Saved with the file as well, so the palette follows the model to another
   // computer rather than living only on the machine that set it.
+  // Only a connected workbook can carry the palette; the dev browser has none.
+  if (!excelReady) return;
   void writeWorkbookBrand(json).catch((error: unknown) => {
     reportBrandStoreError(error, "save the brand to the workbook");
   });
