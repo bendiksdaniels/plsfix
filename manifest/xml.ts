@@ -5,6 +5,7 @@
 import type {
   AddinSpec,
   ButtonSpec,
+  GroupSpec,
   HostSpec,
   ManifestEnvironment,
 } from "./spec";
@@ -68,6 +69,19 @@ function control(spec: AddinSpec, host: HostSpec, button: ButtonSpec): string {
   ].join("\n");
 }
 
+// One ribbon group: its own label resource, the shared three-size icon, and
+// its buttons in order. Local indent 0/2 so pad(groupBlock(...), 8) below
+// lands each group at the same depth the single inline group used to sit at.
+function groupBlock(spec: AddinSpec, host: HostSpec, group: GroupSpec): string {
+  return [
+    `<Group id="${escapeXml(group.id)}">`,
+    `  <Label resid="${escapeXml(group.id)}.Label"/>`,
+    pad(icons(spec, 0), 2),
+    ...group.buttons.map((button) => pad(control(spec, host, button), 2)),
+    `</Group>`,
+  ].join("\n");
+}
+
 function hostBlock(spec: AddinSpec, host: HostSpec): string {
   return [
     `<Host xsi:type="${escapeXml(host.name)}">`,
@@ -78,11 +92,7 @@ function hostBlock(spec: AddinSpec, host: HostSpec): string {
     `    <FunctionFile resid="${escapeXml(host.urlResid)}"/>`,
     `    <ExtensionPoint xsi:type="PrimaryCommandSurface">`,
     `      <CustomTab id="SMT.Tab">`,
-    `        <Group id="${escapeXml(host.groupId)}">`,
-    `          <Label resid="${escapeXml(host.groupId)}.Label"/>`,
-    pad(icons(spec, 0), 10),
-    ...host.buttons.map((button) => pad(control(spec, host, button), 10)),
-    `        </Group>`,
+    ...host.groups.map((group) => pad(groupBlock(spec, host, group), 8)),
     `        <Label resid="SMT.Tab.Label"/>`,
     `      </CustomTab>`,
     `    </ExtensionPoint>`,
@@ -94,18 +104,22 @@ function hostBlock(spec: AddinSpec, host: HostSpec): string {
 function resources(env: ManifestEnvironment, spec: AddinSpec): string {
   const shorts = [
     `<bt:String id="SMT.Tab.Label" DefaultValue="${escapeXml(spec.tabLabel)}"/>`,
-    ...spec.hosts.flatMap((host) => [
-      `<bt:String id="${escapeXml(host.groupId)}.Label" DefaultValue="${escapeXml(host.groupLabel)}"/>`,
-      ...host.buttons.map(
-        (b) =>
-          `<bt:String id="SMT.${escapeXml(b.id)}.Label" DefaultValue="${escapeXml(b.label)}"/>`,
-      ),
-    ]),
+    ...spec.hosts.flatMap((host) =>
+      host.groups.flatMap((group) => [
+        `<bt:String id="${escapeXml(group.id)}.Label" DefaultValue="${escapeXml(group.label)}"/>`,
+        ...group.buttons.map(
+          (b) =>
+            `<bt:String id="SMT.${escapeXml(b.id)}.Label" DefaultValue="${escapeXml(b.label)}"/>`,
+        ),
+      ]),
+    ),
   ];
   const longs = spec.hosts.flatMap((host) =>
-    host.buttons.map(
-      (b) =>
-        `<bt:String id="SMT.${escapeXml(b.id)}.Tip" DefaultValue="${escapeXml(b.tip)}"/>`,
+    host.groups.flatMap((group) =>
+      group.buttons.map(
+        (b) =>
+          `<bt:String id="SMT.${escapeXml(b.id)}.Tip" DefaultValue="${escapeXml(b.tip)}"/>`,
+      ),
     ),
   );
   return [
