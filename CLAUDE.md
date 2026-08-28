@@ -36,7 +36,7 @@ Modules (what each owns):
 - `src/ui/`: shared pane pieces without Office.js: toast, guard, tabs, report (error surface), version.
 - `src/excel/`: the Excel Office.js adapter, one file per feature area behind an `index.ts` barrel that keeps the import path `./excel`: `shared.ts` (public types + `parseAddress`), `internal.ts` (private range/fill/host-capability helpers, not barrel-exported), `undo.ts`, `selection.ts`, `formulas.ts`, `paste.ts`, `autocolor.ts`, `audit.ts`, `trace.ts`, `charts.ts`, `workbook.ts`; `links.ts` (v2, planned).
 - Pure model modules (typed in/out, no I/O): `settings` (brand palette), `cycles`, `paste` (fill maths), `classify`, `audit`, `chartmath`, `model`, `workbook`.
-- `src/link/` (core, pure): `model` (types + codecs), `crypto` (HKDF/AES-GCM, base64url, tokens), `status` (link state rules, slide fitting), `png` (IHDR size), `workspace` (pairing key + host key store), `relay` (fetch client, typed errors, planned).
+- `src/link/` (core, pure): `model` (types + codecs), `crypto` (HKDF/AES-GCM, base64url, tokens), `status` (link state rules, slide fitting), `png` (IHDR size), `workspace` (pairing key + host key store), `relay` (fetch client, typed errors).
 - `src/ppt/` (planned): `host.ts` (the only PowerPoint Office.js code: scan by tags, insert, refresh, break), `links.ts` (orchestration), `views.ts` (DOM renderers), `main.ts`.
 - `src/pane/links-tab.ts` (planned): the Excel "Links" tab.
 - `server/`: `lib.rs` router + cache middleware (planned split), `store.rs` sqlite (planned), `relay.rs` `/api` routes (planned), `main.rs` env + bind + sweeper.
