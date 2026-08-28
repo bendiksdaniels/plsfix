@@ -19,8 +19,6 @@ import {
   entryOf,
   forget,
   newEntry,
-  publish,
-  pushPayload,
   readRegistry,
   refuseAnchoredChart,
   releaseAnchor,
@@ -30,9 +28,9 @@ import {
   sourceOf,
   workbookName,
   writeRegistry,
-  type NewLink,
   type ResolvedSource,
 } from "./link-anchors";
+import { publish, pushPayload, type NewLink } from "./link-record";
 import { parseAddress } from "./shared";
 
 export { workbookName };
