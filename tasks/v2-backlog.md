@@ -45,8 +45,10 @@ each item. Stop when Daniel intervenes or the list is empty.
       across slides in one sync where the API allows; target under 3 syncs per update-all.
 - [ ] C3 Pane UX pass with a headless browser at 320/360/420 px: no clipped controls, badges
       readable, keyboard focus order sane; fix what is found.
-- [ ] C4 FEATURES.md section 11 next: `=SMT.ROUND` custom functions (research the CustomFunctions
-      runtime + manifest requirements first; implement only if it fits the shared runtime).
+- [x] C4 `=SMT.ROUND` research: GO (docs/research/custom-functions.md; shared runtime page reused).
+- [ ] C8 Implement `SMT.ROUND` / `SMT.ROUNDSUM` custom functions per the research: manifest
+      CustomFunctions extension point in `manifest/spec.ts`, functions.json + functions entry via Vite,
+      largest-remainder allocation with a range ceiling, ribbon/pane button that writes the formulas.
 - [ ] C5 FEATURES.md P2 leftovers, one per iteration: border cycles (done v2.1.3), row-height/column-width cycles,
       paintbrush slots, Super Find, unused-style scrubber, "prepare for sharing".
 - [x] C6 Test debt: split `test/ppt.integration.test.ts` (>400 lines) by feature; keep every
