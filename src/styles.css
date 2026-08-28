@@ -783,8 +783,16 @@ footer span:last-child {
     padding-right: 12px;
     padding-left: 12px;
   }
+  /* The badge is the only place either pane says the host was rejected, so a
+     narrow dock moves it under the title rather than hiding it. */
+  .masthead {
+    grid-template-columns: 42px 1fr;
+  }
   .connection {
-    display: none;
+    grid-column: 1 / -1;
+    padding: 4px 7px;
+    font-size: 8.5px;
+    white-space: normal;
   }
   .tool-grid {
     grid-template-columns: repeat(2, 1fr);
@@ -1183,7 +1191,7 @@ footer span:last-child {
   font-size: 10px;
 }
 .wl-keys {
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
 }
 .action-icon.links {
   color: var(--bronze);
