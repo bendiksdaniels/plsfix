@@ -1,7 +1,7 @@
 // Reshaping the selection. Unpivot writes its long table to a new worksheet, so
 // no cell in the model is overwritten and SMT Undo has nothing to capture.
 
-import { selectionWithinCap } from "./internal";
+import { selectedSingleRange, withinCap } from "./internal";
 import { type CellValue } from "../model";
 import { unpivot } from "../reshape";
 import { activeTheme, getActiveSettings } from "../settings";
@@ -28,7 +28,11 @@ function freeSheetName(taken: string[], base: string): string {
 // the first column become the two key columns, one line per populated cell.
 export async function unpivotSelection(): Promise<string> {
   return Excel.run(async (context) => {
-    const range = await selectionWithinCap(context, "Unpivot");
+    const range = await withinCap(
+      context,
+      await selectedSingleRange(context, "unpivot"),
+      "Unpivot",
+    );
     range.load("values");
     const sheets = context.workbook.worksheets;
     sheets.load("items/name");

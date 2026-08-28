@@ -9,7 +9,9 @@
 //   * No formula engine. Writing "=A1+1" stores the text and leaves the cell's
 //     value alone; writing a literal sets value and formula together.
 //   * formulasR1C1 mirrors the A1 text unless a test seeds it (seedR1C1).
-//   * getSelectedRange models one rectangular area, never a multi-area selection.
+//   * getSelectedRange serves one rectangular area, and throws the way office.js
+//     does once helpers.selectAreas() has made the selection multi-area;
+//     getSelectedRanges answers areaCount and nothing else.
 //   * copyFrom(..., formulas) copies text verbatim; Excel rewrites relative refs.
 //   * getImage() hands back a signature-only PNG sized from the fake grid (64pt
 //     columns, 20pt rows) or from the requested chart size, never a real picture.
@@ -406,6 +408,9 @@ export class FakeWorkbook {
     sheetId: "",
     rect: { row: 0, col: 0, rowCount: 1, colCount: 1 },
   };
+  // Every area of a ctrl-clicked selection, the first of which is `selection`.
+  // Empty means the ordinary single-area case.
+  selectionAreas: { sheetId: string; rect: Rect }[] = [];
   activeCell: { sheetId: string; row: number; col: number } | null = null;
   activeSheetId = "";
   activeChart: FakeChart | null = null;
@@ -472,6 +477,10 @@ export class FakeWorkbook {
     const sheet = this.find(this.selection.sheetId);
     if (!sheet) return "";
     return `${quoteSheet(sheet.name)}!${formatA1(this.selection.rect)}`;
+  }
+
+  areaCount(): number {
+    return Math.max(1, this.selectionAreas.length);
   }
 }
 
@@ -548,10 +557,12 @@ const SHAPES: Record<string, Shape> = {
     },
     returns: {
       getSelectedRange: "range",
+      getSelectedRanges: "rangeAreas",
       getActiveCell: "range",
       getActiveChartOrNullObject: "chart",
     },
   },
+  rangeAreas: { scalars: ["areaCount"] },
   worksheets: {
     scalars: ["items"],
     items: "worksheet",
@@ -1136,6 +1147,7 @@ const ErrorCodes = {
   itemAlreadyExists: "ItemAlreadyExists",
   itemNotFound: "ItemNotFound",
   invalidOperation: "InvalidOperation",
+  invalidSelection: "InvalidSelection",
   unsupportedOperation: "UnsupportedOperation",
 } as const;
 
@@ -1169,6 +1181,9 @@ class FakeRuntime {
   changeHandlers: Registration[] = [];
   actions = new Map<string, (event?: { completed: () => void }) => void>();
   failSync: Error | null = null;
+  // Armed by helpers.failNextImage(): the next getImage queues this error, so
+  // the render fails at the sync that was going to commit the anchor with it.
+  failImage: Error | null = null;
   supported: (set: string, version: string) => boolean;
   rewriteCurrencyFormats: boolean;
   maxCells: number;
@@ -1188,6 +1203,16 @@ class FakeRuntime {
   format(value: string): string {
     return this.rewriteCurrencyFormats ? rewriteCurrency(value) : value;
   }
+}
+
+// getImage is queued like any other call: Excel reports the failure on the sync
+// that runs the batch, by which time the writes queued beside it have already
+// been applied. Consumed by the one call it was armed for.
+function queueImageFailure(runtime: FakeRuntime, ctx: FakeContext): void {
+  const failure = runtime.failImage;
+  if (!failure) return;
+  runtime.failImage = null;
+  ctx.queueError(failure);
 }
 
 // ---------------------------------------------------------------------------
@@ -1661,6 +1686,7 @@ class RangeProxy {
   // Excel renders the range at its on-screen size; the fake grid is a fixed
   // 64pt column by a 20pt row, so the rectangle is the picture.
   getImage(): { value: string } {
+    queueImageFailure(this.runtime, this.ctx);
     return { value: fakePng(this.width, this.height) };
   }
 
@@ -2113,6 +2139,7 @@ class ChartProxy {
     _fittingMode?: string,
   ): { value: string } {
     void _fittingMode;
+    queueImageFailure(this.runtime, this.ctx);
     return { value: fakePng(width, height) };
   }
 
@@ -2604,11 +2631,30 @@ class WorkbookProxy {
     return sheet;
   }
 
+  // office.js: "If there are multiple ranges selected, this method will throw
+  // an error." Queued, so the failure arrives on the next sync with no stage
+  // of its own - which is what the flows using getSelectedRanges avoid.
   getSelectedRange(): RangeProxy {
-    const { sheetId, rect } = this.runtime.workbook.selection;
+    const workbook = this.runtime.workbook;
+    if (workbook.areaCount() > 1) {
+      this.ctx.queueError(
+        hostError(
+          ErrorCodes.invalidSelection,
+          "The selected range contains multiple areas.",
+        ),
+      );
+    }
+    const { sheetId, rect } = workbook.selection;
     return new RangeProxy(this.runtime, this.ctx, this.sheetOf(sheetId), {
       ...rect,
     });
+  }
+
+  getSelectedRanges(): { areaCount: number; load: () => void } {
+    return {
+      areaCount: this.runtime.workbook.areaCount(),
+      load: () => undefined,
+    };
   }
 
   getActiveCell(): RangeProxy {
@@ -2769,6 +2815,9 @@ export interface FakeHelpers {
   setNameFormula(name: string, formula: string): void;
   breakName(name: string): void;
   select(address: string): void;
+  // A ctrl-clicked selection: the first address is what getSelectedRange would
+  // have served, and getSelectedRanges reports one area per address.
+  selectAreas(addresses: string[]): void;
   setActiveCell(address: string): void;
   seed(address: string, grid: SeedEntry[][]): void;
   setNumberFormat(address: string, format: string): void;
@@ -2793,6 +2842,9 @@ export interface FakeHelpers {
   setSetting(key: string, value: string): void;
   setSupported(check: (set: string, version: string) => boolean): void;
   failNextSync(error?: Error): void;
+  // Makes the next Range/Chart getImage fail, the way a chart mid-render or a
+  // protected sheet does, without touching the writes queued beside it.
+  failNextImage(error?: Error): void;
   changeHandlerCount(): number;
   fireChanged(sheetIdOrName: string, address: string): Promise<void>;
   actions(): Map<string, (event?: { completed: () => void }) => void>;
@@ -2925,8 +2977,20 @@ export function installFakeHost(options: FakeHostOptions = {}): {
     select(address) {
       const { sheet, rect } = resolve(workbook, address);
       workbook.selection = { sheetId: sheet.id, rect };
+      workbook.selectionAreas = [];
       workbook.activeSheetId = sheet.id;
       workbook.activeCell = null;
+    },
+    selectAreas(addresses) {
+      const [first] = addresses;
+      if (first === undefined) {
+        throw new Error("fake host: a selection needs at least one area");
+      }
+      helpers.select(first);
+      workbook.selectionAreas = addresses.map((address) => {
+        const { sheet, rect } = resolve(workbook, address);
+        return { sheetId: sheet.id, rect };
+      });
     },
     setActiveCell(address) {
       const { sheet, rect } = resolve(workbook, address);
@@ -3035,6 +3099,11 @@ export function installFakeHost(options: FakeHostOptions = {}): {
     failNextSync(error) {
       runtime.failSync =
         error ?? hostError(ErrorCodes.generalException, "The sync failed.");
+    },
+    failNextImage(error) {
+      runtime.failImage =
+        error ??
+        hostError(ErrorCodes.generalException, "The image failed to render.");
     },
     changeHandlerCount: () => runtime.changeHandlers.length,
     async fireChanged(sheetIdOrName, address) {

@@ -1202,8 +1202,10 @@ describe("tornado", () => {
     expect(workbook.charts[0]?.title).toBe("Sensitivity");
   });
 
+  // The block has to be free of values to be written at all, so what undo has
+  // to put back is the formatting that stood on those cells.
   it("puts the helper block back on undo", async () => {
-    helpers.seed("Model!D2", [["keep me"]]);
+    helpers.setFill("Model!D2:F5", { color: "#FFEECC", pattern: "Solid" });
     seedDrivers();
     await expectExactUndo(() => smt.insertTornado());
   });

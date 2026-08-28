@@ -31,11 +31,11 @@ export const BASE_WHITE = "#FFFFFF";
 
 // A whole-column click selects a million cells; reading or writing their grids
 // would freeze the pane or overflow the request payload.
-export async function selectionWithinCap(
+export async function withinCap(
   context: Excel.RequestContext,
+  range: Excel.Range,
   what: string,
 ): Promise<Excel.Range> {
-  const range = context.workbook.getSelectedRange();
   range.load("cellCount");
   await context.sync();
   if (range.cellCount > SELECTION_CELL_CAP) {
@@ -44,6 +44,33 @@ export async function selectionWithinCap(
     );
   }
   return range;
+}
+
+export async function selectionWithinCap(
+  context: Excel.RequestContext,
+  what: string,
+): Promise<Excel.Range> {
+  return withinCap(context, context.workbook.getSelectedRange(), what);
+}
+
+// getSelectedRange is documented to throw on a multi-area selection (ctrl-click
+// two blocks), and it throws as a bare host string with no stage in it. The
+// area count is read first so the flow that asked says which one it was.
+// getSelectedRanges arrived in ExcelApi 1.9; an older host cannot be asked, and
+// falls through to the single-area call it has always made.
+export async function selectedSingleRange(
+  context: Excel.RequestContext,
+  stage: string,
+): Promise<Excel.Range> {
+  if (hostSupports("1.9")) {
+    const areas = context.workbook.getSelectedRanges();
+    areas.load("areaCount");
+    await context.sync();
+    if (areas.areaCount > 1) {
+      throw new Error(`${stage}: select a single range`);
+    }
+  }
+  return context.workbook.getSelectedRange();
 }
 
 // One write per run of same-key cells instead of one per cell: model rows are

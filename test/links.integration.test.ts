@@ -122,6 +122,24 @@ describe("exportSelection", () => {
       /selected cells/,
     );
   });
+  // The anchor is committed by the very sync that asks for the picture, so a
+  // render that fails leaves a hidden name no registry entry claims.
+  it("takes the hidden name back when the picture never renders", async () => {
+    helpers.failNextImage();
+    await expect(links.exportSelection(ws, relay)).rejects.toThrow(
+      /export Model!B4:F5: The image failed to render/,
+    );
+    expect(workbook.names).toEqual([]);
+    expect(helpers.setting(REGISTRY_SETTING)).toBeNull();
+    expect(relay.links.size).toBe(0);
+  });
+  it("refuses a multi-area selection before it anchors anything", async () => {
+    helpers.selectAreas(["Model!B4:F5", "Model!B8:F9"]);
+    await expect(links.exportSelection(ws, relay)).rejects.toThrow(
+      "export: select a single range",
+    );
+    expect(workbook.names).toEqual([]);
+  });
 });
 
 describe("pushLinks", () => {
@@ -200,6 +218,29 @@ describe("charts", () => {
       /Select a chart/,
     );
   });
+  // The rename is committed by the sync that asks for the picture: without the
+  // undo the chart keeps an anchor name no entry claims and can never be
+  // exported again.
+  it("gives a chart its name back when the picture never renders, and exports on the retry", async () => {
+    helpers.addChart("Model", { name: "Revenue bridge" });
+    helpers.setActiveChart(workbook.charts[0]!);
+    helpers.failNextImage();
+    await expect(links.exportActiveChart(ws, relay)).rejects.toThrow(
+      /export Model: Revenue bridge: The image failed to render/,
+    );
+    expect(workbook.charts[0]!.name).toBe("Revenue bridge");
+
+    const result = await links.exportActiveChart(ws, relay);
+    expect(workbook.charts[0]!.name).toBe(anchorName(result.id));
+  });
+  it("re-anchors a chart whose anchor name no link claims", async () => {
+    const orphan = anchorName("f".repeat(32));
+    helpers.addChart("Model", { name: orphan });
+    helpers.setActiveChart(workbook.charts[0]!);
+    const result = await links.exportActiveChart(ws, relay);
+    expect(workbook.charts[0]!.name).toBe(anchorName(result.id));
+    expect(anchorName(result.id)).not.toBe(orphan);
+  });
 });
 
 describe("a registry that cannot be read", () => {
@@ -232,5 +273,46 @@ describe("removeLink and goToSource", () => {
     helpers.select("Data!A1");
     await links.goToSource(id);
     expect(workbook.selectionAddress()).toBe("Model!B4:F5");
+  });
+  // Revoking the relay copy is the point of Remove: a revoke that fails must
+  // leave the entry - and its token - in place to try again with.
+  it("keeps everything when the relay refuses the revoke", async () => {
+    const { id } = await links.exportSelection(ws, relay);
+    relay.deleteLink = () =>
+      Promise.reject(new RelayError("network", "relay unreachable"));
+
+    await expect(links.removeLink(id, relay)).rejects.toThrow(
+      "remove Model!B4:F5: relay unreachable; nothing was removed, try again",
+    );
+    expect(workbook.names.find((n) => n.name === anchorName(id))).toBeDefined();
+    expect(
+      JSON.parse(String(helpers.setting(REGISTRY_SETTING))).links,
+    ).toHaveLength(1);
+    expect(relay.links.has(id)).toBe(true);
+  });
+  it("finishes the removal when the relay has already dropped the copy", async () => {
+    const { id } = await links.exportSelection(ws, relay);
+    relay.deleteLink = () =>
+      Promise.reject(new RelayError("missing", "not found", 404));
+
+    await links.removeLink(id, relay);
+    expect(
+      workbook.names.find((n) => n.name === anchorName(id)),
+    ).toBeUndefined();
+    expect(JSON.parse(String(helpers.setting(REGISTRY_SETTING))).links).toEqual(
+      [],
+    );
+  });
+  // Anchors resolve on hidden sheets - which is right - but Excel refuses to
+  // activate one, so the jump says so instead of failing the sync raw.
+  it("refuses to jump to a source on a hidden sheet", async () => {
+    const { id } = await links.exportSelection(ws, relay);
+    helpers.sheet("Model").visibility = "Hidden";
+    helpers.select("Data!A1");
+
+    await expect(links.goToSource(id)).rejects.toThrow(
+      'go to source Model!B4:F5: sheet "Model" is hidden',
+    );
+    expect(workbook.selectionAddress()).toBe("Data!A1");
   });
 });

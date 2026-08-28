@@ -3,7 +3,12 @@
 // ranges only and the deltas are not in the model, so they are written to a
 // helper block beside the selection and charted from there.
 
-import { formatChartAmount, hostSupports, styleChartShell } from "./internal";
+import {
+  formatChartAmount,
+  hostSupports,
+  selectedSingleRange,
+  styleChartShell,
+} from "./internal";
 import { captureUndo } from "./undo";
 import { type TornadoDriver, tornadoSeries } from "../chartmath";
 import { type CellValue } from "../model";
@@ -91,11 +96,30 @@ function styleTornado(chart: Excel.Chart, heading: string): void {
   });
 }
 
+// The helper block is written over whatever stands right of the selection, and
+// SMT Undo is a single slot the modeller has to know to reach for: a base-case
+// column or a comment there is not something to overwrite and report later.
+async function requireFreeBlock(
+  context: Excel.RequestContext,
+  block: Excel.Range,
+): Promise<void> {
+  block.load("values");
+  await context.sync();
+  const occupied = (block.values as CellValue[][]).some((row) =>
+    row.some((cell) => cell !== null && cell !== ""),
+  );
+  if (occupied) {
+    throw new Error(
+      "tornado: cells to the right of the selection are not empty",
+    );
+  }
+}
+
 // Label, low outcome, high outcome; the helper block lands immediately right of
 // the selection, and SMT Undo captures whatever stood there first.
 export async function insertTornado(): Promise<string> {
   return Excel.run(async (context) => {
-    const range = context.workbook.getSelectedRange();
+    const range = await selectedSingleRange(context, "tornado");
     const sheet = range.worksheet;
     range.load("rowCount,columnCount,rowIndex,columnIndex,values");
     await context.sync();
@@ -117,6 +141,7 @@ export async function insertTornado(): Promise<string> {
       series.labels.length + 1,
       TORNADO_COLUMNS,
     );
+    await requireFreeBlock(context, block);
     await captureUndo(context, block);
     block.values = [
       TORNADO_HEADERS,
