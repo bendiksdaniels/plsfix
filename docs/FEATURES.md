@@ -6,26 +6,33 @@ Raw inventories with per-feature source URLs live in `docs/research/`.
 
 Date: 2026-08-27. Owner add-in: Model Tools (Office.js task pane, ExcelApi >= 1.9).
 
-**Status 27.08 (v0.9.x):** everything marked P1 in sections 0-7 shipped in chunks C1-C7 —
-shared runtime + ribbon + 34 shortcuts, ten format cycles, autocolor v2 + color key,
-audit overlay + Smart Track, SMT Undo + paste suite + fast fill + CAGR/sign/decimals,
-native waterfall + chart formatter + CAGR label, TOC + sheet explorer + name scrubber.
-Sections 8-10 (linking, PPT companion, enterprise) remain the M2-M4 roadmap. See
-tasks/v1-plan.md for per-chunk detail and open follow-ups.
+**Status 29.08 (v2.1.1):** everything marked P1 in sections 0-7 shipped by v1.1 — shared
+runtime + ribbon + 34 shortcuts, format cycles, autocolor v2 + color key, audit overlay +
+Smart Track, SMT Undo + paste suite + fast fill + CAGR/sign/decimals, native waterfall +
+chart formatter + CAGR label, TOC + sheet explorer + name scrubber. Section 8's core linking
+(export, registry, Inbox, Update selected/slide/all, Break, move-resilient anchors) shipped
+at v2.0; per-workbook brand palette, grouped-shape links, tornado chart and unpivot selection
+followed at v2.1. Open: change source/version resolution, highlight linked cells, native
+PowerPoint tables, link revert (section 8); the PPT companion's own toolset beyond the Links
+tab and all of section 10 (enterprise, M4); the P2/P3 long tail in sections 1-7. See
+tasks/AUTORESUME.md and tasks/v2-backlog.md for the live backlog.
 
 **Feasibility legend** — `Yes`: doable with documented Office.js APIs. `Yes*`: doable with a
 caveat (noted). `Partial`: a reduced version is doable. `Backend`: needs our planned Rust
 service or Microsoft Graph relay. `No`: impossible in web add-ins (COM-only).
 **Priority** — P1 build next, P2 later milestone, P3 long tail, X skip.
-**Done** — already shipped in v0.2.
+**Status** (replaces the old `Done` marker in this column) — `shipped v1.1` / `shipped v2.0` /
+`shipped v2.1`: live in that release. `parked`: ruled out (see "Not worth cloning" below). Any
+other Feasibility value on a P1-P3 row (`Yes`/`Yes*`/`Partial`/`Backend`/`No`) is still planned,
+not yet built.
 
 ## 0. Platform foundations (prerequisites, not user features)
 
 | Item | Why | Feasibility | Priority |
 |---|---|---|---|
-| Shared runtime (manifest change, lifetime long) | Prerequisite for shortcuts, ribbon-state, pane/ribbon shared memory | Yes (SharedRuntime 1.1) | P1 |
-| Custom keyboard shortcuts | The whole Macabacus/UpSlide UX is shortcut cycles | Yes* (KeyboardShortcuts 1.1; Excel Win 2102+/Mac 16.55+; some combos reserved on web; users remap) | P1 |
-| Ribbon commands (buttons that run code, no pane) | One-keystroke actions without opening the pane | Yes | P1 |
+| Shared runtime (manifest change, lifetime long) | Prerequisite for shortcuts, ribbon-state, pane/ribbon shared memory | shipped v1.1 | P1 |
+| Custom keyboard shortcuts | The whole Macabacus/UpSlide UX is shortcut cycles | shipped v1.1 | P1 |
+| Ribbon commands (buttons that run code, no pane) | One-keystroke actions without opening the pane | shipped v1.1 | P1 |
 | Excel contextual tab | Surface tools next to native tabs | Yes (RibbonApi 1.2, Excel only) | P2 |
 | Cell right-click menu items | ContextMenuCell extension point | Partial (add items only, cannot replace native) | P2 |
 | Unified + XML dual manifests | Coverage across hosts until unified manifest is universal | Yes | P2 |
@@ -34,15 +41,15 @@ service or Microsoft Graph relay. `No`: impossible in web add-ins (COM-only).
 
 | Feature | Source | What it does | Feasibility | Priority |
 |---|---|---|---|---|
-| Model presets (title/header/input/formula/result) | both | One-click branded cell styles | Done | - |
-| Brand palette + font + currency settings | both (MB Color Palettes, US themes) | User-editable brand scheme drives all output | Done (v0.2 Brand tab) | - |
-| Number format cycles (general/currency/percent/multiple/date) | both | Repeated keystroke cycles curated formats per family | Yes (Range.numberFormat + shortcuts) | P1 |
-| Title / result / item row format cycles | US | Cycles approved row styles | Yes | P1 |
-| Fill color cycle / font color cycle | both | Cycles brand fills/fonts | Yes | P1 |
+| Model presets (title/header/input/formula/result) | both | One-click branded cell styles | shipped v1.1 | - |
+| Brand palette + font + currency settings | both (MB Color Palettes, US themes) | User-editable brand scheme drives all output | shipped v1.1 (per-workbook persistence v2.1) | - |
+| Number format cycles (general/currency/percent/multiple/date) | both | Repeated keystroke cycles curated formats per family | shipped v1.1 | P1 |
+| Title / result / item row format cycles | US | Cycles approved row styles | shipped v1.1 | P1 |
+| Fill color cycle / font color cycle | both | Cycles brand fills/fonts | shipped v1.1 | P1 |
 | Border style/color cycles | both | Cycles approved borders (incl. accounting underlines) | Yes | P1 |
 | Row height / column width cycles | US | Cycles preset standards | Yes (Range format) | P2 |
-| More/fewer decimals | US | Steps decimal places in the active format | Yes | P1 |
-| Change sign | US | Flips sign of selected constants | Yes (like our x1000) | P1 |
+| More/fewer decimals | US | Steps decimal places in the active format | shipped v1.1 | P1 |
+| Change sign | US | Flips sign of selected constants | shipped v1.1 | P1 |
 | Pinstripes (alternate row/col shading) | MB | Odd/even shading via conditional format | Yes (ConditionalFormat API) | P2 |
 | Custom Styles / Style Cycles (user-defined, 8 slots) | MB | Reusable multi-property styles on one key | Yes (settings-driven) | P2 |
 | Paintbrush (multi-slot format painter) | MB | Copy/apply formatting without clipboard, FIFO slots | Yes (read format -> store -> apply) | P2 |
@@ -54,11 +61,11 @@ service or Microsoft Graph relay. `No`: impossible in web add-ins (COM-only).
 
 | Feature | Source | What it does | Feasibility | Priority |
 |---|---|---|---|---|
-| Autocolor selection (inputs/formulas/links) | both | Content-based font coloring | Done (basic) | - |
-| Autocolor: distinguish same-sheet vs cross-sheet vs external-file vs partial-input formulas | both | Richer classification (MB adds hardcode-in-formula detection) | Yes (parse formula text) | P1 |
-| Autocolor on entry/edit | both | Live coloring as you type | Yes* (onChanged event; perf care, off by default) | P1 |
-| Autocolor legend & customization | US | Legend UI + per-type color overrides | Yes (Brand tab extension) | P1 |
-| Formula Audit / Formula Flow overlay | both | Striped fill = formula consistent with neighbors, solid = deviation | Yes (R1C1 compare + fills; store/restore original formats) | P1 |
+| Autocolor selection (inputs/formulas/links) | both | Content-based font coloring | shipped v1.1 (basic) | - |
+| Autocolor: distinguish same-sheet vs cross-sheet vs external-file vs partial-input formulas | both | Richer classification (MB adds hardcode-in-formula detection) | shipped v1.1 | P1 |
+| Autocolor on entry/edit | both | Live coloring as you type | shipped v1.1 | P1 |
+| Autocolor legend & customization | US | Legend UI + per-type color overrides | shipped v1.1 | P1 |
+| Formula Audit / Formula Flow overlay | both | Striped fill = formula consistent with neighbors, solid = deviation | shipped v1.1 | P1 |
 | Uniformulas (select consistent region) | MB | Highlights the consistency region of active formula | Yes (same engine) | P2 |
 | Dependency Density heatmap | MB | Shade by dependent count | Yes* (getDependents per cell is slow at scale; cap range) | P3 |
 | Model Check (50+ automated checks) | MB | Error/structure/hidden-data/brand audit with fixes | Partial (subset: errors, hardcodes in formulas, inconsistent rows, hidden sheets; no full parity) | P2 |
@@ -67,23 +74,23 @@ service or Microsoft Graph relay. `No`: impossible in web add-ins (COM-only).
 
 | Feature | Source | What it does | Feasibility | Priority |
 |---|---|---|---|---|
-| Fill right/down from edge cell | both | Copy formula across selection | Done (basic) | - |
-| Fast Fill with auto-extent (no pre-selection) | US | Detects how far to fill from neighbors | Yes (scan neighbor rows/cols for extent) | P1 |
-| Paste values / formulas / formats / transpose / skip blanks (button-driven) | both | Paste-special suite | Yes (Range.copyFrom modes) | P1 |
-| Preserve Formulas paste (exact references) | both | Paste keeping original refs | Yes (read formulasR1C1/A1 text, write verbatim) | P1 |
+| Fill right/down from edge cell | both | Copy formula across selection | shipped v1.1 (basic) | - |
+| Fast Fill with auto-extent (no pre-selection) | US | Detects how far to fill from neighbors | shipped v1.1 | P1 |
+| Paste values / formulas / formats / transpose / skip blanks (button-driven) | both | Paste-special suite | shipped v1.1 | P1 |
+| Preserve Formulas paste (exact references) | both | Paste keeping original refs | shipped v1.1 | P1 |
 | Duplicate Formulas paste | US | In-range refs adapt, external absolutes kept | Yes (formula rewrite) | P2 |
 | Paste row heights / number formats only | US | Targeted format transfer | Yes | P2 |
-| Intercept native Ctrl+C/Ctrl+V | - | True clipboard interception | No (hard blocker; button/shortcut-driven instead) | X |
+| Intercept native Ctrl+C/Ctrl+V | - | True clipboard interception | parked | X |
 
 ## 4. Formula auditing and navigation
 
 | Feature | Source | What it does | Feasibility | Priority |
 |---|---|---|---|---|
-| Smart Track / Trace In-Out pane (precedents/dependents tree, keyboard nav, color trail) | both | Drill into inputs and back | Yes* (getDirectPrecedents/getDependents; single workbook only — cross-workbook impossible) | P1 |
+| Smart Track / Trace In-Out pane (precedents/dependents tree, keyboard nav, color trail) | both | Drill into inputs and back | shipped v1.1 | P1 |
 | Show all precedents for multiple cells | MB | Multi-cell trace | Yes* (same; cap cell count) | P2 |
 | Super Find (values/formulas/comments across workbook) | MB | Better Find with results pane | Partial (this workbook only; no other open workbooks) | P2 |
-| Explorer (workbook/sheet tree navigator) | US | Sheet navigation pane with search | Partial (sheets of THIS workbook only — Office.js cannot see other open workbooks) | P1 |
-| Workbook TOC sheet | both | Hyperlinked contents sheet, auto-updating | Yes (worksheets + hyperlinks; refresh on onAdded/onNameChanged) | P1 |
+| Explorer (workbook/sheet tree navigator) | US | Sheet navigation pane with search | shipped v1.1 | P1 |
+| Workbook TOC sheet | both | Hyperlinked contents sheet, auto-updating | shipped v1.1 | P1 |
 | Sheet tools (move/bury/unhide-multi/activate dialog) | MB | Sheet management | Yes (visibility incl. VeryHidden) | P2 |
 | NavAid (crosshair shading of selection row/col) | MB | Visual navigation aid | Yes* (onSelectionChanged + fills; perf care, restore on move) | P3 |
 | Reverse rows/columns preserving formulas | MB | Reorder periods | Yes (careful formula rewrite) | P3 |
@@ -92,9 +99,9 @@ service or Microsoft Graph relay. `No`: impossible in web add-ins (COM-only).
 
 | Feature | Source | What it does | Feasibility | Priority |
 |---|---|---|---|---|
-| IFERROR wrap | both | Wrap/unwrap with custom fallback | Done (basic; add unwrap + custom value) | P1 |
-| Scale x1000 / /1000 | both | Rescale constants+formulas | Done | - |
-| Quick CAGR formula | both | Insert CAGR over range/period | Yes | P1 |
+| IFERROR wrap | both | Wrap/unwrap with custom fallback | shipped v1.1 (wrap/unwrap; custom value still open) | P1 |
+| Scale x1000 / /1000 | both | Rescale constants+formulas | shipped v1.1 | - |
+| Quick CAGR formula | both | Insert CAGR over range/period | shipped v1.1 | P1 |
 | Summary statistics block (min/max/mean/median under data) | MB | Auto stats for comps | Yes | P2 |
 | Add Scenarios (toggle-driven projection cases) | MB | Scenario switch cells + duplicated rows | Yes (structured but doable) | P3 |
 | Replicate Module | MB | Duplicate an analysis block across sheets | Yes | P3 |
@@ -104,10 +111,10 @@ service or Microsoft Graph relay. `No`: impossible in web add-ins (COM-only).
 
 | Feature | Source | What it does | Feasibility | Priority |
 |---|---|---|---|---|
-| Waterfall / bridge builder | both | Build from intuitive table, connectors, brand colors | Yes (native Excel.ChartType.waterfall at 1.9) | P1 |
+| Waterfall / bridge builder | both | Build from intuitive table, connectors, brand colors | shipped v1.1 | P1 |
 | Stacked waterfall | US | Subcategory pillars | Partial (no native type — compose from stacked columns with helper series) | P2 |
-| CAGR arrow on chart | both | Data-driven growth arrow overlay | Yes* (chart shapes/annotation via series or floating shape; verify API surface) | P1 |
-| Chart Smart Format (brand compliance) | both | One-click restyle any chart to brand | Yes (chart format API + palette) | P1 |
+| CAGR arrow on chart | both | Data-driven growth arrow overlay | shipped v1.1 | P1 |
+| Chart Smart Format (brand compliance) | both | One-click restyle any chart to brand | shipped v1.1 | P1 |
 | Football field (valuation ranges) | MB | Floating-bar range chart | Yes (stacked bar with invisible base) | P2 |
 | Marimekko / S-curve | US | Width-encoded 100% stacked | Partial (no native type; column-width tricks or scatter-area composition) | P3 |
 | XY scatter labels | MB | Correct point labels | Yes (series data labels API) | P3 |
@@ -117,7 +124,7 @@ service or Microsoft Graph relay. `No`: impossible in web add-ins (COM-only).
 
 | Feature | Source | What it does | Feasibility | Priority |
 |---|---|---|---|---|
-| Clean: broken/hidden defined names | both | Name scrubber | Yes (NamedItemCollection) | P1 |
+| Clean: broken/hidden defined names | both | Name scrubber | shipped v1.1 | P1 |
 | Clean: unused styles | both | Style scrubber (style-ceiling fix) | Yes (StyleCollection; verify add/delete surface) | P2 |
 | Clean: crop used range | US | Clear stray formatting past data | Yes | P2 |
 | Prepare for sharing (formulas->values, strip comments, hidden content, reset zoom) | US | Externalize workbook | Yes | P2 |
@@ -135,9 +142,9 @@ survive row/column moves (Macabacus mechanism).
 
 | Feature | Source | What it does | Feasibility | Priority |
 |---|---|---|---|---|
-| Export range/chart as image to PPT | both | Range.getImage/Chart.getImage base64 -> PPT shape | Yes (snippet-confirmed APIs; deep-verify first) | P1 (M2) |
-| Link registry + refresh one object | both | Stable link IDs, update in place preserving position/size | Backend | P1 (M2) |
-| Link Manager pane (by slide / by source, batch update, filters) | both | Central link control | Backend | P1 (M3) |
+| Export range/chart as image to PPT | both | Range.getImage/Chart.getImage base64 -> PPT shape | shipped v2.0 | P1 (M2) |
+| Link registry + refresh one object | both | Stable link IDs, update in place preserving position/size | shipped v2.0 | P1 (M2) |
+| Link Manager pane (by slide / by source, batch update, filters) | both | Central link control | shipped v2.0 | P1 (M3) |
 | Change source / versioning (Model_v4 detection) | both | Repoint links, newest-file prompts | Backend | P2 (M3) |
 | Export text (cell -> placeholder) | both | Live text links | Backend | P2 (M3) |
 | Native PPT table export | US | Editable table, format survives refresh | Partial (PPT table API at 1.8; format drift risk) | P3 |
@@ -160,7 +167,7 @@ suppression are out of reach; additive checks only.
 | Feature | Source | What it does | Feasibility | Priority |
 |---|---|---|---|---|
 | Shared org settings/themes (publish to team) | both | Admin-published palette/formats | Backend (or Graph file) | P2 |
-| Settings export/import | both | XML/JSON round-trip | Done (JSON) | - |
+| Settings export/import | both | XML/JSON round-trip | shipped v1.1 (JSON) | - |
 | Shortcut manager (remap, conflicts, print list) | both | User remapping | Yes (replaceShortcuts API, signed-in users) | P2 |
 | Centralized deployment | both | M365 admin rollout | Yes (Integrated Apps) | P2 |
 | Content library (shared slides/ranges/templates) | both | Org content store | Backend | P3 |
@@ -173,14 +180,14 @@ suppression are out of reach; additive checks only.
 
 | Feature | Inspired by | Feasibility | Priority |
 |---|---|---|---|
-| SMT Undo: snapshot + restore last bulk action | #1 Macabacus trust complaint (undo broken) | Yes (we read state before writing anyway) | P1 — fold into C5 |
-| Palette legend insert (auto color key block) | F1F9 "Keys" | Yes (trivial once autocolor v2 exists) | P1 — fold into C3 |
+| SMT Undo: snapshot + restore last bulk action | #1 Macabacus trust complaint (undo broken) | shipped v1.1 | P1 — fold into C5 |
+| Palette legend insert (auto color key block) | F1F9 "Keys" | shipped v1.1 | P1 — fold into C3 |
 | =SMT.ROUND consistent-rounding custom functions | think-cell TCROUND | Yes (CustomFunctions set) | P2 (v1.x) |
 | Reconciliation solver (subset-sum: which cells make up a variance) | Kutools "Make Up a Number" | Yes (pure TS) | P2 (v1.x) |
-| Tornado chart builder | PowerUser | Yes (composed bar chart) | P2 (v1.x) |
-| Unpivot selection | PowerUser + Ablebits | Yes (pure transform) | P2 (v1.x) |
+| Tornado chart builder | PowerUser | shipped v2.1 | P2 (v1.x) |
+| Unpivot selection | PowerUser + Ablebits | shipped v2.1 | P2 (v1.x) |
 | Workbook diff vs uploaded version (insertion-aware) | Arixcel | Partial (parse uploaded .xlsx in-pane, diff vs live workbook) | P2/P3 |
-| One-click whole-deck link refresh; move-resilient link paths | user gap #7 + empower | Backend (M2/M3 design requirements) | P1 within M3 |
+| One-click whole-deck link refresh; move-resilient link paths | user gap #7 + empower | shipped v2.0 | P1 within M3 |
 | Deck sanitize, stamps, Smart Fields, Gantt | think-cell/PowerUser | PPT companion scope | P3 |
 | Circularity logic detection, model risk score | OAK | Partial (heavy) | P3 |
 | ERP roll-forward, module library | Modano/bpmToolbox | Backend, different product class | P3/X |
@@ -211,12 +218,46 @@ large-file performance are the two loudest trust complaints — both are v1 qual
 7. **Quick CAGR, sign flip, decimals steppers, IFERROR unwrap/custom value**.
 8. **Workbook TOC + Explorer pane + name scrubber**.
 
-## Proposed ROADMAP.md deltas (need Daniel's sign-off — his file)
+## Proposed ROADMAP.md deltas — Awaiting Daniel's sign-off; ROADMAP.md is hand-curated
 
-- M1: add items 1-8 above; retitle "Precedent/dependent navigation" to "Smart Track pane
-  (single-workbook)"; mark palette item done (already ticked).
-- M2 (linking PoC): add "decide relay: Rust service vs Graph/OneDrive"; keep image-export PoC
-  scope; note custom-XML-part link registry keyed on hidden defined names.
-- M3 (link manager): add link versioning + highlight-linked-cells + Data Pack (stretch).
-- M4 (enterprise): add shared settings publish, centralized deployment package, shortcut
-  manager UI; AI layer explicitly via our own backend.
+Milestone 1 is now fully shipped at v1.1. Already-checked M1 lines aren't relisted; every line
+still unchecked in `ROADMAP.md` is done:
+
+- "- [ ] Ribbon tab and keyboard shortcuts (shared runtime)" — shipped v1.1
+- "- [ ] Palette-driven formatting cycles" — shipped v1.1
+- "- [ ] Autocolor v2: external links, partial inputs, legend" — shipped v1.1
+- "- [ ] Formula consistency overlay" — shipped v1.1
+- "- [ ] Fast fill auto-extent and paste-special suite" — shipped v1.1
+- "- [ ] Quick CAGR, sign flip, decimal steppers" — shipped v1.1
+- "- [ ] Sheet explorer pane and name scrubber" — shipped v1.1
+- "- [ ] Workbook table of contents" — shipped v1.1
+- "- [ ] Precedent/dependent navigation" — shipped v1.1 (as the Smart Track pane, single-workbook only)
+- "- [ ] Waterfall chart builder" — shipped v1.1
+
+Milestone 2 (linking PoC) — done at v2.0, one line only half done:
+
+- "- [ ] PowerPoint companion manifest and task pane" — shipped v2.0 (`pptpane.html`)
+- "- [ ] Export an Excel range as a high-resolution image" — shipped v2.0
+- "- [ ] Persist workbook, worksheet, and range link metadata" — shipped v2.0 (hidden-name anchor + workbook registry)
+- "- [ ] Choose the link relay: Rust service or Microsoft Graph" — shipped v2.0 (chose the Rust relay, `server/`)
+- "- [ ] Update one PowerPoint object from its Excel source" — shipped v2.0
+- "- [ ] Detect missing and ambiguous sources" — half done: missing-source detection shipped v2.0
+  ("source missing" status); ambiguous/version detection is the still-open M3 item below.
+
+Milestone 3 (link manager) — mostly done at v2.0, three lines still open:
+
+- "- [ ] List and filter all links in a presentation" — listing shipped v2.0 (by slide, source,
+  status); filtering was not built.
+- "- [ ] Update selected, slide, or all links" — shipped v2.0
+- "- [ ] Preserve position and size during refresh" — shipped v2.0
+- "- [ ] Change source and resolve workbook versions" — still open
+- "- [ ] Highlight linked cells in Excel" — still open
+- "- [ ] Performance and failure-isolation testing" — still open (blocked on Daniel's real-Office
+  pass, `tasks/AUTORESUME.md` open gate 1)
+
+Proposed new M3 lines (work that exists but has no ROADMAP.md line yet):
+
+- Native PowerPoint table export (editable table, not a picture) — needs the spike
+  (`tasks/AUTORESUME.md` open gate 2) and PowerPointApi 1.9 on the team's builds first.
+- Revert a link to its previous relay revision — the relay already keeps 2 revisions
+  (`server/store.rs`); no UI action uses the older one yet.
