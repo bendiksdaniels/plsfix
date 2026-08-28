@@ -1139,8 +1139,9 @@ const ErrorCodes = {
   unsupportedOperation: "UnsupportedOperation",
 } as const;
 
-// BorderIndex -> the cell-level edge it writes. Inside borders are not modelled;
-// they fall back to the nearest edge, which excel.ts never asks for.
+// BorderIndex -> the cell-level edge it writes. The inside indexes are not in
+// here: BordersProxy resolves them to the band of cells that carries the
+// interior lines, which is not a single edge of the range.
 const BORDER_EDGE: Record<string, BorderEdge> = {
   EdgeTop: "top",
   EdgeBottom: "bottom",
@@ -1148,8 +1149,6 @@ const BORDER_EDGE: Record<string, BorderEdge> = {
   EdgeRight: "right",
   DiagonalDown: "diagonalDown",
   DiagonalUp: "diagonalUp",
-  InsideHorizontal: "top",
-  InsideVertical: "left",
 };
 
 // ---------------------------------------------------------------------------
@@ -1929,26 +1928,43 @@ class BordersProxy {
 
   // An edge border styles the outer line of the RANGE, so only the cells on
   // that edge carry it. Per-row semantics need a per-row loop in the caller.
+  // An inside border draws the lines BETWEEN cells: every row but the last
+  // carries a horizontal one on its bottom, every column but the last carries a
+  // vertical one on its right. A range with nothing inside it has no such line,
+  // and the proxy then reads as unset and ignores writes, as Excel does.
   getItem(index: string): BorderProxy {
-    const edge = BORDER_EDGE[index] ?? "top";
     const { row, col, rowCount, colCount } = this.rect;
-    let band: Rect;
     switch (index) {
       case BorderIndex.edgeTop:
-        band = { row, col, rowCount: 1, colCount };
-        break;
+        return this.at({ row, col, rowCount: 1, colCount }, "top");
       case BorderIndex.edgeBottom:
-        band = { row: row + rowCount - 1, col, rowCount: 1, colCount };
-        break;
+        return this.at(
+          { row: row + rowCount - 1, col, rowCount: 1, colCount },
+          "bottom",
+        );
       case BorderIndex.edgeLeft:
-        band = { row, col, rowCount, colCount: 1 };
-        break;
+        return this.at({ row, col, rowCount, colCount: 1 }, "left");
       case BorderIndex.edgeRight:
-        band = { row, col: col + colCount - 1, rowCount, colCount: 1 };
-        break;
+        return this.at(
+          { row, col: col + colCount - 1, rowCount, colCount: 1 },
+          "right",
+        );
+      case BorderIndex.insideHorizontal:
+        return this.at(
+          rowCount > 1 ? { row, col, rowCount: rowCount - 1, colCount } : null,
+          "bottom",
+        );
+      case BorderIndex.insideVertical:
+        return this.at(
+          colCount > 1 ? { row, col, rowCount, colCount: colCount - 1 } : null,
+          "right",
+        );
       default:
-        band = { row, col, rowCount, colCount };
+        return this.at(this.rect, BORDER_EDGE[index] ?? "top");
     }
+  }
+
+  private at(band: Rect | null, edge: BorderEdge): BorderProxy {
     return new BorderProxy(this.runtime, this.sheet, band, edge);
   }
 }
@@ -1957,11 +1973,17 @@ class BorderProxy {
   constructor(
     private runtime: FakeRuntime,
     private sheet: FakeSheet,
-    private band: Rect,
+    // Null for a line the range does not have: the inside of a single cell.
+    private band: Rect | null,
     private edge: BorderEdge,
   ) {}
 
+  load(): this {
+    return this;
+  }
+
   private write(apply: (border: FakeBorder) => void): void {
+    if (!this.band) return;
     const { row, col, rowCount, colCount } = this.band;
     if (rowCount * colCount > this.runtime.maxCells) {
       throw new Error("fake host refused an oversized border write");
@@ -1974,6 +1996,13 @@ class BorderProxy {
   }
 
   private read(): FakeBorder {
+    if (!this.band) {
+      return {
+        style: BorderLineStyle.none,
+        color: "#000000",
+        weight: BorderWeight.thin,
+      };
+    }
     return this.sheet.peek(this.band.row, this.band.col).borders[this.edge];
   }
 

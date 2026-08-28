@@ -1,11 +1,16 @@
 import { describe, expect, it } from "vitest";
 import {
+  type BorderCycleState,
+  type BorderEdgeName,
+  type BorderReadouts,
+  buildBorderCycle,
   buildFillCycle,
   buildFontCycle,
   buildNumberCycles,
   buildRowStyleCycles,
   canonicalNumberFormat,
   CLEAR_FILL,
+  matchBorderIndex,
   matchStyleIndex,
   nextInCycle,
   type StyleSpec,
@@ -227,5 +232,126 @@ describe("fill and font cycles", () => {
       DEFAULT_SETTINGS.accent,
       DEFAULT_SETTINGS.primary,
     ]);
+  });
+});
+
+describe("border cycle", () => {
+  const states = buildBorderCycle(DEFAULT_SETTINGS);
+  const line = DEFAULT_SETTINGS.primary;
+  const OUTER: BorderEdgeName[] = ["top", "bottom", "left", "right"];
+  const ALL: BorderEdgeName[] = [
+    ...OUTER,
+    "insideHorizontal",
+    "insideVertical",
+  ];
+
+  // What the host hands back after a state is written: Excel's own spelling,
+  // and "None" for every edge the state leaves alone.
+  function readback(
+    state: BorderCycleState,
+    edges: BorderEdgeName[] = ALL,
+  ): BorderReadouts {
+    const out: BorderReadouts = {};
+    for (const edge of edges) {
+      const drawn = state.find((entry) => entry.edge === edge);
+      out[edge] = drawn
+        ? {
+            style: drawn.style === "double" ? "Double" : "Continuous",
+            weight: drawn.weight === "medium" ? "Medium" : "Thin",
+            color: drawn.color,
+          }
+        : { style: "None", weight: "Thin", color: "#000000" };
+    }
+    return out;
+  }
+
+  it("runs from nothing to a full grid in six looks", () => {
+    expect(states).toHaveLength(6);
+    expect(states[0]).toEqual([]);
+    expect(states[1]).toEqual([
+      { edge: "bottom", style: "continuous", weight: "thin", color: line },
+    ]);
+    expect(states[2]).toEqual([
+      { edge: "bottom", style: "continuous", weight: "medium", color: line },
+    ]);
+    expect(states[3]).toEqual([
+      { edge: "top", style: "continuous", weight: "thin", color: line },
+      { edge: "bottom", style: "double", weight: "thin", color: line },
+    ]);
+    expect(states[4]?.map((entry) => entry.edge)).toEqual(OUTER);
+    expect(states[5]?.map((entry) => entry.edge)).toEqual(ALL);
+  });
+
+  it("draws every line in the brand primary", () => {
+    const custom = buildBorderCycle({
+      ...DEFAULT_SETTINGS,
+      primary: "#123456",
+    });
+    for (const state of custom) {
+      for (const entry of state) expect(entry.color).toBe("#123456");
+    }
+  });
+
+  it("finds every state it drew", () => {
+    states.forEach((state, index) => {
+      expect(matchBorderIndex(readback(state), states)).toBe(index);
+    });
+  });
+
+  it("steps through all six looks and wraps back to none", () => {
+    let index = 0;
+    const walked: number[] = [];
+    for (let press = 0; press < 6; press += 1) {
+      const state = states[(index + 1) % states.length];
+      index = matchBorderIndex(readback(state ?? []), states);
+      walked.push(index);
+    }
+    expect(walked).toEqual([1, 2, 3, 4, 5, 0]);
+  });
+
+  it("tells a total rule from a plain one by weight alone", () => {
+    const thin = readback(states[1] ?? []);
+    const medium = readback(states[2] ?? []);
+    expect(matchBorderIndex(thin, states)).toBe(1);
+    expect(matchBorderIndex(medium, states)).toBe(2);
+  });
+
+  it("counts a partial or foreign border as the empty state", () => {
+    const halfBox: BorderReadouts = {
+      ...readback([]),
+      top: { style: "Continuous", weight: "Thin", color: line },
+      left: { style: "Continuous", weight: "Thin", color: line },
+    };
+    expect(matchBorderIndex(halfBox, states)).toBe(0);
+
+    const foreign = readback(states[1] ?? []);
+    foreign.bottom = { style: "Dash", weight: "Thin", color: line };
+    expect(matchBorderIndex(foreign, states)).toBe(0);
+
+    const otherColor = readback(states[1] ?? []);
+    otherColor.bottom = {
+      style: "Continuous",
+      weight: "Thin",
+      color: "#FF0000",
+    };
+    expect(matchBorderIndex(otherColor, states)).toBe(0);
+
+    // A range whose cells disagree reports no style at all.
+    const mixed = readback(states[4] ?? []);
+    mixed.top = { style: "", weight: "", color: "" };
+    expect(matchBorderIndex(mixed, states)).toBe(0);
+  });
+
+  it("reads Excel's own spelling of a line", () => {
+    const shouted = readback(states[1] ?? []);
+    shouted.bottom = { style: "CONTINUOUS", weight: " thin ", color: line };
+    expect(matchBorderIndex(shouted, states)).toBe(1);
+  });
+
+  it("comes home from a box on a single cell, which has no inside lines", () => {
+    // Nothing between the cells to report, so a box and a grid look the same:
+    // the grid wins and the next press clears instead of redrawing the box.
+    const box = readback(states[4] ?? [], OUTER);
+    expect(matchBorderIndex(box, states)).toBe(5);
   });
 });
