@@ -17,7 +17,9 @@
     "test": "vitest run",
     "start": "office-addin-debugging start manifest.xml desktop",
     "stop": "office-addin-debugging stop manifest.xml",
-    "validate": "office-addin-manifest validate manifest.xml"
+    "validate": "office-addin-manifest validate manifest.xml && office-addin-manifest validate manifest.prod.xml",
+    "manifest:build": "tsx scripts/build-manifests.ts",
+    "manifest:check": "tsx scripts/build-manifests.ts --check"
   },
   "dependencies": {
     "office-js": "0.1.0"
@@ -27,6 +29,7 @@
     "office-addin-debugging": "6.1.2",
     "office-addin-dev-certs": "2.0.10",
     "office-addin-manifest": "2.1.6",
+    "tsx": "4.23.12",
     "typescript": "7.0.2",
     "vite": "8.2.2",
     "vitest": "4.1.11"
