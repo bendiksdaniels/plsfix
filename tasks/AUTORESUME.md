@@ -32,7 +32,9 @@ Execution ledgers (git-ignored, rulings + per-task spend): `.superpowers/sdd/*/p
 
 ## Known limits / deferred (from reviews)
 
-- Shapes inside groups are not scanned;
+- Shapes inside groups are scanned three levels deep, and only on PowerPointApi 1.8
+  (PowerPoint 2504 / 16.96): deeper nesting is ignored, and below 1.8 a grouped row
+  fails rather than reinsert the picture onto the slide, out of its group.
   Source column ellipsised under ~420 px; no revert of a refresh (relay keeps 2 revs, UI only).
 - `src/excel/link-anchors.ts` is at 396/400 lines: split before the next change
   (`link-record.ts` for the relay round trip). `src/main.ts` remains oversized (pre-existing).

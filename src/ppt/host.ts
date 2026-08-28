@@ -16,11 +16,19 @@ import {
 } from "../link/model";
 import { base64ToBytes, pngSize } from "../link/png";
 import { aspectChanged, fitToSlide, type Box } from "../link/status";
+import {
+  expandGroups,
+  GROUP_API,
+  hasPowerPointApi,
+  isGrouped,
+  shapeAt,
+  SHAPE_PROPERTIES,
+  type PlacedShape,
+  type ShapePath,
+} from "./shapes";
 
-export interface FoundLink {
-  slideId: string;
+export interface FoundLink extends ShapePath {
   slideIndex: number;
-  shapeId: string;
   tag: LinkTag;
   token: string;
   left: number;
@@ -34,29 +42,21 @@ interface Size {
   height: number;
 }
 
-const SHAPE_PROPERTIES =
-  "items/id,items/left,items/top,items/width,items/height";
 const TAG_PROPERTIES = "items/key,items/value";
 
 // fill.setImage arrived in PowerPointApi 1.8. An older host repaints by
-// deleting the shape and inserting the picture again at the same box; a host
-// that reports no requirements at all is the newest one, the web.
+// deleting the shape and inserting the picture again at the same box.
 export function supportsInPlaceRefresh(): boolean {
-  const requirements = Office.context?.requirements;
-  return requirements
-    ? requirements.isSetSupported("PowerPointApi", "1.8")
-    : true;
+  return hasPowerPointApi(GROUP_API);
 }
 
-interface TaggedShape {
-  slideId: string;
-  slideIndex: number;
-  shape: PowerPoint.Shape;
+interface TaggedShape extends PlacedShape {
   tags: PowerPoint.TagCollection;
 }
 
 // Three round trips, and office.js allows no fewer: the slides, then every
 // slide's shapes, then every shape's tags - the only place identity is read.
+// Groups add one sync per nesting level, between the second and the third.
 export async function scanLinks(): Promise<FoundLink[]> {
   return PowerPoint.run(async (context) => {
     const slides = context.presentation.slides;
@@ -68,17 +68,20 @@ export async function scanLinks(): Promise<FoundLink[]> {
       return { slideId: slide.id, slideIndex, shapes };
     });
     await context.sync();
-    const tagged = sets.flatMap((set) =>
-      set.shapes.items.map((shape): TaggedShape => {
-        const tags = shape.tags;
+    const placed = sets.flatMap((set) =>
+      set.shapes.items.map((shape): PlacedShape => ({
+        slideId: set.slideId,
+        slideIndex: set.slideIndex,
+        shape,
+        groupPath: [],
+      })),
+    );
+    const tagged = (await expandGroups(context, placed)).map(
+      (entry): TaggedShape => {
+        const tags = entry.shape.tags;
         tags.load(TAG_PROPERTIES);
-        return {
-          slideId: set.slideId,
-          slideIndex: set.slideIndex,
-          shape,
-          tags,
-        };
-      }),
+        return { ...entry, tags };
+      },
     );
     await context.sync();
     return tagged
@@ -99,6 +102,7 @@ function toFoundLink(entry: TaggedShape): FoundLink | null {
     slideId: entry.slideId,
     slideIndex: entry.slideIndex,
     shapeId: shape.id,
+    groupPath: entry.groupPath.length > 0 ? entry.groupPath : undefined,
     tag,
     token,
     left: shape.left,
@@ -271,13 +275,18 @@ export async function refreshLink(
   const tag = tagFor(found.tag, payload, rev);
   const height = refreshedHeight(found, size);
   if (!supportsInPlaceRefresh()) {
+    // Reinsertion drops the picture on the slide, not back into its group, so
+    // a grouped link is left alone and the row says why.
+    if (isGrouped(found)) {
+      throw new Error(
+        `${stage}: grouped pictures need PowerPoint 2504/16.96 or newer`,
+      );
+    }
     await reinsertLink(stage, found, payload.png, tag, height);
     return;
   }
   await PowerPoint.run(async (context) => {
-    const shape = context.presentation.slides
-      .getItem(found.slideId)
-      .shapes.getItem(found.shapeId);
+    const shape = shapeAt(context, found);
     shape.fill.setImage(payload.png);
     if (height !== found.height) shape.height = height;
     shape.tags.add(TAG_LINK, encodeTag(tag));
@@ -319,9 +328,7 @@ async function reinsertLink(
 // and the key go, so nothing in the deck ever refreshes it again.
 export async function breakLink(found: FoundLink): Promise<void> {
   await PowerPoint.run(async (context) => {
-    const tags = context.presentation.slides
-      .getItem(found.slideId)
-      .shapes.getItem(found.shapeId).tags;
+    const tags = shapeAt(context, found).tags;
     tags.delete(TAG_LINK);
     tags.delete(TAG_KEY);
     await context.sync();

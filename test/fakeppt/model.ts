@@ -8,7 +8,7 @@ import { FakeClientResult, Loadable } from "./strict";
 export interface FakePptShape {
   id: string;
   name: string;
-  type: "GeometricShape" | "Image" | "Table";
+  type: "GeometricShape" | "Image" | "Table" | "Group";
   left: number;
   top: number;
   width: number;
@@ -18,6 +18,13 @@ export interface FakePptShape {
   fillImage: string | null;
   lineVisible: boolean;
   setImageCalls: number;
+  // The shapes a group holds; null on everything that is not a group.
+  group: FakeShapeGroup | null;
+}
+
+export interface FakeShapeGroup {
+  id: string;
+  shapes: FakePptShape[];
 }
 
 export interface FakeSlide {
@@ -38,13 +45,29 @@ export interface FakeShapeInit {
 export interface ShapeSite {
   slide: FakeSlide;
   shape: FakePptShape;
+  // The array holding the shape: the slide's, or a group's inside it.
+  siblings: FakePptShape[];
 }
 
-// PowerPoint numbers the z-order stack per slide, 0 at the bottom.
-function renumber(slide: FakeSlide): void {
-  slide.shapes.forEach((shape, index) => {
+// PowerPoint numbers the z-order stack per container, 0 at the bottom.
+function renumber(shapes: FakePptShape[]): void {
+  shapes.forEach((shape, index) => {
     shape.zOrder = index;
   });
+}
+
+// The box a new group takes: the one its members occupy together.
+function bounds(shapes: FakePptShape[]): {
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+} {
+  const left = Math.min(...shapes.map((shape) => shape.left));
+  const top = Math.min(...shapes.map((shape) => shape.top));
+  const right = Math.max(...shapes.map((shape) => shape.left + shape.width));
+  const bottom = Math.max(...shapes.map((shape) => shape.top + shape.height));
+  return { left, top, width: right - left, height: bottom - top };
 }
 
 export class FakePresentation {
@@ -80,42 +103,70 @@ export class FakePresentation {
       fillImage: init.fillImage ?? null,
       lineVisible: true,
       setImageCalls: 0,
+      group: null,
     };
     slide.shapes.push(shape);
-    renumber(slide);
+    renumber(slide.shapes);
     return shape;
+  }
+
+  // What Ctrl+G does: the shapes leave the slide - or the group they were in -
+  // and live inside a new group shape sized to hold them.
+  groupShapes(shapeIds: string[], slideId: string): FakePptShape {
+    const slide = this.findSlideOrThrow(slideId);
+    const sites = shapeIds.map((id) => this.findShape(id));
+    const box = bounds(sites.map((site) => site.shape));
+    const children = sites.map((site) => {
+      site.siblings.splice(site.siblings.indexOf(site.shape), 1);
+      renumber(site.siblings);
+      return site.shape;
+    });
+    renumber(children);
+    this.shapeSeq += 1;
+    const seq = this.shapeSeq;
+    const group: FakePptShape = {
+      id: `shape-${seq}`,
+      name: `Group ${seq}`,
+      type: "Group",
+      ...box,
+      zOrder: slide.shapes.length,
+      tags: new Map(),
+      fillImage: null,
+      lineVisible: true,
+      setImageCalls: 0,
+      group: { id: `group-${seq}`, shapes: children },
+    };
+    slide.shapes.push(group);
+    renumber(slide.shapes);
+    return group;
   }
 
   // Cut and paste onto another slide: same shape, same tags, same id.
   moveShape(shapeId: string, toSlideId: string): void {
-    const { slide, shape } = this.findShape(shapeId);
+    const { shape, siblings } = this.findShape(shapeId);
     const target = this.findSlideOrThrow(toSlideId);
-    slide.shapes.splice(slide.shapes.indexOf(shape), 1);
+    siblings.splice(siblings.indexOf(shape), 1);
     target.shapes.push(shape);
-    renumber(slide);
-    renumber(target);
+    renumber(siblings);
+    renumber(target.shapes);
   }
 
-  // Copy and paste: the tags ride along, which is why link ids collide.
+  // Copy and paste: the tags ride along, which is why link ids collide. A
+  // group is copied whole, every shape inside it getting its own new id.
   copyShape(shapeId: string, toSlideId: string): FakePptShape {
     const { shape } = this.findShape(shapeId);
     const target = this.findSlideOrThrow(toSlideId);
-    this.shapeSeq += 1;
-    const copy: FakePptShape = {
-      ...shape,
-      id: `shape-${this.shapeSeq}`,
-      tags: new Map(shape.tags),
-    };
+    const copy = this.cloneShape(shape);
     target.shapes.push(copy);
-    renumber(target);
+    renumber(target.shapes);
     return copy;
   }
 
   deleteShape(shapeId: string): void {
     const site = this.peekShape(shapeId);
     if (!site) return;
-    site.slide.shapes.splice(site.slide.shapes.indexOf(site.shape), 1);
-    renumber(site.slide);
+    site.siblings.splice(site.siblings.indexOf(site.shape), 1);
+    renumber(site.siblings);
   }
 
   findShape(shapeId: string): ShapeSite {
@@ -124,13 +175,31 @@ export class FakePresentation {
     return site;
   }
 
-  // The lookup the objects use: a shape can vanish under them.
+  // The lookup the objects use: a shape can vanish under them, and one the
+  // user grouped is still on its slide - one or more groups down.
   peekShape(shapeId: string): ShapeSite | null {
     for (const slide of this.slides) {
-      const shape = slide.shapes.find((item) => item.id === shapeId);
-      if (shape) return { slide, shape };
+      const site = siteIn(slide, slide.shapes, shapeId);
+      if (site) return site;
     }
     return null;
+  }
+
+  private cloneShape(shape: FakePptShape): FakePptShape {
+    this.shapeSeq += 1;
+    const seq = this.shapeSeq;
+    const group = shape.group;
+    return {
+      ...shape,
+      id: `shape-${seq}`,
+      tags: new Map(shape.tags),
+      group: group
+        ? {
+            id: `group-${seq}`,
+            shapes: group.shapes.map((child) => this.cloneShape(child)),
+          }
+        : null,
+    };
   }
 
   findSlide(slideId: string): FakeSlide | null {
@@ -157,6 +226,43 @@ export class FakePresentation {
 function gone(what: string, id: string): Error {
   const error = new Error(`ItemNotFound: no ${what} "${id}"`);
   return Object.assign(error, { code: "ItemNotFound" });
+}
+
+// PowerPoint reads a shape group through the group shape, so anything else
+// answers the same GeneralException the real host does.
+function notAGroup(shapeId: string): Error {
+  const error = new Error(`GeneralException: shape "${shapeId}" is no group`);
+  return Object.assign(error, { code: "GeneralException" });
+}
+
+// Depth-first through the groups: the site names the array holding the shape,
+// which is what a delete, a move or a regroup has to splice.
+function siteIn(
+  slide: FakeSlide,
+  siblings: FakePptShape[],
+  shapeId: string,
+): ShapeSite | null {
+  for (const shape of siblings) {
+    if (shape.id === shapeId) return { slide, shape, siblings };
+    const nested = shape.group
+      ? siteIn(slide, shape.group.shapes, shapeId)
+      : null;
+    if (nested) return nested;
+  }
+  return null;
+}
+
+// getItem addresses one collection: a shape inside a group is not on the
+// slide, and a slide's collection says ItemNotFound for it.
+function member(shapes: FakePptShape[], id: string): string {
+  if (!shapes.some((shape) => shape.id === id)) throw gone("shape", id);
+  return id;
+}
+
+function groupOf(deck: FakePresentation, shapeId: string): FakeShapeGroup {
+  const group = deck.findShape(shapeId).shape.group;
+  if (!group) throw notAGroup(shapeId);
+  return group;
 }
 
 interface BoxOptions {
@@ -229,7 +335,7 @@ class ShapeCollectionProxy extends Handle {
     return shapes.map((shape) => new ShapeProxy(this.deck, shape.id));
   }
   getItem(id: string): ShapeProxy {
-    return new ShapeProxy(this.deck, id);
+    return new ShapeProxy(this.deck, member(this.slide().shapes, id));
   }
   getItemOrNullObject(id: string): ShapeProxy {
     return new ShapeProxy(this.deck, id, true);
@@ -319,12 +425,45 @@ class ShapeProxy extends ShapeBound {
   get tags(): TagCollectionProxy {
     return new TagCollectionProxy(this.deck, this.handleId);
   }
+  get group(): ShapeGroupProxy {
+    return new ShapeGroupProxy(this.deck, this.handleId);
+  }
 
   delete(): void {
     this.deck.deleteShape(this.handleId);
   }
   getParentSlideOrNullObject(): SlideProxy {
     return new SlideProxy(this.deck, this.peek()?.slide.id ?? "", true);
+  }
+}
+
+// PowerPoint.ShapeGroup: the group behind a shape of type Group, and the
+// collection of the shapes it holds (a ShapeScopedCollection, keyed by id).
+class ShapeGroupProxy extends ShapeBound {
+  get id(): string {
+    return groupOf(this.deck, this.handleId).id;
+  }
+  get shapes(): GroupShapeCollectionProxy {
+    return new GroupShapeCollectionProxy(this.deck, this.handleId);
+  }
+}
+
+class GroupShapeCollectionProxy extends ShapeBound {
+  get items(): ShapeProxy[] {
+    return this.children().map((shape) => new ShapeProxy(this.deck, shape.id));
+  }
+  getItem(id: string): ShapeProxy {
+    return new ShapeProxy(this.deck, member(this.children(), id));
+  }
+  getItemOrNullObject(id: string): ShapeProxy {
+    return new ShapeProxy(this.deck, id, true);
+  }
+  getCount(): FakeClientResult<number> {
+    return new FakeClientResult(this.children().length);
+  }
+
+  private children(): FakePptShape[] {
+    return groupOf(this.deck, this.handleId).shapes;
   }
 }
 
