@@ -40,7 +40,7 @@ Modules (what each owns):
 - `src/ppt/` (planned): `host.ts` (the only PowerPoint Office.js code: scan by tags, insert, refresh, break), `links.ts` (orchestration), `views.ts` (DOM renderers), `main.ts`.
 - `src/pane/links-tab.ts` (planned): the Excel "Links" tab.
 - `server/`: `lib.rs` router + cache middleware (planned split), `store.rs` sqlite (planned), `relay.rs` `/api` routes (planned), `main.rs` env + bind + sweeper.
-- `test/`: `fakehost.ts` (in-memory Excel host, strict load semantics), `fakeppt/` (PowerPoint fake, planned), `fakerelay.ts`, `fakepng.ts` (planned), `*.integration.test.ts`.
+- `test/`: `fakehost.ts` (in-memory Excel host, strict load semantics), `fakeppt/` (PowerPoint fake, strict load semantics), `fakerelay.ts`, `fakepng.ts` (planned), `*.integration.test.ts`.
 
 Data flow, link export (v2): selection -> `src/excel/links.ts` (hidden name anchor + registry in `workbook.settings`) -> `Range.getImage` -> `src/link/model` encodePayload -> `src/link/crypto` seal -> `src/link/relay` putLink -> `server/relay.rs` -> `store.rs` (ciphertext only) -> inbox item sealed with the workspace key. PowerPoint: `src/ppt/links.ts` listInbox -> open -> `src/ppt/host.ts` insertLink (rectangle + picture fill + tags). Update: scanLinks (tags) -> relay status -> getLink -> open -> refreshLink (`fill.setImage`, geometry untouched).
 
