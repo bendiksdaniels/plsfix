@@ -19,14 +19,18 @@ export interface ButtonSpec {
   action: { kind: "showPane" } | { kind: "function"; name: string };
 }
 
+export interface GroupSpec {
+  id: string; // e.g. "SMT.Group.Audit" -> resource id SMT.Group.Audit.Label
+  label: string;
+  buttons: ButtonSpec[];
+}
+
 export interface HostSpec {
   name: "Workbook" | "Presentation";
   page: string; // pane html served from baseUrl
   urlResid: string; // resource id of the pane URL
   taskpaneId: string;
-  groupId: string;
-  groupLabel: string;
-  buttons: ButtonSpec[];
+  groups: GroupSpec[];
 }
 
 export interface AddinSpec {
@@ -69,38 +73,138 @@ export const WORKBOOK_HOST: HostSpec = {
   page: "taskpane.html",
   urlResid: "SMT.Taskpane.Url",
   taskpaneId: "SMT.Taskpane",
-  groupId: "SMT.Group.Tools",
-  groupLabel: "Model Tools",
-  buttons: [
+  groups: [
     {
-      id: "OpenPane",
+      id: "SMT.Group.Tools",
       label: "Model Tools",
-      tip: "Open the Model Tools task pane.",
-      action: { kind: "showPane" },
+      buttons: [
+        {
+          id: "OpenPane",
+          label: "Model Tools",
+          tip: "Open the Model Tools task pane.",
+          action: { kind: "showPane" },
+        },
+        {
+          id: "Autocolor",
+          label: "Autocolor",
+          tip: "Color inputs, formulas and links in your palette.",
+          action: { kind: "function", name: "SMT_AUTOCOLOR" },
+        },
+        {
+          id: "FillRight",
+          label: "Fill Right",
+          tip: "Fill the formula from the left cell across the selection.",
+          action: { kind: "function", name: "SMT_FILLRIGHT" },
+        },
+        {
+          id: "FillDown",
+          label: "Fill Down",
+          tip: "Fill the formula from the top cell down the selection.",
+          action: { kind: "function", name: "SMT_FILLDOWN" },
+        },
+        {
+          id: "IfError",
+          label: "IFERROR",
+          tip: "Wrap selected formulas with IFERROR.",
+          action: { kind: "function", name: "SMT_IFERROR" },
+        },
+      ],
     },
     {
-      id: "Autocolor",
-      label: "Autocolor",
-      tip: "Color inputs, formulas and links in your palette.",
-      action: { kind: "function", name: "SMT_AUTOCOLOR" },
+      id: "SMT.Group.Audit",
+      label: "Audit",
+      buttons: [
+        {
+          id: "Audit",
+          label: "Audit overlay",
+          tip: "Toggle the formula consistency overlay.",
+          action: { kind: "function", name: "SMT_AUDIT" },
+        },
+        {
+          id: "TracePre",
+          label: "Precedents",
+          tip: "Jump to the direct precedents of the active cell.",
+          action: { kind: "function", name: "SMT_TRACE_PRE" },
+        },
+        {
+          id: "TraceDep",
+          label: "Dependents",
+          tip: "Jump to the direct dependents of the active cell.",
+          action: { kind: "function", name: "SMT_TRACE_DEP" },
+        },
+      ],
     },
     {
-      id: "FillRight",
-      label: "Fill Right",
-      tip: "Fill the formula from the left cell across the selection.",
-      action: { kind: "function", name: "SMT_FILLRIGHT" },
+      id: "SMT.Group.Paste",
+      label: "Paste",
+      buttons: [
+        {
+          id: "Undo",
+          label: "SMT Undo",
+          tip: "Restore the last range changed by Model Tools.",
+          action: { kind: "function", name: "SMT_UNDO" },
+        },
+        {
+          id: "PasteValues",
+          label: "Paste values",
+          tip: "Paste the copied source as values.",
+          action: { kind: "function", name: "SMT_PASTE_VALUES" },
+        },
+        {
+          id: "PasteFormats",
+          label: "Paste formats",
+          tip: "Paste the copied source's formats only.",
+          action: { kind: "function", name: "SMT_PASTE_FORMATS" },
+        },
+      ],
     },
     {
-      id: "FillDown",
-      label: "Fill Down",
-      tip: "Fill the formula from the top cell down the selection.",
-      action: { kind: "function", name: "SMT_FILLDOWN" },
+      id: "SMT.Group.Model",
+      label: "Model",
+      buttons: [
+        {
+          id: "Cagr",
+          label: "CAGR",
+          tip: "Insert a CAGR formula for the selection.",
+          action: { kind: "function", name: "SMT_CAGR" },
+        },
+        {
+          id: "Sign",
+          label: "Sign flip",
+          tip: "Flip the sign of the selected formulas and values.",
+          action: { kind: "function", name: "SMT_SIGN" },
+        },
+        {
+          id: "ScaleUp",
+          label: "x1000",
+          tip: "Scale the selection up by a thousand.",
+          action: { kind: "function", name: "SMT_SCALEUP" },
+        },
+        {
+          id: "ScaleDown",
+          label: "/1000",
+          tip: "Scale the selection down by a thousand.",
+          action: { kind: "function", name: "SMT_SCALEDOWN" },
+        },
+      ],
     },
     {
-      id: "IfError",
-      label: "IFERROR",
-      tip: "Wrap selected formulas with IFERROR.",
-      action: { kind: "function", name: "SMT_IFERROR" },
+      id: "SMT.Group.Workbook",
+      label: "Workbook",
+      buttons: [
+        {
+          id: "Waterfall",
+          label: "Waterfall",
+          tip: "Build a waterfall chart from the selected bridge table.",
+          action: { kind: "function", name: "SMT_WATERFALL" },
+        },
+        {
+          id: "Toc",
+          label: "Contents sheet",
+          tip: "Insert or refresh the workbook contents sheet.",
+          action: { kind: "function", name: "SMT_TOC" },
+        },
+      ],
     },
   ],
 };
@@ -110,14 +214,18 @@ export const PRESENTATION_HOST: HostSpec = {
   page: "pptpane.html",
   urlResid: "SMT.Pptpane.Url",
   taskpaneId: "SMT.Pptpane",
-  groupId: "SMT.Group.Links",
-  groupLabel: "Model Tools Links",
-  buttons: [
+  groups: [
     {
-      id: "OpenLinks",
-      label: "Links",
-      tip: "Open the Model Tools linked-objects pane.",
-      action: { kind: "showPane" },
+      id: "SMT.Group.Links",
+      label: "Model Tools Links",
+      buttons: [
+        {
+          id: "OpenLinks",
+          label: "Links",
+          tip: "Open the Model Tools linked-objects pane.",
+          action: { kind: "showPane" },
+        },
+      ],
     },
   ],
 };

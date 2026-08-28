@@ -125,6 +125,218 @@
                   </Action>
                 </Control>
               </Group>
+              <Group id="SMT.Group.Audit">
+                <Label resid="SMT.Group.Audit.Label"/>
+                <Icon>
+                  <bt:Image size="16" resid="SMT.Icon.16"/>
+                  <bt:Image size="32" resid="SMT.Icon.32"/>
+                  <bt:Image size="80" resid="SMT.Icon.80"/>
+                </Icon>
+                <Control xsi:type="Button" id="SMT.Button.Audit">
+                  <Label resid="SMT.Audit.Label"/>
+                  <Supertip>
+                    <Title resid="SMT.Audit.Label"/>
+                    <Description resid="SMT.Audit.Tip"/>
+                  </Supertip>
+                  <Icon>
+                    <bt:Image size="16" resid="SMT.Icon.16"/>
+                    <bt:Image size="32" resid="SMT.Icon.32"/>
+                    <bt:Image size="80" resid="SMT.Icon.80"/>
+                  </Icon>
+                  <Action xsi:type="ExecuteFunction">
+                    <FunctionName>SMT_AUDIT</FunctionName>
+                  </Action>
+                </Control>
+                <Control xsi:type="Button" id="SMT.Button.TracePre">
+                  <Label resid="SMT.TracePre.Label"/>
+                  <Supertip>
+                    <Title resid="SMT.TracePre.Label"/>
+                    <Description resid="SMT.TracePre.Tip"/>
+                  </Supertip>
+                  <Icon>
+                    <bt:Image size="16" resid="SMT.Icon.16"/>
+                    <bt:Image size="32" resid="SMT.Icon.32"/>
+                    <bt:Image size="80" resid="SMT.Icon.80"/>
+                  </Icon>
+                  <Action xsi:type="ExecuteFunction">
+                    <FunctionName>SMT_TRACE_PRE</FunctionName>
+                  </Action>
+                </Control>
+                <Control xsi:type="Button" id="SMT.Button.TraceDep">
+                  <Label resid="SMT.TraceDep.Label"/>
+                  <Supertip>
+                    <Title resid="SMT.TraceDep.Label"/>
+                    <Description resid="SMT.TraceDep.Tip"/>
+                  </Supertip>
+                  <Icon>
+                    <bt:Image size="16" resid="SMT.Icon.16"/>
+                    <bt:Image size="32" resid="SMT.Icon.32"/>
+                    <bt:Image size="80" resid="SMT.Icon.80"/>
+                  </Icon>
+                  <Action xsi:type="ExecuteFunction">
+                    <FunctionName>SMT_TRACE_DEP</FunctionName>
+                  </Action>
+                </Control>
+              </Group>
+              <Group id="SMT.Group.Paste">
+                <Label resid="SMT.Group.Paste.Label"/>
+                <Icon>
+                  <bt:Image size="16" resid="SMT.Icon.16"/>
+                  <bt:Image size="32" resid="SMT.Icon.32"/>
+                  <bt:Image size="80" resid="SMT.Icon.80"/>
+                </Icon>
+                <Control xsi:type="Button" id="SMT.Button.Undo">
+                  <Label resid="SMT.Undo.Label"/>
+                  <Supertip>
+                    <Title resid="SMT.Undo.Label"/>
+                    <Description resid="SMT.Undo.Tip"/>
+                  </Supertip>
+                  <Icon>
+                    <bt:Image size="16" resid="SMT.Icon.16"/>
+                    <bt:Image size="32" resid="SMT.Icon.32"/>
+                    <bt:Image size="80" resid="SMT.Icon.80"/>
+                  </Icon>
+                  <Action xsi:type="ExecuteFunction">
+                    <FunctionName>SMT_UNDO</FunctionName>
+                  </Action>
+                </Control>
+                <Control xsi:type="Button" id="SMT.Button.PasteValues">
+                  <Label resid="SMT.PasteValues.Label"/>
+                  <Supertip>
+                    <Title resid="SMT.PasteValues.Label"/>
+                    <Description resid="SMT.PasteValues.Tip"/>
+                  </Supertip>
+                  <Icon>
+                    <bt:Image size="16" resid="SMT.Icon.16"/>
+                    <bt:Image size="32" resid="SMT.Icon.32"/>
+                    <bt:Image size="80" resid="SMT.Icon.80"/>
+                  </Icon>
+                  <Action xsi:type="ExecuteFunction">
+                    <FunctionName>SMT_PASTE_VALUES</FunctionName>
+                  </Action>
+                </Control>
+                <Control xsi:type="Button" id="SMT.Button.PasteFormats">
+                  <Label resid="SMT.PasteFormats.Label"/>
+                  <Supertip>
+                    <Title resid="SMT.PasteFormats.Label"/>
+                    <Description resid="SMT.PasteFormats.Tip"/>
+                  </Supertip>
+                  <Icon>
+                    <bt:Image size="16" resid="SMT.Icon.16"/>
+                    <bt:Image size="32" resid="SMT.Icon.32"/>
+                    <bt:Image size="80" resid="SMT.Icon.80"/>
+                  </Icon>
+                  <Action xsi:type="ExecuteFunction">
+                    <FunctionName>SMT_PASTE_FORMATS</FunctionName>
+                  </Action>
+                </Control>
+              </Group>
+              <Group id="SMT.Group.Model">
+                <Label resid="SMT.Group.Model.Label"/>
+                <Icon>
+                  <bt:Image size="16" resid="SMT.Icon.16"/>
+                  <bt:Image size="32" resid="SMT.Icon.32"/>
+                  <bt:Image size="80" resid="SMT.Icon.80"/>
+                </Icon>
+                <Control xsi:type="Button" id="SMT.Button.Cagr">
+                  <Label resid="SMT.Cagr.Label"/>
+                  <Supertip>
+                    <Title resid="SMT.Cagr.Label"/>
+                    <Description resid="SMT.Cagr.Tip"/>
+                  </Supertip>
+                  <Icon>
+                    <bt:Image size="16" resid="SMT.Icon.16"/>
+                    <bt:Image size="32" resid="SMT.Icon.32"/>
+                    <bt:Image size="80" resid="SMT.Icon.80"/>
+                  </Icon>
+                  <Action xsi:type="ExecuteFunction">
+                    <FunctionName>SMT_CAGR</FunctionName>
+                  </Action>
+                </Control>
+                <Control xsi:type="Button" id="SMT.Button.Sign">
+                  <Label resid="SMT.Sign.Label"/>
+                  <Supertip>
+                    <Title resid="SMT.Sign.Label"/>
+                    <Description resid="SMT.Sign.Tip"/>
+                  </Supertip>
+                  <Icon>
+                    <bt:Image size="16" resid="SMT.Icon.16"/>
+                    <bt:Image size="32" resid="SMT.Icon.32"/>
+                    <bt:Image size="80" resid="SMT.Icon.80"/>
+                  </Icon>
+                  <Action xsi:type="ExecuteFunction">
+                    <FunctionName>SMT_SIGN</FunctionName>
+                  </Action>
+                </Control>
+                <Control xsi:type="Button" id="SMT.Button.ScaleUp">
+                  <Label resid="SMT.ScaleUp.Label"/>
+                  <Supertip>
+                    <Title resid="SMT.ScaleUp.Label"/>
+                    <Description resid="SMT.ScaleUp.Tip"/>
+                  </Supertip>
+                  <Icon>
+                    <bt:Image size="16" resid="SMT.Icon.16"/>
+                    <bt:Image size="32" resid="SMT.Icon.32"/>
+                    <bt:Image size="80" resid="SMT.Icon.80"/>
+                  </Icon>
+                  <Action xsi:type="ExecuteFunction">
+                    <FunctionName>SMT_SCALEUP</FunctionName>
+                  </Action>
+                </Control>
+                <Control xsi:type="Button" id="SMT.Button.ScaleDown">
+                  <Label resid="SMT.ScaleDown.Label"/>
+                  <Supertip>
+                    <Title resid="SMT.ScaleDown.Label"/>
+                    <Description resid="SMT.ScaleDown.Tip"/>
+                  </Supertip>
+                  <Icon>
+                    <bt:Image size="16" resid="SMT.Icon.16"/>
+                    <bt:Image size="32" resid="SMT.Icon.32"/>
+                    <bt:Image size="80" resid="SMT.Icon.80"/>
+                  </Icon>
+                  <Action xsi:type="ExecuteFunction">
+                    <FunctionName>SMT_SCALEDOWN</FunctionName>
+                  </Action>
+                </Control>
+              </Group>
+              <Group id="SMT.Group.Workbook">
+                <Label resid="SMT.Group.Workbook.Label"/>
+                <Icon>
+                  <bt:Image size="16" resid="SMT.Icon.16"/>
+                  <bt:Image size="32" resid="SMT.Icon.32"/>
+                  <bt:Image size="80" resid="SMT.Icon.80"/>
+                </Icon>
+                <Control xsi:type="Button" id="SMT.Button.Waterfall">
+                  <Label resid="SMT.Waterfall.Label"/>
+                  <Supertip>
+                    <Title resid="SMT.Waterfall.Label"/>
+                    <Description resid="SMT.Waterfall.Tip"/>
+                  </Supertip>
+                  <Icon>
+                    <bt:Image size="16" resid="SMT.Icon.16"/>
+                    <bt:Image size="32" resid="SMT.Icon.32"/>
+                    <bt:Image size="80" resid="SMT.Icon.80"/>
+                  </Icon>
+                  <Action xsi:type="ExecuteFunction">
+                    <FunctionName>SMT_WATERFALL</FunctionName>
+                  </Action>
+                </Control>
+                <Control xsi:type="Button" id="SMT.Button.Toc">
+                  <Label resid="SMT.Toc.Label"/>
+                  <Supertip>
+                    <Title resid="SMT.Toc.Label"/>
+                    <Description resid="SMT.Toc.Tip"/>
+                  </Supertip>
+                  <Icon>
+                    <bt:Image size="16" resid="SMT.Icon.16"/>
+                    <bt:Image size="32" resid="SMT.Icon.32"/>
+                    <bt:Image size="80" resid="SMT.Icon.80"/>
+                  </Icon>
+                  <Action xsi:type="ExecuteFunction">
+                    <FunctionName>SMT_TOC</FunctionName>
+                  </Action>
+                </Control>
+              </Group>
               <Label resid="SMT.Tab.Label"/>
             </CustomTab>
           </ExtensionPoint>
@@ -186,6 +398,22 @@
         <bt:String id="SMT.FillRight.Label" DefaultValue="Fill Right"/>
         <bt:String id="SMT.FillDown.Label" DefaultValue="Fill Down"/>
         <bt:String id="SMT.IfError.Label" DefaultValue="IFERROR"/>
+        <bt:String id="SMT.Group.Audit.Label" DefaultValue="Audit"/>
+        <bt:String id="SMT.Audit.Label" DefaultValue="Audit overlay"/>
+        <bt:String id="SMT.TracePre.Label" DefaultValue="Precedents"/>
+        <bt:String id="SMT.TraceDep.Label" DefaultValue="Dependents"/>
+        <bt:String id="SMT.Group.Paste.Label" DefaultValue="Paste"/>
+        <bt:String id="SMT.Undo.Label" DefaultValue="SMT Undo"/>
+        <bt:String id="SMT.PasteValues.Label" DefaultValue="Paste values"/>
+        <bt:String id="SMT.PasteFormats.Label" DefaultValue="Paste formats"/>
+        <bt:String id="SMT.Group.Model.Label" DefaultValue="Model"/>
+        <bt:String id="SMT.Cagr.Label" DefaultValue="CAGR"/>
+        <bt:String id="SMT.Sign.Label" DefaultValue="Sign flip"/>
+        <bt:String id="SMT.ScaleUp.Label" DefaultValue="x1000"/>
+        <bt:String id="SMT.ScaleDown.Label" DefaultValue="/1000"/>
+        <bt:String id="SMT.Group.Workbook.Label" DefaultValue="Workbook"/>
+        <bt:String id="SMT.Waterfall.Label" DefaultValue="Waterfall"/>
+        <bt:String id="SMT.Toc.Label" DefaultValue="Contents sheet"/>
         <bt:String id="SMT.Group.Links.Label" DefaultValue="Model Tools Links"/>
         <bt:String id="SMT.OpenLinks.Label" DefaultValue="Links"/>
       </bt:ShortStrings>
@@ -195,6 +423,18 @@
         <bt:String id="SMT.FillRight.Tip" DefaultValue="Fill the formula from the left cell across the selection."/>
         <bt:String id="SMT.FillDown.Tip" DefaultValue="Fill the formula from the top cell down the selection."/>
         <bt:String id="SMT.IfError.Tip" DefaultValue="Wrap selected formulas with IFERROR."/>
+        <bt:String id="SMT.Audit.Tip" DefaultValue="Toggle the formula consistency overlay."/>
+        <bt:String id="SMT.TracePre.Tip" DefaultValue="Jump to the direct precedents of the active cell."/>
+        <bt:String id="SMT.TraceDep.Tip" DefaultValue="Jump to the direct dependents of the active cell."/>
+        <bt:String id="SMT.Undo.Tip" DefaultValue="Restore the last range changed by Model Tools."/>
+        <bt:String id="SMT.PasteValues.Tip" DefaultValue="Paste the copied source as values."/>
+        <bt:String id="SMT.PasteFormats.Tip" DefaultValue="Paste the copied source&apos;s formats only."/>
+        <bt:String id="SMT.Cagr.Tip" DefaultValue="Insert a CAGR formula for the selection."/>
+        <bt:String id="SMT.Sign.Tip" DefaultValue="Flip the sign of the selected formulas and values."/>
+        <bt:String id="SMT.ScaleUp.Tip" DefaultValue="Scale the selection up by a thousand."/>
+        <bt:String id="SMT.ScaleDown.Tip" DefaultValue="Scale the selection down by a thousand."/>
+        <bt:String id="SMT.Waterfall.Tip" DefaultValue="Build a waterfall chart from the selected bridge table."/>
+        <bt:String id="SMT.Toc.Tip" DefaultValue="Insert or refresh the workbook contents sheet."/>
         <bt:String id="SMT.OpenLinks.Tip" DefaultValue="Open the Model Tools linked-objects pane."/>
       </bt:LongStrings>
     </Resources>
@@ -297,6 +537,218 @@
                     </Action>
                   </Control>
                 </Group>
+                <Group id="SMT.Group.Audit">
+                  <Label resid="SMT.Group.Audit.Label"/>
+                  <Icon>
+                    <bt:Image size="16" resid="SMT.Icon.16"/>
+                    <bt:Image size="32" resid="SMT.Icon.32"/>
+                    <bt:Image size="80" resid="SMT.Icon.80"/>
+                  </Icon>
+                  <Control xsi:type="Button" id="SMT.Button.Audit">
+                    <Label resid="SMT.Audit.Label"/>
+                    <Supertip>
+                      <Title resid="SMT.Audit.Label"/>
+                      <Description resid="SMT.Audit.Tip"/>
+                    </Supertip>
+                    <Icon>
+                      <bt:Image size="16" resid="SMT.Icon.16"/>
+                      <bt:Image size="32" resid="SMT.Icon.32"/>
+                      <bt:Image size="80" resid="SMT.Icon.80"/>
+                    </Icon>
+                    <Action xsi:type="ExecuteFunction">
+                      <FunctionName>SMT_AUDIT</FunctionName>
+                    </Action>
+                  </Control>
+                  <Control xsi:type="Button" id="SMT.Button.TracePre">
+                    <Label resid="SMT.TracePre.Label"/>
+                    <Supertip>
+                      <Title resid="SMT.TracePre.Label"/>
+                      <Description resid="SMT.TracePre.Tip"/>
+                    </Supertip>
+                    <Icon>
+                      <bt:Image size="16" resid="SMT.Icon.16"/>
+                      <bt:Image size="32" resid="SMT.Icon.32"/>
+                      <bt:Image size="80" resid="SMT.Icon.80"/>
+                    </Icon>
+                    <Action xsi:type="ExecuteFunction">
+                      <FunctionName>SMT_TRACE_PRE</FunctionName>
+                    </Action>
+                  </Control>
+                  <Control xsi:type="Button" id="SMT.Button.TraceDep">
+                    <Label resid="SMT.TraceDep.Label"/>
+                    <Supertip>
+                      <Title resid="SMT.TraceDep.Label"/>
+                      <Description resid="SMT.TraceDep.Tip"/>
+                    </Supertip>
+                    <Icon>
+                      <bt:Image size="16" resid="SMT.Icon.16"/>
+                      <bt:Image size="32" resid="SMT.Icon.32"/>
+                      <bt:Image size="80" resid="SMT.Icon.80"/>
+                    </Icon>
+                    <Action xsi:type="ExecuteFunction">
+                      <FunctionName>SMT_TRACE_DEP</FunctionName>
+                    </Action>
+                  </Control>
+                </Group>
+                <Group id="SMT.Group.Paste">
+                  <Label resid="SMT.Group.Paste.Label"/>
+                  <Icon>
+                    <bt:Image size="16" resid="SMT.Icon.16"/>
+                    <bt:Image size="32" resid="SMT.Icon.32"/>
+                    <bt:Image size="80" resid="SMT.Icon.80"/>
+                  </Icon>
+                  <Control xsi:type="Button" id="SMT.Button.Undo">
+                    <Label resid="SMT.Undo.Label"/>
+                    <Supertip>
+                      <Title resid="SMT.Undo.Label"/>
+                      <Description resid="SMT.Undo.Tip"/>
+                    </Supertip>
+                    <Icon>
+                      <bt:Image size="16" resid="SMT.Icon.16"/>
+                      <bt:Image size="32" resid="SMT.Icon.32"/>
+                      <bt:Image size="80" resid="SMT.Icon.80"/>
+                    </Icon>
+                    <Action xsi:type="ExecuteFunction">
+                      <FunctionName>SMT_UNDO</FunctionName>
+                    </Action>
+                  </Control>
+                  <Control xsi:type="Button" id="SMT.Button.PasteValues">
+                    <Label resid="SMT.PasteValues.Label"/>
+                    <Supertip>
+                      <Title resid="SMT.PasteValues.Label"/>
+                      <Description resid="SMT.PasteValues.Tip"/>
+                    </Supertip>
+                    <Icon>
+                      <bt:Image size="16" resid="SMT.Icon.16"/>
+                      <bt:Image size="32" resid="SMT.Icon.32"/>
+                      <bt:Image size="80" resid="SMT.Icon.80"/>
+                    </Icon>
+                    <Action xsi:type="ExecuteFunction">
+                      <FunctionName>SMT_PASTE_VALUES</FunctionName>
+                    </Action>
+                  </Control>
+                  <Control xsi:type="Button" id="SMT.Button.PasteFormats">
+                    <Label resid="SMT.PasteFormats.Label"/>
+                    <Supertip>
+                      <Title resid="SMT.PasteFormats.Label"/>
+                      <Description resid="SMT.PasteFormats.Tip"/>
+                    </Supertip>
+                    <Icon>
+                      <bt:Image size="16" resid="SMT.Icon.16"/>
+                      <bt:Image size="32" resid="SMT.Icon.32"/>
+                      <bt:Image size="80" resid="SMT.Icon.80"/>
+                    </Icon>
+                    <Action xsi:type="ExecuteFunction">
+                      <FunctionName>SMT_PASTE_FORMATS</FunctionName>
+                    </Action>
+                  </Control>
+                </Group>
+                <Group id="SMT.Group.Model">
+                  <Label resid="SMT.Group.Model.Label"/>
+                  <Icon>
+                    <bt:Image size="16" resid="SMT.Icon.16"/>
+                    <bt:Image size="32" resid="SMT.Icon.32"/>
+                    <bt:Image size="80" resid="SMT.Icon.80"/>
+                  </Icon>
+                  <Control xsi:type="Button" id="SMT.Button.Cagr">
+                    <Label resid="SMT.Cagr.Label"/>
+                    <Supertip>
+                      <Title resid="SMT.Cagr.Label"/>
+                      <Description resid="SMT.Cagr.Tip"/>
+                    </Supertip>
+                    <Icon>
+                      <bt:Image size="16" resid="SMT.Icon.16"/>
+                      <bt:Image size="32" resid="SMT.Icon.32"/>
+                      <bt:Image size="80" resid="SMT.Icon.80"/>
+                    </Icon>
+                    <Action xsi:type="ExecuteFunction">
+                      <FunctionName>SMT_CAGR</FunctionName>
+                    </Action>
+                  </Control>
+                  <Control xsi:type="Button" id="SMT.Button.Sign">
+                    <Label resid="SMT.Sign.Label"/>
+                    <Supertip>
+                      <Title resid="SMT.Sign.Label"/>
+                      <Description resid="SMT.Sign.Tip"/>
+                    </Supertip>
+                    <Icon>
+                      <bt:Image size="16" resid="SMT.Icon.16"/>
+                      <bt:Image size="32" resid="SMT.Icon.32"/>
+                      <bt:Image size="80" resid="SMT.Icon.80"/>
+                    </Icon>
+                    <Action xsi:type="ExecuteFunction">
+                      <FunctionName>SMT_SIGN</FunctionName>
+                    </Action>
+                  </Control>
+                  <Control xsi:type="Button" id="SMT.Button.ScaleUp">
+                    <Label resid="SMT.ScaleUp.Label"/>
+                    <Supertip>
+                      <Title resid="SMT.ScaleUp.Label"/>
+                      <Description resid="SMT.ScaleUp.Tip"/>
+                    </Supertip>
+                    <Icon>
+                      <bt:Image size="16" resid="SMT.Icon.16"/>
+                      <bt:Image size="32" resid="SMT.Icon.32"/>
+                      <bt:Image size="80" resid="SMT.Icon.80"/>
+                    </Icon>
+                    <Action xsi:type="ExecuteFunction">
+                      <FunctionName>SMT_SCALEUP</FunctionName>
+                    </Action>
+                  </Control>
+                  <Control xsi:type="Button" id="SMT.Button.ScaleDown">
+                    <Label resid="SMT.ScaleDown.Label"/>
+                    <Supertip>
+                      <Title resid="SMT.ScaleDown.Label"/>
+                      <Description resid="SMT.ScaleDown.Tip"/>
+                    </Supertip>
+                    <Icon>
+                      <bt:Image size="16" resid="SMT.Icon.16"/>
+                      <bt:Image size="32" resid="SMT.Icon.32"/>
+                      <bt:Image size="80" resid="SMT.Icon.80"/>
+                    </Icon>
+                    <Action xsi:type="ExecuteFunction">
+                      <FunctionName>SMT_SCALEDOWN</FunctionName>
+                    </Action>
+                  </Control>
+                </Group>
+                <Group id="SMT.Group.Workbook">
+                  <Label resid="SMT.Group.Workbook.Label"/>
+                  <Icon>
+                    <bt:Image size="16" resid="SMT.Icon.16"/>
+                    <bt:Image size="32" resid="SMT.Icon.32"/>
+                    <bt:Image size="80" resid="SMT.Icon.80"/>
+                  </Icon>
+                  <Control xsi:type="Button" id="SMT.Button.Waterfall">
+                    <Label resid="SMT.Waterfall.Label"/>
+                    <Supertip>
+                      <Title resid="SMT.Waterfall.Label"/>
+                      <Description resid="SMT.Waterfall.Tip"/>
+                    </Supertip>
+                    <Icon>
+                      <bt:Image size="16" resid="SMT.Icon.16"/>
+                      <bt:Image size="32" resid="SMT.Icon.32"/>
+                      <bt:Image size="80" resid="SMT.Icon.80"/>
+                    </Icon>
+                    <Action xsi:type="ExecuteFunction">
+                      <FunctionName>SMT_WATERFALL</FunctionName>
+                    </Action>
+                  </Control>
+                  <Control xsi:type="Button" id="SMT.Button.Toc">
+                    <Label resid="SMT.Toc.Label"/>
+                    <Supertip>
+                      <Title resid="SMT.Toc.Label"/>
+                      <Description resid="SMT.Toc.Tip"/>
+                    </Supertip>
+                    <Icon>
+                      <bt:Image size="16" resid="SMT.Icon.16"/>
+                      <bt:Image size="32" resid="SMT.Icon.32"/>
+                      <bt:Image size="80" resid="SMT.Icon.80"/>
+                    </Icon>
+                    <Action xsi:type="ExecuteFunction">
+                      <FunctionName>SMT_TOC</FunctionName>
+                    </Action>
+                  </Control>
+                </Group>
                 <Label resid="SMT.Tab.Label"/>
               </CustomTab>
             </ExtensionPoint>
@@ -358,6 +810,22 @@
           <bt:String id="SMT.FillRight.Label" DefaultValue="Fill Right"/>
           <bt:String id="SMT.FillDown.Label" DefaultValue="Fill Down"/>
           <bt:String id="SMT.IfError.Label" DefaultValue="IFERROR"/>
+          <bt:String id="SMT.Group.Audit.Label" DefaultValue="Audit"/>
+          <bt:String id="SMT.Audit.Label" DefaultValue="Audit overlay"/>
+          <bt:String id="SMT.TracePre.Label" DefaultValue="Precedents"/>
+          <bt:String id="SMT.TraceDep.Label" DefaultValue="Dependents"/>
+          <bt:String id="SMT.Group.Paste.Label" DefaultValue="Paste"/>
+          <bt:String id="SMT.Undo.Label" DefaultValue="SMT Undo"/>
+          <bt:String id="SMT.PasteValues.Label" DefaultValue="Paste values"/>
+          <bt:String id="SMT.PasteFormats.Label" DefaultValue="Paste formats"/>
+          <bt:String id="SMT.Group.Model.Label" DefaultValue="Model"/>
+          <bt:String id="SMT.Cagr.Label" DefaultValue="CAGR"/>
+          <bt:String id="SMT.Sign.Label" DefaultValue="Sign flip"/>
+          <bt:String id="SMT.ScaleUp.Label" DefaultValue="x1000"/>
+          <bt:String id="SMT.ScaleDown.Label" DefaultValue="/1000"/>
+          <bt:String id="SMT.Group.Workbook.Label" DefaultValue="Workbook"/>
+          <bt:String id="SMT.Waterfall.Label" DefaultValue="Waterfall"/>
+          <bt:String id="SMT.Toc.Label" DefaultValue="Contents sheet"/>
           <bt:String id="SMT.Group.Links.Label" DefaultValue="Model Tools Links"/>
           <bt:String id="SMT.OpenLinks.Label" DefaultValue="Links"/>
         </bt:ShortStrings>
@@ -367,6 +835,18 @@
           <bt:String id="SMT.FillRight.Tip" DefaultValue="Fill the formula from the left cell across the selection."/>
           <bt:String id="SMT.FillDown.Tip" DefaultValue="Fill the formula from the top cell down the selection."/>
           <bt:String id="SMT.IfError.Tip" DefaultValue="Wrap selected formulas with IFERROR."/>
+          <bt:String id="SMT.Audit.Tip" DefaultValue="Toggle the formula consistency overlay."/>
+          <bt:String id="SMT.TracePre.Tip" DefaultValue="Jump to the direct precedents of the active cell."/>
+          <bt:String id="SMT.TraceDep.Tip" DefaultValue="Jump to the direct dependents of the active cell."/>
+          <bt:String id="SMT.Undo.Tip" DefaultValue="Restore the last range changed by Model Tools."/>
+          <bt:String id="SMT.PasteValues.Tip" DefaultValue="Paste the copied source as values."/>
+          <bt:String id="SMT.PasteFormats.Tip" DefaultValue="Paste the copied source&apos;s formats only."/>
+          <bt:String id="SMT.Cagr.Tip" DefaultValue="Insert a CAGR formula for the selection."/>
+          <bt:String id="SMT.Sign.Tip" DefaultValue="Flip the sign of the selected formulas and values."/>
+          <bt:String id="SMT.ScaleUp.Tip" DefaultValue="Scale the selection up by a thousand."/>
+          <bt:String id="SMT.ScaleDown.Tip" DefaultValue="Scale the selection down by a thousand."/>
+          <bt:String id="SMT.Waterfall.Tip" DefaultValue="Build a waterfall chart from the selected bridge table."/>
+          <bt:String id="SMT.Toc.Tip" DefaultValue="Insert or refresh the workbook contents sheet."/>
           <bt:String id="SMT.OpenLinks.Tip" DefaultValue="Open the Model Tools linked-objects pane."/>
         </bt:LongStrings>
       </Resources>

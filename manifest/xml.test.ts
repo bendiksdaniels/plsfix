@@ -1,7 +1,9 @@
 // Golden test for the manifest renderer: proves buildManifest reproduces the
 // committed manifest.prod.xml byte for byte, and that dev/prod differ only in
 // the header comment and base URL. Also proves the top-level <Requirements>
-// block is Workbook-only and every interpolated value is XML-escaped.
+// block is Workbook-only, every ribbon group and its label resource render
+// the expected number of times, every ribbon FunctionName is registered in
+// src/main.ts, and every interpolated value is XML-escaped.
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { ADDIN, ENVIRONMENTS, WORKBOOK_HOST } from "./spec";
@@ -37,6 +39,25 @@ describe("buildManifest", () => {
     expect(xml.match(/<Host Name="Workbook"\/>/g)).toHaveLength(1);
   });
 
+  it("keeps the Workbook host at five ribbon groups (Office's per-tab cap is 6), Presentation at one", () => {
+    const workbook = ADDIN.hosts.find((host) => host.name === "Workbook")!;
+    const presentation = ADDIN.hosts.find(
+      (host) => host.name === "Presentation",
+    )!;
+    expect(workbook.groups).toHaveLength(5);
+    expect(workbook.groups.length).toBeLessThanOrEqual(6);
+    expect(presentation.groups).toHaveLength(1);
+
+    const xml = buildManifest(prod, ADDIN);
+    const workbookBlocks = xml.match(
+      /<Host xsi:type="Workbook">[\s\S]*?<\/Host>/g,
+    )!;
+    expect(workbookBlocks).toHaveLength(2);
+    for (const block of workbookBlocks) {
+      expect(block.match(/<Group id="SMT\.Group\./g)).toHaveLength(5);
+    }
+  });
+
   it("drops the top-level ExcelApi requirement once a second host exists, keeps SharedRuntime", () => {
     // Built from WORKBOOK_HOST directly, not ADDIN.hosts: ADDIN itself is
     // already two hosts, so this isolates the renderer's host-count behavior
@@ -51,9 +72,9 @@ describe("buildManifest", () => {
           page: "pptpane.html",
           urlResid: "SMT.Pptpane.Url",
           taskpaneId: "SMT.Pptpane",
-          groupId: "SMT.Group.Links",
-          groupLabel: "Model Tools Links",
-          buttons: [],
+          groups: [
+            { id: "SMT.Group.Links", label: "Model Tools Links", buttons: [] },
+          ],
         },
       ],
     };
@@ -78,18 +99,67 @@ describe("buildManifest", () => {
     );
   });
 
+  it("emits each group label resource exactly once per VersionOverrides block", () => {
+    const xml = buildManifest(prod, ADDIN);
+    const resourceBlocks = [
+      ...xml.matchAll(/<Resources>[\s\S]*?<\/Resources>/g),
+    ].map((match) => match[0]);
+    expect(resourceBlocks).toHaveLength(2);
+
+    const groupIds = ADDIN.hosts.flatMap((host) =>
+      host.groups.map((group) => group.id),
+    );
+    expect(groupIds.length).toBeGreaterThan(0);
+    for (const block of resourceBlocks) {
+      for (const groupId of groupIds) {
+        const pattern = new RegExp(
+          `<bt:String id="${groupId.replaceAll(".", "\\.")}\\.Label"`,
+          "g",
+        );
+        expect(block.match(pattern)).toHaveLength(1);
+      }
+    }
+  });
+
+  it("every ribbon FunctionName is registered in src/main.ts registerCommands", () => {
+    const xml = buildManifest(prod, ADDIN);
+    const functionNames = new Set(
+      [...xml.matchAll(/<FunctionName>([A-Z_]+)<\/FunctionName>/g)].map(
+        (match) => match[1]!,
+      ),
+    );
+    expect(functionNames.size).toBeGreaterThan(0);
+
+    const mainSrc = readFileSync(
+      new URL("../src/main.ts", import.meta.url),
+      "utf8",
+    );
+    const registered = new Set(
+      [...mainSrc.matchAll(/(SMT_[A-Z_]+):/g)].map((match) => match[1]!),
+    );
+    for (const name of functionNames) {
+      expect(registered.has(name)).toBe(true);
+    }
+  });
+
   it('escapes & and " in interpolated text', () => {
     const spec: AddinSpec = {
       ...ADDIN,
       hosts: [
         {
           ...WORKBOOK_HOST,
-          buttons: [
+          groups: [
             {
-              id: "OpenPane",
+              id: "SMT.Group.Tools",
               label: "Model Tools",
-              tip: 'Fill & go "now"',
-              action: { kind: "showPane" },
+              buttons: [
+                {
+                  id: "OpenPane",
+                  label: "Model Tools",
+                  tip: 'Fill & go "now"',
+                  action: { kind: "showPane" },
+                },
+              ],
             },
           ],
         },
@@ -107,12 +177,18 @@ describe("buildManifest", () => {
       hosts: [
         {
           ...WORKBOOK_HOST,
-          buttons: [
+          groups: [
             {
-              id: "OpenPane",
+              id: "SMT.Group.Tools",
               label: "Model Tools",
-              tip: "<script>alert('x')</script>",
-              action: { kind: "showPane" },
+              buttons: [
+                {
+                  id: "OpenPane",
+                  label: "Model Tools",
+                  tip: "<script>alert('x')</script>",
+                  action: { kind: "showPane" },
+                },
+              ],
             },
           ],
         },
