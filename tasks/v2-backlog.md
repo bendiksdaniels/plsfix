@@ -30,7 +30,7 @@ each item. Stop when Daniel intervenes or the list is empty.
       `manifest/spec.ts` (data change + icons reuse), validate both manifests.
 - [x] B8 Tornado chart + unpivot selection (docs/FEATURES.md section 11), pure logic + adapter,
       fake-host tests.
-- [ ] MILESTONE v2.1.0 deploy; AUTORESUME rewrite.
+- [x] MILESTONE v2.1.0 deploy (29.08); AUTORESUME rewrite.
 
 ## Blocked on Daniel
 
