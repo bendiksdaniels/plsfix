@@ -36,3 +36,21 @@ each item. Stop when Daniel intervenes or the list is empty.
 
 - Spike (plan Task 18), real-Office pass, M365 upload, ROADMAP.md sync sign-off, native PowerPoint
   tables (needs spike + PowerPointApi 1.9 on the team's builds).
+
+## Continuous improvement (after v2.1.0, loop keeps going until Daniel stops it)
+
+- [ ] C1 Whole-branch opus review of everything since v1.1.0 (adapters, relay, panes) -> ONE fix
+      wave -> v2.1.1 deploy.
+- [ ] C2 Update-all speed: measure `scanLinks` + `status` on a 60-slide fake deck; batch tag loads
+      across slides in one sync where the API allows; target under 3 syncs per update-all.
+- [ ] C3 Pane UX pass with a headless browser at 320/360/420 px: no clipped controls, badges
+      readable, keyboard focus order sane; fix what is found.
+- [ ] C4 FEATURES.md section 11 next: `=SMT.ROUND` custom functions (research the CustomFunctions
+      runtime + manifest requirements first; implement only if it fits the shared runtime).
+- [ ] C5 FEATURES.md P2 leftovers, one per iteration: border cycles, row-height/column-width cycles,
+      paintbrush slots, Super Find, unused-style scrubber, "prepare for sharing".
+- [ ] C6 Test debt: split `test/ppt.integration.test.ts` (>400 lines) by feature; keep every
+      test file under 400 lines.
+- [ ] C7 Docs: `docs/FEATURES.md` status column refreshed from what shipped (ROADMAP.md stays
+      Daniel's; deltas listed for sign-off).
+- Milestone after every 3 merged items: deploy + tag + AUTORESUME refresh.
