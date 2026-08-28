@@ -17,6 +17,7 @@ import {
   type KeyStore,
   type Workspace,
 } from "../src/link/workspace";
+import { RelayError } from "../src/link/relay";
 import { FakeRelay } from "./fakerelay";
 import { fakePng } from "./fakepng";
 import {
@@ -100,6 +101,21 @@ describe("exportSelection", () => {
       decodeInboxItem(await open(ws.enc, ws.id, inbox[0]!.blob)),
     ).toMatchObject({ id: result.id, label: "Model!B4:F5" });
   });
+  it("needs a host that can render a picture", async () => {
+    helpers.setSupported(() => false);
+    await expect(links.exportSelection(ws, relay)).rejects.toThrow(
+      /Excel 2021/,
+    );
+    expect(workbook.names).toEqual([]);
+  });
+  it("binds the anchor before the upload and unbinds it when that fails", async () => {
+    relay.putLink = () => Promise.reject(new RelayError("server", "boom", 500));
+    await expect(links.exportSelection(ws, relay)).rejects.toThrow(
+      /export Model!B4:F5: boom/,
+    );
+    expect(workbook.names).toEqual([]);
+    expect(helpers.setting(REGISTRY_SETTING)).toBeNull();
+  });
   it("refuses selections over the cap", async () => {
     helpers.select("Model!A:A");
     await expect(links.exportSelection(ws, relay)).rejects.toThrow(
@@ -113,7 +129,12 @@ describe("pushLinks", () => {
     const { id } = await links.exportSelection(ws, relay);
     helpers.setNameFormula(anchorName(id), "=Model!$B$10:$F$18");
     const summary = await links.pushLinks("all", relay);
-    expect(summary).toEqual({ pushed: 1, missing: 0, failed: 0 });
+    expect(summary).toEqual({
+      pushed: 1,
+      missing: 0,
+      failed: 0,
+      failures: [],
+    });
     const token = JSON.parse(String(helpers.setting(REGISTRY_SETTING))).links[0]
       .token;
     const payload = await payloadOf(id, token);
@@ -128,6 +149,7 @@ describe("pushLinks", () => {
       pushed: 0,
       missing: 1,
       failed: 0,
+      failures: [],
     });
     expect((await links.listWorkbookLinks())[0]!.source).toBe("missing");
   });
@@ -152,14 +174,44 @@ describe("charts", () => {
       pushed: 1,
       missing: 0,
       failed: 0,
+      failures: [],
     });
     expect((await payloadOf(result.id, token)).src.sheet).toBe("Data");
+  });
+  it("refuses to re-anchor a chart that is already linked", async () => {
+    helpers.addChart("Model", { name: "Revenue bridge" });
+    helpers.setActiveChart(workbook.charts[0]!);
+    const first = await links.exportActiveChart(ws, relay);
+    await expect(links.exportActiveChart(ws, relay)).rejects.toThrow(
+      /already linked as Model: Revenue bridge; push it instead/,
+    );
+    expect(workbook.charts[0]!.name).toBe(anchorName(first.id));
+  });
+  it("gives a chart its name back when the upload fails", async () => {
+    helpers.addChart("Model", { name: "Revenue bridge" });
+    helpers.setActiveChart(workbook.charts[0]!);
+    relay.putLink = () => Promise.reject(new RelayError("server", "boom", 500));
+    await expect(links.exportActiveChart(ws, relay)).rejects.toThrow(/boom/);
+    expect(workbook.charts[0]!.name).toBe("Revenue bridge");
   });
   it("needs a selected chart", async () => {
     helpers.setActiveChart(null);
     await expect(links.exportActiveChart(ws, relay)).rejects.toThrow(
       /Select a chart/,
     );
+  });
+});
+
+describe("a registry that cannot be read", () => {
+  it("is never overwritten", async () => {
+    await links.exportSelection(ws, relay);
+    const garbage = '{"v":9,"links":"nope"';
+    helpers.setSetting(REGISTRY_SETTING, garbage);
+    await expect(links.pushLinks("all", relay)).rejects.toThrow(
+      /registry SMT_LINKS: unreadable, not overwriting/,
+    );
+    expect(helpers.setting(REGISTRY_SETTING)).toBe(garbage);
+    await expect(links.listWorkbookLinks()).rejects.toThrow(/unreadable/);
   });
 });
 

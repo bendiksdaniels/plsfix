@@ -6,6 +6,7 @@ import {
   decodeTag,
   encodePayload,
   encodeRegistry,
+  tryDecodeRegistry,
   encodeTag,
   isLinkId,
   newLinkId,
@@ -77,6 +78,18 @@ describe("registry", () => {
     expect(decodeRegistry(encodeRegistry(registry))).toEqual(registry);
     expect(decodeRegistry(undefined)).toEqual({ v: 1, links: [] });
     expect(decodeRegistry("[1,2]")).toEqual({ v: 1, links: [] });
+  });
+
+  it("tells an unreadable registry from an absent one", () => {
+    const empty = { v: 1 as const, links: [] };
+    expect(tryDecodeRegistry(encodeRegistry(empty))).toEqual(empty);
+    expect(tryDecodeRegistry(null)).toBeNull();
+    expect(tryDecodeRegistry(undefined)).toBeNull();
+    expect(tryDecodeRegistry("{not json")).toBeNull();
+    expect(tryDecodeRegistry("[1,2]")).toBeNull();
+    // A newer schema is readable JSON we still must not overwrite.
+    expect(tryDecodeRegistry('{"v":2,"links":[]}')).toBeNull();
+    expect(tryDecodeRegistry('{"v":1,"links":[{"id":"x"}]}')).toBeNull();
   });
 });
 

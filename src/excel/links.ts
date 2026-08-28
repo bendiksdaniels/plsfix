@@ -8,22 +8,24 @@ import {
   anchorName,
   newLinkId,
   sourceLabel,
-  type Registry,
   type RegistryEntry,
 } from "../link/model";
 import type { RelayApi } from "../link/relay";
 import type { Workspace } from "../link/workspace";
-import { hostSupports, SELECTION_CELL_CAP } from "./internal";
+import { SELECTION_CELL_CAP } from "./internal";
 import {
   createChartAnchor,
   createRangeAnchor,
+  entryOf,
   forget,
   newEntry,
   publish,
   pushPayload,
   readRegistry,
+  refuseAnchoredChart,
   releaseAnchor,
   renderSource,
+  requireImageApi,
   resolveSource,
   sourceOf,
   workbookName,
@@ -49,20 +51,19 @@ export interface PushSummary {
   pushed: number;
   missing: number;
   failed: number;
-}
-
-function entryOf(registry: Registry, id: string, stage: string): RegistryEntry {
-  const entry = registry.links.find((link) => link.id === id);
-  if (!entry) throw new Error(`${stage} ${id}: not in this workbook`);
-  return entry;
+  // One "<label>: <reason>" per failed push, so the pane can say why rather
+  // than only how many.
+  failures: string[];
 }
 
 export async function exportSelection(
   ws: Workspace,
   relay: RelayApi,
 ): Promise<ExportResult> {
+  requireImageApi();
   const workbook = await workbookName();
   return Excel.run(async (context) => {
+    const registry = await readRegistry(context);
     const range = context.workbook.getSelectedRange();
     range.load("address,cellCount,worksheet/name");
     await context.sync();
@@ -78,16 +79,22 @@ export async function exportSelection(
       ref: parseAddress(range.address).address,
       range,
     };
-    const png = await renderSource(context, resolved);
     const id = newLinkId(randomBytes);
     const anchor = anchorName(id);
+    // Anchor and picture in one batch, before any network call: a selection
+    // that changes during the upload cannot make the two describe different
+    // objects.
+    const named = createRangeAnchor(context, range, anchor);
+    const png = await renderSource(context, resolved);
+
     const src = sourceOf(workbook, anchor, resolved);
     const entry = newEntry(id, "range", anchor, sourceLabel(src, "range"));
     const link: NewLink = {
       entry,
       src,
       png,
-      anchor: () => createRangeAnchor(context, range, anchor),
+      registry,
+      release: () => named.delete(),
     };
     await publish(context, link, ws, relay);
     return { id, label: entry.label };
@@ -101,7 +108,7 @@ async function activeChart(
 ): Promise<Excel.Chart> {
   const callable = (context.workbook as unknown as Record<string, unknown>)
     .getActiveChartOrNullObject;
-  if (typeof callable !== "function" || !hostSupports("1.9")) {
+  if (typeof callable !== "function") {
     throw new Error("Exporting a chart needs a newer Excel build.");
   }
   const chart = context.workbook.getActiveChartOrNullObject();
@@ -118,27 +125,35 @@ export async function exportActiveChart(
   ws: Workspace,
   relay: RelayApi,
 ): Promise<ExportResult> {
+  requireImageApi();
   const workbook = await workbookName();
   return Excel.run(async (context) => {
+    const registry = await readRegistry(context);
     const chart = await activeChart(context);
+    const previousName = chart.name;
+    refuseAnchoredChart(registry, previousName);
+
     const resolved: ResolvedSource = {
       kind: "chart",
       sheet: chart.worksheet.name,
-      ref: chart.name,
+      ref: previousName,
       chart,
       width: chart.width,
       height: chart.height,
     };
-    const png = await renderSource(context, resolved);
     const id = newLinkId(randomBytes);
     const anchor = anchorName(id);
+    createChartAnchor(chart, anchor);
+    const png = await renderSource(context, resolved);
+
     const src = sourceOf(workbook, anchor, resolved);
     const entry = newEntry(id, "chart", anchor, sourceLabel(src, "chart"));
     const link: NewLink = {
       entry,
       src,
       png,
-      anchor: () => createChartAnchor(chart, anchor),
+      registry,
+      release: () => createChartAnchor(chart, previousName),
     };
     await publish(context, link, ws, relay);
     return { id, label: entry.label };
@@ -169,7 +184,12 @@ export async function pushLinks(
     const wanted = ids === "all" ? null : new Set(ids);
     if (wanted) for (const id of wanted) entryOf(registry, id, "push");
 
-    const summary: PushSummary = { pushed: 0, missing: 0, failed: 0 };
+    const summary: PushSummary = {
+      pushed: 0,
+      missing: 0,
+      failed: 0,
+      failures: [],
+    };
     for (const entry of registry.links) {
       if (wanted && !wanted.has(entry.id)) continue;
       const resolved = await resolveSource(context, entry);
@@ -183,8 +203,10 @@ export async function pushLinks(
         entry.rev = await pushPayload(entry, src, png, relay);
         entry.lastPushedAt = new Date().toISOString();
         summary.pushed += 1;
-      } catch {
+      } catch (error) {
+        const reason = error instanceof Error ? error.message : String(error);
         summary.failed += 1;
+        summary.failures.push(`${entry.label}: ${reason}`);
       }
     }
     writeRegistry(context, registry);
@@ -202,6 +224,8 @@ export async function goToSource(id: string): Promise<void> {
       throw new Error(`go to source ${entry.label}: source missing`);
     }
     if (resolved.kind === "range") {
+      // Excel refuses to select on a sheet that is not the active one.
+      resolved.range.worksheet.activate();
       resolved.range.select();
     } else {
       resolved.chart.worksheet.activate();

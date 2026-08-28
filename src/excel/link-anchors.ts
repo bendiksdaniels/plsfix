@@ -5,11 +5,13 @@
 
 import { deriveLinkKeys, newToken, seal, sha256Hex } from "../link/crypto";
 import {
-  decodeRegistry,
+  ANCHOR_PREFIX,
+  emptyRegistry,
   encodeInboxItem,
   encodePayload,
   encodeRegistry,
   REGISTRY_SETTING,
+  tryDecodeRegistry,
   type InboxItem,
   type LinkKind,
   type Payload,
@@ -20,6 +22,7 @@ import {
 import { base64ToBytes, pngSize } from "../link/png";
 import { RelayError, type RelayApi } from "../link/relay";
 import type { Workspace } from "../link/workspace";
+import { hostSupports } from "./internal";
 import { parseAddress } from "./shared";
 
 const CHART_LABEL_SEPARATOR = ": ";
@@ -49,7 +52,12 @@ export interface NewLink {
   entry: RegistryEntry;
   src: Source;
   png: string;
-  anchor: () => void;
+  // The registry as it was read before the anchor was bound: what publish
+  // appends to, and what a rollback puts back.
+  registry: Registry;
+  // Undoes the anchor: deletes the hidden name, or gives the chart its own
+  // name back. Queued only - the caller's next sync commits it.
+  release: () => void;
 }
 
 // Every failure says which flow it came from and which link; the token is never
@@ -57,6 +65,35 @@ export interface NewLink {
 export function staged(stage: string, error: unknown): Error {
   const reason = error instanceof Error ? error.message : String(error);
   return new Error(`${stage}: ${reason}`);
+}
+
+// Range.getImage and the chart image surface both arrived in ExcelApi 1.9;
+// without them there is no picture to send, so a flow stops before it anchors
+// anything.
+export function requireImageApi(): void {
+  if (!hostSupports("1.9")) {
+    throw new Error("export: Excel 2021 / Microsoft 365 required");
+  }
+}
+
+export function entryOf(
+  registry: Registry,
+  id: string,
+  stage: string,
+): RegistryEntry {
+  const entry = registry.links.find((link) => link.id === id);
+  if (!entry) throw new Error(`${stage} ${id}: not in this workbook`);
+  return entry;
+}
+
+// A chart's own name is its anchor, so exporting an anchored chart a second
+// time would rename it and silently orphan the first link.
+export function refuseAnchoredChart(registry: Registry, name: string): void {
+  if (!name.startsWith(ANCHOR_PREFIX)) return;
+  const existing = registry.links.find((link) => link.anchor === name);
+  throw new Error(
+    `export chart: already linked as ${existing?.label ?? name}; push it instead`,
+  );
 }
 
 // The file name only, never the path: it is shown in PowerPoint and travels in
@@ -85,7 +122,17 @@ export async function readRegistry(
     context.workbook.settings.getItemOrNullObject(REGISTRY_SETTING);
   setting.load("isNullObject,value");
   await context.sync();
-  return decodeRegistry(setting.isNullObject ? null : String(setting.value));
+  if (setting.isNullObject) return emptyRegistry();
+
+  const raw = String(setting.value);
+  const registry = tryDecodeRegistry(raw);
+  // No setting is a workbook with no links yet. A setting we cannot read is
+  // someone else's data or a newer schema, and every flow here writes the
+  // whole setting back: decoding it to empty would erase every link record.
+  if (registry === null && raw.trim() !== "") {
+    throw new Error("registry SMT_LINKS: unreadable, not overwriting");
+  }
+  return registry ?? emptyRegistry();
 }
 
 export function writeRegistry(
@@ -134,8 +181,10 @@ export function createRangeAnchor(
   context: Excel.RequestContext,
   range: Excel.Range,
   anchor: string,
-): void {
-  context.workbook.names.add(anchor, range).visible = false;
+): Excel.NamedItem {
+  const named = context.workbook.names.add(anchor, range);
+  named.visible = false;
+  return named;
 }
 
 // A chart cannot carry a defined name, so its own name becomes the anchor.
@@ -287,26 +336,47 @@ async function announce(
   await relay.postInbox(ws.id, ws.auth, entry.id, blob);
 }
 
-// The workbook is written only once the relay holds the picture, so a failed
-// push leaves neither an orphan anchor nor a registry entry behind.
+// The anchor is already bound when this runs - it has to be, so the picture and
+// the name describe the same object - so every failure from here on has to put
+// the workbook back rather than leave an anchor nothing points at.
 export async function publish(
   context: Excel.RequestContext,
   link: NewLink,
   ws: Workspace,
   relay: RelayApi,
 ): Promise<void> {
-  const { entry, src } = link;
+  const { entry, src, registry } = link;
+  let recorded = false;
   try {
     entry.rev = await pushPayload(entry, src, link.png, relay);
     entry.lastPushedAt = new Date().toISOString();
-    const registry = await readRegistry(context);
-    link.anchor();
-    registry.links.push(entry);
-    writeRegistry(context, registry);
+    // Recorded before the inbox note goes out, so PowerPoint is never told
+    // about a link this workbook has no record of.
+    writeRegistry(context, { ...registry, links: [...registry.links, entry] });
+    recorded = true;
     await context.sync();
     await announce(entry, src, ws, relay);
   } catch (error) {
+    await rollback(context, link, recorded);
     throw staged(`export ${entry.label}`, error);
+  }
+}
+
+// The setting is only rewritten if this flow had already written it: a failed
+// export leaves a workbook that never had a registry exactly as it was. Best
+// effort by design - if the workbook will not take the undo, the export error
+// the caller is about to see is the one worth reporting.
+async function rollback(
+  context: Excel.RequestContext,
+  link: NewLink,
+  recorded: boolean,
+): Promise<void> {
+  try {
+    link.release();
+    if (recorded) writeRegistry(context, link.registry);
+    await context.sync();
+  } catch {
+    return;
   }
 }
 

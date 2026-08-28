@@ -1659,7 +1659,16 @@ class RangeProxy {
     return { value: fakePng(this.width, this.height) };
   }
 
+  // Excel cannot select on a sheet that is not the active one, so an add-in
+  // has to activate the worksheet first. Modelled, because forgetting it is a
+  // silent no-op in a fake that does not care and a real bug in Excel.
   select(): void {
+    if (this.runtime.workbook.activeSheetId !== this.sheet.id) {
+      throw hostError(
+        ErrorCodes.invalidOperation,
+        `${this.sheet.name} is not the active sheet.`,
+      );
+    }
     this.runtime.workbook.selection = {
       sheetId: this.sheet.id,
       rect: { ...this.rect },
@@ -2766,6 +2775,7 @@ export interface FakeHelpers {
   moveChart(name: string, toSheet: string): void;
   setActiveChart(chart: FakeChart | null): void;
   setting(key: string): string | null;
+  setSetting(key: string, value: string): void;
   setSupported(check: (set: string, version: string) => boolean): void;
   failNextSync(error?: Error): void;
   changeHandlerCount(): number;
@@ -3001,6 +3011,9 @@ export function installFakeHost(options: FakeHostOptions = {}): {
       workbook.activeChart = chart;
     },
     setting: (key) => workbook.settings.get(key) ?? null,
+    setSetting(key, value) {
+      workbook.settings.set(key, value);
+    },
     setSupported(check) {
       runtime.supported = check;
     },
