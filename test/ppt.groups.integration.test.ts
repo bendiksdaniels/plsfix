@@ -14,7 +14,7 @@ import {
   type Payload,
 } from "../src/link/model";
 import { fitToSlide } from "../src/link/status";
-import { createWorkspace, type KeyStore } from "../src/link/workspace";
+import { createWorkspace } from "../src/link/workspace";
 import { FakeRelay } from "./fakerelay";
 import { fakePng } from "./fakepng";
 import {
@@ -25,6 +25,7 @@ import {
   type FakePptShape,
   type FakePresentation,
 } from "./fakeppt";
+import { memoryStore, src } from "./ppt.support";
 import type * as LinksModule from "../src/ppt/links";
 
 enableStrictLoadSemantics();
@@ -33,26 +34,6 @@ let links: typeof LinksModule;
 let presentation: FakePresentation;
 let helpers: FakePptHelpers;
 let relay: FakeRelay;
-
-const src = {
-  workbook: "Model_v4.xlsx",
-  sheet: "Model",
-  ref: "B4:F12",
-  anchor: "SMT_LINK_00000000",
-};
-
-function memoryStore(): KeyStore {
-  const map = new Map<string, string>();
-  return {
-    get: async (k) => map.get(k) ?? null,
-    set: async (k, v) => {
-      map.set(k, v);
-    },
-    remove: async (k) => {
-      map.delete(k);
-    },
-  };
-}
 
 function payloadFor(png: string): Payload {
   return {
