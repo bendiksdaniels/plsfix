@@ -66,13 +66,13 @@ Resume pin: tasks/AUTORESUME.md
 ## v2: Excel -> PowerPoint tracked links (28.08, approved plan)
 
 Tier 1 groundwork (clean code the feature needs anyway)
-- [ ] T1.1 split src/excel.ts -> src/excel/{selection,formatting,fill,autocolor,trace,charts,workbook}.ts + index.ts barrel (no test changes)
-- [ ] T1.2 manifest generator: manifest/spec.ts -> scripts/build-manifests.ts -> manifest.xml (dev) + manifest.prod.xml; manifest:check
-- [ ] T1.3 dev loop: wef hard link -> plain copy of manifest.prod.xml; npm start links dev manifest; poststop restores prod; CLAUDE.md/README corrected
-- [ ] T1.4 one version source (package.json) + version:check (Cargo.toml, manifests, footer)
-- [ ] T1.5 npm run check (tsc, eslint strict, prettier, vitest, cargo test, manifest:check, version:check) + GitHub Actions
-- [ ] T1.6 src/ui/report.ts error surface (onerror + unhandledrejection, Copy details)
-- [ ] T1.7 src/ui/{toast,guard,tabs}.ts extracted from main.ts with tests
+- [x] T1.1 split src/excel.ts -> src/excel/{selection,formatting,fill,autocolor,trace,charts,workbook}.ts + index.ts barrel (no test changes)
+- [x] T1.2 manifest generator: manifest/spec.ts -> scripts/build-manifests.ts -> manifest.xml (dev) + manifest.prod.xml; manifest:check
+- [x] T1.3 dev loop: wef hard link -> plain copy of manifest.prod.xml; npm start links dev manifest; poststop restores prod; CLAUDE.md/README corrected
+- [x] T1.4 one version source (package.json) + version:check (Cargo.toml, manifests, footer)
+- [x] T1.5 npm run check (tsc, eslint strict, prettier, vitest, cargo test, manifest:check, version:check) + GitHub Actions
+- [x] T1.6 src/ui/report.ts error surface (onerror + unhandledrejection, Copy details)
+- [x] T1.7 src/ui/{toast,guard,tabs}.ts extracted from main.ts with tests
 
 Tier 2 feature (v2.0.000)
 - [ ] T2.0 spike in real PowerPoint/Excel (spec section 10) -> research corrections + fallback go/no-go

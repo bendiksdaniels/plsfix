@@ -1,6 +1,15 @@
 import tseslint from "typescript-eslint";
 export default tseslint.config(
-  { ignores: ["dist/**", "node_modules/**", "server/**", "docs/**"] },
+  {
+    ignores: [
+      "**/dist/**",
+      "**/node_modules/**",
+      "server/**",
+      "docs/**",
+      ".claude/**",
+      ".superpowers/**",
+    ],
+  },
   ...tseslint.configs.strict,
   ...tseslint.configs.stylistic,
   {

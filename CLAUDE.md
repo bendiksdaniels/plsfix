@@ -18,6 +18,10 @@ DB Automatizācijas suite at `dbautomatizacijas.com/modelis/` (key `modelis`).
   either file by hand. `npm stop` restores the prod manifest into the wef folders
   (`scripts/wef-restore-prod.sh`).
 - `README.md` and `ROADMAP.md` are Daniel's hand-curated files: surgical edits only.
+- Toolchain: `typescript` in package.json is aliased to `@typescript/typescript6` (the TS team's
+  side-by-side shim) because typescript-eslint refuses TS 7; the real TS 7 compiler is
+  `@typescript/native` and still provides `tsc`. Agent worktrees nest under `.claude/`, so lint
+  ignores use `**/dist/**`-style globs plus `.claude/**` and `.superpowers/**`.
 - Versioning: package.json + server crate stay in lockstep; pane footer shows
   vMAJOR.MINOR.PATCH with a 3-digit patch.
 
