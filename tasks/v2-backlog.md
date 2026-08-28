@@ -13,7 +13,7 @@ each item. Stop when Daniel intervenes or the list is empty.
       (`pushPayload`, `announce`, `publish` rollback) into `src/excel/link-record.ts`; tests unchanged.
 - [x] B2 Dedupe helpers: `relativeTime` (ppt/views.ts + pane/links-tab.ts) -> `src/ui/time.ts`;
       clipboard copy (ui/toast.ts private + pane/links-tab.ts) -> `src/ui/clipboard.ts`; unit tests.
-- [ ] B3 "Update this slide" uses the ACTIVE slide: `activeSlideId()` in `src/ppt/host.ts`
+- [x] B3 "Update this slide" uses the ACTIVE slide: `activeSlideId()` in `src/ppt/host.ts`
       (`getSelectedSlides`, 1.5), fake host support, pane uses it (ticked rows no longer needed).
 - [ ] B4 Server minors: cache rule `starts_with("/assets/")`; split `inbox_lifecycle` test under
       50 lines; startup prints the data path (verify), `cargo clippy` clean.

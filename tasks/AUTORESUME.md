@@ -32,7 +32,7 @@ Execution ledgers (git-ignored, rulings + per-task spend): `.superpowers/sdd/*/p
 
 ## Known limits / deferred (from reviews)
 
-- Shapes inside groups are not scanned; "Update this slide" uses the first ticked row's slide;
+- Shapes inside groups are not scanned;
   Source column ellipsised under ~420 px; no revert of a refresh (relay keeps 2 revs, UI only).
 - `src/excel/link-anchors.ts` is at 396/400 lines: split before the next change
   (`link-record.ts` for the relay round trip). `src/main.ts` remains oversized (pre-existing).
