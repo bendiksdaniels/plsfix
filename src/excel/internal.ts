@@ -1,9 +1,14 @@
-// Internal API of the src/excel/ folder: private range, fill and host-capability
-// helpers no pane code calls directly. Exported so sibling section files (and
-// src/excel/links.ts later) can import them - the barrel never re-exports this
-// module, so nothing here is part of the pane's public surface.
+// Internal API of the src/excel/ folder: private range, fill, chart-shell and
+// host-capability helpers no pane code calls directly. Exported so sibling
+// section files (and src/excel/links.ts later) can import them - the barrel
+// never re-exports this module, so nothing here is part of the pane's public
+// surface.
 
-import { currencyNumberFormat, getActiveSettings } from "../settings";
+import {
+  activeTheme,
+  currencyNumberFormat,
+  getActiveSettings,
+} from "../settings";
 import { type NumberFormatName } from "./shared";
 
 const staticNumberFormats = {
@@ -94,4 +99,49 @@ export function applyFillKey(block: Excel.Range, key: string): void {
 export function hostSupports(apiSet: string): boolean {
   const requirements = Office.context?.requirements;
   return requirements ? requirements.isSetSupported("ExcelApi", apiSet) : true;
+}
+
+const CHART_TEXT_SIZE = 9;
+const CHART_TITLE_SIZE = 12;
+
+// The brand shell every chart gets: our font everywhere, a bold primary title,
+// no gridlines, no chart-area frame, legend under the plot.
+export function styleChartShell(
+  chart: Excel.Chart,
+  title: string | null,
+  withAxes: boolean,
+): void {
+  const settings = getActiveSettings();
+  const theme = activeTheme();
+
+  chart.format.font.name = settings.font;
+  chart.format.font.size = CHART_TEXT_SIZE;
+  chart.format.font.color = theme.formulaFont;
+  chart.format.border.lineStyle = Excel.ChartLineStyle.none;
+  chart.format.roundedCorners = false;
+
+  if (title !== null) chart.title.text = title;
+  chart.title.format.font.name = settings.font;
+  chart.title.format.font.size = CHART_TITLE_SIZE;
+  chart.title.format.font.bold = true;
+  chart.title.format.font.color = settings.primary;
+
+  if (withAxes) {
+    for (const axis of [chart.axes.categoryAxis, chart.axes.valueAxis]) {
+      axis.format.font.name = settings.font;
+      axis.format.font.size = CHART_TEXT_SIZE;
+      axis.format.font.color = theme.formulaFont;
+      axis.majorGridlines.visible = false;
+    }
+  }
+
+  chart.legend.position = Excel.ChartLegendPosition.bottom;
+  chart.legend.overlay = false;
+  chart.legend.format.font.name = settings.font;
+  chart.legend.format.font.size = CHART_TEXT_SIZE;
+  chart.legend.format.font.color = theme.formulaFont;
+}
+
+export function formatChartAmount(value: number): string {
+  return value.toLocaleString(undefined, { maximumFractionDigits: 1 });
 }

@@ -62,3 +62,55 @@ export function formatCagrLabel(value: number): string {
   const sign = percent < 0 ? "-" : "+";
   return `CAGR ${sign}${Math.abs(percent).toFixed(1)}%`;
 }
+
+export interface TornadoDriver {
+  label: string;
+  low: number;
+  high: number;
+}
+
+export interface TornadoSeries {
+  labels: string[];
+  low: number[];
+  high: number[];
+  base: number;
+}
+
+const MIN_TORNADO_DRIVERS = 2;
+
+// A tornado ranks drivers by how far they move the answer, widest swing first.
+// Both series are deltas from the base, so one bar row per driver spans its low
+// and high around the base line. A null base means the model never stated one:
+// the mean of every low and high is then the neutral middle of the range the
+// drivers describe.
+export function tornadoSeries(
+  drivers: TornadoDriver[],
+  base: number | null,
+): TornadoSeries {
+  if (drivers.length < MIN_TORNADO_DRIVERS) {
+    throw new Error("tornado: need at least two drivers");
+  }
+  const outcomes = drivers.flatMap((driver) => [driver.low, driver.high]);
+  if (!outcomes.every((value) => Number.isFinite(value))) {
+    throw new Error("tornado: every low and high must be a finite number");
+  }
+  if (base !== null && !Number.isFinite(base)) {
+    throw new Error("tornado: the base must be a finite number");
+  }
+
+  const middle =
+    base ?? outcomes.reduce((sum, value) => sum + value, 0) / outcomes.length;
+  // A stable sort, so drivers that move the answer equally keep the order they
+  // were selected in instead of swapping places between runs.
+  const ranked = [...drivers].sort(
+    (left, right) =>
+      Math.abs(right.high - right.low) - Math.abs(left.high - left.low),
+  );
+
+  return {
+    labels: ranked.map((driver) => driver.label),
+    low: ranked.map((driver) => driver.low - middle),
+    high: ranked.map((driver) => driver.high - middle),
+    base: middle,
+  };
+}

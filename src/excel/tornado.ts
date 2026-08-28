@@ -1,0 +1,144 @@
+// The sensitivity tornado: drivers ranked by how far they move the answer, each
+// drawn as a bar spanning its low and high around the base. Office charts plot
+// ranges only and the deltas are not in the model, so they are written to a
+// helper block beside the selection and charted from there.
+
+import { formatChartAmount, hostSupports, styleChartShell } from "./internal";
+import { captureUndo } from "./undo";
+import { type TornadoDriver, tornadoSeries } from "../chartmath";
+import { type CellValue } from "../model";
+import { getActiveSettings } from "../settings";
+
+const TORNADO_COLUMNS = 3;
+const TORNADO_ROW_CAP = 100;
+// Both halves of a driver share one bar row, with the rows drawn close together.
+const TORNADO_OVERLAP = 100;
+const TORNADO_GAP_WIDTH = 40;
+const TORNADO_TITLE = "Sensitivity";
+const TORNADO_HEADERS = ["Driver", "Low", "High"];
+const TORNADO_SHAPE_ERROR =
+  "tornado: need 3 columns (label, low, high) and at least 2 rows";
+
+function isFiniteNumber(value: CellValue | undefined): value is number {
+  return typeof value === "number" && Number.isFinite(value);
+}
+
+// The header row is optional and detected, not declared: a first row whose two
+// outcome cells hold no numbers is a pair of column titles, never a driver.
+function readDrivers(grid: CellValue[][]): TornadoDriver[] {
+  const first = grid[0] ?? [];
+  const headed = !isFiniteNumber(first[1]) && !isFiniteNumber(first[2]);
+  const body = headed ? grid.slice(1) : grid;
+  if (body.length < 2) throw new Error(TORNADO_SHAPE_ERROR);
+
+  return body.map((row) => {
+    const [label, low, high] = row;
+    if (!isFiniteNumber(low) || !isFiniteNumber(high)) {
+      throw new Error("tornado: the low and high columns must hold numbers");
+    }
+    return { label: label === null ? "" : String(label), low, high };
+  });
+}
+
+interface TornadoHeader {
+  heading: string;
+  base: number | null;
+}
+
+// One read of the row above the selection answers both questions it can: text
+// over the label column titles the chart, and the first number over the outcome
+// columns is the base case. Without either, the defaults stand.
+async function readTornadoHeader(
+  context: Excel.RequestContext,
+  sheet: Excel.Worksheet,
+  range: Excel.Range,
+): Promise<TornadoHeader> {
+  if (range.rowIndex === 0) return { heading: TORNADO_TITLE, base: null };
+
+  const above = sheet.getRangeByIndexes(
+    range.rowIndex - 1,
+    range.columnIndex,
+    1,
+    TORNADO_COLUMNS,
+  );
+  above.load("values");
+  await context.sync();
+
+  const cells = (above.values as CellValue[][])[0] ?? [];
+  const title = cells[0];
+  return {
+    heading:
+      typeof title === "string" && title.trim() ? title.trim() : TORNADO_TITLE,
+    base: cells.slice(1).find(isFiniteNumber) ?? null,
+  };
+}
+
+function styleTornado(chart: Excel.Chart, heading: string): void {
+  styleChartShell(chart, heading, true);
+  // A bar chart plots the first category at the bottom; reversing the order
+  // puts the widest swing on top, which is the shape a tornado is read by.
+  if (hostSupports("1.7")) chart.axes.categoryAxis.reversePlotOrder = true;
+
+  const { accent, external } = getActiveSettings();
+  // Downside in the same colour a bridge paints a fall, upside in the accent.
+  [external, accent].forEach((color, index) => {
+    const series = chart.series.getItemAt(index);
+    series.format.fill.setSolidColor(color);
+    if (hostSupports("1.8")) {
+      series.overlap = TORNADO_OVERLAP;
+      series.gapWidth = TORNADO_GAP_WIDTH;
+    }
+  });
+}
+
+// Label, low outcome, high outcome; the helper block lands immediately right of
+// the selection, and SMT Undo captures whatever stood there first.
+export async function insertTornado(): Promise<string> {
+  return Excel.run(async (context) => {
+    const range = context.workbook.getSelectedRange();
+    const sheet = range.worksheet;
+    range.load("rowCount,columnCount,rowIndex,columnIndex,values");
+    await context.sync();
+
+    if (range.columnCount !== TORNADO_COLUMNS || range.rowCount < 2) {
+      throw new Error(TORNADO_SHAPE_ERROR);
+    }
+    if (range.rowCount > TORNADO_ROW_CAP) {
+      throw new Error(`tornado: supports up to ${TORNADO_ROW_CAP} drivers`);
+    }
+
+    const drivers = readDrivers(range.values as CellValue[][]);
+    const { heading, base } = await readTornadoHeader(context, sheet, range);
+    const series = tornadoSeries(drivers, base);
+
+    const block = sheet.getRangeByIndexes(
+      range.rowIndex,
+      range.columnIndex + range.columnCount,
+      series.labels.length + 1,
+      TORNADO_COLUMNS,
+    );
+    await captureUndo(context, block);
+    block.values = [
+      TORNADO_HEADERS,
+      ...series.labels.map((label, index) => [
+        label,
+        series.low[index] ?? 0,
+        series.high[index] ?? 0,
+      ]),
+    ];
+    await context.sync();
+
+    styleTornado(
+      sheet.charts.add(
+        Excel.ChartType.barClustered,
+        block,
+        Excel.ChartSeriesBy.columns,
+      ),
+      heading,
+    );
+    await context.sync();
+
+    const count = series.labels.length;
+    return `Tornado added: ${count} drivers, base ${formatChartAmount(series.base)}`;
+  });
+}
