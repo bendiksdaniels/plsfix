@@ -30,6 +30,7 @@ import {
   parseAddress,
   pasteSpecial,
   pastePreserveFormulas,
+  readWorkbookBrand,
   scaleSelection,
   selectArea,
   setAutocolorOnEdit,
@@ -39,6 +40,7 @@ import {
   traceActiveCell,
   undoLastAction,
   undoTarget,
+  writeWorkbookBrand,
   type NumberFormatName,
   type PresetName,
   type SheetEntry,
@@ -431,12 +433,30 @@ function registerCommands(): void {
 // Brand dashboard
 // ---------------------------------------------------------------------------
 
+// The workbook copy is best effort in both directions: a host that will not
+// answer must not break the palette change the modeller just made, so failures
+// land on the pane's error surface instead of in the caller.
+function reportBrandStoreError(error: unknown, action: string): void {
+  const { message, details } = describeError(
+    error,
+    { host: "Excel", version: APP_VERSION },
+    action,
+  );
+  toast.show(message, "error", details);
+}
+
 function persistSettings(): void {
+  const json = serializeSettings(getActiveSettings());
   try {
-    localStorage.setItem(STORAGE_KEY, serializeSettings(getActiveSettings()));
+    localStorage.setItem(STORAGE_KEY, json);
   } catch {
     // Storage can be unavailable in private webviews; settings stay in memory.
   }
+  // Saved with the file as well, so the palette follows the model to another
+  // computer rather than living only on the machine that set it.
+  void writeWorkbookBrand(json).catch((error: unknown) => {
+    reportBrandStoreError(error, "save the brand to the workbook");
+  });
 }
 
 function loadSettings(): void {
@@ -447,6 +467,25 @@ function loadSettings(): void {
     raw = null;
   }
   setActiveSettings(readStoredSettings(raw));
+}
+
+// Boot, Excel only: a palette saved in the workbook wins over the machine
+// default loadSettings already applied. No setting means a workbook that never
+// carried a brand, which keeps that default rather than the shipped colors.
+async function adoptWorkbookBrand(): Promise<void> {
+  let json: string | null = null;
+  try {
+    json = await readWorkbookBrand();
+  } catch (error) {
+    reportBrandStoreError(error, "read the brand from the workbook");
+    return;
+  }
+
+  const stored = json === null ? null : parsePalette(json);
+  if (!stored) return;
+  setActiveSettings(stored);
+  renderBrand();
+  syncAutocolorOnEdit();
 }
 
 function renderBrand(): void {
@@ -880,6 +919,7 @@ Office.onReady(async ({ host }) => {
 
   registerCommands();
   syncAutocolorOnEdit();
+  void adoptWorkbookBrand();
 
   installLinksTab({
     guard,

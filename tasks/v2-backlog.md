@@ -24,7 +24,7 @@ each item. Stop when Daniel intervenes or the list is empty.
 - [ ] B5 Shapes inside groups: verify `Shape.group` / `ShapeGroup.shapes` availability on
       learn.microsoft.com (requirement set), scan recursively in `scanLinks`, fake-host group
       support, tests; document the floor.
-- [ ] B6 Brand settings per workbook: `workbook.settings["smt.brand.v1"]` with localStorage
+- [x] B6 Brand settings per workbook: `workbook.settings["smt.brand.v1"]` with localStorage
       fallback (user-gap #6); pure settings codec already exists in `src/settings.ts`.
 - [ ] B7 Ribbon coverage: expose the top 12 Excel actions as ribbon buttons through
       `manifest/spec.ts` (data change + icons reuse), validate both manifests.
