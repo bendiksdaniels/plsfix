@@ -63,7 +63,81 @@
         class="view"
         role="tabpanel"
         aria-labelledby="tab-links"
-      ></div>
+      >
+        <section aria-labelledby="links-heading">
+          <div class="section-heading compact">
+            <div>
+              <p class="kicker">THIS DECK</p>
+              <h2 id="links-heading">Linked objects</h2>
+            </div>
+            <button
+              id="refresh-links"
+              class="icon-button"
+              type="button"
+              aria-label="Refresh the link list"
+              title="Refresh"
+            >
+              ↻
+            </button>
+          </div>
+
+          <div class="link-actions" role="group" aria-label="Link actions">
+            <button
+              id="update-selected"
+              type="button"
+              title="Update every ticked link"
+            >
+              Update selected
+            </button>
+            <button
+              id="update-slide"
+              type="button"
+              title="Update every link on the slide of the first ticked link"
+            >
+              Update this slide
+            </button>
+            <button
+              id="update-all"
+              type="button"
+              title="Update every link in this deck"
+            >
+              Update all
+            </button>
+            <button
+              id="go-to-slide"
+              type="button"
+              title="Go to the slide of the first ticked link"
+            >
+              Go to slide
+            </button>
+          </div>
+
+          <table class="link-table">
+            <thead>
+              <tr>
+                <th scope="col" aria-label="Select"></th>
+                <th scope="col">Slide</th>
+                <th scope="col">Object</th>
+                <th scope="col">Source</th>
+                <th scope="col">Status</th>
+                <th scope="col">Updated</th>
+              </tr>
+            </thead>
+            <tbody id="link-rows"></tbody>
+          </table>
+          <p class="hint" id="links-empty">
+            No linked objects in this deck yet. Insert one from the Inbox.
+          </p>
+
+          <button id="break-selected" class="danger" type="button">
+            Break link
+          </button>
+          <p class="hint">
+            Anyone holding this deck can pull a linked picture for 7 days. Break
+            links before sending a deck outside.
+          </p>
+        </section>
+      </div>
 
       <div
         id="view-inbox"
@@ -71,7 +145,33 @@
         role="tabpanel"
         aria-labelledby="tab-inbox"
         hidden
-      ></div>
+      >
+        <section aria-labelledby="inbox-heading">
+          <div class="section-heading compact">
+            <div>
+              <p class="kicker">SENT FROM EXCEL</p>
+              <h2 id="inbox-heading">Waiting to insert</h2>
+            </div>
+            <button
+              id="refresh-inbox"
+              class="icon-button"
+              type="button"
+              aria-label="Refresh the inbox"
+              title="Refresh"
+            >
+              ↻
+            </button>
+          </div>
+          <div class="inbox-list" id="inbox-list"></div>
+          <p class="hint" id="inbox-unpaired" hidden>
+            Not paired: paste the link key from Excel &gt; Links &gt; Settings.
+          </p>
+          <p class="hint">
+            Insert puts the picture on the slide you are on. Items expire 24
+            hours after they are pushed.
+          </p>
+        </section>
+      </div>
 
       <div
         id="view-settings"
@@ -79,7 +179,38 @@
         role="tabpanel"
         aria-labelledby="tab-settings"
         hidden
-      ></div>
+      >
+        <section aria-labelledby="pairing-heading">
+          <div class="section-heading compact">
+            <div>
+              <p class="kicker">PAIRING</p>
+              <h2 id="pairing-heading">Link key</h2>
+            </div>
+          </div>
+          <label class="key-label" for="workspace-key">
+            Paste the link key
+            <input
+              id="workspace-key"
+              class="key-input"
+              type="text"
+              spellcheck="false"
+              autocomplete="off"
+              placeholder="Excel &gt; Links &gt; Settings &gt; Copy key"
+            />
+          </label>
+          <div class="io-row">
+            <button id="save-key" type="button">Save key</button>
+            <button id="forget-key" type="button">Forget key</button>
+          </div>
+          <p class="hint" id="workspace-state">
+            Not paired: paste the link key from Excel &gt; Links &gt; Settings
+          </p>
+          <p class="hint">
+            The key stays on this computer and opens the inbox items your team
+            pushes from Excel. The relay never sees it.
+          </p>
+        </section>
+      </div>
 
       <footer>
         <span class="privacy-dot"></span>
