@@ -193,3 +193,108 @@ export function buildFontCycle(settings: BrandSettings): string[] {
     settings.primary,
   ];
 }
+
+// ---------------------------------------------------------------------------
+// Border cycle: the looks a modeller draws on a block of a schedule, applied to
+// the edges of the SELECTION (and its interior lines) rather than to each cell.
+// ---------------------------------------------------------------------------
+
+export const BORDER_EDGE_NAMES = [
+  "top",
+  "bottom",
+  "left",
+  "right",
+  "insideHorizontal",
+  "insideVertical",
+] as const;
+
+export type BorderEdgeName = (typeof BORDER_EDGE_NAMES)[number];
+
+// One line of a border state: which edge of the selection it draws, and how.
+export interface BorderLine extends BorderSpec {
+  edge: BorderEdgeName;
+  weight: "thin" | "medium";
+}
+
+export type BorderCycleState = BorderLine[];
+
+// What the host reports for one edge. Excel spells these "Continuous", "Thin"
+// and "#282623", and hands back an empty style for a range whose cells disagree.
+export interface BorderReadout {
+  style: string;
+  weight: string;
+  color: string;
+}
+
+// Edges the host cannot report are left out: a single cell has no inside lines.
+export type BorderReadouts = Partial<Record<BorderEdgeName, BorderReadout>>;
+
+const NO_LINE = "none";
+const OUTLINE_EDGES: BorderEdgeName[] = ["top", "bottom", "left", "right"];
+
+// Six looks, in the order a schedule grows: nothing, the rule under a row, the
+// heavier total rule, the double result underline, a box around the block and
+// the full grid. Every line is drawn in the brand primary.
+export function buildBorderCycle(settings: BrandSettings): BorderCycleState[] {
+  const color = settings.primary;
+  const thin = (edge: BorderEdgeName): BorderLine => ({
+    edge,
+    style: "continuous",
+    weight: "thin",
+    color,
+  });
+  const outline = OUTLINE_EDGES.map(thin);
+
+  return [
+    [],
+    [thin("bottom")],
+    [{ edge: "bottom", style: "continuous", weight: "medium", color }],
+    [thin("top"), { edge: "bottom", style: "double", weight: "thin", color }],
+    outline,
+    [...outline, thin("insideHorizontal"), thin("insideVertical")],
+  ];
+}
+
+// Excel reports style, weight and colour in its own spelling ("Continuous",
+// "Thin"), so matching compares canonical forms the way number formats do.
+function canonicalBorder(value: string): string {
+  return value.trim().toLowerCase();
+}
+
+function drawnAs(line: BorderLine, read: BorderReadout): boolean {
+  if (canonicalBorder(read.style) !== line.style) return false;
+  if (canonicalBorder(read.color) !== canonicalBorder(line.color)) return false;
+  // A double rule is drawn at Excel's own weight, so only single rules match it.
+  return (
+    line.style === "double" || canonicalBorder(read.weight) === line.weight
+  );
+}
+
+function isState(state: BorderCycleState, current: BorderReadouts): boolean {
+  for (const edge of BORDER_EDGE_NAMES) {
+    const read = current[edge];
+    // An edge the host cannot report is no evidence against the state.
+    if (!read) continue;
+    const line = state.find((entry) => entry.edge === edge);
+    if (line ? !drawnAs(line, read) : canonicalBorder(read.style) !== NO_LINE) {
+      return false;
+    }
+  }
+  return true;
+}
+
+// The state the range is already in. Anything we did not draw - a hand-drawn
+// line, a range whose cells disagree - reads as state 1 (no borders), so the
+// next press starts our cycle instead of wiping a look we do not own. Matching
+// runs from the back because on a single cell a box and a grid are the same
+// drawing: the more specific state wins, and the cycle still comes home.
+export function matchBorderIndex(
+  current: BorderReadouts,
+  states: BorderCycleState[],
+): number {
+  for (let index = states.length - 1; index >= 0; index -= 1) {
+    const state = states[index];
+    if (state && isState(state, current)) return index;
+  }
+  return 0;
+}

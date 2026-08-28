@@ -318,6 +318,10 @@ button:disabled {
 .paste-strip {
   grid-template-columns: repeat(5, 1fr);
 }
+/* The style cycles carry one button more than the number-format strip. */
+.cycle-strip.style-strip {
+  grid-template-columns: repeat(6, 1fr);
+}
 
 .action-list {
   display: grid;

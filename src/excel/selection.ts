@@ -1,6 +1,6 @@
 // Selection formatting: presets, number formats and format-cycling (fill, font
-// color, row style, number). Every mutating action captures SMT Undo first and
-// enforces the selection cell cap before touching the grid.
+// color, row style, number, border). Every mutating action captures SMT Undo
+// first and enforces the selection cell cap before touching the grid.
 
 import {
   numberFormat,
@@ -14,13 +14,19 @@ import {
 } from "./shared";
 import { captureUndo } from "./undo";
 import {
+  BORDER_EDGE_NAMES,
+  type BorderCycleState,
+  type BorderEdgeName,
+  type BorderReadouts,
   type BorderSpec,
+  buildBorderCycle,
   buildFillCycle,
   buildFontCycle,
   buildNumberCycles,
   buildRowStyleCycles,
   type CellStyle,
   CLEAR_FILL,
+  matchBorderIndex,
   matchStyleIndex,
   nextInCycle,
   type NumberCycleFamily,
@@ -283,6 +289,98 @@ export async function applyFontColorCycle(): Promise<void> {
     await captureUndo(context, range);
 
     range.format.font.color = next;
+    await context.sync();
+  });
+}
+
+// Borders belong to the selection, not to the active cell: the state is read
+// from the range's own edges and written back to them.
+interface EdgeHandle {
+  edge: BorderEdgeName;
+  border: Excel.RangeBorder;
+}
+
+function borderIndexes(): Record<BorderEdgeName, Excel.BorderIndex> {
+  return {
+    top: Excel.BorderIndex.edgeTop,
+    bottom: Excel.BorderIndex.edgeBottom,
+    left: Excel.BorderIndex.edgeLeft,
+    right: Excel.BorderIndex.edgeRight,
+    insideHorizontal: Excel.BorderIndex.insideHorizontal,
+    insideVertical: Excel.BorderIndex.insideVertical,
+  };
+}
+
+// An inside line only exists where there is something between: asking a single
+// cell for one is an error in Excel, so those edges are left out entirely.
+function borderHandles(
+  range: Excel.Range,
+  rowCount: number,
+  columnCount: number,
+): EdgeHandle[] {
+  const indexes = borderIndexes();
+  return BORDER_EDGE_NAMES.filter((edge) => {
+    if (edge === "insideHorizontal") return rowCount > 1;
+    if (edge === "insideVertical") return columnCount > 1;
+    return true;
+  }).map((edge) => ({
+    edge,
+    border: range.format.borders.getItem(indexes[edge]),
+  }));
+}
+
+function readEdges(handles: EdgeHandle[]): BorderReadouts {
+  const readouts: BorderReadouts = {};
+  for (const { edge, border } of handles) {
+    // A range whose cells disagree reports nothing for that edge.
+    readouts[edge] = {
+      style: border.style ?? "",
+      weight: border.weight ?? "",
+      color: border.color ?? "",
+    };
+  }
+  return readouts;
+}
+
+function writeEdges(handles: EdgeHandle[], state: BorderCycleState): void {
+  for (const { edge, border } of handles) {
+    const line = state.find((entry) => entry.edge === edge);
+    // Edges this look does not draw are cleared, so stepping never leaves a
+    // line from the previous look behind.
+    if (!line) {
+      border.style = Excel.BorderLineStyle.none;
+      continue;
+    }
+    if (line.style === "double") {
+      // Excel draws a double rule at its own weight; setting one is refused.
+      border.style = Excel.BorderLineStyle.double;
+    } else {
+      border.style = Excel.BorderLineStyle.continuous;
+      border.weight =
+        line.weight === "medium"
+          ? Excel.BorderWeight.medium
+          : Excel.BorderWeight.thin;
+    }
+    border.color = line.color;
+  }
+}
+
+export async function applyBorderCycle(): Promise<void> {
+  await Excel.run(async (context) => {
+    const range = await selectionWithinCap(context, "Border cycling");
+    range.load("rowCount,columnCount");
+    await context.sync();
+
+    const handles = borderHandles(range, range.rowCount, range.columnCount);
+    for (const { border } of handles) border.load("style,color,weight");
+    await context.sync();
+
+    const states = buildBorderCycle(getActiveSettings());
+    const index = matchBorderIndex(readEdges(handles), states);
+    const next = states[(index + 1) % states.length];
+    await captureUndo(context, range);
+
+    if (next) writeEdges(handles, next);
     await context.sync();
   });
 }

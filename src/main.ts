@@ -3,6 +3,7 @@ import type { NumberCycleFamily, RowStyleKind } from "./cycles";
 import {
   addCagrLabel,
   activateSheet,
+  applyBorderCycle,
   applyDecimalStep,
   applyFillCycle,
   applyFontColorCycle,
@@ -261,6 +262,9 @@ async function dispatch(action: string): Promise<string> {
       case "cycle-font":
         await applyFontColorCycle();
         break;
+      case "cycle-border":
+        await applyBorderCycle();
+        break;
       case "clear-formats":
         await clearFormats();
         break;
@@ -401,6 +405,7 @@ function registerCommands(): void {
     SMT_CYC_ITEM: () => applyRowStyleCycle("item"),
     SMT_CYC_FILL: applyFillCycle,
     SMT_CYC_FONT: applyFontColorCycle,
+    SMT_CYC_BORDER: applyBorderCycle,
     SMT_WATERFALL: insertWaterfall,
     SMT_TORNADO: insertTornado,
     SMT_CHARTFMT: formatSelectedChart,

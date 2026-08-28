@@ -367,6 +367,87 @@ describe("style cycles", () => {
     await smt.applyFontColorCycle();
     expect(helpers.font("Model!A1").color).toBe(cycle[0]);
   });
+
+  // The border cycle draws on the selection's own edges, so the read-back is a
+  // map of cells: the outer band carries the box, the inner cells the grid.
+  describe("borders", () => {
+    const drawn = (weight = "Thin") => ({
+      style: "Continuous",
+      color: palette.primary,
+      weight,
+    });
+    const none = (address: string, edge: "top" | "bottom" | "left" | "right") =>
+      helpers.border(address, edge).style;
+
+    beforeEach(() => {
+      helpers.select("Model!B2:D4");
+    });
+
+    it("rules the bottom of the selection, then makes it a total", async () => {
+      await smt.applyBorderCycle();
+      for (const address of ["Model!B4", "Model!C4", "Model!D4"]) {
+        expect(helpers.border(address, "bottom")).toEqual(drawn());
+      }
+      expect(none("Model!B2", "top")).toBe("None");
+      expect(none("Model!B2", "bottom")).toBe("None");
+
+      await smt.applyBorderCycle();
+      expect(helpers.border("Model!C4", "bottom")).toEqual(drawn("Medium"));
+    });
+
+    it("draws the result line, then a box, then the grid, then clears", async () => {
+      await smt.applyBorderCycle();
+      await smt.applyBorderCycle();
+
+      await smt.applyBorderCycle();
+      expect(helpers.border("Model!C2", "top")).toEqual(drawn());
+      // A double rule keeps Excel's own weight, so only style and colour.
+      const result = helpers.border("Model!C4", "bottom");
+      expect(result.style).toBe("Double");
+      expect(result.color).toBe(palette.primary);
+
+      await smt.applyBorderCycle();
+      expect(helpers.border("Model!D2", "top")).toEqual(drawn());
+      expect(helpers.border("Model!D4", "bottom")).toEqual(drawn());
+      expect(helpers.border("Model!B3", "left")).toEqual(drawn());
+      expect(helpers.border("Model!D3", "right")).toEqual(drawn());
+      // A box has nothing inside it.
+      expect(none("Model!C3", "bottom")).toBe("None");
+      expect(none("Model!C3", "right")).toBe("None");
+
+      await smt.applyBorderCycle();
+      expect(helpers.border("Model!C3", "bottom")).toEqual(drawn());
+      expect(helpers.border("Model!C3", "right")).toEqual(drawn());
+      expect(helpers.border("Model!B2", "top")).toEqual(drawn());
+      expect(helpers.border("Model!D4", "right")).toEqual(drawn());
+
+      await smt.applyBorderCycle();
+      for (const address of ["Model!B2", "Model!C3", "Model!D4"]) {
+        for (const edge of ["top", "bottom", "left", "right"] as const) {
+          expect(none(address, edge)).toBe("None");
+        }
+      }
+    });
+
+    it("puts the borders it overwrote back", async () => {
+      await expectExactUndo(() => smt.applyBorderCycle());
+    });
+
+    it("boxes a single cell, which has no lines inside to draw", async () => {
+      helpers.select("Model!A1");
+      for (let press = 0; press < 4; press += 1) await smt.applyBorderCycle();
+
+      for (const edge of ["top", "bottom", "left", "right"] as const) {
+        expect(helpers.border("Model!A1", edge)).toEqual(drawn());
+      }
+
+      // A grid would look exactly like the box, so the cycle comes home instead.
+      await smt.applyBorderCycle();
+      for (const edge of ["top", "bottom", "left", "right"] as const) {
+        expect(none("Model!A1", edge)).toBe("None");
+      }
+    });
+  });
 });
 
 // ---------------------------------------------------------------------------
