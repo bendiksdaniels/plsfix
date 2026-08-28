@@ -25,11 +25,26 @@ export interface GroupSpec {
   buttons: ButtonSpec[];
 }
 
+// Excel custom functions (=SMT.ROUND, =SMT.ROUNDSUM): the script and the
+// registration JSON Office loads, plus the namespace it prefixes to every
+// function name. They run in the pane's own shared runtime, so there is no
+// second runtime and no second page - docs/research/custom-functions.md.
+export interface CustomFunctionsSpec {
+  namespace: string;
+  namespaceResid: string;
+  scriptFile: string;
+  scriptResid: string;
+  metadataFile: string;
+  metadataResid: string;
+}
+
 export interface HostSpec {
   name: "Workbook" | "Presentation";
   page: string; // pane html served from baseUrl
   urlResid: string; // resource id of the pane URL
   taskpaneId: string;
+  // Excel only: PowerPoint has no custom functions.
+  customFunctions?: CustomFunctionsSpec;
   groups: GroupSpec[];
 }
 
@@ -73,6 +88,14 @@ export const WORKBOOK_HOST: HostSpec = {
   page: "taskpane.html",
   urlResid: "SMT.Taskpane.Url",
   taskpaneId: "SMT.Taskpane",
+  customFunctions: {
+    namespace: "SMT",
+    namespaceResid: "SMT.Functions.Namespace",
+    scriptFile: "functions.js",
+    scriptResid: "SMT.Functions.Script.Url",
+    metadataFile: "functions.json",
+    metadataResid: "SMT.Functions.Metadata.Url",
+  },
   groups: [
     {
       id: "SMT.Group.Tools",
