@@ -218,7 +218,7 @@ large-file performance are the two loudest trust complaints — both are v1 qual
 7. **Quick CAGR, sign flip, decimals steppers, IFERROR unwrap/custom value**.
 8. **Workbook TOC + Explorer pane + name scrubber**.
 
-## Proposed ROADMAP.md deltas — Awaiting Daniel's sign-off; ROADMAP.md is hand-curated
+## Proposed ROADMAP.md deltas: awaiting Daniel's sign-off; ROADMAP.md is hand-curated
 
 Milestone 1 is now fully shipped at v1.1. Already-checked M1 lines aren't relisted; every line
 still unchecked in `ROADMAP.md` is done:
