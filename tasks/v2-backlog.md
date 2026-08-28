@@ -9,7 +9,7 @@ each item. Stop when Daniel intervenes or the list is empty.
 
 ## Hardening (v2.0.x)
 
-- [ ] B1 Split `src/excel/link-anchors.ts` (396 lines): move the relay round trip
+- [x] B1 Split `src/excel/link-anchors.ts` (396 lines): move the relay round trip
       (`pushPayload`, `announce`, `publish` rollback) into `src/excel/link-record.ts`; tests unchanged.
 - [ ] B2 Dedupe helpers: `relativeTime` (ppt/views.ts + pane/links-tab.ts) -> `src/ui/time.ts`;
       clipboard copy (ui/toast.ts private + pane/links-tab.ts) -> `src/ui/clipboard.ts`; unit tests.
