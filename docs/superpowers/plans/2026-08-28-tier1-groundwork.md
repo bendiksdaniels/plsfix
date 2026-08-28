@@ -18,6 +18,7 @@
 - Commit messages: terse, lower-case, Daniel's voice, NO Co-Authored-By trailer (e.g. `split excel.ts into src/excel/`).
 - Node 22+ (Daniel runs Node 25). Dev manifest sideload is Mac-only (`office-addin-debugging`).
 - Daniel's Excel `wef` file `~/Library/Containers/com.microsoft.Excel/Data/Documents/wef/FF1B34D8-DD7D-4B39-8FA9-6248CA09DB6E.manifest.xml` is a HARD LINK to the repo's `manifest.xml` today. Task 3 replaces it with a plain copy of `manifest.prod.xml` BEFORE any task rewrites `manifest.xml`. Generators must write files via a temp file + rename (never truncate in place).
+- Code structure (CLAUDE.md): every source file opens with a 2-4 line header comment (purpose, what it owns, key invariant); files at most 400 lines, functions at most 50 lines, one concept per file; tests mirror modules by name; errors carry stage + identifier ("export Model!B4:F12: ...", "relay PUT /api/links/<id8>: 413"); a task that adds, moves or renames a module updates the `## Map` in `CLAUDE.md` in the same commit (drop its "(planned)" marker or add its line). Existing oversized files (`src/main.ts`, `test/fakehost.ts`) are not mass-refactored.
 - Execution order: Task 1 alone first; Tasks 2, 4, 6 in parallel worktrees; Task 5 last (it reformats every file).
 
 ---
