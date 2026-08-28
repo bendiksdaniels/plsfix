@@ -1,78 +1,49 @@
-# AUTORESUME - Model Tools (PARKED 2026-08-28)
+# AUTORESUME - Model Tools (v2.0.0 LIVE 2026-08-29)
 
-## State: v1.1.0, HOSTED LIVE at dbautomatizacijas.com/modelis/, project parked by Daniel
+## State
 
-PARKED 28.08 ("close this project for now") with two open gates, both Daniel's:
-1. Visual pass in Excel - calendar event on his Mac (Work calendar, Fri 28.08 19:00):
-   quit Excel fully, reopen, the add-in's tab loads from the server (prod manifest already in
-   the wef folder - nothing to run). Checklist in tasks/v1-plan.md "Remaining for
-   launch". Report anything odd; fixes are cheap.
-2. M365 centralized deployment for the team (admin.microsoft.com > Settings >
-   Integrated apps > Upload custom apps > Office Add-in > manifest.prod.xml > assign
-   group; 24-72h propagation). Then tag v1.1.0.
-On resume: read this file, then tasks/v1-plan.md; suite side is in
-the hosting gateway (key modelis, deploy.sh modelis).
+v2.0.0 is deployed at dbautomatizacijas.com/modelis/ (`/version` -> 2.0.0): Excel pane with the
+new **Links** tab, PowerPoint pane (`pptpane.html`), and the end-to-end encrypted link relay
+(`/api/links`, `/api/inbox`, sqlite at `/opt/plsfix/data`). `npm run check` green on
+main (334 vitest, 17 cargo, tsc, eslint, prettier, manifest and version gates); GitHub Actions
+runs the same gate. Tag `v2.0.0`.
 
-- HOSTING LIVE (Daniel: "make it easier to show up"): Rust static host `server/`
-  (axum :8804) serves dist/ on the suite as key `modelis` (hidden, no sidebar
-  injection); Cloudflare Access BYPASS app for the path (Office webviews cannot pass
-  Access) - verified publicly, /excel/ still gated. Deploy: `deploy.sh modelis`
-  (builds pane on the Mac, rebuilds host on the VPS). Daniel's wef folder now carries
-  manifest.PROD: every fresh Excel launch loads the add-in from the server, no local
-  servers. CAUTION: `npm stop` deletes the wef entry - re-copy manifest.prod.xml
-  after dev sessions. Remaining: M365 admin upload (steps in tasks/v1-plan.md) +
-  Daniel's visual pass after a full Excel restart.
+Design: `docs/superpowers/specs/2026-08-28-ppt-links-design.md`. Plans (all tasks done):
+`docs/superpowers/plans/2026-08-28-tier1-groundwork.md`, `2026-08-28-ppt-links.md`.
+Execution ledgers (git-ignored, rulings + per-task spend): `.superpowers/sdd/*/progress.md`.
 
-- Repo `~/plsfix` (Desktop symlink), git local-only, tree clean.
-- FULL CRASH DEBUG done (Daniel: "find where it crashes"): the crash was npm start
-  sideloading Excel before the dev server was up (no dev_server_port config ->
-  office-addin-debugging never waits) plus vite binding IPv6-only on Node 25. Both
-  fixed (package.json config block; dns ipv4first in vite.config.ts) and verified
-  headlessly with `npm start -- --no-sideload`. Everything else ruled out: manifest +
-  shortcuts clean, pane boots in a real browser, and src/excel.ts is PROVEN free of
-  unloaded reads (strict-load fake host + 60-load mutation sweep). Details in
-  tasks/v1-plan.md "Full crash debug".
-- All 8 v1 chunks shipped (see tasks/v1-plan.md for per-chunk detail): shared runtime +
-  ribbon + 34 shortcuts, format cycles, autocolor v2 + color key, audit overlay + Smart
-  Track, SMT Undo + paste suite + fast fill, native waterfall + chart tools, Workbook tab
-  (TOC, sheet explorer, name scrubber), launch polish.
-- Verification: 219 vitest green = 102 pure-logic + 110 end-to-end + 7 instrument
-  tests. The integration suite now runs under STRICT LOAD SEMANTICS
-  (test/fakehost.ts enableStrictLoadSemantics(): scalar proxy reads throw
-  PropertyNotLoaded unless loaded AND synced, like real Excel) - load-ordering is no
-  longer an unverified class. Earlier: 5 review passes + final sweep; fake host caught
-  2 real bugs fixed in v1.0.1. `npm run build` + both manifest validations green.
-- NOT verified (needs real Excel, ~10 min when Daniel has the machine free): waterfall
-  rendering + one manual "Set as Total", shortcut conflict dialogs (Ctrl+Shift+V/Z/C and
-  format keys - deliberate UpSlide-style shadowing), write payload size on huge
-  selections, multi-area selections, copyFrom relative-ref rewrite.
+## Open gates (Daniel)
 
-## Next actions (all Daniel-gated)
+1. Real-Office pass (spec section 11, ~20 min): export a range + a chart from a model, insert
+   in a deck from the PowerPoint Inbox, move/resize, insert rows above the source, change
+   numbers, Push, Update all -> pictures refresh in place; delete the source rows -> "source
+   missing"; wrong link key -> empty inbox + clear toast; deck without the add-in -> plain
+   pictures. Dev loop: `npm start` (Excel) and `npm run start:ppt` (PowerPoint) against a local
+   relay (`MODELIS_DATA=./data cargo run --manifest-path server/Cargo.toml`; vite proxies
+   `/api`), or straight against production with the prod manifests in wef.
+2. The spike (plan Task 18, ~1 h): tags survive save/reopen, cut/paste, duplicate slide, copy
+   to another deck; `Range.getImage` orientation + pixel density on Mac; `OfficeRuntime.storage`
+   shared across hosts (would make pairing automatic); team PowerPoint builds vs PowerPointApi
+   1.8. Findings go to `docs/research/officejs-feasibility.md`.
+3. M365 centralized deployment: upload `manifest.prod.xml` (now two hosts) in the admin
+   center (steps in `tasks/v1-plan.md`); the v1 Excel-only upload never happened, so this is
+   the first upload. JS-only updates afterwards need no admin action.
+4. v1 visual pass in Excel is still unconfirmed (calendar 28.08 19:00).
 
-1. Sideload pass: `cd ~/plsfix && npm start` - checklist in tasks/v1-plan.md
-   "Remaining for launch". Report anything odd; fixes are cheap.
-2. Hosting: pick suite path key (proposal /modelis/), EXCLUDE it from Cloudflare Access
-   (auth walls break panes - docs/research/launch-path.md), deploy dist/ + shortcuts.json
-   + icons to the suite host, swap manifest.prod.xml if the key differs.
-3. M365 centralized deployment: admin center > Integrated apps > Add-ins > Upload Custom
-   Apps (manifest.prod.xml), assign to a group. 24-72h propagation. JS-only updates need
-   no admin action afterward.
-4. git tag v1.0.1 + GitHub remote (none exists yet) when Daniel wants it.
-5. Later/AppSource: needs real support + privacy pages first (research file has the
-   rejection checklist). v1.x feature candidates: docs/FEATURES.md section 11 (SMT.ROUND,
-   reconciliation solver, tornado, unpivot).
+## Known limits / deferred (from reviews)
 
-## Gotchas for the next session
+- Shapes inside groups are not scanned; "Update this slide" uses the first ticked row's slide;
+  Source column ellipsised under ~420 px; no revert of a refresh (relay keeps 2 revs, UI only).
+- `src/excel/link-anchors.ts` is at 396/400 lines: split before the next change
+  (`link-record.ts` for the relay round trip). `src/main.ts` remains oversized (pre-existing).
+- Pairing is a pasted link key; Entra SSO (Milestone 4) can replace it behind `KeyStore`.
+- Native PowerPoint tables (`kind: "table"`), change-source, auto-push on edit: v2.1
+  candidates (spec section 1).
 
-- README.md + ROADMAP.md are Daniel's hand-curated files - surgical edits only.
-- `.claude/` is gitignored and vitest include is pinned (agent worktrees nest inside the
-  repo; never `git add -A` with an un-ignored worktree present).
-- Excel read-back is never exact-matched without canonicalization (cycles.ts
-  canonicalNumberFormat); [hidden] needs the !important reset (styles.css); full lesson
-  list in tasks/lessons.md.
-- manifest.xml carries duplicated V1_0 + nested V1_1 blocks - edit BOTH or they drift.
-- Versioning: patch per reviewed merge, footer shows v1.0.001-style, manifest stays
-  4-part (1.0.0.0).
-- Builder-agent pattern that worked: opus worktree agents, one chunk each, merged
-  sequentially with gates; keep-both conflict resolution can chop function tails - check
-  tsc after every merge.
+## Gotchas
+
+- Manifests are generated (`npm run manifest:build`); `npm stop`/`stop:ppt` restore the prod
+  manifest into wef. The wef file is a plain copy (no hard link) since 28.08.
+- `typescript` is aliased to the TS 6 shim for typescript-eslint; `@typescript/native` is TS 7.
+- The gateway's deploy rsync excludes `/data` (relay sqlite); `install -d` creates it.
+- Deploy audit shows pre-existing drift in OTHER tools (r2e engine, teaser HANDOFF), not modelis.
