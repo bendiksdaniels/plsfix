@@ -38,6 +38,7 @@ export interface FakePptOptions {
 
 export interface FakePptHelpers {
   selectSlide(id: string): void;
+  clearSelection(): void;
   setSupported(check: (set: string, version: string) => boolean): void;
   storage(): Map<string, string>;
   insertedViaSelection(): SelectionInsert[];

@@ -1,7 +1,8 @@
 // The only PowerPoint Office.js code: scan the deck for shapes carrying the
 // link tags, insert a linked picture, repaint one in place (or reinsert it on
-// hosts below PowerPointApi 1.8) and break a link by dropping its tags.
-// Identity is always the SMT_LINK tag - never a shape id, name or position.
+// hosts below PowerPointApi 1.8), break a link by dropping its tags, and read
+// or set which slide is active. Identity is always the SMT_LINK tag - never a
+// shape id, name or position.
 
 import {
   decodeTag,
@@ -122,16 +123,29 @@ function tagFor(
   };
 }
 
+async function readSelectedSlideId(
+  context: PowerPoint.RequestContext,
+): Promise<string | null> {
+  const selected = context.presentation.getSelectedSlides();
+  selected.load("items/id");
+  await context.sync();
+  return selected.items[0]?.id ?? null;
+}
+
 async function selectedSlideId(
   context: PowerPoint.RequestContext,
   stage: string,
 ): Promise<string> {
-  const selected = context.presentation.getSelectedSlides();
-  selected.load("items/id");
-  await context.sync();
-  const id = selected.items[0]?.id;
+  const id = await readSelectedSlideId(context);
   if (!id) throw new Error(`${stage}: select a slide first.`);
   return id;
+}
+
+// What "Update this slide" acts on: PowerPoint's own selection, not a tick in
+// the pane - the pane cannot see the selection any other way. Null when
+// nothing is selected, so the caller can say so instead of guessing a slide.
+export async function activeSlideId(): Promise<string | null> {
+  return PowerPoint.run((context) => readSelectedSlideId(context));
 }
 
 // Picture inserted through the selection API (hosts without fill.setImage):

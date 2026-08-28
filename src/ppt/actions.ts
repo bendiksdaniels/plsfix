@@ -39,15 +39,10 @@ export function selectedRows(
   return rows.filter((row) => selected.has(rowKey(row.found)));
 }
 
-// "Update this slide" reads the slide off the first ticked row: the pane cannot
-// see PowerPoint's own selection, and the tick is what the user pointed at.
-export function slideRows(
-  rows: LinkRow[],
-  selected: ReadonlySet<string>,
-): LinkRow[] {
-  const first = selectedRows(rows, selected)[0];
-  if (first === undefined) return [];
-  return rows.filter((row) => row.found.slideId === first.found.slideId);
+// "Update this slide" acts on the slide PowerPoint reports as active (see
+// host.ts activeSlideId), never a tick: which rows sit on it is pure lookup.
+export function slideRows(rows: LinkRow[], slideId: string): LinkRow[] {
+  return rows.filter((row) => row.found.slideId === slideId);
 }
 
 // Only keys still in the deck survive a rescan: a shape someone deleted, or a
