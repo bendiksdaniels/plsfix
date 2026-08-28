@@ -5,7 +5,7 @@
 
 import type { InboxItem } from "../link/model";
 import type { LinkStatus } from "../link/status";
-import { relativeTime } from "../ui/time";
+import { NEVER, relativeStamp, relativeTime } from "../ui/time";
 
 export interface LinkRowView {
   key: string;
@@ -148,8 +148,6 @@ function inboxRow(
 // The workbook it came from plus how long it has waited: the label above
 // already names the sheet and range.
 function inboxMeta(item: InboxItem): string {
-  const sent = Date.parse(item.createdAt) / 1000;
-  return Number.isFinite(sent)
-    ? `${item.src.workbook} · ${relativeTime(sent)}`
-    : item.src.workbook;
+  const age = relativeStamp(item.createdAt);
+  return age === NEVER ? item.src.workbook : `${item.src.workbook} · ${age}`;
 }

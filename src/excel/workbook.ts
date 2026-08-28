@@ -2,6 +2,7 @@
 // activate) and the broken-name scrubber. The TOC sheet is rewritten in full on
 // every run and only ever touches a sheet it marked as its own (the A1 marker).
 
+import { ANCHOR_PREFIX } from "../link/model";
 import { activeTheme, getActiveSettings } from "../settings";
 import { brokenNames, tocRows } from "../workbook";
 
@@ -160,12 +161,17 @@ function loadNames(context: Excel.RequestContext): Excel.NamedItemCollection {
   return names;
 }
 
+// A link anchor whose rows were deleted is a #REF! hidden name by design: the
+// Links tab reports it as "Source missing" and owns its removal, and deleting
+// it here would cut a link the modeller could still heal by undoing the delete.
 function brokenIn(names: Excel.NamedItemCollection): string[] {
   return brokenNames(
-    names.items.map((item) => ({
-      name: item.name,
-      formula: typeof item.formula === "string" ? item.formula : "",
-    })),
+    names.items
+      .filter((item) => !item.name.startsWith(ANCHOR_PREFIX))
+      .map((item) => ({
+        name: item.name,
+        formula: typeof item.formula === "string" ? item.formula : "",
+      })),
   );
 }
 

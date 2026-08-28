@@ -12,7 +12,7 @@ import {
 } from "../link/model";
 import type { RelayApi } from "../link/relay";
 import type { Workspace } from "../link/workspace";
-import { SELECTION_CELL_CAP } from "./internal";
+import { SELECTION_CELL_CAP, selectedSingleRange } from "./internal";
 import {
   createChartAnchor,
   createRangeAnchor,
@@ -22,6 +22,7 @@ import {
   readRegistry,
   refuseAnchoredChart,
   releaseAnchor,
+  renderAnchored,
   renderSource,
   requireImageApi,
   resolveSource,
@@ -62,7 +63,7 @@ export async function exportSelection(
   const workbook = await workbookName();
   return Excel.run(async (context) => {
     const registry = await readRegistry(context);
-    const range = context.workbook.getSelectedRange();
+    const range = await selectedSingleRange(context, "export");
     range.load("address,cellCount,worksheet/name");
     await context.sync();
     if (range.cellCount > SELECTION_CELL_CAP) {
@@ -79,21 +80,17 @@ export async function exportSelection(
     };
     const id = newLinkId(randomBytes);
     const anchor = anchorName(id);
-    // Anchor and picture in one batch, before any network call: a selection
-    // that changes during the upload cannot make the two describe different
-    // objects.
-    const named = createRangeAnchor(context, range, anchor);
-    const png = await renderSource(context, resolved);
-
     const src = sourceOf(workbook, anchor, resolved);
     const entry = newEntry(id, "range", anchor, sourceLabel(src, "range"));
-    const link: NewLink = {
-      entry,
-      src,
-      png,
-      registry,
-      release: () => named.delete(),
-    };
+    // Anchor and picture in one batch, before any network call: a selection
+    // that changes during the upload cannot make the two describe different
+    // objects. The render owns the anchor from here on, so a picture that
+    // never arrives takes the name with it.
+    const named = createRangeAnchor(context, range, anchor);
+    const release = () => named.delete();
+    const png = await renderAnchored(context, resolved, entry.label, release);
+
+    const link: NewLink = { entry, src, png, registry, release };
     await publish(context, link, ws, relay);
     return { id, label: entry.label };
   });
@@ -141,18 +138,16 @@ export async function exportActiveChart(
     };
     const id = newLinkId(randomBytes);
     const anchor = anchorName(id);
-    createChartAnchor(chart, anchor);
-    const png = await renderSource(context, resolved);
-
     const src = sourceOf(workbook, anchor, resolved);
     const entry = newEntry(id, "chart", anchor, sourceLabel(src, "chart"));
-    const link: NewLink = {
-      entry,
-      src,
-      png,
-      registry,
-      release: () => createChartAnchor(chart, previousName),
-    };
+    // The rename commits with the batch that asks for the picture, so a render
+    // that fails has to give the chart its own name back: an SMT_LINK_ chart no
+    // registry entry claims is one the modeller cannot export again.
+    createChartAnchor(chart, anchor);
+    const release = () => createChartAnchor(chart, previousName);
+    const png = await renderAnchored(context, resolved, entry.label, release);
+
+    const link: NewLink = { entry, src, png, registry, release };
     await publish(context, link, ws, relay);
     return { id, label: entry.label };
   });
@@ -213,6 +208,25 @@ export async function pushLinks(
   });
 }
 
+// Anchors are searched on every worksheet, hidden ones included, but Excel
+// refuses to activate a sheet that is hidden: a linked range on a hidden calc
+// sheet would fail the sync with a bare InvalidOperation.
+async function requireVisibleSheet(
+  context: Excel.RequestContext,
+  resolved: ResolvedSource,
+  label: string,
+): Promise<void> {
+  const sheet =
+    resolved.kind === "range"
+      ? resolved.range.worksheet
+      : resolved.chart.worksheet;
+  sheet.load("name,visibility");
+  await context.sync();
+  if (sheet.visibility !== Excel.SheetVisibility.visible) {
+    throw new Error(`go to source ${label}: sheet "${sheet.name}" is hidden`);
+  }
+}
+
 export async function goToSource(id: string): Promise<void> {
   await Excel.run(async (context) => {
     const registry = await readRegistry(context);
@@ -221,6 +235,7 @@ export async function goToSource(id: string): Promise<void> {
     if (resolved === null) {
       throw new Error(`go to source ${entry.label}: source missing`);
     }
+    await requireVisibleSheet(context, resolved, entry.label);
     if (resolved.kind === "range") {
       // Excel refuses to select on a sheet that is not the active one.
       resolved.range.worksheet.activate();
@@ -233,14 +248,18 @@ export async function goToSource(id: string): Promise<void> {
   });
 }
 
+// The relay copy is revoked first. A revoke that fails throws before anything
+// local moves, so the entry - and the token the revoke needs - is still there
+// to try again with; the other order leaves the relay serving a picture the
+// workbook no longer knows how to withdraw.
 export async function removeLink(id: string, relay: RelayApi): Promise<void> {
   await Excel.run(async (context) => {
     const registry = await readRegistry(context);
     const entry = entryOf(registry, id, "remove");
+    await forget(entry, relay);
     await releaseAnchor(context, entry);
     registry.links = registry.links.filter((link) => link.id !== id);
     writeRegistry(context, registry);
     await context.sync();
-    await forget(entry, relay);
   });
 }

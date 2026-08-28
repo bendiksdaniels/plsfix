@@ -43,6 +43,7 @@ const REPORT_CONTEXT = { host: "PowerPoint", version: APP_VERSION };
 const NOT_PAIRED =
   "Not paired: paste the link key from Excel > Links > Settings";
 const PAIR_FIRST = "Paste the link key in Settings";
+const NOT_CONNECTED = "PowerPoint is not connected.";
 
 const getElement = <T extends HTMLElement>(id: string): T => {
   const element = document.getElementById(id);
@@ -94,7 +95,7 @@ function toggleSelection(key: string, isSelected: boolean): void {
 function renderInboxView(): void {
   const paired = workspace !== null;
   renderInbox(inboxList, inboxItems, (item) => {
-    void guard(() => insertItem(item), "insert-link");
+    act(() => insertItem(item), "insert-link");
   });
   inboxList.hidden = !paired;
   inboxUnpaired.hidden = paired;
@@ -132,6 +133,20 @@ const guard = makeGuard({
     stagedDetails = undefined;
   },
 });
+
+// Set once Office.onReady has confirmed PowerPoint and PowerPointApi 1.5.
+let ready = false;
+
+// Every button is live from the first paint, so a click during a cold boot - or
+// in a deck on a PowerPoint the pane rejected - would reach PowerPoint.run and
+// toast a raw "Cannot read properties of undefined". Every handler starts here
+// instead, and the connection badge is not the only thing that says so.
+function act(run: () => Promise<string>, action: string): void {
+  void guard(async () => {
+    if (!ready) throw new Error(NOT_CONNECTED);
+    return run();
+  }, action);
+}
 
 // ---------------------------------------------------------------------------
 // Links
@@ -293,14 +308,14 @@ const BUTTON_ACTIONS: Record<string, () => Promise<string>> = {
 
 for (const [id, run] of Object.entries(BUTTON_ACTIONS)) {
   getElement<HTMLButtonElement>(id).addEventListener("click", () => {
-    void guard(run, id);
+    act(run, id);
   });
 }
 
 workspaceKey.addEventListener("keydown", (event) => {
   if (event.key !== "Enter") return;
   event.preventDefault();
-  void guard(saveKey, "save-key");
+  act(saveKey, "save-key");
 });
 
 renderLinks();
@@ -350,6 +365,7 @@ Office.onReady(async ({ host }) => {
 
   connectionStatus.textContent = "PowerPoint connected";
   connectionStatus.className = "connection ready";
+  ready = true;
 
   await bootStep(loadPairing, "load-key");
   await bootStep(reloadLinks, "refresh-links");

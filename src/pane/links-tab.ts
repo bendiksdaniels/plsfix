@@ -21,15 +21,17 @@ import {
 } from "../link/workspace";
 import { copyText } from "../ui/clipboard";
 import type { Guard } from "../ui/guard";
-import { relativeTime } from "../ui/time";
 import type { Toast } from "../ui/toast";
+import { messageRow, renderWorkbookLinks } from "./links-list";
 
-const EMPTY_MESSAGE = "No linked objects in this workbook yet.";
-const MISSING_BADGE = "Source missing";
+export { renderWorkbookLinks };
+
 const NO_KEY = "No link key yet.";
+const KEY_UNREADABLE = "Could not read the link key on this computer.";
 const NO_KEY_ERROR = "Generate a link key first (Links > Settings).";
 const NO_SELECTION_ERROR = "Select a link in the list first.";
-const ROW_COLUMNS = 3;
+// Enough of the key to tell two apart, never enough to pair a deck with.
+const KEY_EDGE = 4;
 
 export interface LinksTabDeps {
   guard: Guard;
@@ -45,10 +47,16 @@ interface Tab {
   deps: LinksTabDeps;
   list: HTMLTableSectionElement;
   keyDisplay: HTMLElement;
+  reveal: HTMLButtonElement;
+  generate: HTMLButtonElement;
   buttons: HTMLButtonElement[];
   rows: WorkbookLinkRow[];
   selected: Set<string>;
   workspace: Workspace | null;
+  // Why the stored key could not be read. Null covers both "read fine" and
+  // "nothing stored"; those two are told apart by workspace.
+  keyError: string | null;
+  revealed: boolean;
 }
 
 export function installLinksTab(deps: LinksTabDeps): {
@@ -58,11 +66,22 @@ export function installLinksTab(deps: LinksTabDeps): {
     deps,
     list: element(deps.root, "workbook-links"),
     keyDisplay: element(deps.root, "workspace-key-display"),
+    reveal: element(deps.root, "reveal-key"),
+    generate: element(deps.root, "generate-key"),
     buttons: [],
     rows: [],
     selected: new Set(),
     workspace: null,
+    keyError: null,
+    revealed: false,
   };
+
+  // Local and instant: showing the key touches neither Office nor the store,
+  // so it stays out of the guard and out of the busy state.
+  tab.reveal.addEventListener("click", () => {
+    tab.revealed = !tab.revealed;
+    renderKey(tab);
+  });
 
   wire(tab, "export-selection", () => exportRange(tab));
   wire(tab, "export-chart", () => exportChart(tab));
@@ -75,27 +94,14 @@ export function installLinksTab(deps: LinksTabDeps): {
   wirePush(tab, "push-all", true);
 
   // Links are added and sources deleted without the pane hearing about it, so
-  // the list is read again whenever the tab comes into view.
+  // the list is read again whenever the tab comes into view - and a key read
+  // that failed gets another go before "Generate" is offered back.
   element(deps.root, "tab-links").addEventListener("click", () => {
-    void refresh(tab);
+    void reload(tab);
   });
 
   void boot(tab);
   return { refresh: () => refresh(tab) };
-}
-
-export function renderWorkbookLinks(
-  body: HTMLTableSectionElement,
-  rows: WorkbookLinkRow[],
-  selected: Set<string>,
-  onToggle: (id: string, on: boolean) => void,
-): void {
-  body.replaceChildren();
-  if (rows.length === 0) {
-    body.append(messageRow(EMPTY_MESSAGE));
-    return;
-  }
-  for (const row of rows) body.append(linkRow(row, selected, onToggle));
 }
 
 // ---------------------------------------------------------------------------
@@ -103,9 +109,29 @@ export function renderWorkbookLinks(
 // ---------------------------------------------------------------------------
 
 async function boot(tab: Tab): Promise<void> {
-  tab.workspace = await loadWorkspace(tab.deps.keyStore).catch(() => null);
-  renderKey(tab);
+  await loadKey(tab);
   await refresh(tab);
+}
+
+async function reload(tab: Tab): Promise<void> {
+  if (tab.keyError !== null) await loadKey(tab);
+  await refresh(tab);
+}
+
+// A key that cannot be READ is not a workbook without one: answering a storage
+// failure with "No link key yet." invites the modeller to generate a new key,
+// which unpairs every deck holding the old one. The reason is shown instead,
+// and "Generate" stays off until a read succeeds.
+async function loadKey(tab: Tab): Promise<void> {
+  try {
+    tab.workspace = await loadWorkspace(tab.deps.keyStore);
+    tab.keyError = null;
+  } catch (error) {
+    tab.workspace = null;
+    tab.keyError = error instanceof Error ? error.message : String(error);
+    tab.deps.toast.show(KEY_UNREADABLE, "error", tab.keyError);
+  }
+  renderKey(tab);
 }
 
 // Never rejects: every action ends with a refresh, and a list that cannot be
@@ -128,7 +154,25 @@ async function refresh(tab: Tab): Promise<void> {
 }
 
 function renderKey(tab: Tab): void {
-  tab.keyDisplay.textContent = tab.workspace?.exportKey ?? NO_KEY;
+  const key = tab.workspace?.exportKey ?? null;
+  tab.keyDisplay.textContent = keyText(tab, key);
+  tab.reveal.textContent = tab.revealed ? "Hide" : "Reveal";
+  tab.reveal.disabled = key === null;
+  applyKeyState(tab);
+}
+
+// The key is the secret itself - it opens every picture this workbook pushes -
+// so the panel shows only enough to tell two keys apart and leaves "Copy" as
+// the route to the whole value.
+function keyText(tab: Tab, key: string | null): string {
+  if (tab.keyError !== null) return KEY_UNREADABLE;
+  if (key === null) return NO_KEY;
+  if (tab.revealed) return key;
+  return `${key.slice(0, KEY_EDGE)}…${key.slice(-KEY_EDGE)}`;
+}
+
+function applyKeyState(tab: Tab): void {
+  tab.generate.disabled = tab.keyError !== null;
 }
 
 function unreadable(error: unknown): string {
@@ -195,6 +239,8 @@ async function removeSelected(tab: Tab): Promise<string> {
 
 async function generateKey(tab: Tab): Promise<string> {
   tab.workspace = await createWorkspace(tab.deps.keyStore);
+  tab.keyError = null;
+  tab.revealed = false;
   renderKey(tab);
   return "Link key generated. Paste it in PowerPoint.";
 }
@@ -207,11 +253,13 @@ async function copyKey(tab: Tab): Promise<string> {
 async function forgetKey(tab: Tab): Promise<string> {
   await forgetWorkspace(tab.deps.keyStore);
   tab.workspace = null;
+  tab.revealed = false;
   renderKey(tab);
   return "Link key forgotten on this computer.";
 }
 
 function requireWorkspace(tab: Tab): Workspace {
+  if (tab.keyError !== null) throw new Error(KEY_UNREADABLE);
   if (tab.workspace === null) throw new Error(NO_KEY_ERROR);
   return tab.workspace;
 }
@@ -265,82 +313,13 @@ async function guarded(
 
 function setBusy(tab: Tab, busy: boolean): void {
   for (const button of tab.buttons) button.disabled = busy;
+  // Busy owns every button while it runs; the key panel owns "Generate" again
+  // the moment it lets go.
+  if (!busy) applyKeyState(tab);
 }
 
 function element<T extends Element>(root: ParentNode, id: string): T {
   const found = root.querySelector<T>(`#${id}`);
   if (!found) throw new Error(`Missing element #${id}`);
   return found;
-}
-
-// ---------------------------------------------------------------------------
-// Rendering
-// ---------------------------------------------------------------------------
-
-// One full-width cell, used for both the empty list and a list that could not
-// be read: the table itself says why rather than a toast that fades.
-function messageRow(text: string): HTMLTableRowElement {
-  const tr = document.createElement("tr");
-  const cell = document.createElement("td");
-  cell.className = "wl-empty";
-  cell.colSpan = ROW_COLUMNS;
-  cell.textContent = text;
-  tr.append(cell);
-  return tr;
-}
-
-function linkRow(
-  row: WorkbookLinkRow,
-  selected: Set<string>,
-  onToggle: (id: string, on: boolean) => void,
-): HTMLTableRowElement {
-  const { entry } = row;
-  const tr = document.createElement("tr");
-  tr.dataset.linkId = entry.id;
-
-  const pick = document.createElement("td");
-  pick.className = "wl-pick";
-  const box = document.createElement("input");
-  box.type = "checkbox";
-  box.checked = selected.has(entry.id);
-  box.setAttribute("aria-label", `Select ${entry.label}`);
-  box.addEventListener("change", () => {
-    onToggle(entry.id, box.checked);
-  });
-  pick.append(box);
-
-  const pushed = document.createElement("td");
-  pushed.className = "wl-pushed";
-  pushed.textContent = pushedLabel(entry.lastPushedAt);
-
-  tr.append(pick, objectCell(row), pushed);
-  return tr;
-}
-
-function objectCell(row: WorkbookLinkRow): HTMLTableCellElement {
-  const cell = document.createElement("td");
-  cell.className = "wl-object";
-
-  const label = document.createElement("strong");
-  label.textContent = row.entry.label;
-  const anchor = document.createElement("small");
-  anchor.textContent = row.entry.anchor;
-  cell.append(label, anchor);
-
-  if (row.source === "missing") {
-    const badge = document.createElement("span");
-    badge.className = "wl-badge";
-    badge.textContent = MISSING_BADGE;
-    cell.append(badge);
-  }
-  return cell;
-}
-
-// How stale the picture in a deck is, not when it was made, so the list reads
-// as an age. An unparseable stamp is treated as no push at all.
-function pushedLabel(lastPushedAt: string | null): string {
-  if (lastPushedAt === null) return "never";
-  const seconds = Date.parse(lastPushedAt) / 1000;
-  if (!Number.isFinite(seconds)) return "never";
-  return `Pushed ${relativeTime(seconds)}`;
 }

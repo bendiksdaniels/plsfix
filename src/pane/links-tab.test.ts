@@ -1,10 +1,11 @@
 // @vitest-environment jsdom
-// Render tests for the Links list: one row per registry entry, the missing
-// badge, the push time and the checkbox callback. installLinksTab is covered
-// with the Excel adapter mocked, so no Office host is needed here.
+// The Links tab as the modeller drives it: the list on install, the actions
+// behind each button and the link-key panel - masked by default, and refusing
+// to generate over a key it could not read. The Excel adapter is mocked, so no
+// Office host is needed; the table renderer is covered in links-list.test.ts.
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   exportSelection,
   goToSource,
@@ -19,7 +20,7 @@ import type { KeyStore } from "../link/workspace";
 import { WORKSPACE_STORAGE_KEY } from "../link/workspace";
 import type { Guard } from "../ui/guard";
 import type { Toast, ToastKind } from "../ui/toast";
-import { installLinksTab, renderWorkbookLinks } from "./links-tab";
+import { installLinksTab } from "./links-tab";
 
 // The adapter needs a real Excel host, so the tab is wired against mocks; the
 // markup under test is taskpane.html itself, which keeps ids from drifting.
@@ -34,12 +35,6 @@ vi.mock("../excel", () => ({
 
 const ID_A = "a".repeat(32);
 const ID_B = "b".repeat(32);
-const NOW = "2026-08-29T12:00:00.000Z";
-
-function tbody(): HTMLTableSectionElement {
-  document.body.innerHTML = "<table><tbody id='rows'></tbody></table>";
-  return document.getElementById("rows") as HTMLTableSectionElement;
-}
 
 function row(
   id: string,
@@ -62,101 +57,6 @@ function row(
   };
 }
 
-function boxes(body: HTMLTableSectionElement): HTMLInputElement[] {
-  return Array.from(
-    body.querySelectorAll<HTMLInputElement>("input[type=checkbox]"),
-  );
-}
-
-describe("renderWorkbookLinks", () => {
-  beforeEach(() => {
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date(NOW));
-  });
-  afterEach(() => {
-    vi.useRealTimers();
-  });
-
-  it("renders one row per entry with its label and anchor", () => {
-    const body = tbody();
-    renderWorkbookLinks(
-      body,
-      [row(ID_A), row(ID_B, { label: "Chart 1", kind: "chart" })],
-      new Set(),
-      () => undefined,
-    );
-
-    const rows = body.querySelectorAll("tr[data-link-id]");
-    expect(rows).toHaveLength(2);
-    expect(rows[0]?.textContent).toContain("Model!B4:F12");
-    expect(rows[0]?.textContent).toContain("SMT_LINK_aaaaaaaa");
-    expect(rows[1]?.textContent).toContain("Chart 1");
-  });
-
-  it("spells the push time in minutes, hours and days", () => {
-    const body = tbody();
-    renderWorkbookLinks(
-      body,
-      [
-        row(ID_A, { lastPushedAt: "2026-08-29T11:58:00.000Z" }),
-        row(ID_B, { lastPushedAt: "2026-08-29T07:00:00.000Z" }),
-        row("c".repeat(32), { lastPushedAt: "2026-08-26T12:00:00.000Z" }),
-      ],
-      new Set(),
-      () => undefined,
-    );
-
-    const rows = body.querySelectorAll("tr[data-link-id]");
-    expect(rows[0]?.textContent).toContain("Pushed 2 min ago");
-    expect(rows[1]?.textContent).toContain("Pushed 5 h ago");
-    expect(rows[2]?.textContent).toContain("Pushed 3 days ago");
-  });
-
-  it("badges a missing source and says never for a link never pushed", () => {
-    const body = tbody();
-    renderWorkbookLinks(
-      body,
-      [row(ID_A, { lastPushedAt: null }, "missing"), row(ID_B)],
-      new Set(),
-      () => undefined,
-    );
-
-    const rows = body.querySelectorAll("tr[data-link-id]");
-    expect(rows[0]?.textContent).toContain("Source missing");
-    expect(rows[0]?.textContent).toContain("never");
-    expect(rows[1]?.textContent).not.toContain("Source missing");
-  });
-
-  it("checks the selected rows and reports every toggle", () => {
-    const body = tbody();
-    const onToggle = vi.fn();
-    renderWorkbookLinks(
-      body,
-      [row(ID_A), row(ID_B)],
-      new Set([ID_A]),
-      onToggle,
-    );
-
-    const [first, second] = boxes(body);
-    expect(first?.checked).toBe(true);
-    expect(second?.checked).toBe(false);
-
-    second?.click();
-    expect(onToggle).toHaveBeenCalledWith(ID_B, true);
-    first?.click();
-    expect(onToggle).toHaveBeenCalledWith(ID_A, false);
-  });
-
-  it("clears stale rows and shows an empty state", () => {
-    const body = tbody();
-    renderWorkbookLinks(body, [row(ID_A)], new Set(), () => undefined);
-    renderWorkbookLinks(body, [], new Set(), () => undefined);
-
-    expect(body.querySelectorAll("tr[data-link-id]")).toHaveLength(0);
-    expect(body.textContent).toContain("No linked objects");
-  });
-});
-
 interface Harness {
   guard: Guard;
   toast: Toast;
@@ -167,6 +67,9 @@ interface Harness {
   toasts: { message: string; kind?: ToastKind; details?: string }[];
   stored: Map<string, string>;
   pending: Promise<void>[];
+  // Flipped on to model storage that is momentarily unavailable: a private
+  // webview, or a cold pane racing OfficeRuntime.storage.
+  failRead: { on: boolean };
 }
 
 function harness(): Harness {
@@ -175,12 +78,14 @@ function harness(): Harness {
   const toasts: { message: string; kind?: ToastKind; details?: string }[] = [];
   const stored = new Map<string, string>();
   const pending: Promise<void>[] = [];
+  const failRead = { on: false };
   return {
     messages,
     errors,
     toasts,
     stored,
     pending,
+    failRead,
     relay: {} as RelayApi,
     guard: (run) => {
       const done = (async () => {
@@ -199,7 +104,10 @@ function harness(): Harness {
       },
     },
     keyStore: {
-      get: async (key) => stored.get(key) ?? null,
+      get: async (key) => {
+        if (failRead.on) throw new Error("storage unavailable");
+        return stored.get(key) ?? null;
+      },
       set: async (key, value) => {
         stored.set(key, value);
       },
@@ -223,6 +131,14 @@ function paneRoot(): Document {
 
 function click(id: string): void {
   document.querySelector<HTMLButtonElement>(`#${id}`)?.click();
+}
+
+function keyDisplay(): string {
+  return document.getElementById("workspace-key-display")?.textContent ?? "";
+}
+
+function button(id: string): HTMLButtonElement {
+  return document.getElementById(id) as HTMLButtonElement;
 }
 
 // A click starts an action nobody awaits, and real WebCrypto needs more than
@@ -271,10 +187,19 @@ describe("installLinksTab", () => {
     expect(exportSelection).not.toHaveBeenCalled();
   });
 
-  it("shows a generated key and then exports with it", async () => {
+  // The key is the secret itself, and the pane is screen-shared on deal calls:
+  // it is masked until asked for, and Copy is the route to the whole value.
+  it("masks a generated key, reveals it on demand and exports with it", async () => {
     vi.mocked(exportSelection).mockResolvedValue({
       id: ID_A,
       label: "Model!B4:F12",
+    });
+    const writeText = vi.fn<(text: string) => Promise<void>>(() =>
+      Promise.resolve(),
+    );
+    Object.defineProperty(navigator, "clipboard", {
+      value: { writeText },
+      configurable: true,
     });
     const h = harness();
     install(h);
@@ -282,9 +207,20 @@ describe("installLinksTab", () => {
 
     click("generate-key");
     await settle(h);
-    const shown = document.getElementById("workspace-key-display")?.textContent;
-    expect(shown).toMatch(/^[A-Za-z0-9_-]{43}$/);
-    expect(h.stored.get(WORKSPACE_STORAGE_KEY)).toBe(shown);
+    const key = h.stored.get(WORKSPACE_STORAGE_KEY) ?? "";
+    expect(key).toMatch(/^[A-Za-z0-9_-]{43}$/);
+    expect(keyDisplay()).toBe(`${key.slice(0, 4)}…${key.slice(-4)}`);
+    expect(keyDisplay()).not.toContain(key.slice(4, 20));
+
+    click("copy-key");
+    await settle(h);
+    expect(writeText).toHaveBeenCalledWith(key);
+
+    click("reveal-key");
+    expect(keyDisplay()).toBe(key);
+    expect(button("reveal-key").textContent).toBe("Hide");
+    click("reveal-key");
+    expect(keyDisplay()).not.toBe(key);
 
     click("export-selection");
     await settle(h);
@@ -294,6 +230,43 @@ describe("installLinksTab", () => {
     click("forget-key");
     await settle(h);
     expect(h.stored.size).toBe(0);
+    expect(keyDisplay()).toBe("No link key yet.");
+    expect(button("reveal-key").disabled).toBe(true);
+  });
+
+  // "No link key yet." over a read that failed would invite a new key, and a
+  // new key unpairs every deck holding the old one.
+  it("reports a key that cannot be read and refuses to generate over it", async () => {
+    const h = harness();
+    h.failRead.on = true;
+    install(h);
+    await settle(h);
+
+    const unreadable = "Could not read the link key on this computer.";
+    expect(keyDisplay()).toBe(unreadable);
+    expect(h.toasts).toEqual([
+      { message: unreadable, kind: "error", details: "storage unavailable" },
+    ]);
+    expect(button("generate-key").disabled).toBe(true);
+
+    click("generate-key");
+    await settle(h);
+    expect(h.stored.size).toBe(0);
+
+    click("export-selection");
+    await settle(h);
+    expect(h.errors).toEqual([unreadable]);
+    expect(exportSelection).not.toHaveBeenCalled();
+
+    // Coming back to the tab reads the key again. The reload runs outside the
+    // guard, so it is waited for rather than settled.
+    h.failRead.on = false;
+    h.stored.set(WORKSPACE_STORAGE_KEY, "k".repeat(43));
+    click("tab-links");
+    await vi.waitFor(() => {
+      expect(button("generate-key").disabled).toBe(false);
+    });
+    expect(keyDisplay()).toBe("kkkk…kkkk");
   });
 
   it("reports a push summary and hands the failures to the toast", async () => {

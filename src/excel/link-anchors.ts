@@ -15,7 +15,7 @@ import {
   type RegistryEntry,
   type Source,
 } from "../link/model";
-import { RelayError, type RelayApi } from "../link/relay";
+import { isRelayError, type RelayApi } from "../link/relay";
 import { hostSupports } from "./internal";
 import { parseAddress } from "./shared";
 
@@ -69,12 +69,15 @@ export function entryOf(
 }
 
 // A chart's own name is its anchor, so exporting an anchored chart a second
-// time would rename it and silently orphan the first link.
+// time would rename it and silently orphan the first link. An anchor name no
+// registry entry claims is the orphan itself - left behind by an export that
+// failed after the rename - and re-anchoring it is the only way back.
 export function refuseAnchoredChart(registry: Registry, name: string): void {
   if (!name.startsWith(ANCHOR_PREFIX)) return;
   const existing = registry.links.find((link) => link.anchor === name);
+  if (!existing) return;
   throw new Error(
-    `export chart: already linked as ${existing?.label ?? name}; push it instead`,
+    `export chart: already linked as ${existing.label}; push it instead`,
   );
 }
 
@@ -242,6 +245,39 @@ export async function resolveSource(
   };
 }
 
+// The anchor is bound in the same batch the picture is asked for, and office.js
+// batches are not transactional: the rename or the names.add executes and only
+// the getImage fails, so the workbook is already mutated when the sync rejects.
+// A failed render therefore undoes its own anchor rather than leaving one no
+// registry entry claims.
+export async function renderAnchored(
+  context: Excel.RequestContext,
+  resolved: ResolvedSource,
+  label: string,
+  release: () => void,
+): Promise<string> {
+  try {
+    return await renderSource(context, resolved);
+  } catch (error) {
+    await undoAnchor(context, release);
+    throw staged(`export ${label}`, error);
+  }
+}
+
+// Best effort, like publish's rollback: if the workbook will not take the undo,
+// the render error the caller is about to see is the one worth reporting.
+async function undoAnchor(
+  context: Excel.RequestContext,
+  release: () => void,
+): Promise<void> {
+  try {
+    release();
+    await context.sync();
+  } catch {
+    return;
+  }
+}
+
 export async function renderSource(
   context: Excel.RequestContext,
   resolved: ResolvedSource,
@@ -276,6 +312,9 @@ export async function releaseAnchor(
 }
 
 // A link the relay never had, or has already dropped, is the outcome we want.
+// Anything else means the relay is still serving that picture to everyone
+// holding the deck, so the caller keeps its record: the message says the
+// workbook was left alone and the revoke can be tried again.
 export async function forget(
   entry: RegistryEntry,
   relay: RelayApi,
@@ -284,8 +323,10 @@ export async function forget(
   try {
     await relay.deleteLink(entry.id, keys.auth);
   } catch (error) {
-    if (!(error instanceof RelayError) || error.kind !== "missing") {
-      throw staged(`remove ${entry.label}`, error);
-    }
+    if (isRelayError(error) && error.kind === "missing") return;
+    const reason = error instanceof Error ? error.message : String(error);
+    throw new Error(
+      `remove ${entry.label}: ${reason}; nothing was removed, try again`,
+    );
   }
 }
