@@ -58,6 +58,6 @@ Relejs glabā eksportētos attēlus tikai šifrētā veidā un ne ilgāk kā 7 d
 
 ## Ierobežojumi
 
-- Pēc "Update all" nav atsaukšanas: PowerPoint pievienojumprogrammu darbības Ctrl+Z neatceļ.
+- Ctrl+Z neatceļ pievienojumprogrammas veiktās izmaiņas, tāpēc pēc "Update all" atzīmētās rindas var atgriezt uz iepriekšējo versiju ar pogu "Revert last update", taču relejs glabā tikai vienu iepriekšējo versiju, tāpēc tālāk atpakaļ atgriezties nav iespējams.
 - PowerPoint tabulas vēl netiek atbalstītas: saitē var būt tikai attēls.
 - Darbgrāmatas versiju maiņa (piemēram, cita faila nosaukums vai atrašanās vieta) vēl nav pieejama.
