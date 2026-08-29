@@ -63,7 +63,7 @@ each item. Stop when Daniel intervenes or the list is empty.
 - [x] D1 Revert after Update all: server already keeps 2 revs; add `GET /api/links/{id}?rev=<n>` (auth as
       today), client `getLinkRev`, PowerPoint "Revert last update" for the selected rows (repaint the
       previous rev, tag rev rewritten), refuse when no previous rev; tests on both sides.
-- [ ] D2 Highlight linked cells in Excel (M3): Links tab toggle that paints a subtle brand-tinted fill on
+- [x] D2 Highlight linked cells in Excel (M3): Links tab toggle that paints a subtle brand-tinted fill on
       every anchored range and restores the original fills on toggle-off (snapshot like the audit overlay);
       chart anchors get a one-line hint instead.
 - [ ] D3 Batched relay fetch: `POST /api/links/fetch` with `[{id, auth, knownRev}]` returning the blobs

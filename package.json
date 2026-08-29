@@ -1,6 +1,6 @@
 {
   "name": "plsfix",
-  "version": "2.1.14",
+  "version": "2.1.15",
   "private": true,
   "type": "module",
   "description": "A focused Excel productivity add-in for financial modelling teams.",
