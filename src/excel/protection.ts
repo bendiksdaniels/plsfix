@@ -1,10 +1,12 @@
-// Whether a sheet will take a write at all. Excel refuses every write to a
-// locked cell of a protected sheet with a bare AccessDenied, which reaches the
-// pane as an error dialog over something the modeller only asked to be painted.
+// What the host refuses when a flow writes, and what the pane says instead of
+// the bare string office.js hands back: a locked cell of a protected sheet
+// (AccessDenied), and a write covering only part of a merged cell
+// (InvalidOperation).
 //
-// Owns: the protection read (Excel.WorksheetProtection, ExcelApi 1.2) and the
-// line a flow reports instead. Invariant: a flow that only paints never throws
-// on protection - it says which sheet refused it and changes nothing.
+// Owns: the protection read (Excel.WorksheetProtection, ExcelApi 1.2) and both
+// translations. Invariant: a flow that only paints never throws on protection -
+// it says which sheet refused it and changes nothing; a flow that edits does
+// throw, but with its own stage and a way out in the message.
 
 import { hostSupports } from "./internal";
 
@@ -28,6 +30,31 @@ export async function sheetProtected(
 /** The line the pane shows instead of an error when a paint was refused. */
 export function protectedNote(stage: string): string {
   return `${stage}: this sheet is protected, nothing was changed`;
+}
+
+/**
+ * Runs a batch of edits. A refusal comes back named and staged: which sheet is
+ * protected, or that the selection cuts a merged cell. Everything else travels
+ * untouched.
+ */
+export async function syncWrite(
+  context: Excel.RequestContext,
+  stage: string,
+): Promise<void> {
+  try {
+    await context.sync();
+  } catch (error) {
+    const { code } = error as { code?: string };
+    if (code === Excel.ErrorCodes.accessDenied) {
+      throw new Error(protectedNote(stage));
+    }
+    if (code === Excel.ErrorCodes.invalidOperation) {
+      throw new Error(
+        `${stage}: Excel refused this write. Select whole merged cells, not part of one.`,
+      );
+    }
+    throw error;
+  }
 }
 
 /**

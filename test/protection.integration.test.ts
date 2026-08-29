@@ -96,6 +96,21 @@ describe("the audit overlay on a protected sheet", () => {
   });
 });
 
+describe("an edit on a protected sheet", () => {
+  it("fails by name rather than with Excel's own string", async () => {
+    seedGrid();
+    helpers.protectSheet("Model");
+
+    await expect(smt.applySignFlip()).rejects.toThrow(
+      "Sign flip: this sheet is protected, nothing was changed",
+    );
+    await expect(smt.applyNumberFormat("whole")).rejects.toThrow(
+      "Number formatting: this sheet is protected, nothing was changed",
+    );
+    expect(helpers.value("Model!A1")).toBe(1);
+  });
+});
+
 describe("locked cells inside an unprotected island", () => {
   it("drops the paint rather than the pane", async () => {
     seedGrid();

@@ -10,8 +10,8 @@ import {
   selectedSingleRange,
   SHEET_COLUMNS,
   SHEET_ROWS,
-  syncWrite,
 } from "./internal";
+import { syncWrite } from "./protection";
 import { parseAddress } from "./shared";
 import { captureUndo, captureUndoAreas } from "./undo";
 import { seriesSpan } from "../chartmath";
