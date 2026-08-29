@@ -1,5 +1,6 @@
 //! `/api` routes for the relay: sealed link revisions (4 MiB), workspace inbox
-//! items (64 KiB) and the status batch (64 KiB). Owns bearer extraction, id
+//! items (64 KiB) and the two bearer-less batches, status and fetch (64 KiB
+//! each; the fetch handler itself lives in `fetch`). Owns bearer extraction, id
 //! validation, the JSON error shape and the ETag/304 contract; all state lives
 //! in `store`.
 //! Invariant: a request is answered from the bearer's hash, never its key.
@@ -17,19 +18,21 @@ use axum::{
 use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine as _};
 use serde::{Deserialize, Serialize};
 
+use crate::fetch;
 use crate::store::{auth_hash, Delete, Found, Get, Put, StatusRow, Store};
 
 /// A sealed picture is the big payload; 4 MiB covers a full-slide render.
 const LINK_LIMIT: usize = 4 * 1024 * 1024;
 /// Inbox items carry metadata only.
 const INBOX_LIMIT: usize = 64 * 1024;
-/// The status batch is the one route with no bearer (it carries a key per
-/// item) and it sits behind the Access bypass, so it must not inherit the
-/// payload limit: a full 200-item batch is about 20 KiB, and anything past
-/// this is refused at the socket instead of parsed on the shared connection.
-const STATUS_LIMIT: usize = 64 * 1024;
-/// One poll covers a deck; a longer batch is a client bug.
-const MAX_STATUS_ITEMS: usize = 200;
+/// The batches are the two routes with no bearer (they carry a key per item)
+/// and they sit behind the Access bypass, so they must not inherit the payload
+/// limit: a full 200-item batch is about 20 KiB, and anything past this is
+/// refused at the socket instead of parsed on the shared connection. The
+/// blobs a fetch batch answers with are capped separately, in `fetch`.
+const BATCH_LIMIT: usize = 64 * 1024;
+/// One poll or fetch covers a deck; a longer batch is a client bug.
+pub(crate) const MAX_BATCH_ITEMS: usize = 200;
 /// The inbox POST names its link here - the body is the sealed item.
 const LINK_ID_HEADER: &str = "x-smt-link-id";
 
@@ -38,11 +41,11 @@ pub struct AppState {
     pub store: Store,
 }
 
-type Api = State<Arc<AppState>>;
+pub(crate) type Api = State<Arc<AppState>>;
 
 /// Every refusal the routes can produce, mapped to code and message in one
 /// place so the JSON error shape cannot drift between handlers.
-enum Refused {
+pub(crate) enum Refused {
     Unauthorized,
     BadId,
     BadRev,
@@ -76,7 +79,7 @@ impl IntoResponse for Refused {
 }
 
 /// Handlers answer with a body or with a refusal, never a panic.
-type Reply = Result<Response, Refused>;
+pub(crate) type Reply = Result<Response, Refused>;
 
 /// Wall clock in seconds; the store takes `now` so tests can travel in time.
 pub fn now() -> i64 {
@@ -93,7 +96,8 @@ pub fn routes(state: Arc<AppState>) -> Router {
         .layer(DefaultBodyLimit::max(LINK_LIMIT));
     let batch = Router::new()
         .route("/status", post(status))
-        .layer(DefaultBodyLimit::max(STATUS_LIMIT));
+        .route("/fetch", post(fetch::fetch))
+        .layer(DefaultBodyLimit::max(BATCH_LIMIT));
     let inbox = Router::new()
         .route("/:ws", get(list_inbox).post(post_inbox))
         .route("/:ws/:id", delete(delete_inbox))
@@ -109,7 +113,7 @@ fn ok_json() -> Response {
 }
 
 /// A store failure is the one thing worth a log line: stage, id, cause.
-fn failed(stage: &str, id: &str, error: &rusqlite::Error) -> Refused {
+pub(crate) fn failed(stage: &str, id: &str, error: &rusqlite::Error) -> Refused {
     let short: String = id.chars().take(8).collect();
     eprintln!("store {stage} {short}: {error}");
     Refused::Store
@@ -268,7 +272,7 @@ struct StatusOut {
 /// The batch poll carries a key per item, so it needs no bearer header.
 async fn status(State(state): Api, body: Bytes) -> Reply {
     let items: Vec<StatusQuery> = serde_json::from_slice(&body).map_err(|_| Refused::BadBody)?;
-    if items.len() > MAX_STATUS_ITEMS {
+    if items.len() > MAX_BATCH_ITEMS {
         return Err(Refused::TooManyItems);
     }
     let queries: Vec<(String, [u8; 32])> = items
