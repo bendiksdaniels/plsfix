@@ -41,7 +41,8 @@
     { "id": "SMT_CHARTFMT", "type": "ExecuteFunction", "name": "Brand-format chart" },
     { "id": "SMT_CHART_CAGR", "type": "ExecuteFunction", "name": "CAGR label" },
     { "id": "SMT_TOC", "type": "ExecuteFunction", "name": "Insert contents sheet" },
-    { "id": "SMT_FIND", "type": "ExecuteFunction", "name": "Find in workbook" }
+    { "id": "SMT_FIND", "type": "ExecuteFunction", "name": "Find in workbook" },
+    { "id": "SMT_STYLES_SCAN", "type": "ExecuteFunction", "name": "Scan unused styles" }
   ],
   "shortcuts": [
     { "action": "SMT_SHOWPANE", "key": { "default": "Ctrl+Shift+M" } },
@@ -84,6 +85,7 @@
     { "action": "SMT_CHARTFMT", "key": { "default": "Ctrl+Alt+G" } },
     { "action": "SMT_CHART_CAGR", "key": { "default": "Ctrl+Alt+K" } },
     { "action": "SMT_TOC", "key": { "default": "Ctrl+Alt+O" } },
-    { "action": "SMT_FIND", "key": { "default": "Ctrl+Shift+Alt+F" } }
+    { "action": "SMT_FIND", "key": { "default": "Ctrl+Shift+Alt+F" } },
+    { "action": "SMT_STYLES_SCAN", "key": { "default": "Ctrl+Shift+Alt+S" } }
   ]
 }
