@@ -17,7 +17,9 @@ import {
   type Payload,
 } from "../link/model";
 import { base64ToBytes, pngSize } from "../link/png";
-import { aspectChanged, fitToSlide, type Box } from "../link/status";
+import { aspectChanged, fitToSlide } from "../link/status";
+import { insertPictureBySelection } from "./picture";
+import { placeOnSlide } from "./placement";
 import {
   expandGroups,
   GROUP_API,
@@ -154,56 +156,6 @@ export async function activeSlideId(): Promise<string | null> {
   return PowerPoint.run((context) => readSelectedSlideId(context));
 }
 
-// Picture inserted through the selection API (hosts without fill.setImage):
-// the slide must be active, and the new picture is the last shape on it.
-function insertPictureBySelection(
-  stage: string,
-  slideId: string,
-  png: string,
-  box: Box,
-): Promise<string> {
-  return PowerPoint.run(async (context) => {
-    context.presentation.setSelectedSlides([slideId]);
-    await context.sync();
-    await setSelectedPicture(stage, png, box);
-    const shapes = context.presentation.slides.getItem(slideId).shapes;
-    shapes.load("items/id");
-    await context.sync();
-    const id = shapes.items.at(-1)?.id;
-    if (!id) {
-      throw new Error(`${stage}: PowerPoint reported no inserted picture.`);
-    }
-    return id;
-  });
-}
-
-function setSelectedPicture(
-  stage: string,
-  png: string,
-  box: Box,
-): Promise<void> {
-  return new Promise<void>((resolve, reject) => {
-    Office.context.document.setSelectedDataAsync(
-      png,
-      {
-        coercionType: Office.CoercionType.Image,
-        imageLeft: box.left,
-        imageTop: box.top,
-        imageWidth: box.width,
-        imageHeight: box.height,
-      },
-      (result) => {
-        if (result.status === Office.AsyncResultStatus.Succeeded) resolve();
-        else reject(new Error(`${stage}: ${insertFailure(result.error)}`));
-      },
-    );
-  });
-}
-
-function insertFailure(error: Office.Error | undefined): string {
-  return error?.message ?? "PowerPoint could not insert the picture.";
-}
-
 async function writeTags(
   slideId: string,
   shapeId: string,
@@ -220,19 +172,33 @@ async function writeTags(
   });
 }
 
+export interface InsertResult {
+  slideId: string;
+  shapeId: string;
+  // True when the slide had no room left and the object sits over what is
+  // already there: the pane says so with OVERLAP_NOTE.
+  overlapping: boolean;
+}
+
+// What the pane shows when an insert had to cover something.
+export const OVERLAP_NOTE =
+  "Placed over other objects: no free space on this slide";
+
 export async function insertLink(
   item: InboxItem,
   payload: Payload,
   rev: number,
-): Promise<{ slideId: string; shapeId: string }> {
+): Promise<InsertResult> {
   const stage = `insert ${item.label}`;
   const size = pngSize(base64ToBytes(payload.png));
-  const box = fitToSlide(size.width, size.height);
+  const fitted = fitToSlide(size.width, size.height);
   const tag = tagFor(item, payload, rev);
   if (!supportsInPlaceRefresh()) {
-    const slideId = await PowerPoint.run((context) =>
-      selectedSlideId(context, stage),
-    );
+    const placed = await PowerPoint.run(async (context) => {
+      const slideId = await selectedSlideId(context, stage);
+      return { slideId, ...(await placeOnSlide(context, slideId, fitted)) };
+    });
+    const { slideId, box, overlapping } = placed;
     const shapeId = await insertPictureBySelection(
       stage,
       slideId,
@@ -240,13 +206,17 @@ export async function insertLink(
       box,
     );
     await writeTags(slideId, shapeId, tag, item.token);
-    return { slideId, shapeId };
+    return { slideId, shapeId, overlapping };
   }
   return PowerPoint.run(async (context) => {
     const slideId = await selectedSlideId(context, stage);
+    const placed = await placeOnSlide(context, slideId, fitted);
     const shape = context.presentation.slides
       .getItem(slideId)
-      .shapes.addGeometricShape(PowerPoint.GeometricShapeType.rectangle, box);
+      .shapes.addGeometricShape(
+        PowerPoint.GeometricShapeType.rectangle,
+        placed.box,
+      );
     shape.name = `pls,fix link ${item.label}`;
     shape.lineFormat.visible = false;
     shape.fill.setImage(payload.png);
@@ -254,7 +224,7 @@ export async function insertLink(
     shape.tags.add(TAG_KEY, item.token);
     shape.load("id");
     await context.sync();
-    return { slideId, shapeId: shape.id };
+    return { slideId, shapeId: shape.id, overlapping: placed.overlapping };
   });
 }
 

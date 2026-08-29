@@ -111,12 +111,18 @@ describe("links inside a group", () => {
     expect(found.shapeId).toBe(picture.id);
     expect(found.groupPath).toEqual([group.id]);
     expect(found.slideIndex).toBe(0);
+    const fitted = fitToSlide(800, 400);
     expect({
       left: found.left,
       top: found.top,
       width: found.width,
       height: found.height,
-    }).toEqual(fitToSlide(800, 400));
+    }).toEqual({
+      left: 36,
+      top: 36,
+      width: fitted.width,
+      height: fitted.height,
+    });
     expect(rows[0]!.status).toBe("current");
   });
 

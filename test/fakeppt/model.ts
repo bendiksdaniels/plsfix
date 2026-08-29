@@ -8,7 +8,7 @@ import { FakeClientResult, Loadable } from "./strict";
 export interface FakePptShape {
   id: string;
   name: string;
-  type: "GeometricShape" | "Image" | "Table" | "Group";
+  type: "GeometricShape" | "Image" | "Table" | "Group" | "Placeholder";
   left: number;
   top: number;
   width: number;
@@ -18,6 +18,9 @@ export interface FakePptShape {
   fillImage: string | null;
   lineVisible: boolean;
   setImageCalls: number;
+  // PowerPoint.TextFrame.hasText: false on an empty layout placeholder, which
+  // is the one shape a new object is allowed to be placed over.
+  hasText: boolean;
   // The shapes a group holds; null on everything that is not a group.
   group: FakeShapeGroup | null;
 }
@@ -40,6 +43,7 @@ export interface FakeShapeInit {
   width?: number;
   height?: number;
   fillImage?: string;
+  hasText?: boolean;
 }
 
 export interface ShapeSite {
@@ -103,6 +107,7 @@ export class FakePresentation {
       fillImage: init.fillImage ?? null,
       lineVisible: true,
       setImageCalls: 0,
+      hasText: init.hasText ?? false,
       group: null,
     };
     slide.shapes.push(shape);
@@ -134,6 +139,7 @@ export class FakePresentation {
       fillImage: null,
       lineVisible: true,
       setImageCalls: 0,
+      hasText: false,
       group: { id: `group-${seq}`, shapes: children },
     };
     slide.shapes.push(group);
@@ -422,6 +428,9 @@ class ShapeProxy extends ShapeBound {
   get lineFormat(): ShapeLineProxy {
     return new ShapeLineProxy(this.deck, this.handleId);
   }
+  get textFrame(): ShapeTextFrameProxy {
+    return new ShapeTextFrameProxy(this.deck, this.handleId);
+  }
   get tags(): TagCollectionProxy {
     return new TagCollectionProxy(this.deck, this.handleId);
   }
@@ -472,6 +481,14 @@ class ShapeFillProxy extends ShapeBound {
     const shape = this.model();
     shape.fillImage = base64EncodedImage;
     shape.setImageCalls += 1;
+  }
+}
+
+// Only what placement reads: whether the shape holds any text, which is how
+// an empty layout placeholder is told from an object somebody put there.
+class ShapeTextFrameProxy extends ShapeBound {
+  get hasText(): boolean {
+    return this.model().hasText;
   }
 }
 
