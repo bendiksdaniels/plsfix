@@ -1,8 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
+  absoluteRef,
   buildCagrFormula,
+  buildRoundFormula,
   detectFillExtent,
   flipSign,
+  formatDecimals,
   stepDecimals,
   toggleIfError,
 } from "./paste";
@@ -133,5 +136,62 @@ describe("buildCagrFormula", () => {
   it("builds the compound growth formula", () => {
     expect(buildCagrFormula("B5", "F5", 4)).toBe("=(F5/B5)^(1/4)-1");
     expect(buildCagrFormula("C2", "C9", 7)).toBe("=(C9/C2)^(1/7)-1");
+  });
+});
+
+describe("formatDecimals", () => {
+  it("counts the decimals a format prints", () => {
+    expect(formatDecimals("#,##0")).toBe(0);
+    expect(formatDecimals("#,##0.00")).toBe(2);
+    expect(formatDecimals("0.000")).toBe(3);
+    expect(formatDecimals("#,##0;[Red](#,##0);-")).toBe(0);
+    expect(formatDecimals("#,##0.0;[Red](#,##0.0);-")).toBe(1);
+    expect(formatDecimals("[$€-x-euro2] #,##0.00")).toBe(2);
+  });
+
+  it("follows the scale a format applies before printing", () => {
+    // A percentage is stored a hundred times smaller than it prints, and each
+    // trailing comma prints a thousand times smaller than it is stored.
+    expect(formatDecimals("0.0%")).toBe(3);
+    expect(formatDecimals("0.0%;[Red](0.0%);-")).toBe(3);
+    expect(formatDecimals("0%")).toBe(2);
+    expect(formatDecimals("#,##0,")).toBe(-3);
+    expect(formatDecimals("#,##0.0,,")).toBe(-5);
+  });
+
+  it("returns null when the format prints no digits", () => {
+    expect(formatDecimals("General")).toBeNull();
+    expect(formatDecimals("@")).toBeNull();
+    expect(formatDecimals("dd.mm.yyyy")).toBeNull();
+  });
+
+  it("reads through quoted and bracketed literals", () => {
+    expect(formatDecimals('0.0"%"')).toBe(1);
+    expect(formatDecimals('#,##0.00" ; "')).toBe(2);
+  });
+});
+
+describe("absoluteRef", () => {
+  it("locks a local reference to its cells", () => {
+    expect(absoluteRef("A1:A5")).toBe("$A$1:$A$5");
+    expect(absoluteRef("B2:F2")).toBe("$B$2:$F$2");
+    expect(absoluteRef("AA10")).toBe("$AA$10");
+  });
+
+  it("leaves a sheet prefix and existing anchors alone", () => {
+    expect(absoluteRef("Model!A1:A3")).toBe("Model!$A$1:$A$3");
+    expect(absoluteRef("'Q3 model'!C4")).toBe("'Q3 model'!$C$4");
+    expect(absoluteRef("$A$1:$A$5")).toBe("$A$1:$A$5");
+  });
+});
+
+describe("buildRoundFormula", () => {
+  it("passes the whole group, the position and the precision", () => {
+    expect(buildRoundFormula("$A$1:$A$3", 1, 0)).toBe(
+      "=SMT.ROUND($A$1:$A$3,1,0)",
+    );
+    expect(buildRoundFormula("$B$2:$D$2", 3, 2)).toBe(
+      "=SMT.ROUND($B$2:$D$2,3,2)",
+    );
   });
 });

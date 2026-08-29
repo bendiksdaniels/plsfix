@@ -1,18 +1,28 @@
-// Formula-editing actions: fast fill, the IFERROR guard, unit scaling, sign flip,
-// decimal stepping and CAGR insertion. Shares the selection cap and undo capture
-// with selection.ts rather than duplicating either.
+// Formula-editing actions: fast fill, the IFERROR guard, unit scaling, sign
+// flip, decimal stepping, CAGR insertion and the consistent-rounding block.
+// Shares the selection cap and undo capture with selection.ts rather than
+// duplicating either.
 
-import { numberFormat, selectionWithinCap } from "./internal";
+import {
+  numberFormat,
+  requireEmptyBlock,
+  selectedSingleRange,
+  selectionWithinCap,
+} from "./internal";
 import { parseAddress } from "./shared";
 import { captureUndo } from "./undo";
 import { type CellValue, scaleCells } from "../model";
 import {
+  absoluteRef,
   buildCagrFormula,
+  buildRoundFormula,
   detectFillExtent,
   flipSign,
+  formatDecimals,
   stepDecimals,
   toggleIfError,
 } from "../paste";
+import { ROUNDING_CELL_CAP } from "../rounding";
 
 const FILL_SCAN_LIMIT = 1_000;
 const SHEET_ROWS = 1_048_576;
@@ -166,5 +176,75 @@ export async function insertCagr(): Promise<void> {
       ],
     ];
     await context.sync();
+  });
+}
+
+const ROUNDING_SHAPE_ERROR =
+  "Consistent rounding: select one row or column with at least two numbers.";
+
+// Every cell of the group carries the whole group as its first argument, so a
+// change anywhere in it recalculates all of them; the position is a literal,
+// written here rather than read from the cell's own address.
+function roundingFormulas(
+  reference: string,
+  count: number,
+  decimals: number,
+): string[] {
+  return Array.from({ length: count }, (_, index) =>
+    buildRoundFormula(reference, index + 1, decimals),
+  );
+}
+
+// A rounding group is numbers only: a blank or a label in the middle would
+// reach the custom function as a zero and quietly join the allocation.
+function requireNumbers(range: Excel.Range, count: number): void {
+  const cells = (range.values as CellValue[][]).flat();
+  if (cells.filter((cell) => typeof cell === "number").length !== count) {
+    throw new Error(ROUNDING_SHAPE_ERROR);
+  }
+}
+
+// think-cell TCROUND in two steps: SMT.ROUND formulas land beside the numbers
+// they round, and their results add up to SMT.ROUNDSUM of the same range. The
+// precision comes from what the first cell already prints, so the column beside
+// a euro or percentage block rounds the way the block reads.
+export async function insertConsistentRounding(): Promise<string> {
+  return Excel.run(async (context) => {
+    const range = await selectedSingleRange(context, "Consistent rounding");
+    range.load("address,rowCount,columnCount,values,numberFormat");
+    await context.sync();
+
+    const { rowCount, columnCount } = range;
+    const acrossRow = rowCount === 1;
+    const count = acrossRow ? columnCount : rowCount;
+    if ((!acrossRow && columnCount !== 1) || count < 2) {
+      throw new Error(ROUNDING_SHAPE_ERROR);
+    }
+    if (count > ROUNDING_CELL_CAP) {
+      throw new Error(
+        `Consistent rounding groups up to ${ROUNDING_CELL_CAP} cells at once.`,
+      );
+    }
+    requireNumbers(range, count);
+
+    const format = (range.numberFormat as CellValue[][])[0]?.[0];
+    const decimals =
+      (typeof format === "string" ? formatDecimals(format) : null) ?? 0;
+    const reference = absoluteRef(parseAddress(range.address).address);
+    const destination = acrossRow
+      ? range.getOffsetRange(1, 0)
+      : range.getOffsetRange(0, 1);
+    await requireEmptyBlock(
+      context,
+      destination,
+      `Consistent rounding: the cells ${acrossRow ? "below" : "right of"} the selection are not empty.`,
+    );
+    await captureUndo(context, destination);
+
+    const formulas = roundingFormulas(reference, count, decimals);
+    destination.formulas = acrossRow ? [formulas] : formulas.map((f) => [f]);
+    await context.sync();
+
+    return `Consistent rounding: ${count} cells at ${decimals} decimals`;
   });
 }

@@ -38,6 +38,20 @@
         <Runtimes>
           <Runtime resid="SMT.Taskpane.Url" lifetime="long"/>
         </Runtimes>
+        <AllFormFactors>
+          <ExtensionPoint xsi:type="CustomFunctions">
+            <Script>
+              <SourceLocation resid="SMT.Functions.Script.Url"/>
+            </Script>
+            <Page>
+              <SourceLocation resid="SMT.Taskpane.Url"/>
+            </Page>
+            <Metadata>
+              <SourceLocation resid="SMT.Functions.Metadata.Url"/>
+            </Metadata>
+            <Namespace resid="SMT.Functions.Namespace"/>
+          </ExtensionPoint>
+        </AllFormFactors>
         <DesktopFormFactor>
           <FunctionFile resid="SMT.Taskpane.Url"/>
           <ExtensionPoint xsi:type="PrimaryCommandSurface">
@@ -390,6 +404,8 @@
       <bt:Urls>
         <bt:Url id="SMT.Taskpane.Url" DefaultValue="https://dbautomatizacijas.com/modelis/taskpane.html"/>
         <bt:Url id="SMT.Pptpane.Url" DefaultValue="https://dbautomatizacijas.com/modelis/pptpane.html"/>
+        <bt:Url id="SMT.Functions.Script.Url" DefaultValue="https://dbautomatizacijas.com/modelis/functions.js"/>
+        <bt:Url id="SMT.Functions.Metadata.Url" DefaultValue="https://dbautomatizacijas.com/modelis/functions.json"/>
       </bt:Urls>
       <bt:ShortStrings>
         <bt:String id="SMT.Tab.Label" DefaultValue="Model Tools"/>
@@ -417,6 +433,7 @@
         <bt:String id="SMT.Toc.Label" DefaultValue="Contents sheet"/>
         <bt:String id="SMT.Group.Links.Label" DefaultValue="Model Tools Links"/>
         <bt:String id="SMT.OpenLinks.Label" DefaultValue="Links"/>
+        <bt:String id="SMT.Functions.Namespace" DefaultValue="SMT"/>
       </bt:ShortStrings>
       <bt:LongStrings>
         <bt:String id="SMT.OpenPane.Tip" DefaultValue="Open the Model Tools task pane."/>
@@ -450,6 +467,20 @@
           <Runtimes>
             <Runtime resid="SMT.Taskpane.Url" lifetime="long"/>
           </Runtimes>
+          <AllFormFactors>
+            <ExtensionPoint xsi:type="CustomFunctions">
+              <Script>
+                <SourceLocation resid="SMT.Functions.Script.Url"/>
+              </Script>
+              <Page>
+                <SourceLocation resid="SMT.Taskpane.Url"/>
+              </Page>
+              <Metadata>
+                <SourceLocation resid="SMT.Functions.Metadata.Url"/>
+              </Metadata>
+              <Namespace resid="SMT.Functions.Namespace"/>
+            </ExtensionPoint>
+          </AllFormFactors>
           <DesktopFormFactor>
             <FunctionFile resid="SMT.Taskpane.Url"/>
             <ExtensionPoint xsi:type="PrimaryCommandSurface">
@@ -802,6 +833,8 @@
         <bt:Urls>
           <bt:Url id="SMT.Taskpane.Url" DefaultValue="https://dbautomatizacijas.com/modelis/taskpane.html"/>
           <bt:Url id="SMT.Pptpane.Url" DefaultValue="https://dbautomatizacijas.com/modelis/pptpane.html"/>
+          <bt:Url id="SMT.Functions.Script.Url" DefaultValue="https://dbautomatizacijas.com/modelis/functions.js"/>
+          <bt:Url id="SMT.Functions.Metadata.Url" DefaultValue="https://dbautomatizacijas.com/modelis/functions.json"/>
         </bt:Urls>
         <bt:ShortStrings>
           <bt:String id="SMT.Tab.Label" DefaultValue="Model Tools"/>
@@ -829,6 +862,7 @@
           <bt:String id="SMT.Toc.Label" DefaultValue="Contents sheet"/>
           <bt:String id="SMT.Group.Links.Label" DefaultValue="Model Tools Links"/>
           <bt:String id="SMT.OpenLinks.Label" DefaultValue="Links"/>
+          <bt:String id="SMT.Functions.Namespace" DefaultValue="SMT"/>
         </bt:ShortStrings>
         <bt:LongStrings>
           <bt:String id="SMT.OpenPane.Tip" DefaultValue="Open the Model Tools task pane."/>

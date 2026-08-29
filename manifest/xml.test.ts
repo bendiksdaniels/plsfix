@@ -99,6 +99,75 @@ describe("buildManifest", () => {
     );
   });
 
+  it("wires custom functions into the Workbook host only, once per block", () => {
+    const xml = buildManifest(prod, ADDIN);
+    // Once in each VersionOverrides block, and never on the PowerPoint host.
+    expect(
+      xml.match(/<ExtensionPoint xsi:type="CustomFunctions">/g),
+    ).toHaveLength(2);
+    for (const block of xml.match(
+      /<Host xsi:type="Presentation">[\s\S]*?<\/Host>/g,
+    )!) {
+      expect(block).not.toContain("CustomFunctions");
+      expect(block).not.toContain("<AllFormFactors>");
+    }
+
+    const workbookBlocks = xml.match(
+      /<Host xsi:type="Workbook">[\s\S]*?<\/Host>/g,
+    )!;
+    expect(workbookBlocks).toHaveLength(2);
+    for (const block of workbookBlocks) {
+      expect(
+        block.match(/<ExtensionPoint xsi:type="CustomFunctions">/g),
+      ).toHaveLength(1);
+      // The schema fixes the order inside <Host>, and the functions reuse the
+      // pane's runtime rather than declaring a second one.
+      expect(block.indexOf("<Runtimes>")).toBeLessThan(
+        block.indexOf("<AllFormFactors>"),
+      );
+      expect(block.indexOf("<AllFormFactors>")).toBeLessThan(
+        block.indexOf("<DesktopFormFactor>"),
+      );
+      expect(block.match(/<Runtime resid=/g)).toHaveLength(1);
+      // Indentation differs between the two blocks, so the point is compared
+      // with its whitespace collapsed.
+      const point = /<AllFormFactors>[\s\S]*?<\/AllFormFactors>/
+        .exec(block)![0]
+        .replaceAll(/\s+/g, " ");
+      expect(point).toContain(
+        '<Script> <SourceLocation resid="SMT.Functions.Script.Url"/> </Script>',
+      );
+      // The page is the pane the shared runtime already serves.
+      expect(point).toContain(
+        '<Page> <SourceLocation resid="SMT.Taskpane.Url"/> </Page>',
+      );
+      expect(point).toContain(
+        '<Metadata> <SourceLocation resid="SMT.Functions.Metadata.Url"/> </Metadata>',
+      );
+      expect(point).toContain('<Namespace resid="SMT.Functions.Namespace"/>');
+    }
+  });
+
+  it("publishes the functions script, metadata and namespace as resources", () => {
+    const xml = buildManifest(prod, ADDIN);
+    for (const line of [
+      '<bt:Url id="SMT.Functions.Script.Url" DefaultValue="https://dbautomatizacijas.com/modelis/functions.js"/>',
+      '<bt:Url id="SMT.Functions.Metadata.Url" DefaultValue="https://dbautomatizacijas.com/modelis/functions.json"/>',
+      '<bt:String id="SMT.Functions.Namespace" DefaultValue="SMT"/>',
+    ]) {
+      // One per <Resources> block, and there are two.
+      expect(xml.split(line)).toHaveLength(3);
+    }
+    // A host without the block renders neither the extension point nor its ids.
+    const noFunctions: AddinSpec = {
+      ...ADDIN,
+      hosts: [{ ...WORKBOOK_HOST, customFunctions: undefined }],
+    };
+    const plain = buildManifest(prod, noFunctions);
+    expect(plain).not.toContain("CustomFunctions");
+    expect(plain).not.toContain("SMT.Functions.Script.Url");
+  });
+
   it("emits each group label resource exactly once per VersionOverrides block", () => {
     const xml = buildManifest(prod, ADDIN);
     const resourceBlocks = [

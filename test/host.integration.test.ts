@@ -1417,6 +1417,109 @@ describe("tornado", () => {
 
 // ---------------------------------------------------------------------------
 
+describe("consistent rounding", () => {
+  const SHAPE_ERROR =
+    "Consistent rounding: select one row or column with at least two numbers.";
+
+  function seedColumn(): void {
+    helpers.seed("Model!B2", [[33.333], [33.333], [33.334]]);
+    helpers.select("Model!B2:B4");
+  }
+
+  it("writes one SMT.ROUND per cell into the column beside the selection", async () => {
+    seedColumn();
+    expect(await smt.insertConsistentRounding()).toBe(
+      "Consistent rounding: 3 cells at 0 decimals",
+    );
+
+    // Every cell points at the whole group, absolutely, and reads out its own
+    // position; the source column is untouched.
+    expect(
+      ["C2", "C3", "C4"].map((at) => helpers.formula(`Model!${at}`)),
+    ).toEqual([
+      "=SMT.ROUND($B$2:$B$4,1,0)",
+      "=SMT.ROUND($B$2:$B$4,2,0)",
+      "=SMT.ROUND($B$2:$B$4,3,0)",
+    ]);
+    expect(helpers.value("Model!B2")).toBe(33.333);
+  });
+
+  it("writes below a selected row and takes the decimals from the format", async () => {
+    helpers.seed("Model!B2", [[1.005, 2.005, 3.005]]);
+    helpers.setNumberFormat("Model!B2:D2", "#,##0.00");
+    helpers.select("Model!B2:D2");
+
+    expect(await smt.insertConsistentRounding()).toBe(
+      "Consistent rounding: 3 cells at 2 decimals",
+    );
+    expect(
+      ["B3", "C3", "D3"].map((at) => helpers.formula(`Model!${at}`)),
+    ).toEqual([
+      "=SMT.ROUND($B$2:$D$2,1,2)",
+      "=SMT.ROUND($B$2:$D$2,2,2)",
+      "=SMT.ROUND($B$2:$D$2,3,2)",
+    ]);
+  });
+
+  // A percentage prints two places left of what it stores, so the shares add up
+  // as they are read, not as they are kept.
+  it("reads a percentage format as the precision of the stored value", async () => {
+    helpers.seed("Model!A1", [[0.31428], [0.31428], [0.37144]]);
+    helpers.setNumberFormat("Model!A1:A3", "0.0%");
+    helpers.select("Model!A1:A3");
+
+    expect(await smt.insertConsistentRounding()).toBe(
+      "Consistent rounding: 3 cells at 3 decimals",
+    );
+    expect(helpers.formula("Model!B1")).toBe("=SMT.ROUND($A$1:$A$3,1,3)");
+  });
+
+  it("refuses to overwrite what already stands beside the selection", async () => {
+    seedColumn();
+    helpers.seed("Model!C3", [["base case"]]);
+    expect(await rejects(() => smt.insertConsistentRounding())).toBe(
+      "Consistent rounding: the cells right of the selection are not empty.",
+    );
+    expect(helpers.formula("Model!C2")).toBe("");
+
+    helpers.seed("Model!A1", [[1, 2]]);
+    helpers.seed("Model!B2", [[7]]);
+    helpers.select("Model!A1:B1");
+    expect(await rejects(() => smt.insertConsistentRounding())).toBe(
+      "Consistent rounding: the cells below the selection are not empty.",
+    );
+  });
+
+  it("refuses anything that is not a line of numbers", async () => {
+    helpers.seed("Model!A1", [
+      [1, 2],
+      [3, 4],
+    ]);
+    helpers.select("Model!A1:B2");
+    expect(await rejects(() => smt.insertConsistentRounding())).toBe(
+      SHAPE_ERROR,
+    );
+
+    helpers.select("Model!A1");
+    expect(await rejects(() => smt.insertConsistentRounding())).toBe(
+      SHAPE_ERROR,
+    );
+
+    helpers.seed("Model!D1", [[10], ["n/a"], [30]]);
+    helpers.select("Model!D1:D3");
+    expect(await rejects(() => smt.insertConsistentRounding())).toBe(
+      SHAPE_ERROR,
+    );
+  });
+
+  it("puts the column back on undo", async () => {
+    seedColumn();
+    await expectExactUndo(() => smt.insertConsistentRounding());
+  });
+});
+
+// ---------------------------------------------------------------------------
+
 describe("unpivot", () => {
   function seedCrossTab(): void {
     helpers.seed("Model!A1", [

@@ -22,6 +22,7 @@ import {
   formatSelectedChart,
   insertCagr,
   insertColorKey,
+  insertConsistentRounding,
   insertTornado,
   insertWaterfall,
   insertToc,
@@ -331,6 +332,8 @@ async function dispatch(action: string): Promise<string> {
         return insertTornado();
       case "unpivot":
         return unpivotSelection();
+      case "write-rounded":
+        return insertConsistentRounding();
       case "chart-format":
         await formatSelectedChart();
         return "Chart restyled to your brand";
@@ -400,6 +403,7 @@ function registerCommands(): void {
     SMT_PASTE_EXACT: pastePreserveFormulas,
     SMT_PASTE_TRANSPOSE: () => pasteSpecial("transpose"),
     SMT_CAGR: insertCagr,
+    SMT_ROUND: insertConsistentRounding,
     SMT_SIGN: applySignFlip,
     SMT_DEC_MORE: () => applyDecimalStep(1),
     SMT_DEC_LESS: () => applyDecimalStep(-1),

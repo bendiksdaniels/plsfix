@@ -4,6 +4,7 @@
 // never re-exports this module, so nothing here is part of the pane's public
 // surface.
 
+import { type CellValue } from "../model";
 import {
   activeTheme,
   currencyNumberFormat,
@@ -71,6 +72,22 @@ export async function selectedSingleRange(
     }
   }
   return context.workbook.getSelectedRange();
+}
+
+// A block written beside the selection has to be free first: SMT Undo is a
+// single slot the modeller has to know to reach for, so a base-case column or a
+// comment standing there is not something to overwrite and report afterwards.
+export async function requireEmptyBlock(
+  context: Excel.RequestContext,
+  block: Excel.Range,
+  message: string,
+): Promise<void> {
+  block.load("values");
+  await context.sync();
+  const occupied = (block.values as CellValue[][]).some((row) =>
+    row.some((cell) => cell !== null && cell !== ""),
+  );
+  if (occupied) throw new Error(message);
 }
 
 // One write per run of same-key cells instead of one per cell: model rows are

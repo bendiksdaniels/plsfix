@@ -1,0 +1,56 @@
+{
+  "functions": [
+    {
+      "id": "ROUND",
+      "name": "ROUND",
+      "description": "One cell's share of a consistently rounded group: the rounded values add up to the rounded total.",
+      "result": {
+        "type": "number",
+        "dimensionality": "scalar"
+      },
+      "parameters": [
+        {
+          "name": "range",
+          "description": "The whole group of numbers being rounded together, as a range reference.",
+          "type": "number",
+          "dimensionality": "matrix"
+        },
+        {
+          "name": "index",
+          "description": "Which cell of the range this is, counting from 1.",
+          "type": "number",
+          "dimensionality": "scalar"
+        },
+        {
+          "name": "decimals",
+          "description": "Decimal places, as in ROUND: 0 for whole numbers, negative for tens and thousands.",
+          "type": "number",
+          "dimensionality": "scalar"
+        }
+      ]
+    },
+    {
+      "id": "ROUNDSUM",
+      "name": "ROUNDSUM",
+      "description": "The group's total, rounded so it equals the sum of SMT.ROUND over the same range.",
+      "result": {
+        "type": "number",
+        "dimensionality": "scalar"
+      },
+      "parameters": [
+        {
+          "name": "range",
+          "description": "The whole group of numbers being rounded together, as a range reference.",
+          "type": "number",
+          "dimensionality": "matrix"
+        },
+        {
+          "name": "decimals",
+          "description": "Decimal places, as in ROUND: 0 for whole numbers, negative for tens and thousands.",
+          "type": "number",
+          "dimensionality": "scalar"
+        }
+      ]
+    }
+  ]
+}

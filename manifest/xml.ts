@@ -82,12 +82,39 @@ function groupBlock(spec: AddinSpec, host: HostSpec, group: GroupSpec): string {
   ].join("\n");
 }
 
+// The custom functions Office publishes for this host, or nothing when the
+// host declares none. <Page> points at the host's own pane URL: the functions
+// share the pane's long-lived runtime rather than starting a second one. Order
+// inside <Host> is fixed by the schema: Runtimes, AllFormFactors, then
+// DesktopFormFactor.
+function customFunctions(host: HostSpec): string[] {
+  const functions = host.customFunctions;
+  if (!functions) return [];
+  return [
+    `<AllFormFactors>`,
+    `  <ExtensionPoint xsi:type="CustomFunctions">`,
+    `    <Script>`,
+    `      <SourceLocation resid="${escapeXml(functions.scriptResid)}"/>`,
+    `    </Script>`,
+    `    <Page>`,
+    `      <SourceLocation resid="${escapeXml(host.urlResid)}"/>`,
+    `    </Page>`,
+    `    <Metadata>`,
+    `      <SourceLocation resid="${escapeXml(functions.metadataResid)}"/>`,
+    `    </Metadata>`,
+    `    <Namespace resid="${escapeXml(functions.namespaceResid)}"/>`,
+    `  </ExtensionPoint>`,
+    `</AllFormFactors>`,
+  ];
+}
+
 function hostBlock(spec: AddinSpec, host: HostSpec): string {
   return [
     `<Host xsi:type="${escapeXml(host.name)}">`,
     `  <Runtimes>`,
     `    <Runtime resid="${escapeXml(host.urlResid)}" lifetime="long"/>`,
     `  </Runtimes>`,
+    ...customFunctions(host).map((line) => `  ${line}`),
     `  <DesktopFormFactor>`,
     `    <FunctionFile resid="${escapeXml(host.urlResid)}"/>`,
     `    <ExtensionPoint xsi:type="PrimaryCommandSurface">`,
@@ -123,10 +150,20 @@ function resources(env: ManifestEnvironment, spec: AddinSpec): string {
     (size) =>
       `<bt:Image id="${escapeXml(spec.iconResids[size])}" DefaultValue="${escapeXml(env.baseUrl)}assets/icon-${size}.png"/>`,
   );
-  const urls = spec.hosts.map(
-    (host) =>
-      `<bt:Url id="${escapeXml(host.urlResid)}" DefaultValue="${escapeXml(env.baseUrl)}${escapeXml(host.page)}"/>`,
-  );
+  const urls = [
+    ...spec.hosts.map(
+      (host) =>
+        `<bt:Url id="${escapeXml(host.urlResid)}" DefaultValue="${escapeXml(env.baseUrl)}${escapeXml(host.page)}"/>`,
+    ),
+    ...spec.hosts.flatMap((host) =>
+      host.customFunctions
+        ? [
+            `<bt:Url id="${escapeXml(host.customFunctions.scriptResid)}" DefaultValue="${escapeXml(env.baseUrl)}${escapeXml(host.customFunctions.scriptFile)}"/>`,
+            `<bt:Url id="${escapeXml(host.customFunctions.metadataResid)}" DefaultValue="${escapeXml(env.baseUrl)}${escapeXml(host.customFunctions.metadataFile)}"/>`,
+          ]
+        : [],
+    ),
+  ];
   const shorts = [
     `<bt:String id="SMT.Tab.Label" DefaultValue="${escapeXml(spec.tabLabel)}"/>`,
     ...spec.hosts.flatMap((host) =>
@@ -137,6 +174,13 @@ function resources(env: ManifestEnvironment, spec: AddinSpec): string {
             `<bt:String id="SMT.${escapeXml(b.id)}.Label" DefaultValue="${escapeXml(b.label)}"/>`,
         ),
       ]),
+    ),
+    ...spec.hosts.flatMap((host) =>
+      host.customFunctions
+        ? [
+            `<bt:String id="${escapeXml(host.customFunctions.namespaceResid)}" DefaultValue="${escapeXml(host.customFunctions.namespace)}"/>`,
+          ]
+        : [],
     ),
   ];
   const longs = spec.hosts.flatMap((host) =>
