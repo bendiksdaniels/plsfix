@@ -103,6 +103,7 @@ import {
 import { type ShareIssue, summarizeShare } from "./share";
 import { getElement } from "./ui/dom";
 import { makeGuard } from "./ui/guard";
+import { installHelp } from "./ui/help";
 import { describeError, installErrorReporting } from "./ui/report";
 import { installTabs } from "./ui/tabs";
 import { createToast } from "./ui/toast";
@@ -1335,6 +1336,8 @@ installErrorReporting(
 loadSettings();
 loadPaintSlots();
 const tabs = installTabs(getElement("tab-bar"));
+// The "?" on every section heading, added once the markup is in place.
+installHelp(document);
 getElement<HTMLButtonElement>("tab-workbook").addEventListener(
   "click",
   // Sheets change without the pane hearing about it, so the explorer is

@@ -85,6 +85,9 @@ fn pane_layout() -> Section {
             Block::Para(
                 r#"Paneļa apakšā ir rinda "Workbook data stays inside Excel" un pašreizējā versija. PowerPoint pusē tajā pašā vietā ir rinda "Linked objects stay inside PowerPoint"."#,
             ),
+            Block::Para(
+                r#"Katrai paneļa sadaļai blakus virsrakstam ir apaļa poga "?", kas atver īsu skaidrojumu par sadaļu un par katru tās pogu. Vienlaikus ir atvērts viens skaidrojums, un to aizver ar to pašu pogu vai ar taustiņu Esc."#,
+            ),
             Block::Image {
                 file: "excel-brand-language.png",
                 alt: r#"pls,fix panelis Excel loga labajā pusē: komata logotips, stāvokļa rinda "Excel connected" un ciļņu josla."#,

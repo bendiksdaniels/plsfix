@@ -97,6 +97,8 @@ branded equivalent. Users can remap under Office add-in shortcut preferences.
 The task pane runs locally and reads the workbook in the Excel process. The only data that
 leaves the machine is a linked object's rendered picture, encrypted in the pane before it is
 uploaded (see *Linked objects in PowerPoint*); a workbook with no links sends nothing anywhere.
+Every section of both panes carries a `?` beside its heading that opens a short explanation of
+what that section is for and what each of its buttons does.
 
 ## Run locally
 

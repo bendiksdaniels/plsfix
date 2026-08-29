@@ -1,0 +1,104 @@
+/* The "?" on a section heading and the card it opens. Owns the toggle's 20px
+   disc, the 34px box that disc is centred in, and the card's paper, radius and
+   label/sentence rows. Invariant: the card never widens a section - every row
+   wraps, so 320px reads the same as 500px. */
+
+/* The heading's text takes the free space, so a section carrying both a round
+   icon button and a "?" keeps the two together on the right instead of letting
+   space-between push them apart. */
+.section-heading > div:first-child {
+  margin-right: auto;
+}
+
+/* The disc is 20px, but a button under 32px is not a tap target: the box is one
+   control height and the disc sits in its middle. */
+.help-toggle {
+  display: grid;
+  place-items: center;
+  width: var(--control-h);
+  height: var(--control-h);
+  flex: none;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+.help-toggle > span {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  color: var(--muted);
+  background: var(--paper);
+  font-size: var(--fs-body);
+  font-weight: 750;
+  line-height: 1;
+  transition:
+    border-color 0.15s,
+    background 0.15s,
+    color 0.15s;
+}
+
+/* The shared button states paint a border and a fill; here they belong on the
+   disc, and the box around it stays invisible. */
+.help-toggle:hover:not(:disabled),
+.help-toggle:active:not(:disabled) {
+  border-color: transparent;
+  background: none;
+}
+.help-toggle:hover > span,
+.help-toggle[aria-expanded="true"] > span {
+  border-color: var(--accent);
+  color: var(--accent-ink);
+  background: var(--surface-hover);
+}
+.help-toggle:focus-visible {
+  border-radius: 50%;
+  outline-offset: -7px;
+}
+.help-toggle:focus-visible > span {
+  border-color: var(--accent);
+  color: var(--accent-ink);
+}
+
+.help-card {
+  display: grid;
+  gap: var(--gap-tight);
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-row);
+  background: var(--paper);
+}
+.help-about {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--fs-body);
+  line-height: 1.4;
+}
+.help-list {
+  display: grid;
+  gap: var(--gap-tight);
+  margin: 0;
+  min-width: 0;
+}
+.help-row {
+  min-width: 0;
+}
+.help-row dt {
+  color: var(--ink);
+  font-size: var(--fs-body);
+  font-weight: 750;
+  line-height: 1.3;
+  /* A label is one word as often as not, and the pane can be 320px wide. */
+  overflow-wrap: anywhere;
+}
+.help-row dd {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--fs-body);
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
