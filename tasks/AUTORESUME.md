@@ -1,7 +1,10 @@
-# AUTORESUME - pls,fix (v2.3.4 LIVE 2026-08-30)
+# AUTORESUME - pls,fix (v2.3.5 LIVE 2026-08-30)
 
 ## 30.08: fleet 2 (Daniel: overlap still seen in Excel; intuitive, advanced, universal, templates, "?")
 
+- 30.08 merged + live v2.3.5: C universal tools + data-aware chart placement
+  (`src/excel/chart-place.ts`, `areas.ts` multi-area, `protection.ts`; 881 tests). Fleet 2 done.
+  Incident: an agent symlinked `~/plsfix/node_modules` to itself (lessons.md 30.08).
 - 30.08 merged + live: B help "?" (v2.3.3, `src/help/copy*.ts`, `src/ui/help.ts`, copy gate over
   both panes) and A templates (v2.3.4, `src/templates.ts` + `src/template-blocks.ts` +
   `src/template-cells.ts` + `src/excel/templates.ts`, Templates section at the end of Tools, manual
