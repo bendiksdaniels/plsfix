@@ -1,4 +1,5 @@
 import "./styles.css";
+import { hostReady } from "./host-ready";
 import type { NumberCycleFamily, RowStyleKind } from "./cycles";
 import {
   addCagrLabel,
@@ -1317,7 +1318,7 @@ async function restoreOverlayFills(): Promise<void> {
   }
 }
 
-Office.onReady(async ({ host }) => {
+async function boot(host: Office.HostType, degraded: boolean): Promise<void> {
   if (host === Office.HostType.PowerPoint) {
     location.replace("pptpane.html");
     return;
@@ -1340,6 +1341,7 @@ Office.onReady(async ({ host }) => {
   connectionStatus.textContent = "Excel connected";
   connectionStatus.className = "connection ready";
   excelReady = true;
+  if (degraded) toast.show(DEGRADED_BOOT_MESSAGE);
 
   registerCommands();
   syncAutocolorOnEdit();
@@ -1423,4 +1425,40 @@ Office.onReady(async ({ host }) => {
   );
 
   await refreshSelection();
-});
+}
+
+// Office.onReady is the ready signal. On Excel for the web the custom-functions
+// runtime can fail to start ("session expired" at its init) and the promise
+// then never settles although Excel.run answers, so from HOST_HEAD_START_MS on
+// the host itself is asked (src/host-ready.ts) and the pane boots degraded.
+const HOST_HEAD_START_MS = 4_000;
+const HOST_PROBE_EVERY_MS = 1_000;
+const HOST_GIVE_UP_MS = 30_000;
+const DEGRADED_BOOT_MESSAGE =
+  "Excel answered but never reported the add-in ready: =SMT.ROUND may need the workbook reopened.";
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => window.setTimeout(resolve, ms));
+}
+
+async function probeExcelHost(): Promise<Office.HostType | null> {
+  try {
+    if (Office.context.host !== Office.HostType.Excel) return null;
+    await Excel.run(async (context) => {
+      context.workbook.load("name");
+      await context.sync();
+    });
+    return Office.HostType.Excel;
+  } catch {
+    return null;
+  }
+}
+
+void hostReady({
+  onReady: Office.onReady().then(({ host }) => host),
+  probe: probeExcelHost,
+  headStartMs: HOST_HEAD_START_MS,
+  probeEveryMs: HOST_PROBE_EVERY_MS,
+  giveUpAfterMs: HOST_GIVE_UP_MS,
+  sleep,
+}).then(({ host, degraded }) => boot(host, degraded));
