@@ -1143,7 +1143,7 @@ function renderFind(result: FindResult | null): void {
 
   if (!result) {
     getElement("find-hint").textContent =
-      "Searches values, defined names, sheet names and comments on every sheet.";
+      "Searches values, workbook-level defined names, sheet names and comments on every sheet.";
     return;
   }
   for (const hit of result.hits) list.append(findRow(hit));

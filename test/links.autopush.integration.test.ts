@@ -247,6 +247,28 @@ describe("auto-push on edit", () => {
     });
   });
 
+  // A re-installed Links tab hands over a fresh relay client and a fresh
+  // notify; arming over a live handler kept the first pane's pair, which is a
+  // push reported into a pane that is gone.
+  it("takes the new relay and notify when it is armed a second time", async () => {
+    const id = await armed();
+    const second = new FakeRelay();
+    const later: string[] = [];
+    await watch.setAutoPush(true, second, (message) => later.push(message), {
+      clock,
+    });
+    expect(helpers.changeHandlerCount()).toBe(1);
+
+    await helpers.fireChanged("Model", "C5");
+    clock.advance(watch.AUTOPUSH_DELAY_MS);
+    await vi.waitFor(() => {
+      expect(later).toEqual(["Pushed 1 link"]);
+    });
+    expect(second.links.get(id)!.rev).toBe(1);
+    expect(relay.links.get(id)!.rev).toBe(1);
+    expect(notes).toEqual([]);
+  });
+
   it("stays off in a workbook that never asked for it", async () => {
     await links.exportSelection(ws, relay);
     expect(await watch.restoreAutoPush(relay, note, { clock })).toBe(false);
