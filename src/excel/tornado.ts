@@ -6,6 +6,7 @@
 import {
   formatChartAmount,
   hostSupports,
+  requireEmptyBlock,
   selectedSingleRange,
   styleChartShell,
 } from "./internal";
@@ -96,25 +97,6 @@ function styleTornado(chart: Excel.Chart, heading: string): void {
   });
 }
 
-// The helper block is written over whatever stands right of the selection, and
-// SMT Undo is a single slot the modeller has to know to reach for: a base-case
-// column or a comment there is not something to overwrite and report later.
-async function requireFreeBlock(
-  context: Excel.RequestContext,
-  block: Excel.Range,
-): Promise<void> {
-  block.load("values");
-  await context.sync();
-  const occupied = (block.values as CellValue[][]).some((row) =>
-    row.some((cell) => cell !== null && cell !== ""),
-  );
-  if (occupied) {
-    throw new Error(
-      "tornado: cells to the right of the selection are not empty",
-    );
-  }
-}
-
 // Label, low outcome, high outcome; the helper block lands immediately right of
 // the selection, and SMT Undo captures whatever stood there first.
 export async function insertTornado(): Promise<string> {
@@ -141,7 +123,11 @@ export async function insertTornado(): Promise<string> {
       series.labels.length + 1,
       TORNADO_COLUMNS,
     );
-    await requireFreeBlock(context, block);
+    await requireEmptyBlock(
+      context,
+      block,
+      "tornado: cells to the right of the selection are not empty",
+    );
     await captureUndo(context, block);
     block.values = [
       TORNADO_HEADERS,

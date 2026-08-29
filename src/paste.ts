@@ -109,9 +109,16 @@ function splitSections(format: string): string[] {
   return sections;
 }
 
-function stepSection(section: string, delta: 1 | -1): string {
-  const literal = scanLiterals(section);
+interface NumericBody {
+  start: number;
+  end: number; // last character before the trailing commas
+  thousands: number; // trailing commas, each dividing what is printed by 1,000
+}
 
+// The run of digit placeholders inside one section - "#,##0.00" within
+// "€ #,##0.00_);[Red](#,##0.00)" - or null when the section prints no digits at
+// all: "General", "@" and date codes have nothing to step or count.
+function numericBody(section: string, literal: boolean[]): NumericBody | null {
   let start = -1;
   for (let index = 0; index < section.length; index += 1) {
     if (!literal[index] && PLACEHOLDERS.includes(section[index] ?? "")) {
@@ -119,8 +126,7 @@ function stepSection(section: string, delta: 1 | -1): string {
       break;
     }
   }
-  // No digit placeholders: "General", "@" and date codes step nowhere.
-  if (start < 0) return section;
+  if (start < 0) return null;
 
   let end = start;
   while (
@@ -131,7 +137,19 @@ function stepSection(section: string, delta: 1 | -1): string {
     end += 1;
   }
   // A trailing comma scales by a thousand; it is not part of the decimals.
-  while (end > start && section[end] === ",") end -= 1;
+  let thousands = 0;
+  while (end > start && section[end] === ",") {
+    thousands += 1;
+    end -= 1;
+  }
+  return { start, end, thousands };
+}
+
+function stepSection(section: string, delta: 1 | -1): string {
+  const literal = scanLiterals(section);
+  const body = numericBody(section, literal);
+  if (!body) return section;
+  const { start, end } = body;
 
   let dot = -1;
   for (let index = start; index <= end; index += 1) {
@@ -202,4 +220,52 @@ export function buildCagrFormula(
   periods: number,
 ): string {
   return `=(${lastRef}/${firstRef})^(1/${periods})-1`;
+}
+
+// The precision a number format prints, read back as a rounding precision on
+// the stored value: "#,##0.00" is 2, a percentage adds the two places Excel
+// shifts before printing ("0.0%" is 3), and each thousands comma takes three
+// away ("#,##0,," rounds to millions). Null when the format prints no digits,
+// which leaves the caller's own default standing. Only the first section is
+// read: that is the one a positive number prints through.
+export function formatDecimals(format: string): number | null {
+  const section = splitSections(format)[0] ?? "";
+  const literal = scanLiterals(section);
+  const body = numericBody(section, literal);
+  if (!body) return null;
+
+  const digits = section.slice(body.start, body.end + 1);
+  const dot = digits.indexOf(".");
+  const decimals =
+    dot < 0
+      ? 0
+      : [...digits.slice(dot + 1)].filter((char) => PLACEHOLDERS.includes(char))
+          .length;
+  const percent = [...section].some(
+    (char, index) => char === "%" && !literal[index],
+  );
+  return decimals + (percent ? 2 : 0) - 3 * body.thousands;
+}
+
+// "A1:A5" as "$A$1:$A$5", any sheet prefix left as it is. Every cell of a
+// rounding group points at the whole group, so the reference has to survive
+// being filled or copied down the column.
+export function absoluteRef(address: string): string {
+  const cut = address.lastIndexOf("!");
+  const local = address.slice(cut + 1);
+  return (
+    address.slice(0, cut + 1) +
+    local.replaceAll(/([A-Za-z]+)(\d+)/g, "$$$1$$$2")
+  );
+}
+
+// =SMT.ROUND($A$1:$A$5,2,0): the whole group as the first argument, so Excel
+// recalculates every sibling cell whenever any value in it changes, plus the
+// literal position this cell reads out of the allocation.
+export function buildRoundFormula(
+  rangeRef: string,
+  index: number,
+  decimals: number,
+): string {
+  return `=SMT.ROUND(${rangeRef},${index},${decimals})`;
 }
