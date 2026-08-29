@@ -50,7 +50,7 @@ each item. Stop when Daniel intervenes or the list is empty.
       CustomFunctions extension point in `manifest/spec.ts`, functions.json + functions entry via Vite,
       largest-remainder allocation with a range ceiling, ribbon/pane button that writes the formulas.
 - [ ] C5 FEATURES.md P2 leftovers, one per iteration: border cycles (done v2.1.3), row-height/column-width cycles (done v2.1.5),
-      paintbrush slots, Super Find, unused-style scrubber, "prepare for sharing".
+      paintbrush slots (done v2.1.7), Super Find, unused-style scrubber, "prepare for sharing".
 - [x] C6 Test debt: split `test/ppt.integration.test.ts` (>400 lines) by feature; keep every
       test file under 400 lines.
 - [x] C7 Docs: `docs/FEATURES.md` status column refreshed from what shipped (ROADMAP.md stays
