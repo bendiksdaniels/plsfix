@@ -93,7 +93,13 @@ function statusCell(status: LinkStatus): HTMLTableCellElement {
   cell.className = "link-status";
   const badge = document.createElement("span");
   badge.className = STATUS_CLASSES[status];
-  badge.textContent = statusLabel(status);
+  const label = statusLabel(status);
+  badge.textContent = label;
+  // Narrow panes truncate the badge text; the title tooltip (and an
+  // aria-label, since the badge has no other accessible name) keep the
+  // full status readable/announced.
+  badge.title = label;
+  badge.setAttribute("aria-label", label);
   cell.append(badge);
   return cell;
 }

@@ -46,13 +46,13 @@ not yet built.
 | Number format cycles (general/currency/percent/multiple/date) | both | Repeated keystroke cycles curated formats per family | shipped v1.1 | P1 |
 | Title / result / item row format cycles | US | Cycles approved row styles | shipped v1.1 | P1 |
 | Fill color cycle / font color cycle | both | Cycles brand fills/fonts | shipped v1.1 | P1 |
-| Border style/color cycles | both | Cycles approved borders (incl. accounting underlines) | Yes | P1 |
-| Row height / column width cycles | US | Cycles preset standards | Yes (Range format) | P2 |
+| Border style/color cycles | both | Cycles approved borders (incl. accounting underlines) | shipped v2.1 | P1 |
+| Row height / column width cycles | US | Cycles preset standards | shipped v2.1 | P2 |
 | More/fewer decimals | US | Steps decimal places in the active format | shipped v1.1 | P1 |
 | Change sign | US | Flips sign of selected constants | shipped v1.1 | P1 |
 | Pinstripes (alternate row/col shading) | MB | Odd/even shading via conditional format | Yes (ConditionalFormat API) | P2 |
 | Custom Styles / Style Cycles (user-defined, 8 slots) | MB | Reusable multi-property styles on one key | Yes (settings-driven) | P2 |
-| Paintbrush (multi-slot format painter) | MB | Copy/apply formatting without clipboard, FIFO slots | Yes (read format -> store -> apply) | P2 |
+| Paintbrush (multi-slot format painter) | MB | Copy/apply formatting without clipboard, FIFO slots | shipped v2.1 | P2 |
 | Indent cycles, center cycle, underline cycle | MB | Alignment/underline cycling | Yes | P2 |
 | Footnote cycle/toggle/hide/checker (in-cell superscripts) | MB | Numbered footnote management in cells | Partial (number-format superscript tricks; font runs limited) | P3 |
 | Standard Sizes (conform cells/charts to preset dims) | MB | Preset output dimensions | Yes | P3 |
@@ -88,7 +88,7 @@ not yet built.
 |---|---|---|---|---|
 | Smart Track / Trace In-Out pane (precedents/dependents tree, keyboard nav, color trail) | both | Drill into inputs and back | shipped v1.1 | P1 |
 | Show all precedents for multiple cells | MB | Multi-cell trace | Yes* (same; cap cell count) | P2 |
-| Super Find (values/formulas/comments across workbook) | MB | Better Find with results pane | Partial (this workbook only; no other open workbooks) | P2 |
+| Super Find (values/formulas/comments across workbook) | MB | Better Find with results pane | shipped v2.1 (this workbook only, no other open workbooks; comments not searched yet) | P2 |
 | Explorer (workbook/sheet tree navigator) | US | Sheet navigation pane with search | shipped v1.1 | P1 |
 | Workbook TOC sheet | both | Hyperlinked contents sheet, auto-updating | shipped v1.1 | P1 |
 | Sheet tools (move/bury/unhide-multi/activate dialog) | MB | Sheet management | Yes (visibility incl. VeryHidden) | P2 |
@@ -125,7 +125,7 @@ not yet built.
 | Feature | Source | What it does | Feasibility | Priority |
 |---|---|---|---|---|
 | Clean: broken/hidden defined names | both | Name scrubber | shipped v1.1 | P1 |
-| Clean: unused styles | both | Style scrubber (style-ceiling fix) | Yes (StyleCollection; verify add/delete surface) | P2 |
+| Clean: unused styles | both | Style scrubber (style-ceiling fix) | shipped v2.1 | P2 |
 | Clean: crop used range | US | Clear stray formatting past data | Yes | P2 |
 | Prepare for sharing (formulas->values, strip comments, hidden content, reset zoom) | US | Externalize workbook | Yes | P2 |
 | Smart Print (headers, orientation, print areas) | US | Print prep | Partial (PageLayout API exists; verify coverage) | P3 |
@@ -182,7 +182,7 @@ suppression are out of reach; additive checks only.
 |---|---|---|---|
 | SMT Undo: snapshot + restore last bulk action | #1 Macabacus trust complaint (undo broken) | shipped v1.1 | P1 — fold into C5 |
 | Palette legend insert (auto color key block) | F1F9 "Keys" | shipped v1.1 | P1 — fold into C3 |
-| =SMT.ROUND consistent-rounding custom functions | think-cell TCROUND | Yes (CustomFunctions set) | P2 (v1.x) |
+| =SMT.ROUND consistent-rounding custom functions | think-cell TCROUND | shipped v2.1 | P2 (v1.x) |
 | Reconciliation solver (subset-sum: which cells make up a variance) | Kutools "Make Up a Number" | Yes (pure TS) | P2 (v1.x) |
 | Tornado chart builder | PowerUser | shipped v2.1 | P2 (v1.x) |
 | Unpivot selection | PowerUser + Ablebits | shipped v2.1 | P2 (v1.x) |

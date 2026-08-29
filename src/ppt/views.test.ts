@@ -24,6 +24,8 @@ describe("renderLinkRows", () => {
     );
     expect(body.querySelectorAll("tr")).toHaveLength(1);
     expect(body.textContent).toContain("Update available");
+    const badge = body.querySelector(".link-status .badge") as HTMLElement;
+    expect(badge.title).toBe("Update available");
     (body.querySelector("input[type=checkbox]") as HTMLInputElement).click();
     expect(onToggle).toHaveBeenCalledWith("s1/sh1", true);
   });
