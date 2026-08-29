@@ -29,7 +29,8 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "check": "npm run typecheck && npm run lint && npm run format:check && npm test && npm run test:server && npm run manifest:check && npm run version:check"
+    "check": "npm run typecheck && npm run lint && npm run format:check && npm test && npm run test:server && npm run manifest:check && npm run version:check",
+    "ux:check": "node scripts/ux-check.mjs"
   },
   "dependencies": {
     "office-js": "0.1.0"
