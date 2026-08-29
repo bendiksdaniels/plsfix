@@ -43,7 +43,7 @@ each item. Stop when Daniel intervenes or the list is empty.
       wave -> v2.1.1 deploy.
 - [x] C2 Update-all speed: measure `scanLinks` + `status` on a 60-slide fake deck; batch tag loads
       across slides in one sync where the API allows; target under 3 syncs per update-all.
-- [ ] C3 Pane UX pass with a headless browser at 320/360/420 px: no clipped controls, badges
+- [x] C3 Pane UX pass with a headless browser at 320/360/420 px: no clipped controls, badges
       readable, keyboard focus order sane; fix what is found.
 - [x] C4 `=SMT.ROUND` research: GO (docs/research/custom-functions.md; shared runtime page reused).
 - [x] C8 Implement `SMT.ROUND` / `SMT.ROUNDSUM` custom functions per the research: manifest
