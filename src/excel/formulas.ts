@@ -3,16 +3,16 @@
 // Shares the selection cap and undo capture with selection.ts rather than
 // duplicating either.
 
+import { cappedAreas } from "./areas";
 import {
   numberFormat,
   requireEmptyBlock,
   selectedSingleRange,
-  selectionWithinCap,
   SHEET_COLUMNS,
   SHEET_ROWS,
 } from "./internal";
 import { parseAddress } from "./shared";
-import { captureUndo } from "./undo";
+import { captureUndo, captureUndoAreas } from "./undo";
 import { type CellValue, scaleCells } from "../model";
 import {
   absoluteRef,
@@ -27,6 +27,31 @@ import {
 import { ROUNDING_CELL_CAP } from "../rounding";
 
 const FILL_SCAN_LIMIT = 1_000;
+
+// What office.js takes back: a grid of literals, never null.
+type WritableGrid = (string | number | boolean)[][];
+
+// One grid transform over every area of the selection: read, capture undo, write
+// back. A ctrl-clicked pair of blocks is one job, not two.
+async function editAreas(
+  what: string,
+  property: "formulas" | "numberFormat",
+  edit: (grid: CellValue[][]) => CellValue[][],
+): Promise<void> {
+  await Excel.run(async (context) => {
+    const areas = await cappedAreas(context, what);
+    for (const area of areas) area.load(property);
+    await context.sync();
+    await captureUndoAreas(context, areas);
+
+    for (const area of areas) {
+      const next = edit(area[property] as CellValue[][]) as WritableGrid;
+      if (property === "formulas") area.formulas = next;
+      else area.numberFormat = next;
+    }
+    await context.sync();
+  });
+}
 
 // Macabacus-style fast fill: the data beside the origin decides how far the
 // formula travels, so nobody has to select the block first.
@@ -81,55 +106,22 @@ export async function fastFillAuto(direction: "right" | "down"): Promise<void> {
 }
 
 export async function toggleIfErrorGuard(): Promise<void> {
-  await Excel.run(async (context) => {
-    const range = await selectionWithinCap(context, "The IFERROR guard");
-    range.load("formulas");
-    await context.sync();
-    await captureUndo(context, range);
-
-    range.formulas = toggleIfError(range.formulas as CellValue[][], "0") as (
-      string | number | boolean
-    )[][];
-    await context.sync();
-  });
+  await editAreas("The IFERROR guard", "formulas", (grid) =>
+    toggleIfError(grid, "0"),
+  );
 }
 
 export async function scaleSelection(factor: 1000 | 0.001): Promise<void> {
-  await Excel.run(async (context) => {
-    const range = await selectionWithinCap(context, "Scaling");
-    range.load("formulas");
-    await context.sync();
-    await captureUndo(context, range);
-
-    range.formulas = scaleCells(range.formulas as CellValue[][], factor) as (
-      string | number | boolean
-    )[][];
-    await context.sync();
-  });
+  await editAreas("Scaling", "formulas", (grid) => scaleCells(grid, factor));
 }
 
 export async function applySignFlip(): Promise<void> {
-  await Excel.run(async (context) => {
-    const range = await selectionWithinCap(context, "Sign flip");
-    range.load("formulas");
-    await context.sync();
-    await captureUndo(context, range);
-
-    range.formulas = flipSign(range.formulas as CellValue[][]) as (
-      string | number | boolean
-    )[][];
-    await context.sync();
-  });
+  await editAreas("Sign flip", "formulas", flipSign);
 }
 
 export async function applyDecimalStep(delta: 1 | -1): Promise<void> {
-  await Excel.run(async (context) => {
-    const range = await selectionWithinCap(context, "Decimal stepping");
-    range.load("numberFormat");
-    await context.sync();
-    await captureUndo(context, range);
-
-    range.numberFormat = (range.numberFormat as CellValue[][]).map((row) =>
+  await editAreas("Decimal stepping", "numberFormat", (grid) =>
+    grid.map((row) =>
       row.map((format) => {
         const current = typeof format === "string" ? format : "General";
         // Excel's own Increase Decimal reads General as "0"; stepDecimals, being
@@ -137,9 +129,8 @@ export async function applyDecimalStep(delta: 1 | -1): Promise<void> {
         const base = current === "General" && delta === 1 ? "0" : current;
         return stepDecimals(base, delta);
       }),
-    );
-    await context.sync();
-  });
+    ),
+  );
 }
 
 export async function insertCagr(): Promise<void> {

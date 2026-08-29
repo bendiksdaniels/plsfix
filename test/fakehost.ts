@@ -658,7 +658,7 @@ const SHAPES: Record<string, Shape> = {
       getActiveChartOrNullObject: "chart",
     },
   },
-  rangeAreas: { scalars: ["areaCount"] },
+  rangeAreas: { scalars: ["areaCount", "address"] },
   worksheets: {
     scalars: ["items"],
     items: "worksheet",
@@ -3029,9 +3029,27 @@ class WorkbookProxy {
     });
   }
 
-  getSelectedRanges(): { areaCount: number; load: () => void } {
+  // Excel.RangeAreas: how many rectangles the selection holds and their one
+  // comma-separated address, each area sheet-qualified the way office.js writes
+  // it. The areas themselves are reopened from that address.
+  getSelectedRanges(): {
+    areaCount: number;
+    address: string;
+    load: () => void;
+  } {
+    const workbook = this.runtime.workbook;
+    const areas =
+      workbook.selectionAreas.length > 0
+        ? workbook.selectionAreas
+        : [workbook.selection];
     return {
-      areaCount: this.runtime.workbook.areaCount(),
+      areaCount: workbook.areaCount(),
+      address: areas
+        .map(
+          (area) =>
+            `${quoteSheet(this.sheetOf(area.sheetId).name)}!${formatA1(area.rect)}`,
+        )
+        .join(","),
       load: () => undefined,
     };
   }
