@@ -10,6 +10,13 @@
   open, sheet activation and the debounced selection change because `worksheets.onActivated`
   never fires on Excel for the web); demo pie on Rounding; Brand preview table fixed layout so
   the pane never overflows (the tab strip was clipped); cool tints; chart-list select styled.
+- Fleet 29.08 late (Daniel: "send more agents", budget approved for the UI audit): three opus
+  worktree agents off main 6adbc79: (1) native tables (report scratchpad/native-tables-report.md),
+  (2) Latvian Word manual `manual/` crate + `manual/out/pls,fix rokasgrāmata.docx`
+  (manual-report.md), (3) pane UI audit at 320/360/420/500 px with ux:check overflow gates
+  (ui-audit-report.md). Merge order: tables, UI audit (expect taskpane.html/styles.css
+  conflicts with tables), manual; gate, bump, deploy after each; backlog agents (Links list
+  refresh on sheet edits, chart list label for linked charts, web undo error) only after that.
 - In flight: opus implementer in a worktree building native PowerPoint tables from
   `docs/superpowers/specs/2026-08-29-native-tables-design.md` (kind `table`, addTable on
   PowerPointApi 1.8, in-place refresh, re-create on size change, free-space placement for
