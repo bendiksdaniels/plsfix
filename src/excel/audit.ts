@@ -1,12 +1,12 @@
 // Formula audit overlay: stripes cells by precedent/dependent pattern (via the
 // pure audit module) and remembers every fill it painted so it can restore the
-// original formatting exactly. Snapshots persist in workbook settings, so a
-// reload does not strand the paint.
+// original formatting exactly. The snapshot store persists in workbook
+// settings, so a reload does not strand the paint.
 
+import { FillStore, fillGrid, requestFills } from "./fill-store";
 import {
   applyFillKey,
   BASE_WHITE,
-  fillKey,
   SELECTION_CELL_CAP,
   writeRuns,
 } from "./internal";
@@ -17,63 +17,24 @@ import { getActiveSettings, tint } from "../settings";
 
 const LONE_FILL = "#E8B4B4";
 
-interface FillSnapshot {
-  sheetId: string;
-  address: string;
-  cells: string[][];
-}
-
-// The overlay owns nothing it did not paint: every fill it covers is stored here
+// The overlay owns nothing it did not paint: every fill it covers is stored
 // first and written back verbatim. It stays separate from SMT Undo because the
 // overlay is a toggle the modeller turns off again, not an edit to the model.
-const fillSnapshots = new Map<string, FillSnapshot>();
-
-// The paint is saved with the file while this map dies with the runtime, so the
-// snapshot rides along in workbook settings and startup restores it before the
-// stripes can be mistaken for model formatting or re-snapshotted as original.
+// The paint is saved with the file while the map dies with the runtime, so the
+// snapshot rides along in this workbook setting and startup restores it before
+// the stripes can be mistaken for model formatting or re-snapshotted.
 const OVERLAY_SETTING = "smtAuditOverlay";
-const OVERLAY_SETTING_MAX = 400_000;
+const overlay = new FillStore(OVERLAY_SETTING);
 
-function persistOverlaySetting(context: Excel.RequestContext): void {
-  const json = JSON.stringify([...fillSnapshots.values()]);
-  context.workbook.settings.add(
-    OVERLAY_SETTING,
-    json.length > OVERLAY_SETTING_MAX ? "" : json,
-  );
+// Read by the linked-cell highlight before it paints: two overlays cannot own
+// the same fill, and a highlight painted over these stripes would be snapshot
+// as the modeller's own formatting.
+export function auditOverlayOn(): boolean {
+  return overlay.painted;
 }
 
 export async function restorePersistedOverlay(): Promise<boolean> {
-  return Excel.run(async (context) => {
-    const setting =
-      context.workbook.settings.getItemOrNullObject(OVERLAY_SETTING);
-    setting.load("isNullObject,value");
-    await context.sync();
-    if (setting.isNullObject || !setting.value) return false;
-
-    let snapshots: FillSnapshot[] = [];
-    try {
-      snapshots = JSON.parse(String(setting.value)) as FillSnapshot[];
-    } catch {
-      snapshots = [];
-    }
-
-    const pending = snapshots.map((snapshot) => ({
-      snapshot,
-      sheet: context.workbook.worksheets.getItemOrNullObject(snapshot.sheetId),
-    }));
-    for (const { sheet } of pending) sheet.load("isNullObject");
-    await context.sync();
-
-    let restored = false;
-    for (const { snapshot, sheet } of pending) {
-      if (sheet.isNullObject) continue;
-      writeRuns(sheet.getRange(snapshot.address), snapshot.cells, applyFillKey);
-      restored = true;
-    }
-    context.workbook.settings.add(OVERLAY_SETTING, "");
-    await context.sync();
-    return restored;
-  });
+  return Excel.run((context) => overlay.restorePersisted(context));
 }
 
 function overlayKey(mark: AuditMark, patternColor: string): string | null {
@@ -99,45 +60,23 @@ export async function snapshotFills(
   context: Excel.RequestContext,
   range: Excel.Range,
 ): Promise<void> {
-  const properties = range.getCellProperties({
-    format: { fill: { color: true, pattern: true, patternColor: true } },
-  });
+  const properties = requestFills(range);
   const sheet = range.worksheet;
   sheet.load("id");
   range.load("address");
   await context.sync();
 
-  const address = parseAddress(range.address).address;
-  fillSnapshots.set(`${sheet.id}!${address}`, {
-    sheetId: sheet.id,
-    address,
-    cells: properties.value.map((row) =>
-      row.map((cell) => fillKey(cell.format?.fill)),
-    ),
-  });
+  overlay.remember(
+    sheet.id,
+    parseAddress(range.address).address,
+    fillGrid(properties),
+  );
 }
 
 export async function restoreFills(
   context: Excel.RequestContext,
 ): Promise<void> {
-  if (fillSnapshots.size === 0) return;
-
-  const pending = [...fillSnapshots.values()].map((snapshot) => ({
-    snapshot,
-    // Sheet id rather than name, so a rename between paint and restore is fine.
-    sheet: context.workbook.worksheets.getItemOrNullObject(snapshot.sheetId),
-  }));
-  fillSnapshots.clear();
-
-  for (const { sheet } of pending) sheet.load("isNullObject");
-  await context.sync();
-
-  for (const { snapshot, sheet } of pending) {
-    if (sheet.isNullObject) continue;
-    writeRuns(sheet.getRange(snapshot.address), snapshot.cells, applyFillKey);
-  }
-  context.workbook.settings.add(OVERLAY_SETTING, "");
-  await context.sync();
+  await overlay.restore(context);
 }
 
 export async function toggleAuditOverlay(): Promise<boolean> {
@@ -162,8 +101,7 @@ export async function toggleAuditOverlay(): Promise<boolean> {
     target.load("address,formulasR1C1");
     await context.sync();
 
-    const key = `${sheet.id}!${parseAddress(target.address).address}`;
-    const wasOn = fillSnapshots.has(key);
+    const wasOn = overlay.has(sheet.id, parseAddress(target.address).address);
     // Put old fills back before reading new ones, or the next snapshot would
     // capture our own paint over an overlapping range.
     await restoreFills(context);
@@ -178,7 +116,7 @@ export async function toggleAuditOverlay(): Promise<boolean> {
       marks.map((row) => row.map((mark) => overlayKey(mark, patternColor))),
       applyFillKey,
     );
-    persistOverlaySetting(context);
+    overlay.persist(context);
     await context.sync();
     return true;
   });

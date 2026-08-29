@@ -141,6 +141,8 @@ Export a range or a chart from Excel and keep it fresh in a deck without re-past
   PowerPoint once. **Auto-push on edit** (a tick box under the list) re-pushes a link
   three seconds after the last edit inside it, so a deck's *Update all* always finds the
   current picture; it runs only while the pane is open and is remembered per workbook.
+  **Highlight linked cells** (a second tick box) tints every linked range so you can see what
+  feeds the deck, and puts the original fills back when it is switched off; charts are not tinted.
 - PowerPoint, tab **Model Tools > Links**: the **Inbox** lists exports waiting to be placed;
   *Insert* puts a picture on the selected slide with a tracker in the shape's tags. The
   **Links** list shows every tracked picture in the deck (slide, source, status) and
