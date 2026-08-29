@@ -1,5 +1,15 @@
 # AUTORESUME - pls,fix (v2.3.2 LIVE 2026-08-29)
 
+## 30.08: fleet 2 (Daniel: overlap still seen in Excel; intuitive, advanced, universal, templates, "?")
+
+- Three opus worktree agents off main 0378308, budget approved (2-3M): A templates (`src/templates.ts`
+  + `src/excel/templates.ts`, Templates section at the END of the Tools tab, manual chapter
+  "Veidnes"; report templates-report.md), B help "?" per section in both panes (`src/help/copy.ts`,
+  `src/ui/help.ts`, `src/styles/help.css`; help-report.md), C universal tools + chart placement
+  that avoids data cells via getUsedRangeOrNullObject candidates (universal-report.md). Merge
+  order: C, A, B (A and B both touch taskpane.html/main.ts; B is attributes + install calls);
+  gate + ux:check, bump, deploy, `npm run manual`, web check of placement and templates.
+
 ## 29.08 late: charts, placement, picker, native tables in flight (v2.2.6)
 
 - Daniel: "actual table not an image", "try charts and pie charts", "data would never overlap
