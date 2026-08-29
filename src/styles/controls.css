@@ -41,7 +41,7 @@ button:disabled {
   border-radius: var(--radius-control);
   color: var(--ink);
   background: #fff;
-  font-size: var(--fs-lead);
+  font-size: var(--icon-glyph);
   cursor: pointer;
   transition:
     border-color 0.15s,
@@ -102,7 +102,7 @@ button:disabled {
   border-radius: 8px;
   color: var(--ink);
   background: #e6edf2;
-  font-size: var(--fs-lead);
+  font-size: var(--icon-glyph);
   font-weight: 800;
 }
 .action-icon.colors {
@@ -116,9 +116,13 @@ button:disabled {
 .action-icon.key,
 .action-icon.links,
 .action-icon.names,
-.action-icon.toc,
+.action-icon.toc {
+  color: var(--accent-ink);
+}
+/* The circular arrow draws large for its point size. */
 .action-icon.undo {
   color: var(--accent-ink);
+  font-size: var(--fs-lead);
 }
 /* Two blocks read as a rising bridge; they need to sit on one line in 28px. */
 .action-icon.bridge {

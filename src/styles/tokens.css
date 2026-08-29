@@ -52,6 +52,9 @@
      every checkbox, one radius per role. */
   --control-h: 34px;
   --tick: 16px;
+  /* Icon glyphs are drawn, not read: they keep their own size, and the
+     autocolor dot's text-shadow offsets are tuned to it. */
+  --icon-glyph: 16px;
   /* Three radii: a control, a list row or panel, and a container that pads
      controls (the tab bar, the drop zone). */
   --radius-control: 9px;
