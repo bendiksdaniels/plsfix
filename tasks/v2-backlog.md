@@ -60,7 +60,7 @@ each item. Stop when Daniel intervenes or the list is empty.
 
 ## Next round (D, after v2.1.13; two agents at a time)
 
-- [ ] D1 Revert after Update all: server already keeps 2 revs; add `GET /api/links/{id}?rev=<n>` (auth as
+- [x] D1 Revert after Update all: server already keeps 2 revs; add `GET /api/links/{id}?rev=<n>` (auth as
       today), client `getLinkRev`, PowerPoint "Revert last update" for the selected rows (repaint the
       previous rev, tag rev rewritten), refuse when no previous rev; tests on both sides.
 - [ ] D2 Highlight linked cells in Excel (M3): Links tab toggle that paints a subtle brand-tinted fill on
