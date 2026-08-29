@@ -2,7 +2,7 @@
 // corner at the active cell. Owns the write - values and formulas in one batch,
 // number formats and the brand presets in a second - the refusal when the
 // target block is not empty, and the Undo capture that makes it reversible.
-// The grids themselves are pure data in `src/templates.ts`.
+// The grids themselves are pure data in `src/template-blocks.ts`.
 
 import { numberFormat, requireEmptyBlock, writeRuns } from "./internal";
 import { applyPresetFormat, type PresetLook } from "./presets";
@@ -30,8 +30,8 @@ function cellNumberFormat(format: TemplateFormat | undefined): string {
   return numberFormat(format);
 }
 
-// An empty cell writes "" rather than being skipped: the block is written as
-// one grid, and a hole in it would carry the value the host had queued.
+// `formulas` is assigned as one whole grid, so every position needs an entry;
+// "" is what a spacer cell is.
 function cellContent(cell: TemplateCell, origin: CellRef): string | number {
   if (cell.f !== undefined) return resolveFormula(cell.f, origin);
   return cell.v ?? "";
