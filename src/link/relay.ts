@@ -1,13 +1,25 @@
 // Relay client: a typed fetch wrapper for the /api/links and /api/inbox
 // routes, mapping every non-success HTTP outcome (and a fetch rejection) to
 // one RelayError kind so callers branch on `.kind` instead of status codes.
-// Owns wire shape only; auth, encryption and retry policy live above this.
+// Owns the calls; the body shapes and their guards live in wire.ts, and auth,
+// encryption and retry policy live above this.
 // Invariant: every failure leaves this module as a RelayError - a 200 whose
 // body is not the JSON shape the route promises is one too, never a raw parse
 // error, so the pane's toast always has a `kind` to render.
 
 import { fromBase64Url } from "./crypto";
 import type { RelayStatus } from "./status";
+import {
+  arrayOf,
+  ETAG_REV,
+  isFetchJsonBody,
+  isInboxJson,
+  isPutResult,
+  isStatusRow,
+  type OmittedReason,
+} from "./wire";
+
+export type { OmittedReason } from "./wire";
 
 export type RelayErrorKind =
   "network" | "auth" | "missing" | "tooLarge" | "server";
@@ -47,6 +59,37 @@ export interface StatusQuery {
   auth: string;
 }
 
+// The deck's side of one link in a batch fetch: which link, the key that opens
+// it, and the revision the deck already holds. Without `knownRev` the relay
+// always answers with a blob.
+export interface FetchQuery {
+  id: string;
+  auth: string;
+  knownRev?: number;
+}
+
+export interface FetchedLink {
+  id: string;
+  rev: number;
+  blob: Uint8Array;
+}
+
+export interface OmittedLink {
+  id: string;
+  reason: OmittedReason;
+}
+
+// Every link the batch was asked for lands in exactly one of the two lists.
+export interface FetchResult {
+  items: FetchedLink[];
+  omitted: OmittedLink[];
+}
+
+// The relay's per-batch limits, so a caller can chunk before it calls: more
+// items than this is a 400, and blobs past the cap come back "deferred".
+export const MAX_FETCH_ITEMS = 200;
+export const FETCH_BLOB_CAP = 4 * 1024 * 1024;
+
 export interface InboxRow {
   id: string;
   createdAt: number;
@@ -67,6 +110,7 @@ export interface RelayApi {
   ): Promise<{ rev: number; blob: Uint8Array }>;
   deleteLink(id: string, auth: string): Promise<void>;
   status(items: StatusQuery[]): Promise<RelayStatus[]>;
+  fetchLinks(items: FetchQuery[]): Promise<FetchResult>;
   postInbox(
     ws: string,
     auth: string,
@@ -99,60 +143,6 @@ function statusKind(status: number): RelayErrorKind {
 // (buffer typed ArrayBufferLike) does not guarantee.
 function toBody(bytes: Uint8Array): Uint8Array<ArrayBuffer> {
   return bytes.slice();
-}
-
-// `"3"` from the relay, `W/"3"` once an intermediary (Cloudflare weakens a
-// strong tag whenever it rewrites a body) has been through it. Anything else -
-// including a missing header, which Number("") would have made rev 0 - is a
-// bad response, never a revision.
-const ETAG_REV = /^(?:W\/)?"(\d+)"$/;
-
-// The relay is the untrusted half of this design (its path carries an Access
-// bypass), so a JSON body is checked against the shape the caller expects
-// instead of cast. A body that fails becomes a typed RelayError like any other
-// bad response, so no caller ever sees a raw SyntaxError.
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
-}
-
-function isNumberOrNull(value: unknown): boolean {
-  return value === null || typeof value === "number";
-}
-
-function isPutResult(value: unknown): value is { rev: number } {
-  return isRecord(value) && typeof value.rev === "number";
-}
-
-function isStatusRow(value: unknown): value is RelayStatus {
-  return (
-    isRecord(value) &&
-    typeof value.id === "string" &&
-    isNumberOrNull(value.rev) &&
-    isNumberOrNull(value.pushedAt) &&
-    (value.error === undefined || value.error === "auth")
-  );
-}
-
-interface InboxJson {
-  id: string;
-  createdAt: number;
-  blob: string;
-}
-
-function isInboxJson(value: unknown): value is InboxJson {
-  return (
-    isRecord(value) &&
-    typeof value.id === "string" &&
-    typeof value.createdAt === "number" &&
-    typeof value.blob === "string"
-  );
-}
-
-function arrayOf<T>(
-  guard: (value: unknown) => value is T,
-): (value: unknown) => value is T[] {
-  return (value: unknown): value is T[] =>
-    Array.isArray(value) && value.every(guard);
 }
 
 export class RelayClient implements RelayApi {
@@ -319,6 +309,32 @@ export class RelayClient implements RelayApi {
     return this.json(response, "POST", path, arrayOf(isStatusRow));
   }
 
+  // Every changed picture of a deck in one round trip. The relay leaves out
+  // whatever it will not send (unchanged, missing, foreign, or past its
+  // response cap) and names it in `omitted`, so a caller can tell "nothing to
+  // do" from "ask again on your own" without counting rows.
+  async fetchLinks(items: FetchQuery[]): Promise<FetchResult> {
+    const path = "links/fetch";
+    const response = await this.request(
+      path,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(items),
+      },
+      [200],
+    );
+    const body = await this.json(response, "POST", path, isFetchJsonBody);
+    return {
+      items: body.items.map((item) => ({
+        id: item.id,
+        rev: item.rev,
+        blob: this.decode(item.blob, "POST", path),
+      })),
+      omitted: body.omitted,
+    };
+  }
+
   async postInbox(
     ws: string,
     auth: string,
@@ -351,17 +367,17 @@ export class RelayClient implements RelayApi {
     return rows.map((row) => ({
       id: row.id,
       createdAt: row.createdAt,
-      // fromBase64Url throws a plain Error on anything outside the alphabet;
-      // one bad row must not leave the listing untyped.
-      blob: this.decode(row.blob, path),
+      blob: this.decode(row.blob, "GET", path),
     }));
   }
 
-  private decode(blob: string, path: string): Uint8Array {
+  // fromBase64Url throws a plain Error on anything outside the alphabet; one
+  // bad blob must not leave a listing or a batch untyped.
+  private decode(blob: string, method: string, path: string): Uint8Array {
     try {
       return fromBase64Url(blob);
     } catch {
-      throw this.badResponse("GET", path);
+      throw this.badResponse(method, path);
     }
   }
 

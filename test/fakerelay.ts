@@ -1,5 +1,12 @@
-import type { InboxRow, RelayApi, StatusQuery } from "../src/link/relay";
-import { RelayError } from "../src/link/relay";
+import type {
+  FetchQuery,
+  FetchResult,
+  InboxRow,
+  OmittedReason,
+  RelayApi,
+  StatusQuery,
+} from "../src/link/relay";
+import { FETCH_BLOB_CAP, RelayError } from "../src/link/relay";
 import type { RelayStatus } from "../src/link/status";
 
 interface StoredRev {
@@ -19,6 +26,20 @@ interface StoredInbox {
   auth: string;
   createdAt: number;
   blob: Uint8Array;
+}
+
+// Why a link a batch asked for carries no blob at all, in the store's order:
+// unknown, then a key that does not own it, then a deck that already holds the
+// head. Null means a picture is coming.
+function omittedReason(
+  link: StoredLink | undefined,
+  auth: string,
+  knownRev: number | undefined,
+): OmittedReason | null {
+  if (!link) return "missing";
+  if (link.auth !== auth) return "auth";
+  if (link.rev === knownRev) return "unchanged";
+  return null;
 }
 
 // Same rules as server/src/store.rs, minus TTLs: first PUT fixes the auth,
@@ -82,6 +103,28 @@ export class FakeRelay implements RelayApi {
         return { id, rev: null, pushedAt: null, error: "auth" };
       return { id, rev: current.rev, pushedAt: current.pushedAt };
     });
+  }
+  // Same rules as server/src/fetch.rs: the changed blobs in request order
+  // while the cap allows, and every other link named with the reason it
+  // carries none. Once one blob does not fit, the rest of the batch is
+  // deferred with it rather than sieved.
+  async fetchLinks(items: FetchQuery[]): Promise<FetchResult> {
+    const result: FetchResult = { items: [], omitted: [] };
+    let room: number | null = FETCH_BLOB_CAP;
+    for (const { id, auth, knownRev } of items) {
+      const current = this.links.get(id);
+      const reason = omittedReason(current, auth, knownRev);
+      if (reason !== null) {
+        result.omitted.push({ id, reason });
+      } else if (current && room !== null && current.blob.length <= room) {
+        room -= current.blob.length;
+        result.items.push({ id, rev: current.rev, blob: current.blob });
+      } else {
+        room = null;
+        result.omitted.push({ id, reason: "deferred" });
+      }
+    }
+    return result;
   }
   async postInbox(
     ws: string,

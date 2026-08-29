@@ -3,6 +3,7 @@
 //! Invariant: the relay stores ciphertext and `sha256(authKey)` only, so the
 //! Cloudflare Access bypass on this path never exposes readable content.
 
+mod fetch;
 pub mod relay;
 pub mod store;
 

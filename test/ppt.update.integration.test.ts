@@ -3,8 +3,9 @@
 // change, a broken link's tags removed, and the reinsertion fallback on
 // hosts below PowerPointApi 1.8. Strict load semantics are on.
 
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { TAG_KEY, TAG_LINK } from "../src/link/model";
+import { RelayError } from "../src/link/relay";
 import { fitToSlide } from "../src/link/status";
 import { createWorkspace } from "../src/link/workspace";
 import type { FakeRelay } from "./fakerelay";
@@ -85,6 +86,61 @@ describe("update", () => {
     const again = await links.updateLinks(await links.listLinks(relay), relay);
     expect(again.current).toBe(1);
     expect(links.summarize(summary)).toBe("1 updated");
+  });
+
+  // A relay that refuses the whole batch has said nothing about any one link,
+  // and an older one does not know the route at all: every row falls back to
+  // the GET it would have made, and the deck still updates.
+  it("falls back to a GET per row when the relay refuses the batch", async () => {
+    const ws = await createWorkspace(memoryStore());
+    const item = await seedLink(fakePng(10, 10));
+    await links.insertFromInbox(item, ws, relay);
+    await pushAgain(item, fakePng(10, 10));
+    const rows = await links.listLinks(relay);
+    vi.spyOn(relay, "fetchLinks").mockRejectedValue(
+      new RelayError("missing", "no such route", 404),
+    );
+    const getLink = vi.spyOn(relay, "getLink");
+
+    const summary = await links.updateLinks(rows, relay);
+    expect(summary).toMatchObject({ updated: 1, missing: 0, failed: 0 });
+    expect(getLink).toHaveBeenCalledTimes(1);
+  });
+
+  // The poll and the fetch are two round trips, and the relay can move
+  // between them. Whatever the batch leaves out lands on the counter the row
+  // would have had if the poll had seen it.
+  it("maps what the batch left out onto the same counters", async () => {
+    const ws = await createWorkspace(memoryStore());
+    const seeded = [];
+    for (const slide of presentation.slides) {
+      helpers.selectSlide(slide.id);
+      const item = await seedLink(fakePng(10, 10));
+      await links.insertFromInbox(item, ws, relay);
+      seeded.push(item);
+    }
+    for (const item of seeded) await pushAgain(item, fakePng(10, 10));
+    const rows = await links.listLinks(relay);
+    expect(rows.map((row) => row.status)).toEqual(
+      new Array<string>(3).fill("updateAvailable"),
+    );
+    // One link is gone, one changed hands, one went back to the revision the
+    // deck already holds.
+    relay.links.delete(seeded[0]!.id);
+    relay.links.get(seeded[1]!.id)!.auth = "another key";
+    relay.links.get(seeded[2]!.id)!.rev = 1;
+
+    const summary = await links.updateLinks(rows, relay);
+    expect(summary).toMatchObject({
+      updated: 0,
+      current: 1,
+      missing: 1,
+      wrongKey: 1,
+      failed: 0,
+    });
+    expect(links.summarize(summary)).toBe(
+      "1 up to date, 1 missing, 1 wrong key",
+    );
   });
 
   it("keeps the reason a row failed, and the other rows still update", async () => {
