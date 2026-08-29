@@ -1,4 +1,21 @@
-# AUTORESUME - pls,fix (v2.2.3 LIVE 2026-08-29)
+# AUTORESUME - pls,fix (v2.2.6 LIVE 2026-08-29)
+
+## 29.08 late: charts, placement, picker, native tables in flight (v2.2.6)
+
+- Daniel: "actual table not an image", "try charts and pie charts", "data would never overlap
+  ... in the PP and excel", "the UI of the tab is not perfect yet". Done solo: `src/layout.ts`
+  (pure placement: `placeBeside` for Excel charts, `placeInFreeSpace` for slides); waterfall and
+  tornado charts land beside/below their block and never on another chart; "Export active chart"
+  falls back to the sheet's only chart or a picker (`#export-chart-pick`, refreshed on tab
+  open, sheet activation and the debounced selection change because `worksheets.onActivated`
+  never fires on Excel for the web); demo pie on Rounding; Brand preview table fixed layout so
+  the pane never overflows (the tab strip was clipped); cool tints; chart-list select styled.
+- In flight: opus implementer in a worktree building native PowerPoint tables from
+  `docs/superpowers/specs/2026-08-29-native-tables-design.md` (kind `table`, addTable on
+  PowerPointApi 1.8, in-place refresh, re-create on size change, free-space placement for
+  pictures too); report at scratchpad/native-tables-report.md; merge = review diff, gate, bump.
+- Process slip 29.08: v2.2.5 was deployed while five pane tests were red (mock gaps only, fixed
+  in 2b18d79); chains now gate the deploy on the check exit code.
 
 ## 29.08 late: house number styles per language (v2.2.3)
 
