@@ -10,3 +10,4 @@ target-linux/
 .claude/
 .superpowers/
 data/
+public/functions.js

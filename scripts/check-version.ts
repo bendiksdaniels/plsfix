@@ -1,26 +1,15 @@
 // package.json is the only place a version is typed by hand. Fails when the
-// server crate, the manifests or the footer wiring disagree.
+// server crate, the manifests or the pane wiring disagree. This file is the
+// I/O edge only: the rules live in version-rules.ts, where they are tested.
 import { readFileSync } from "node:fs";
+import { versionProblems } from "./version-rules";
 
 const root = new URL("../", import.meta.url);
 const read = (file: string) => readFileSync(new URL(file, root), "utf8");
 const version = (JSON.parse(read("package.json")) as { version: string })
   .version;
 
-const problems: string[] = [];
-if (!read("server/Cargo.toml").includes(`version = "${version}"`))
-  problems.push(`server/Cargo.toml is not ${version}`);
-for (const file of ["manifest.xml", "manifest.prod.xml"]) {
-  if (!read(file).includes(`<Version>${version}.0</Version>`))
-    problems.push(`${file} is not ${version}.0`);
-}
-// Both panes show the version through #app-version; either one could hard-code
-// it and go stale, so the gate looks at both.
-for (const page of ["taskpane.html", "pptpane.html"]) {
-  if (read(page).match(/v\d+\.\d+\.\d{3}/))
-    problems.push(`${page} hard-codes a version; use #app-version`);
-}
-
+const problems = versionProblems(read, version);
 if (problems.length) {
   process.stderr.write(problems.join("\n") + "\n");
   process.exit(1);

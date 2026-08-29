@@ -11,15 +11,20 @@
     "dev_server_port": 3000
   },
   "scripts": {
+    "functions:js": "vite build --config vite.functions.config.ts",
+    "predev": "npm run functions:js",
     "dev": "vite",
+    "predev-server": "npm run functions:js",
     "dev-server": "vite",
-    "build": "tsc --noEmit && tsx scripts/build-functions-metadata.ts && vite build && vite build --config vite.functions.config.ts",
+    "build": "tsc --noEmit && tsx scripts/build-functions-metadata.ts && npm run functions:js && vite build",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:server": "cargo test --manifest-path server/Cargo.toml",
+    "prestart": "npm run functions:js",
     "start": "office-addin-debugging start manifest.xml desktop",
     "stop": "office-addin-debugging stop manifest.xml",
     "poststop": "sh scripts/wef-restore-prod.sh",
+    "prestart:ppt": "npm run functions:js",
     "start:ppt": "office-addin-debugging start manifest.xml desktop --app powerpoint",
     "stop:ppt": "office-addin-debugging stop manifest.xml --app powerpoint && sh scripts/wef-restore-prod.sh",
     "validate": "office-addin-manifest validate manifest.xml && office-addin-manifest validate manifest.prod.xml",
@@ -31,7 +36,7 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "check": "npm run typecheck && npm run lint && npm run format:check && npm test && npm run test:server && npm run manifest:check && npm run functions:check && npm run version:check",
+    "check": "npm run typecheck && npm run lint && npm run format:check && npm test && npm run test:server && npm run manifest:check && npm run validate && npm run functions:check && npm run version:check",
     "ux:check": "node scripts/ux-check.mjs"
   },
   "dependencies": {

@@ -26,7 +26,9 @@ if (!done) {
 }
 fs.writeFileSync(file, lines.join("\n"));
 '
-npm install --no-audit --no-fund >/dev/null
+# Lockfile only: a full install can move transitive dependencies within their
+# semver ranges, and that churn has no business landing in a version bump.
+npm install --package-lock-only --no-audit --no-fund >/dev/null
 cargo check --manifest-path server/Cargo.toml -q
 npm run manifest:build >/dev/null
 npm run version:check

@@ -5,6 +5,11 @@ export default defineConfig({
   // Same __APP_VERSION__ global as vite.config.ts, so tests see the real value.
   define: { __APP_VERSION__: JSON.stringify(pkg.version) },
   test: {
-    include: ["src/**/*.test.ts", "test/**/*.test.ts", "manifest/**/*.test.ts"],
+    include: [
+      "src/**/*.test.ts",
+      "test/**/*.test.ts",
+      "manifest/**/*.test.ts",
+      "scripts/**/*.test.ts",
+    ],
   },
 });
