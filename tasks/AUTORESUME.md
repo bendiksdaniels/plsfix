@@ -1,7 +1,12 @@
-# AUTORESUME - pls,fix (v2.3.2 LIVE 2026-08-29)
+# AUTORESUME - pls,fix (v2.3.4 LIVE 2026-08-30)
 
 ## 30.08: fleet 2 (Daniel: overlap still seen in Excel; intuitive, advanced, universal, templates, "?")
 
+- 30.08 merged + live: B help "?" (v2.3.3, `src/help/copy*.ts`, `src/ui/help.ts`, copy gate over
+  both panes) and A templates (v2.3.4, `src/templates.ts` + `src/template-blocks.ts` +
+  `src/template-cells.ts` + `src/excel/templates.ts`, Templates section at the end of Tools, manual
+  chapter "Veidnes"). First launch of fleet 2 went into the wrong repo (worktree = shell cwd;
+  lessons.md 30.08). C (universal tools + data-aware chart placement) still running.
 - Three opus worktree agents off main 0378308, budget approved (2-3M): A templates (`src/templates.ts`
   + `src/excel/templates.ts`, Templates section at the END of the Tools tab, manual chapter
   "Veidnes"; report templates-report.md), B help "?" per section in both panes (`src/help/copy.ts`,
