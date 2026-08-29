@@ -5,6 +5,7 @@
 import {
   formatChartAmount,
   hostSupports,
+  placeChartBeside,
   styleChartShell,
   styleChartSurface,
   syncTolerating,
@@ -100,6 +101,7 @@ export async function insertWaterfall(): Promise<string> {
     const series = chart.series.getItemAt(0);
     series.showConnectorLines = true;
     await context.sync();
+    await placeChartBeside(context, sheet, chart, range);
 
     // Excel for the web refuses the surface on chartex charts. It is cosmetic,
     // so the waterfall keeps the host's default font there instead of failing.

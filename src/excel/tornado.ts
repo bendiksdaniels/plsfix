@@ -8,6 +8,7 @@ import {
   hostSupports,
   requireEmptyBlock,
   selectedSingleRange,
+  placeChartBeside,
   styleChartShell,
 } from "./internal";
 import { captureUndo } from "./undo";
@@ -139,14 +140,14 @@ export async function insertTornado(): Promise<string> {
     ];
     await context.sync();
 
-    styleTornado(
-      sheet.charts.add(
-        Excel.ChartType.barClustered,
-        block,
-        Excel.ChartSeriesBy.columns,
-      ),
-      heading,
+    const chart = sheet.charts.add(
+      Excel.ChartType.barClustered,
+      block,
+      Excel.ChartSeriesBy.columns,
     );
+    styleTornado(chart, heading);
+    await context.sync();
+    await placeChartBeside(context, sheet, chart, block);
     await context.sync();
 
     const count = series.labels.length;

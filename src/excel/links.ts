@@ -105,34 +105,78 @@ export async function exportSelection(
 
 // The same guard formatSelectedChart uses: the hosted office.js always defines
 // the method, so the host's API set is what decides.
-async function activeChart(
-  context: Excel.RequestContext,
-): Promise<Excel.Chart> {
+function requireChartApi(context: Excel.RequestContext): void {
   const callable = (context.workbook as unknown as Record<string, unknown>)
     .getActiveChartOrNullObject;
   if (typeof callable !== "function") {
     throw new Error("Exporting a chart needs a newer Excel build.");
   }
-  const chart = context.workbook.getActiveChartOrNullObject();
-  chart.load("isNullObject");
-  await context.sync();
-  if (chart.isNullObject) throw new Error("Select a chart first.");
+}
 
+// The chart to export: the selected one, else the one the pane picked, else
+// the sheet's only chart. Excel on the web cannot select a chart by name, so
+// the pick is what makes chart export possible there at all.
+async function chartToExport(
+  context: Excel.RequestContext,
+  pick: string | null,
+): Promise<Excel.Chart> {
+  requireChartApi(context);
+  const active = context.workbook.getActiveChartOrNullObject();
+  active.load("isNullObject");
+  await context.sync();
+  const chart = active.isNullObject
+    ? await chartOnActiveSheet(context, pick)
+    : active;
   chart.load("name,width,height,worksheet/name");
   await context.sync();
   return chart;
 }
 
+async function chartOnActiveSheet(
+  context: Excel.RequestContext,
+  pick: string | null,
+): Promise<Excel.Chart> {
+  const charts = context.workbook.worksheets.getActiveWorksheet().charts;
+  charts.load("items/name");
+  await context.sync();
+  const names = charts.items.map((chart) => chart.name);
+  const name = pick ?? (names.length === 1 ? (names[0] ?? null) : null);
+  if (name === null) {
+    throw new Error(
+      names.length === 0
+        ? "No chart on this sheet."
+        : "Select a chart first, or pick one from the list.",
+    );
+  }
+  const chart = charts.getItemOrNullObject(name);
+  chart.load("isNullObject");
+  await context.sync();
+  if (chart.isNullObject)
+    throw new Error(`No chart named ${name} on this sheet.`);
+  return chart;
+}
+
+// Read-only: the names the Links tab offers in its chart list.
+export async function listActiveSheetCharts(): Promise<string[]> {
+  return Excel.run(async (context) => {
+    const charts = context.workbook.worksheets.getActiveWorksheet().charts;
+    charts.load("items/name");
+    await context.sync();
+    return charts.items.map((chart) => chart.name);
+  });
+}
+
 export async function exportActiveChart(
   ws: Workspace,
   relay: RelayApi,
+  pick: string | null = null,
 ): Promise<ExportResult> {
   requireImageApi();
   const workbook = await workbookName();
   return exclusive("export chart", () =>
     Excel.run(async (context) => {
       const registry = await readRegistry(context);
-      const chart = await activeChart(context);
+      const chart = await chartToExport(context, pick);
       const previousName = chart.name;
       refuseAnchoredChart(registry, previousName);
 

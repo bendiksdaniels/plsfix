@@ -91,7 +91,7 @@ fn model_steps() -> Vec<Step> {
 fn chart_steps() -> Vec<Step> {
     vec![
         step("Waterfall from selection", bridge::NAME, format!("Select {} and press Waterfall from selection", bridge::table_address()), "A native bridge chart: opening and closing totals, the steps between"),
-        step("CAGR label / Brand-format chart", bridge::NAME, "Click the Revenue chart, press CAGR label, then Brand-format chart", "A CAGR label on the chart; brand formatting applied"),
+        step("CAGR label / Brand-format chart", bridge::NAME, "Click the Revenue chart, press CAGR label, then Brand-format chart", "A CAGR label on the chart; brand formatting applied (the pie on Rounding is there to export too)"),
         step("Tornado from selection", sensitivity::NAME, format!("Select {} and press Tornado from selection", sensitivity::block_address()), format!("A ranked sensitivity chart around the base case in {}", sensitivity::base_address())),
         step("Consistent rounding / =PLSFIX.ROUND", rounding::NAME, format!("Select {} and press Consistent rounding, or type the formulas shown in the last column", rounding::points_address()), "PLSFIX.ROUND formulas beside the selection whose parts add up to the rounded total (the Excel ROUND column sums to 101)"),
         step("Unpivot selection", data::NAME, format!("Select {} and press Unpivot selection", data::grid_address()), "A new sheet with one Row / Column / Value line per cell of the grid"),

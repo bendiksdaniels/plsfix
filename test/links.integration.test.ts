@@ -196,6 +196,28 @@ describe("charts", () => {
     });
     expect((await payloadOf(result.id, token)).src.sheet).toBe("Data");
   });
+  it("exports the sheet's only chart when nothing is selected", async () => {
+    helpers.addChart("Model", {
+      name: "Revenue bridge",
+      width: 400,
+      height: 200,
+    });
+    const result = await links.exportActiveChart(ws, relay);
+    expect(result.label).toBe("Model: Revenue bridge");
+  });
+  it("needs a pick when nothing is selected and the sheet has several charts", async () => {
+    helpers.addChart("Model", { name: "Revenue bridge" });
+    helpers.addChart("Model", { name: "Segment pie" });
+    await expect(links.exportActiveChart(ws, relay)).rejects.toThrow(
+      "Select a chart first, or pick one from the list.",
+    );
+    const picked = await links.exportActiveChart(ws, relay, "Segment pie");
+    expect(picked.label).toBe("Model: Segment pie");
+    expect(await links.listActiveSheetCharts()).toEqual([
+      "Revenue bridge",
+      anchorName(picked.id),
+    ]);
+  });
   it("refuses to re-anchor a chart that is already linked", async () => {
     helpers.addChart("Model", { name: "Revenue bridge" });
     helpers.setActiveChart(workbook.charts[0]!);
@@ -212,10 +234,10 @@ describe("charts", () => {
     await expect(links.exportActiveChart(ws, relay)).rejects.toThrow(/boom/);
     expect(workbook.charts[0]!.name).toBe("Revenue bridge");
   });
-  it("needs a selected chart", async () => {
+  it("needs a chart on the sheet when nothing is selected", async () => {
     helpers.setActiveChart(null);
     await expect(links.exportActiveChart(ws, relay)).rejects.toThrow(
-      /Select a chart/,
+      /No chart on this sheet/,
     );
   });
   // The rename is committed by the sync that asks for the picture: without the

@@ -90,4 +90,6 @@ fn names_and_charts_are_defined() {
     assert!(revenue.contains("'P&amp;L'!$C$4:$H$4"), "revenue values: {revenue}");
     let margin = entry(&mut archive, "xl/charts/chart2.xml");
     assert!(margin.contains("'P&amp;L'!$C$11:$H$11"), "margin values: {margin}");
+    let pie = entry(&mut archive, "xl/charts/chart3.xml");
+    assert!(pie.contains("<c:pieChart>") && pie.contains("Rounding!$B$4:$B$8"), "pie: {pie}");
 }

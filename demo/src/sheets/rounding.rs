@@ -5,7 +5,9 @@
 // =, which the sharing scan would otherwise count as a formula), so the file
 // opens clean on a machine without the add-in.
 
-use rust_xlsxwriter::{Worksheet, XlsxError};
+use rust_xlsxwriter::{
+    Chart, ChartDataLabel, ChartPoint, ChartSolidFill, ChartType, Worksheet, XlsxError,
+};
 
 use crate::layout::{cell, cell_abs, column, LABEL_COL, TITLE_ROW};
 use crate::pen::Pen;
@@ -30,6 +32,12 @@ const VALUE_WIDTH: f64 = 15.0;
 const LANDING_WIDTH: f64 = 26.0;
 const TYPE_IT_WIDTH: f64 = 32.0;
 const DECIMALS: &str = "0";
+const PIE_ROW: u32 = 2;
+const PIE_COL: u16 = 7;
+const PIE_WIDTH: u32 = 360;
+const PIE_HEIGHT: u32 = 260;
+/// Slice colours: the brand pair and three tints of it.
+const SLICES: [&str; 5] = ["#2EC4B6", "#14213D", "#7FD8CD", "#3D5A80", "#98C1D9"];
 const POINTS_PER_UNIT: &str = "100";
 
 const SEGMENTS: [(&str, f64); SEGMENT_COUNT as usize] = [
@@ -61,6 +69,7 @@ pub fn build(sheet: &mut Worksheet, styles: &Styles) -> Result<Tally, XlsxError>
     sheet.set_column_width(LANDING_COL, LANDING_WIDTH)?;
     sheet.set_column_width(EXCEL_COL, VALUE_WIDTH)?;
     sheet.set_column_width(TYPE_IT_COL, TYPE_IT_WIDTH)?;
+    sheet.insert_chart(PIE_ROW, PIE_COL, &segment_pie())?;
     Ok(pen.tally)
 }
 
@@ -91,4 +100,24 @@ fn write_total(pen: &mut Pen, styles: &Styles) -> Result<(), XlsxError> {
     }
     pen.text(TOTAL_ROW, TYPE_IT_COL, &format!("PLSFIX.ROUNDSUM({}, {DECIMALS})", points_address_abs()), &styles.plain)?;
     Ok(())
+}
+
+/// Revenue by segment as a pie: the chart to try "Export active chart" on.
+fn segment_pie() -> Chart {
+    let last = FIRST_SEGMENT_ROW + SEGMENT_COUNT - 1;
+    let mut chart = Chart::new(ChartType::Pie);
+    chart.set_name("Segment pie");
+    chart.title().set_name("Revenue by segment");
+    let points: Vec<ChartPoint> = SLICES
+        .iter()
+        .map(|color| ChartPoint::new().set_format(ChartSolidFill::new().set_color(*color)))
+        .collect();
+    chart
+        .add_series()
+        .set_categories((NAME, FIRST_SEGMENT_ROW, SEGMENT_COL, last, SEGMENT_COL))
+        .set_values((NAME, FIRST_SEGMENT_ROW, REVENUE_COL, last, REVENUE_COL))
+        .set_points(&points)
+        .set_data_label(ChartDataLabel::new().show_percentage());
+    chart.set_width(PIE_WIDTH).set_height(PIE_HEIGHT);
+    chart
 }

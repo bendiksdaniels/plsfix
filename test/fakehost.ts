@@ -327,6 +327,8 @@ export interface FakeChart {
   name: string;
   width: number;
   height: number;
+  left?: number;
+  top?: number;
   chartType: string;
   sourceAddress: string;
   seriesBy: string;
@@ -2407,6 +2409,14 @@ class ShapeProxy {
   set left(value: number) {
     this.record.left = value;
   }
+  get left(): number {
+    return this.record.left ?? 0;
+  }
+
+  get top(): number {
+    return this.record.top ?? 0;
+  }
+
   set top(value: number) {
     this.record.top = value;
   }
@@ -2734,6 +2744,14 @@ class WorksheetProxy {
     const ctx = this.ctx;
     const sheet = this.sheet;
     return {
+      load(): unknown {
+        return this;
+      },
+      get items(): ChartProxy[] {
+        return runtime.workbook.charts
+          .filter((record) => record.sheetName === sheet.name)
+          .map((record) => new ChartProxy(runtime, ctx, record));
+      },
       add(chartType: string, source: RangeProxy, seriesBy: string): ChartProxy {
         const record = newChart(
           sheet.name,

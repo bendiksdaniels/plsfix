@@ -4,6 +4,7 @@
 // Office.js only reaches here through src/excel.
 import {
   exportActiveChart,
+  listActiveSheetCharts,
   exportSelection,
   goToSource,
   listWorkbookLinks,
@@ -60,6 +61,8 @@ interface Tab {
   reveal: HTMLButtonElement;
   generate: HTMLButtonElement;
   buttons: HTMLButtonElement[];
+  // The sheet's charts, for a chart export with nothing selected.
+  chartPick: HTMLSelectElement;
   rows: WorkbookLinkRow[];
   selected: Set<string>;
   workspace: Workspace | null;
@@ -82,6 +85,7 @@ export function installLinksTab(deps: LinksTabDeps): {
 function newTab(deps: LinksTabDeps): Tab {
   return {
     deps,
+    chartPick: element(deps.root, "export-chart-pick"),
     list: element(deps.root, "workbook-links"),
     toggles: {
       autopush: element(deps.root, "links-autopush"),
@@ -174,6 +178,7 @@ async function loadKey(tab: Tab): Promise<void> {
 // Never rejects: every action ends with a refresh, and a list that cannot be
 // read says so in the table rather than replacing the action's own toast.
 async function refresh(tab: Tab): Promise<void> {
+  await refreshChartPick(tab);
   try {
     tab.rows = await listWorkbookLinks();
   } catch (error) {
@@ -188,6 +193,24 @@ async function refresh(tab: Tab): Promise<void> {
     if (on) tab.selected.add(id);
     else tab.selected.delete(id);
   });
+}
+
+// The chart list stays hidden on a sheet without charts; the first option
+// keeps "whatever is selected" as the default.
+async function refreshChartPick(tab: Tab): Promise<void> {
+  let names: string[] = [];
+  try {
+    names = await listActiveSheetCharts();
+  } catch {
+    names = [];
+  }
+  const keep = tab.chartPick.value;
+  tab.chartPick.replaceChildren(
+    new Option("Selected chart", ""),
+    ...names.map((name) => new Option(name, name)),
+  );
+  tab.chartPick.value = names.includes(keep) ? keep : "";
+  tab.chartPick.hidden = names.length === 0;
 }
 
 function renderKey(tab: Tab): void {
@@ -228,7 +251,12 @@ async function exportRange(tab: Tab): Promise<string> {
 }
 
 async function exportChart(tab: Tab): Promise<string> {
-  const result = await exportActiveChart(requireWorkspace(tab), tab.deps.relay);
+  const pick = tab.chartPick.value || null;
+  const result = await exportActiveChart(
+    requireWorkspace(tab),
+    tab.deps.relay,
+    pick,
+  );
   await refresh(tab);
   return `Sent to PowerPoint: ${result.label}`;
 }
