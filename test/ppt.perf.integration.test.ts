@@ -6,6 +6,7 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { InboxItem } from "../src/link/model";
+import { FETCH_BLOB_CAP } from "../src/link/relay";
 import { createWorkspace } from "../src/link/workspace";
 import type { FakeRelay } from "./fakerelay";
 import { fakePng } from "./fakepng";
@@ -24,6 +25,8 @@ enableStrictLoadSemantics();
 const SLIDES = 60;
 const GROUPED = 10;
 const PNG = fakePng(800, 400);
+// Padded to about 2.5 MiB sealed: two of these are past the response cap.
+const BIG = fakePng(800, 400, 2_000_000);
 
 // One batched load for the slides, one for every slide's shapes, one per level
 // of grouping and one for every shape's tags: four, whatever N is.
@@ -86,6 +89,7 @@ describe("update all on a 60-slide deck", () => {
     const items = await seedDeck();
     for (const item of items) await pushAgain(item, PNG);
     const status = vi.spyOn(relay, "status");
+    const fetchLinks = vi.spyOn(relay, "fetchLinks");
     const getLink = vi.spyOn(relay, "getLink");
 
     // Every sync listLinks costs is scanLinks': the relay round trip after it
@@ -111,13 +115,50 @@ describe("update all on a 60-slide deck", () => {
     expect(summary).toMatchObject({ updated: SLIDES, failed: 0 });
     expect(scanSyncs).toBeLessThanOrEqual(SCAN_SYNC_BUDGET);
     expect(updateSyncs).toBeLessThanOrEqual(UPDATE_SYNC_BUDGET);
-    // The network is the rest of the cost, and it is one call per link: the
-    // syncs above are on top of these, not instead of them.
+    // The network is the rest of the cost, and the size of the deck must not
+    // multiply it either: one status poll and one batched fetch, whatever N
+    // is. The syncs above are on top of these, not instead of them.
     expect(status).toHaveBeenCalledTimes(1);
-    expect(getLink).toHaveBeenCalledTimes(SLIDES);
+    expect(fetchLinks).toHaveBeenCalledTimes(1);
+    expect(getLink).not.toHaveBeenCalled();
     expect(pictures().map((shape) => shape.setImageCalls)).toEqual(
       new Array<number>(SLIDES).fill(2),
     );
+  });
+
+  // Blobs the size of a real full-slide render: two of them are past the
+  // relay's response cap, so the second comes back deferred rather than
+  // truncated, and the per-row GET the batch replaced fetches it.
+  it("defers what does not fit in one response and fetches it on its own", async ({
+    annotate,
+  }) => {
+    const ws = await createWorkspace(memoryStore());
+    const items: InboxItem[] = [];
+    for (const slide of presentation.slides.slice(0, 2)) {
+      helpers.selectSlide(slide.id);
+      const item = await seedLink(PNG);
+      await links.insertFromInbox(item, ws, relay);
+      items.push(item);
+    }
+    for (const item of items) await pushAgain(item, BIG);
+    const stored = items.map((item) => relay.links.get(item.id)!.blob.length);
+    const total = stored.reduce((sum, size) => sum + size, 0);
+    expect(total).toBeGreaterThan(FETCH_BLOB_CAP);
+    await annotate(`2 pictures, ${(total / 1024 / 1024).toFixed(1)} MiB total`);
+
+    const rows = await links.listLinks(relay);
+    const fetchLinks = vi.spyOn(relay, "fetchLinks");
+    const getLink = vi.spyOn(relay, "getLink");
+    const summary = await links.updateLinks(rows, relay);
+
+    expect(summary).toMatchObject({ updated: 2, failed: 0 });
+    expect(fetchLinks).toHaveBeenCalledTimes(1);
+    expect(getLink).toHaveBeenCalledTimes(1);
+    expect(
+      presentation.slides
+        .slice(0, 2)
+        .map((slide) => slide.shapes[0]!.setImageCalls),
+    ).toEqual([2, 2]);
   });
 
   // The batch is a speed-up, not a new failure mode: a shape the host refuses

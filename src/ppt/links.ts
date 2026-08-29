@@ -24,6 +24,7 @@ import {
   type RelayStatus,
 } from "../link/status";
 import type { Workspace } from "../link/workspace";
+import { fetchUpdates } from "./fetch";
 import * as realHost from "./host";
 import type { FoundLink, RefreshRequest } from "./host";
 
@@ -124,22 +125,10 @@ export async function listLinks(
   });
 }
 
-async function fetchPayload(
-  found: FoundLink,
-  relay: RelayApi,
-): Promise<{ rev: number; payload: Payload } | "unchanged"> {
-  const keys = await deriveLinkKeys(found.token);
-  const result = await relay.getLink(found.tag.id, keys.auth, found.tag.rev);
-  if (result === "unchanged") return "unchanged";
-  return {
-    rev: result.rev,
-    payload: decodePayload(await open(keys.enc, found.tag.id, result.blob)),
-  };
-}
-
 // A row the deck already agrees with is never fetched, and one row's failure
 // never stops the rest: the summary is what the pane reports afterwards. The
-// fetches run row by row, the repaints they earn all travel together.
+// fetches travel in one batch (`fetch.ts`) and the repaints they earn in
+// another, so a deck of any size costs two round trips, not two per link.
 export async function updateLinks(
   rows: LinkRow[],
   relay: RelayApi,
@@ -154,29 +143,22 @@ export async function updateLinks(
     sourceChanges: [],
     failures: [],
   };
-  const batch: RefreshRequest[] = [];
-  for (const row of rows) {
-    if (row.status !== "updateAvailable") {
-      countSkipped(summary, row.status);
-      continue;
-    }
-    try {
-      const fetched = await fetchPayload(row.found, relay);
-      if (fetched === "unchanged") {
-        summary.current += 1;
-        continue;
-      }
-      noteSourceChange(summary, row.found, fetched.payload);
-      batch.push({
-        found: row.found,
-        payload: fetched.payload,
-        rev: fetched.rev,
-      });
-    } catch (error) {
-      countFailure(summary, row.found, error);
-    }
+  const wanted = rows.filter((row) => {
+    if (row.status === "updateAvailable") return true;
+    countSkipped(summary, row.status);
+    return false;
+  });
+  const fetched = await fetchUpdates(wanted, relay);
+  summary.current += fetched.current;
+  summary.missing += fetched.missing;
+  summary.wrongKey += fetched.wrongKey;
+  for (const { found, error } of fetched.failures) {
+    countFailure(summary, found, error);
   }
-  summary.updated += await applyBatch(batch, host, (found, error) => {
+  for (const entry of fetched.batch) {
+    noteSourceChange(summary, entry.found, entry.payload);
+  }
+  summary.updated += await applyBatch(fetched.batch, host, (found, error) => {
     countFailure(summary, found, error);
   });
   return summary;
