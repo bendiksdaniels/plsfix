@@ -1,5 +1,19 @@
 # AUTORESUME - pls,fix (v2.1.22 LIVE 2026-08-29)
 
+## 29.08 night: rebrand to pls,fix (v2.2.0)
+
+- Daniel: drop the old brand, make it his own, name with an IB joke: **pls,fix** (the comma is the
+  joke). Colours Slate & Teal (`#22313F` / `#1B998B`), brand mark a comma, new icons. Custom
+  functions `=PLSFIX.ROUND` / `=PLSFIX.ROUNDSUM`; tags `PLSFIX_LINK` / `PLSFIX_KEY`, hidden names
+  `PLSFIX_LINK_<id8>`, settings keys `PLSFIX_*` / `plsfix.*`, relay header `X-PLSFIX-Link-Id`,
+  HKDF labels `plsfix-*` (no shim: nothing was in production). PowerPoint ribbon group is
+  "Links" under the "pls,fix" tab; manifest provider "Daniels Bendiks".
+- Repo moved: `~/plsfix` (Desktop symlink `plsfix`), GitHub `bendiksdaniels/plsfix`; gateway
+  `deploy.sh` MODELIS path, `workspace/tools.toml` and `tools.json` updated. Hosting identifiers
+  unchanged on purpose: key `modelis`, `/modelis/`, binary + unit `plsfix-server`, `MODELIS_*`.
+- Desktop Excel/PowerPoint still run the old manifest until quit and reopened (`npm run demo`
+  restores the new one into wef); the demo file is `demo/out/pls,fix Demo Model.xlsx`.
+
 ## 29.08 evening: demo delivered, v2.1.22 LIVE, web pass done
 
 - Daniel: "launch it now and create a demo where I could play around with it"; then no desktop
