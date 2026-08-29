@@ -127,7 +127,7 @@ not yet built.
 | Clean: broken/hidden defined names | both | Name scrubber | shipped v1.1 | P1 |
 | Clean: unused styles | both | Style scrubber (style-ceiling fix) | Yes (StyleCollection; verify add/delete surface) | P2 |
 | Clean: crop used range | US | Clear stray formatting past data | Yes | P2 |
-| Prepare for sharing (formulas->values, strip comments, hidden content, reset zoom) | US | Externalize workbook | Yes | P2 |
+| Prepare for sharing (every visible sheet to A1, report hidden content, external links, broken names, autocolor on edit) | US | Externalize workbook | shipped v2.1 (zoom is not in the Office.js worksheet API) | P2 |
 | Smart Print (headers, orientation, print areas) | US | Print prep | Partial (PageLayout API exists; verify coverage) | P3 |
 | Send via email (attachment/PDF/image) | both | Outlook handoff | Partial (no Outlook automation; mailto/Graph sendMail via backend) | P3 |
 | Workbook performance optimizer | MB | Diagnose slow workbooks | Partial (heuristics: used ranges, volatile fns, styles count) | P3 |

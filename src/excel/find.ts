@@ -14,7 +14,11 @@ import {
   rankHits,
   SHEET_NAME_ROW,
 } from "../find";
-import { SELECTION_CELL_CAP } from "./internal";
+import {
+  pickScannableSheets,
+  type ScannedSheet,
+  SELECTION_CELL_CAP,
+} from "./internal";
 import { ANCHOR_PREFIX } from "../link/model";
 import { type CellValue } from "../model";
 
@@ -40,12 +44,6 @@ export interface FindResult {
 
 interface ScanRow extends RankedHit {
   hit: FindHit;
-}
-
-interface ScannedSheet {
-  index: number;
-  name: string;
-  range: Excel.Range;
 }
 
 // A link anchor is ours, not the modeller's: the Links tab owns those names and
@@ -129,31 +127,6 @@ function cellHits(
   return rows;
 }
 
-// Which sheets are worth reading: an empty sheet has nothing to search, and a
-// sheet whose used range runs past the cap would overflow the request payload,
-// so it is reported as skipped instead.
-function pickSheets(
-  items: Excel.Worksheet[],
-  ranges: Excel.Range[],
-  cap: number,
-): { scanned: ScannedSheet[]; skippedSheets: string[] } {
-  const scanned: ScannedSheet[] = [];
-  const skippedSheets: string[] = [];
-
-  ranges.forEach((range, index) => {
-    const name = items[index]?.name ?? "";
-    if (range.isNullObject) return;
-    if (range.cellCount > cap) {
-      skippedSheets.push(name);
-      return;
-    }
-    range.load("values,formulas");
-    scanned.push({ index, name, range });
-  });
-
-  return { scanned, skippedSheets };
-}
-
 // Hidden sheets are searched as well: a number that moved is usually hiding on
 // one, and the jump is what tells the modeller the sheet is out of reach.
 export async function findInWorkbook(
@@ -175,11 +148,12 @@ export async function findInWorkbook(
     }
     await context.sync();
 
-    const { scanned, skippedSheets } = pickSheets(
+    const { scanned, skippedSheets } = pickScannableSheets(
       sheets.items,
       used,
       options.maxCells ?? SELECTION_CELL_CAP,
     );
+    for (const sheet of scanned) sheet.range.load("values,formulas");
     await context.sync();
 
     const rows = [

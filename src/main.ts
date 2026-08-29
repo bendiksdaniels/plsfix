@@ -39,6 +39,7 @@ import {
   parseAddress,
   pasteSpecial,
   pastePreserveFormulas,
+  prepareForSharing,
   readWorkbookBrand,
   scaleSelection,
   selectArea,
@@ -55,6 +56,7 @@ import {
   type FindResult,
   type NumberFormatName,
   type PresetName,
+  type ShareResult,
   type SheetEntry,
   type TraceArea,
   type TraceDirection,
@@ -83,6 +85,7 @@ import {
   serializeSettings,
   setActiveSettings,
 } from "./settings";
+import { type ShareIssue, summarizeShare } from "./share";
 import { makeGuard } from "./ui/guard";
 import { describeError, installErrorReporting } from "./ui/report";
 import { installTabs } from "./ui/tabs";
@@ -413,6 +416,8 @@ async function dispatch(action: string): Promise<string> {
         return runFind();
       case "scan-names":
         return scanNames();
+      case "share-prepare":
+        return prepareShare();
       default:
         throw new Error(`Unknown action: ${action}`);
     }
@@ -494,6 +499,7 @@ function registerCommands(): void {
     SMT_CHART_CAGR: addCagrLabel,
     SMT_UNPIVOT: unpivotSelection,
     SMT_TOC: insertTocSheet,
+    SMT_SHARE: prepareShare,
     SMT_FIND: focusFind,
   };
 
@@ -971,6 +977,75 @@ async function insertTocSheet(): Promise<string> {
 }
 
 // ---------------------------------------------------------------------------
+// Prepare for sharing
+// ---------------------------------------------------------------------------
+
+// Long lists belong in the workbook, not in a pane the reader has to scroll.
+const SHARE_ROW_CAP = 20;
+const SHARE_BADGES: Record<ShareIssue["kind"], string> = {
+  hiddenSheet: "Hidden",
+  externalLink: "External",
+  brokenName: "Broken name",
+  skippedSheet: "Too large",
+  autocolorOnEdit: "Autocolor",
+};
+// Excel exposes no worksheet zoom to add-ins (pageLayout.zoom is print zoom),
+// so the pane says what it cannot do rather than quietly leaving it out.
+const SHARE_HINT =
+  "Nothing is deleted and hidden sheets are left as they are. Zoom cannot be reset by the add-in, so it stays where you left it.";
+
+function shareRow(issue: ShareIssue): HTMLDivElement {
+  const row = document.createElement("div");
+  row.className = "sheet-row";
+
+  const label = document.createElement("span");
+  label.className = "sheet-name muted";
+  label.textContent = issue.label;
+  label.title = issue.label;
+
+  const badge = document.createElement("span");
+  badge.className = "sheet-badge off";
+  badge.textContent = SHARE_BADGES[issue.kind];
+
+  row.append(label, badge);
+  return row;
+}
+
+// A null result is the state before the first run.
+function renderShare(result: ShareResult | null): void {
+  const list = getElement<HTMLDivElement>("share-report");
+  list.replaceChildren();
+  list.hidden = !result || result.report.length === 0;
+
+  if (!result) {
+    getElement("share-hint").textContent = SHARE_HINT;
+    return;
+  }
+
+  for (const issue of result.report.slice(0, SHARE_ROW_CAP)) {
+    list.append(shareRow(issue));
+  }
+  const rest = result.report.length - SHARE_ROW_CAP;
+  if (rest > 0) {
+    const more = document.createElement("p");
+    more.className = "hint";
+    more.textContent = `…and ${rest} more.`;
+    list.append(more);
+  }
+
+  getElement("share-hint").textContent =
+    `${summarizeShare(result.report, result.touchedSheets)}. ${SHARE_HINT}`;
+}
+
+async function prepareShare(): Promise<string> {
+  const result = await prepareForSharing();
+  renderShare(result);
+  // The pass moved the workbook, so the explorer marks the sheet it landed on.
+  await refreshSheets();
+  return summarizeShare(result.report, result.touchedSheets);
+}
+
+// ---------------------------------------------------------------------------
 // Super Find
 // ---------------------------------------------------------------------------
 
@@ -1101,6 +1176,7 @@ renderAuditState();
 renderActionState();
 renderNames(false);
 renderFind(null);
+renderShare(null);
 
 Office.onReady(async ({ host }) => {
   if (host === Office.HostType.PowerPoint) {

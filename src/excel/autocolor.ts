@@ -210,6 +210,12 @@ async function applyEditHandler(enabled: boolean): Promise<void> {
   editHandler = null;
 }
 
+// Whether the handler is registered right now, which is what the next edit in
+// this workbook would actually run - not what the stored setting asks for.
+export function autocolorOnEditActive(): boolean {
+  return editHandler !== null;
+}
+
 export function setAutocolorOnEdit(enabled: boolean): Promise<void> {
   // Serialized so a fast toggle can never register the handler twice.
   const task = handlerQueue.then(() => applyEditHandler(enabled));
