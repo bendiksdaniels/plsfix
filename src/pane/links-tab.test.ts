@@ -8,6 +8,7 @@ import { join } from "node:path";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   exportSelection,
+  exportSelectionAsTable,
   goToSource,
   listWorkbookLinks,
   pushLinks,
@@ -30,6 +31,7 @@ vi.mock("../excel", () => ({
   watchActiveSheet: vi.fn(),
   exportActiveChart: vi.fn(),
   exportSelection: vi.fn(),
+  exportSelectionAsTable: vi.fn(),
   goToSource: vi.fn(),
   listWorkbookLinks: vi.fn(),
   pushLinks: vi.fn(),
@@ -188,6 +190,27 @@ describe("installLinksTab", () => {
 
     expect(h.errors).toEqual(["Generate a link key first (Links > Settings)."]);
     expect(exportSelection).not.toHaveBeenCalled();
+  });
+
+  // The second button on the same selection: a different adapter call, the
+  // same key, the same report line.
+  it("sends the selection as a table from its own button", async () => {
+    vi.mocked(exportSelectionAsTable).mockResolvedValue({
+      id: ID_B,
+      label: "Model!B4:F12 table",
+    });
+    const h = harness();
+    install(h);
+    await settle(h);
+    click("generate-key");
+    await settle(h);
+
+    click("export-table");
+    await settle(h);
+
+    expect(exportSelectionAsTable).toHaveBeenCalledTimes(1);
+    expect(exportSelection).not.toHaveBeenCalled();
+    expect(h.messages).toContain("Sent to PowerPoint: Model!B4:F12 table");
   });
 
   // The key is the secret itself, and the pane is screen-shared on deal calls:

@@ -37,6 +37,7 @@ describe("renderLinkRows", () => {
           slide: 3,
           label: "Model!B4:F12",
           source: "Model_v4.xlsx",
+          kind: "range",
           status: "updateAvailable",
           pushedAt: null,
           selected: false,
@@ -46,6 +47,11 @@ describe("renderLinkRows", () => {
     );
     expect(body.querySelectorAll("tr")).toHaveLength(1);
     expect(body.textContent).toContain("Update available");
+    // The kind rides in the meta column: a table link and a picture of the
+    // same cells carry the same label.
+    expect(body.querySelector(".link-source")!.textContent).toBe(
+      "Model_v4.xlsx · range",
+    );
     const badge = body.querySelector(".link-status .badge") as HTMLElement;
     expect(badge.title).toBe("Update available");
     (body.querySelector("input[type=checkbox]") as HTMLInputElement).click();
@@ -62,6 +68,7 @@ describe("renderLinkRows", () => {
           slide: 1,
           label: "x",
           source: "y",
+          kind: "table",
           status: "current",
           pushedAt: 0,
           selected: true,
@@ -100,7 +107,7 @@ describe("renderInbox", () => {
 });
 
 describe("renderCandidates", () => {
-  it("lists each export by label, workbook and age, in the order given", () => {
+  it("lists each export by label, workbook, kind and age, in the order given", () => {
     const select = document.createElement("select");
 
     renderCandidates(select, [waiting("Model_v5.xlsx"), waiting("Old.xlsx")]);
@@ -111,7 +118,7 @@ describe("renderCandidates", () => {
       "Old.xlsx",
     ]);
     expect(options[0]!.textContent).toBe(
-      "Model!B4:F12 · Model_v5.xlsx · just now",
+      "Model!B4:F12 · Model_v5.xlsx · range · just now",
     );
     expect(options[0]!.title).toBe(options[0]!.textContent);
   });

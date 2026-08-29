@@ -1,10 +1,11 @@
-// The only PowerPoint Office.js code: scan the deck for shapes carrying the
-// link tags, insert a linked picture, repaint one or a whole batch of them in
-// place (or reinsert on hosts below PowerPointApi 1.8), re-point one at another
-// link by rewriting its tags, break a link by dropping them, and read or set
-// which slide is active. Identity is always the PLSFIX_LINK tag - never a shape
-// id, name or position. Every flow here is counted in round trips: one sync
-// per batch, never one per shape.
+// The PowerPoint Office.js code every link flow goes through: scan the deck
+// for shapes carrying the link tags, insert a linked picture (tables.ts does
+// the table), repaint one or a whole batch of them in place (or reinsert on
+// hosts below PowerPointApi 1.8), re-point one at another link by rewriting
+// its tags, break a link by dropping them, and read or set which slide is
+// active. Identity is always the PLSFIX_LINK tag - never a shape id, name or
+// position. Every flow here is counted in round trips: one sync per batch,
+// never one per shape.
 
 import {
   decodeTag,
@@ -15,9 +16,16 @@ import {
   type InboxItem,
   type LinkTag,
   type Payload,
+  type PicturePayload,
 } from "../link/model";
 import { base64ToBytes, pngSize } from "../link/png";
-import { aspectChanged, fitToSlide, type Box } from "../link/status";
+import { aspectChanged, fitToSlide } from "../link/status";
+import { insertPictureBySelection } from "./picture";
+import {
+  placeOnSlide,
+  readSelectedSlideId,
+  selectedSlideId,
+} from "./placement";
 import {
   expandGroups,
   GROUP_API,
@@ -28,6 +36,7 @@ import {
   type PlacedShape,
   type ShapePath,
 } from "./shapes";
+import { insertTable, refreshTable } from "./tables";
 
 export interface FoundLink extends ShapePath {
   slideIndex: number;
@@ -129,79 +138,11 @@ function tagFor(
   };
 }
 
-async function readSelectedSlideId(
-  context: PowerPoint.RequestContext,
-): Promise<string | null> {
-  const selected = context.presentation.getSelectedSlides();
-  selected.load("items/id");
-  await context.sync();
-  return selected.items[0]?.id ?? null;
-}
-
-async function selectedSlideId(
-  context: PowerPoint.RequestContext,
-  stage: string,
-): Promise<string> {
-  const id = await readSelectedSlideId(context);
-  if (!id) throw new Error(`${stage}: select a slide first.`);
-  return id;
-}
-
 // What "Update this slide" acts on: PowerPoint's own selection, not a tick in
 // the pane - the pane cannot see the selection any other way. Null when
 // nothing is selected, so the caller can say so instead of guessing a slide.
 export async function activeSlideId(): Promise<string | null> {
   return PowerPoint.run((context) => readSelectedSlideId(context));
-}
-
-// Picture inserted through the selection API (hosts without fill.setImage):
-// the slide must be active, and the new picture is the last shape on it.
-function insertPictureBySelection(
-  stage: string,
-  slideId: string,
-  png: string,
-  box: Box,
-): Promise<string> {
-  return PowerPoint.run(async (context) => {
-    context.presentation.setSelectedSlides([slideId]);
-    await context.sync();
-    await setSelectedPicture(stage, png, box);
-    const shapes = context.presentation.slides.getItem(slideId).shapes;
-    shapes.load("items/id");
-    await context.sync();
-    const id = shapes.items.at(-1)?.id;
-    if (!id) {
-      throw new Error(`${stage}: PowerPoint reported no inserted picture.`);
-    }
-    return id;
-  });
-}
-
-function setSelectedPicture(
-  stage: string,
-  png: string,
-  box: Box,
-): Promise<void> {
-  return new Promise<void>((resolve, reject) => {
-    Office.context.document.setSelectedDataAsync(
-      png,
-      {
-        coercionType: Office.CoercionType.Image,
-        imageLeft: box.left,
-        imageTop: box.top,
-        imageWidth: box.width,
-        imageHeight: box.height,
-      },
-      (result) => {
-        if (result.status === Office.AsyncResultStatus.Succeeded) resolve();
-        else reject(new Error(`${stage}: ${insertFailure(result.error)}`));
-      },
-    );
-  });
-}
-
-function insertFailure(error: Office.Error | undefined): string {
-  return error?.message ?? "PowerPoint could not insert the picture.";
 }
 
 async function writeTags(
@@ -220,19 +161,36 @@ async function writeTags(
   });
 }
 
+export interface InsertResult {
+  slideId: string;
+  shapeId: string;
+  // True when the slide had no room left and the object sits over what is
+  // already there: the pane says so with OVERLAP_NOTE.
+  overlapping: boolean;
+}
+
+// What the pane shows when an insert had to cover something.
+export const OVERLAP_NOTE =
+  "Placed over other objects: no free space on this slide";
+
 export async function insertLink(
   item: InboxItem,
   payload: Payload,
   rev: number,
-): Promise<{ slideId: string; shapeId: string }> {
+): Promise<InsertResult> {
   const stage = `insert ${item.label}`;
-  const size = pngSize(base64ToBytes(payload.png));
-  const box = fitToSlide(size.width, size.height);
   const tag = tagFor(item, payload, rev);
+  if (payload.kind === "table") {
+    return insertTable(stage, item, payload, tag);
+  }
+  const size = pngSize(base64ToBytes(payload.png));
+  const fitted = fitToSlide(size.width, size.height);
   if (!supportsInPlaceRefresh()) {
-    const slideId = await PowerPoint.run((context) =>
-      selectedSlideId(context, stage),
-    );
+    const placed = await PowerPoint.run(async (context) => {
+      const slideId = await selectedSlideId(context, stage);
+      return { slideId, ...(await placeOnSlide(context, slideId, fitted)) };
+    });
+    const { slideId, box, overlapping } = placed;
     const shapeId = await insertPictureBySelection(
       stage,
       slideId,
@@ -240,13 +198,17 @@ export async function insertLink(
       box,
     );
     await writeTags(slideId, shapeId, tag, item.token);
-    return { slideId, shapeId };
+    return { slideId, shapeId, overlapping };
   }
   return PowerPoint.run(async (context) => {
     const slideId = await selectedSlideId(context, stage);
+    const placed = await placeOnSlide(context, slideId, fitted);
     const shape = context.presentation.slides
       .getItem(slideId)
-      .shapes.addGeometricShape(PowerPoint.GeometricShapeType.rectangle, box);
+      .shapes.addGeometricShape(
+        PowerPoint.GeometricShapeType.rectangle,
+        placed.box,
+      );
     shape.name = `pls,fix link ${item.label}`;
     shape.lineFormat.visible = false;
     shape.fill.setImage(payload.png);
@@ -254,7 +216,7 @@ export async function insertLink(
     shape.tags.add(TAG_KEY, item.token);
     shape.load("id");
     await context.sync();
-    return { slideId, shapeId: shape.id };
+    return { slideId, shapeId: shape.id, overlapping: placed.overlapping };
   });
 }
 
@@ -273,6 +235,14 @@ export interface RefreshRequest {
   rev: number;
 }
 
+interface PictureRequest extends RefreshRequest {
+  payload: PicturePayload;
+}
+
+function isPicture(entry: RefreshRequest): entry is PictureRequest {
+  return entry.payload.kind === "picture";
+}
+
 // One link repainted: the batch of one on a host with fill.setImage, and the
 // reinsertion fallback below it.
 export async function refreshLink(
@@ -280,6 +250,10 @@ export async function refreshLink(
   payload: Payload,
   rev: number,
 ): Promise<void> {
+  if (payload.kind === "table") {
+    await refreshTable(found, payload, tagFor(found.tag, payload, rev));
+    return;
+  }
   if (supportsInPlaceRefresh()) {
     await refreshLinks([{ found, payload, rev }]);
     return;
@@ -312,6 +286,9 @@ export async function refreshLink(
 // writes the same picture, tag and height however often it runs.
 export async function refreshLinks(batch: RefreshRequest[]): Promise<boolean> {
   if (!supportsInPlaceRefresh()) return false;
+  // A table is written cell by cell, not with one setImage: a batch holding
+  // one goes back to the caller, which replays every row on its own.
+  if (!batch.every(isPicture)) return false;
   if (batch.length === 0) return true;
   await PowerPoint.run(async (context) => {
     for (const entry of batch) queueRefresh(context, entry);
@@ -325,7 +302,7 @@ export async function refreshLinks(batch: RefreshRequest[]): Promise<boolean> {
 // one the scan already read.
 function queueRefresh(
   context: PowerPoint.RequestContext,
-  { found, payload, rev }: RefreshRequest,
+  { found, payload, rev }: PictureRequest,
 ): void {
   const height = refreshedHeight(found, pngSize(base64ToBytes(payload.png)));
   const shape = shapeAt(context, found);

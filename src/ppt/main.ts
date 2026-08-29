@@ -29,7 +29,7 @@ import {
   updateDetails,
 } from "./actions";
 import { installChangeSource } from "./chooser";
-import { activeSlideId, breakLink, goToSlide } from "./host";
+import { activeSlideId, breakLink, goToSlide, OVERLAP_NOTE } from "./host";
 import {
   insertFromInbox,
   listInbox,
@@ -249,12 +249,13 @@ async function refreshInbox(): Promise<string> {
 
 async function insertItem(item: InboxItem): Promise<string> {
   const ws = requireWorkspace();
-  await insertFromInbox(item, ws, relay);
+  const placed = await insertFromInbox(item, ws, relay);
+  const note = placed.overlapping ? ` ${OVERLAP_NOTE}` : "";
   // The relay copy is gone, so the item leaves the list without a second call.
   inboxItems = inboxItems.filter((waiting) => waiting.id !== item.id);
   renderInboxView();
   await refreshQuietly();
-  return `Inserted ${item.label}.`;
+  return `Inserted ${item.label}.${note}`;
 }
 
 // The "Change source" picker owns its own three buttons; the pane hands it the

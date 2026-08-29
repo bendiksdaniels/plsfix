@@ -7,6 +7,7 @@ import { deriveLinkKeys, open } from "../link/crypto";
 import {
   decodeInboxItem,
   decodePayload,
+  payloadBytes,
   sourceLabel,
   type InboxItem,
   type Payload,
@@ -28,7 +29,7 @@ import type { Workspace } from "../link/workspace";
 import { chunk, planBatches, REPAINT_BUDGET_BYTES } from "./batching";
 import { fetchUpdates } from "./fetch";
 import * as realHost from "./host";
-import type { FoundLink, RefreshRequest } from "./host";
+import type { FoundLink, InsertResult, RefreshRequest } from "./host";
 
 // refreshLinks is optional: a stub host is a handful of functions, and without
 // it every row is simply refreshed on its own - what a host below
@@ -200,9 +201,9 @@ export async function applyBatch(
 function splitByBytes(batch: RefreshRequest[]): RefreshRequest[][] {
   const items = batch.map((entry, index) => ({
     key: String(index),
-    // The base64 text is what the host request carries, so it is what the
-    // budget counts: about four bytes for every three of picture.
-    bytes: entry.payload.png.length,
+    // What the host request carries is what the budget counts: a picture's
+    // base64, about four bytes for every three of picture, or a table's cells.
+    bytes: payloadBytes(entry.payload),
   }));
   return planBatches(items, REPAINT_BUDGET_BYTES).map((keys) =>
     keys.map((key) => batch[Number(key)]!),
@@ -318,13 +319,14 @@ export async function insertFromInbox(
   ws: Workspace,
   relay: RelayApi,
   host: PptHost = realHost,
-): Promise<void> {
+): Promise<InsertResult> {
   const keys = await deriveLinkKeys(item.token);
   const result = await relay.getLink(item.id, keys.auth);
   if (result === "unchanged") {
     throw new Error(`insert ${item.label}: the relay returned no picture.`);
   }
   const payload = decodePayload(await open(keys.enc, item.id, result.blob));
-  await host.insertLink(item, payload, result.rev);
+  const placed = await host.insertLink(item, payload, result.rev);
   await relay.deleteInbox(ws.id, ws.auth, item.id);
+  return placed;
 }

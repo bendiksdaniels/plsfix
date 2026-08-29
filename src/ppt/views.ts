@@ -4,7 +4,7 @@
 // touches nothing else, and clears the container first so a re-render can
 // never leave a stale listener.
 
-import type { InboxItem } from "../link/model";
+import type { InboxItem, LinkKind } from "../link/model";
 import type { LinkStatus } from "../link/status";
 import { NEVER, relativeStamp, relativeTime } from "../ui/time";
 
@@ -13,6 +13,7 @@ export interface LinkRowView {
   slide: number;
   label: string;
   source: string;
+  kind: LinkKind;
   status: LinkStatus;
   // null only for a link the relay has never held a push for; 0 is a real
   // (if ancient) time.
@@ -57,7 +58,7 @@ function linkRow(
     selectCell(row, onToggle),
     textCell("link-slide", String(row.slide)),
     textCell("link-label", row.label),
-    textCell("link-source", row.source),
+    textCell("link-source", sourceMeta(row.source, row.kind)),
     statusCell(row.status),
     textCell("link-updated", relativeTime(row.pushedAt)),
   );
@@ -152,11 +153,19 @@ function inboxRow(
   return row;
 }
 
-// The workbook it came from plus how long it has waited: the label above
-// already names the sheet and range.
+// The workbook a link came from and what it is: the same cells can be exported
+// twice, once as a picture and once as a table, and the kind is what tells the
+// two apart in a list.
+function sourceMeta(workbook: string, kind: LinkKind): string {
+  return `${workbook} · ${kind}`;
+}
+
+// That, plus how long the export has waited: the label above already names the
+// sheet and range.
 function inboxMeta(item: InboxItem): string {
   const age = relativeStamp(item.createdAt);
-  return age === NEVER ? item.src.workbook : `${item.src.workbook} · ${age}`;
+  const text = sourceMeta(item.src.workbook, item.kind);
+  return age === NEVER ? text : `${text} · ${age}`;
 }
 
 // The "Change source" chooser: every waiting export, best match first (the

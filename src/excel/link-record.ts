@@ -16,12 +16,12 @@ import {
 import { base64ToBytes, pngSize } from "../link/png";
 import type { RelayApi } from "../link/relay";
 import type { Workspace } from "../link/workspace";
-import { staged, writeRegistry } from "./link-anchors";
+import { staged, writeRegistry, type Render } from "./link-anchors";
 
 export interface NewLink {
   entry: RegistryEntry;
   src: Source;
-  png: string;
+  render: Render;
   // The registry as it was read before the anchor was bound: what publish
   // appends to, and what a rollback puts back.
   registry: Registry;
@@ -33,24 +33,45 @@ export interface NewLink {
 export async function pushPayload(
   entry: RegistryEntry,
   src: Source,
-  png: string,
+  render: Render,
   relay: RelayApi,
 ): Promise<number> {
-  const size = pngSize(base64ToBytes(png));
-  const payload: Payload = {
+  const payload = await payloadOf(src, render);
+  const keys = await deriveLinkKeys(entry.token);
+  const blob = await seal(keys.enc, entry.id, encodePayload(payload));
+  return (await relay.putLink(entry.id, keys.auth, blob)).rev;
+}
+
+// The hash is what tells one push from the next: the picture itself, or the
+// cells of a table - never the envelope around them, which carries the clock.
+async function payloadOf(src: Source, render: Render): Promise<Payload> {
+  const pushedAt = new Date().toISOString();
+  if (render.kind === "table") {
+    const { rows, cols, cells, widths } = render;
+    return {
+      v: 1,
+      kind: "table",
+      rows,
+      cols,
+      cells,
+      widths,
+      src,
+      pushedAt,
+      hash: await sha256Hex(JSON.stringify(cells)),
+    };
+  }
+  const size = pngSize(base64ToBytes(render.png));
+  return {
     v: 1,
     kind: "picture",
     mime: "image/png",
     width: size.width,
     height: size.height,
-    png,
+    png: render.png,
     src,
-    pushedAt: new Date().toISOString(),
-    hash: await sha256Hex(png),
+    pushedAt,
+    hash: await sha256Hex(render.png),
   };
-  const keys = await deriveLinkKeys(entry.token);
-  const blob = await seal(keys.enc, entry.id, encodePayload(payload));
-  return (await relay.putLink(entry.id, keys.auth, blob)).rev;
 }
 
 // The note PowerPoint picks up: it carries the token, which is why it is sealed
@@ -85,7 +106,7 @@ export async function publish(
   const { entry, src, registry } = link;
   let recorded = false;
   try {
-    entry.rev = await pushPayload(entry, src, link.png, relay);
+    entry.rev = await pushPayload(entry, src, link.render, relay);
     entry.lastPushedAt = new Date().toISOString();
     // Recorded before the inbox note goes out, so PowerPoint is never told
     // about a link this workbook has no record of.

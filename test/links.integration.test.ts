@@ -67,10 +67,13 @@ beforeEach(async () => {
 });
 afterEach(() => uninstallFakeHost());
 
+// Every export in this file is a picture; the table export has its own suite.
 async function payloadOf(id: string, token: string) {
   const keys = await deriveLinkKeys(token);
   const stored = relay.links.get(id)!;
-  return decodePayload(await open(keys.enc, id, stored.blob));
+  const payload = decodePayload(await open(keys.enc, id, stored.blob));
+  if (payload.kind !== "picture") throw new Error(`${id}: not a picture`);
+  return payload;
 }
 
 describe("exportSelection", () => {

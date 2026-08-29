@@ -1,12 +1,14 @@
-// The Excel "Links" tab: export a selection or the active chart to PowerPoint,
-// list what this workbook owns, push (by hand or automatically after an edit),
-// jump back to a source, remove a link and hold the workspace link key.
+// The Excel "Links" tab: export a selection - as a picture or as a table - or
+// the active chart to PowerPoint, list what this workbook owns, push (by hand
+// or automatically after an edit), jump back to a source, remove a link and
+// hold the workspace link key.
 // Office.js only reaches here through src/excel.
 import {
   exportActiveChart,
   listActiveSheetCharts,
   watchActiveSheet,
   exportSelection,
+  exportSelectionAsTable,
   goToSource,
   listWorkbookLinks,
   pushLinks,
@@ -130,7 +132,8 @@ function wireBoxes(tab: Tab): void {
 }
 
 function wireActions(tab: Tab): void {
-  wire(tab, "export-selection", () => exportRange(tab));
+  wire(tab, "export-selection", () => exportRange(tab, false));
+  wire(tab, "export-table", () => exportRange(tab, true));
   wire(tab, "export-chart", () => exportChart(tab));
   wire(tab, "go-to-source", () => jumpToSource(tab));
   wire(tab, "remove-link", () => removeSelected(tab));
@@ -270,8 +273,9 @@ function unreadable(error: unknown): string {
 // Actions
 // ---------------------------------------------------------------------------
 
-async function exportRange(tab: Tab): Promise<string> {
-  const result = await exportSelection(requireWorkspace(tab), tab.deps.relay);
+async function exportRange(tab: Tab, asTable: boolean): Promise<string> {
+  const send = asTable ? exportSelectionAsTable : exportSelection;
+  const result = await send(requireWorkspace(tab), tab.deps.relay);
   await refresh(tab);
   return `Sent to PowerPoint: ${result.label}`;
 }
