@@ -15,4 +15,5 @@ export * from "./tornado";
 export * from "./reshape";
 export * from "./workbook";
 export * from "./links";
+export * from "./link-watch";
 export * from "./brand-store";

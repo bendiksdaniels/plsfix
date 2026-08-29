@@ -29,6 +29,8 @@ Kad avota dati Excel mainās, saites jāatjaunina abās pusēs.
 - Excel pusē cilnē "Links" nospiediet "Push all": visas saites tiek pārrēķinātas no to avotiem un nosūtītas uz releju.
 - PowerPoint pusē cilnē "Links" nospiediet "Update all": visi izsekotie attēli tiek pārzīmēti vietā. Var atjaunināt arī atsevišķas saites ("Update selected") vai visas aktīvā slaida saites ("Update this slide").
 
+Ja Excel cilnē "Links" ir ieslēgta izvēles rūtiņa "Auto-push on edit", mainītās saites tiek nosūtītas uz releju automātiski trīs sekundes pēc pēdējās rediģēšanas, kamēr panelis ir atvērts.
+
 Pozīcija un platums saglabājas nemainīgi. Augstums mainās tikai tad, kad attēla proporcijas Excel pusē ir mainījušās. Ja attēls ir ievietots grupā, atjaunināšana to tomēr atrod un atjauno.
 
 ## Saites atslēga

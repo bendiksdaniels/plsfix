@@ -1,6 +1,7 @@
 // The Excel "Links" tab: export a selection or the active chart to PowerPoint,
-// list what this workbook owns, push, jump back to a source, remove a link and
-// hold the workspace link key. Office.js only reaches here through src/excel.
+// list what this workbook owns, push (by hand or automatically after an edit),
+// jump back to a source, remove a link and hold the workspace link key.
+// Office.js only reaches here through src/excel.
 import {
   exportActiveChart,
   exportSelection,
@@ -8,6 +9,8 @@ import {
   listWorkbookLinks,
   pushLinks,
   removeLink,
+  restoreAutoPush,
+  setAutoPush,
   type PushSummary,
   type WorkbookLinkRow,
 } from "../excel";
@@ -46,6 +49,7 @@ export interface LinksTabDeps {
 interface Tab {
   deps: LinksTabDeps;
   list: HTMLTableSectionElement;
+  autopush: HTMLInputElement;
   keyDisplay: HTMLElement;
   reveal: HTMLButtonElement;
   generate: HTMLButtonElement;
@@ -65,6 +69,7 @@ export function installLinksTab(deps: LinksTabDeps): {
   const tab: Tab = {
     deps,
     list: element(deps.root, "workbook-links"),
+    autopush: element(deps.root, "links-autopush"),
     keyDisplay: element(deps.root, "workspace-key-display"),
     reveal: element(deps.root, "reveal-key"),
     generate: element(deps.root, "generate-key"),
@@ -81,6 +86,10 @@ export function installLinksTab(deps: LinksTabDeps): {
   tab.reveal.addEventListener("click", () => {
     tab.revealed = !tab.revealed;
     renderKey(tab);
+  });
+
+  tab.autopush.addEventListener("change", () => {
+    void guarded(tab, "links-autopush", () => toggleAutoPush(tab));
   });
 
   wire(tab, "export-selection", () => exportRange(tab));
@@ -111,6 +120,27 @@ export function installLinksTab(deps: LinksTabDeps): {
 async function boot(tab: Tab): Promise<void> {
   await loadKey(tab);
   await refresh(tab);
+  await restoreWatch(tab);
+}
+
+// Re-arming reads a workbook setting, which a pane that cannot reach Excel yet
+// has no way to do: the box then simply stays clear, and ticking it reports
+// through the guard like every other action. The refresh above tells the same
+// story in the table.
+async function restoreWatch(tab: Tab): Promise<void> {
+  try {
+    tab.autopush.checked = await restoreAutoPush(tab.deps.relay, notify(tab));
+  } catch {
+    tab.autopush.checked = false;
+  }
+}
+
+// Auto-push runs on an edit, not on a click, so its own messages go straight to
+// the toast rather than through the guard.
+function notify(tab: Tab): (message: string) => void {
+  return (message) => {
+    tab.deps.toast.show(message);
+  };
 }
 
 async function reload(tab: Tab): Promise<void> {
@@ -237,6 +267,21 @@ async function removeSelected(tab: Tab): Promise<string> {
   return `Removed ${ids.length} ${ids.length === 1 ? "link" : "links"}`;
 }
 
+// The box has to show what the workbook is really doing: a toggle that fails
+// puts it back before the guard reports why.
+async function toggleAutoPush(tab: Tab): Promise<string> {
+  const on = tab.autopush.checked;
+  try {
+    await setAutoPush(on, tab.deps.relay, notify(tab));
+  } catch (error) {
+    tab.autopush.checked = !on;
+    throw error;
+  }
+  return on
+    ? "Auto-push on: linked pictures follow your edits."
+    : "Auto-push off.";
+}
+
 async function generateKey(tab: Tab): Promise<string> {
   tab.workspace = await createWorkspace(tab.deps.keyStore);
   tab.keyError = null;
@@ -313,6 +358,7 @@ async function guarded(
 
 function setBusy(tab: Tab, busy: boolean): void {
   for (const button of tab.buttons) button.disabled = busy;
+  tab.autopush.disabled = busy;
   // Busy owns every button while it runs; the key panel owns "Generate" again
   // the moment it lets go.
   if (!busy) applyKeyState(tab);
