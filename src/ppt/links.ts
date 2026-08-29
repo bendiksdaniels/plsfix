@@ -24,6 +24,7 @@ import {
   type RelayStatus,
 } from "../link/status";
 import type { Workspace } from "../link/workspace";
+import { planBatches, REPAINT_BUDGET_BYTES } from "./batching";
 import { fetchUpdates } from "./fetch";
 import * as realHost from "./host";
 import type { FoundLink, RefreshRequest } from "./host";
@@ -128,7 +129,8 @@ export async function listLinks(
 // A row the deck already agrees with is never fetched, and one row's failure
 // never stops the rest: the summary is what the pane reports afterwards. The
 // fetches travel in one batch (`fetch.ts`) and the repaints they earn in
-// another, so a deck of any size costs two round trips, not two per link.
+// byte-budgeted batches below, so a deck of any size costs a handful of round
+// trips, not two per link.
 export async function updateLinks(
   rows: LinkRow[],
   relay: RelayApi,
@@ -164,19 +166,48 @@ export async function updateLinks(
   return summary;
 }
 
-// Every picture a run has something to paint, applied in one round trip, and
-// the count of the ones that landed. The batch is a speed-up, never a new
-// failure mode: a host that refuses one shape rejects the whole run, so the
-// rows go through one at a time and only the bad one is reported. Replaying a
-// row the batch had already applied costs nothing - a repaint writes the same
-// picture, tag and height. Shared with revert.ts, which paints an older
-// revision through exactly the same path.
+// Every picture a run has something to paint, and the count of the ones that
+// landed. The repaints travel in as few round trips as their bytes allow: one
+// host batch per REPAINT_BUDGET_BYTES of payload, because a deck can earn more
+// picture than a single host request has any business carrying. Shared with
+// revert.ts, which paints an older revision through exactly the same path.
 export async function applyBatch(
   batch: RefreshRequest[],
   host: PptHost,
   onFailure: (found: FoundLink, error: unknown) => void,
 ): Promise<number> {
-  if (batch.length === 0) return 0;
+  let painted = 0;
+  for (const part of splitByBytes(batch)) {
+    painted += await paintBatch(part, host, onFailure);
+  }
+  return painted;
+}
+
+// The payload list cut to the repaint budget. The key is the row's position, so
+// two shapes carrying the same picture still map back to their own entries, and
+// the order the rows were fetched in is the order they repaint in.
+function splitByBytes(batch: RefreshRequest[]): RefreshRequest[][] {
+  const items = batch.map((entry, index) => ({
+    key: String(index),
+    // The base64 text is what the host request carries, so it is what the
+    // budget counts: about four bytes for every three of picture.
+    bytes: entry.payload.png.length,
+  }));
+  return planBatches(items, REPAINT_BUDGET_BYTES).map((keys) =>
+    keys.map((key) => batch[Number(key)]!),
+  );
+}
+
+// One batch in one round trip. The batch is a speed-up, never a new failure
+// mode: a host that refuses one shape rejects the whole run it sits in, so
+// those rows go through one at a time, only the bad one is reported, and the
+// other batches never notice. Replaying a row this run had already applied
+// costs nothing - a repaint writes the same picture, tag and height.
+async function paintBatch(
+  batch: RefreshRequest[],
+  host: PptHost,
+  onFailure: (found: FoundLink, error: unknown) => void,
+): Promise<number> {
   if (host.refreshLinks) {
     try {
       if (await host.refreshLinks(batch)) return batch.length;
