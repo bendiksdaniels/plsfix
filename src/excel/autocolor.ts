@@ -3,6 +3,7 @@
 // handler that recolors edited cells live. The handler is off by default.
 
 import { EDIT_CELL_CAP, SELECTION_CELL_CAP, writeRuns } from "./internal";
+import { paintSync, protectedNote, sheetProtected } from "./protection";
 import { captureUndo } from "./undo";
 import { type CellClass, classifyCell } from "../classify";
 import { type CellValue } from "../model";
@@ -54,15 +55,22 @@ function colorGrid(
   });
 }
 
-export async function autocolorSelection(): Promise<void> {
-  await Excel.run(async (context) => {
+const AUTOCOLOR = "Autocolor";
+
+export async function autocolorSelection(): Promise<string> {
+  return Excel.run(async (context) => {
     const range = context.workbook.getSelectedRange();
+    const sheet = range.worksheet;
     range.load("rowCount,columnCount,formulas,values");
     await context.sync();
 
     if (range.rowCount * range.columnCount > SELECTION_CELL_CAP) {
       throw new Error("Autocolor supports up to 5,000 selected cells at once.");
     }
+    // A protected sheet refuses every one of these writes. Colouring is a
+    // reading aid, not an edit worth an error dialog, so it is skipped instead
+    // and the undo slot is left holding the previous action.
+    if (await sheetProtected(context, sheet)) return protectedNote(AUTOCOLOR);
     await captureUndo(context, range);
 
     colorGrid(
@@ -73,7 +81,12 @@ export async function autocolorSelection(): Promise<void> {
       range.values as CellValue[][],
     );
 
-    await context.sync();
+    const cells = range.rowCount * range.columnCount;
+    return paintSync(
+      context,
+      AUTOCOLOR,
+      `${AUTOCOLOR}: ${cells} ${cells === 1 ? "cell" : "cells"}`,
+    );
   });
 }
 
@@ -95,12 +108,16 @@ const COLOR_KEY_ROWS: ColorKeyRow[] = [
   { label: "Partial input", example: "=A1*1.05", kind: "partial" },
 ];
 
-export async function insertColorKey(): Promise<void> {
-  await Excel.run(async (context) => {
+const COLOR_KEY = "Color key";
+
+export async function insertColorKey(): Promise<string> {
+  return Excel.run(async (context) => {
     const sheet = context.workbook.worksheets.getActiveWorksheet();
     const anchor = context.workbook.getActiveCell();
     anchor.load("rowIndex,columnIndex");
     await context.sync();
+
+    if (await sheetProtected(context, sheet)) return protectedNote(COLOR_KEY);
 
     const block = sheet.getRangeByIndexes(
       anchor.rowIndex,
@@ -140,7 +157,7 @@ export async function insertColorKey(): Promise<void> {
       line.format.font.color = classFont(row.kind, theme) ?? theme.formulaFont;
     });
 
-    await context.sync();
+    return paintSync(context, COLOR_KEY, `${COLOR_KEY} added`);
   });
 }
 
@@ -176,7 +193,9 @@ async function colorChangedRange(
         range.formulas as CellValue[][],
         range.values as CellValue[][],
       );
-      await context.sync();
+      // An edit inside an unlocked island of a protected sheet can still touch
+      // locked cells through a run; the recolour is dropped, never thrown.
+      await paintSync(context, AUTOCOLOR, "");
     });
   } finally {
     coloringEdit = false;

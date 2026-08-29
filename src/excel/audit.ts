@@ -10,6 +10,7 @@ import {
   SELECTION_CELL_CAP,
   writeRuns,
 } from "./internal";
+import { protectedNote, sheetProtected } from "./protection";
 import { parseAddress } from "./shared";
 import { type AuditMark, auditGrid } from "../audit";
 import { type CellValue } from "../model";
@@ -79,15 +80,35 @@ export async function restoreFills(
   await overlay.restore(context);
 }
 
+const OVERLAY_STAGE = "Audit overlay";
+
+let overlayNote: string | null = null;
+
+// Read-once, the way lastUndoSkipped is: what the last toggle could not do.
+// The pane shows it instead of the plain on/off line when it is not null.
+export function lastAuditNote(): string | null {
+  const note = overlayNote;
+  overlayNote = null;
+  return note;
+}
+
 export async function toggleAuditOverlay(): Promise<boolean> {
   // The linked-cell highlight owns fills of its own, and both stores hand back
   // what they covered: painting over the other one would give the modeller our
   // tint back as if it were their formatting.
   overlay.requireSoleOwner("audit overlay");
+  overlayNote = null;
   return Excel.run(async (context) => {
     const selected = context.workbook.getSelectedRange();
     selected.load("rowCount,columnCount");
     await context.sync();
+
+    // A protected sheet refuses every fill the overlay would write, and half a
+    // painted overlay is worse than none: it is skipped and said so.
+    if (await sheetProtected(context, selected.worksheet)) {
+      overlayNote = protectedNote(OVERLAY_STAGE);
+      return false;
+    }
 
     // One cell says "check this block", not "check this cell".
     let target = selected;
