@@ -24,6 +24,7 @@ Model Tools is an Excel productivity add-in for financial modelling teams. It is
 - Workbook tab: a sheet explorer that jumps to, hides and shows sheets (very hidden ones are listed but never touched), a hyperlinked contents sheet rebuilt on demand, and a scrubber that finds and deletes defined names left pointing at `#REF!`
 - Super Find: one search across every sheet (hidden ones included) over values, formula text, defined names and sheet names, listed in workbook order with one click to jump to the hit
 - Style scrubber: the custom cell styles no cell in the workbook wears, listed with a count and deleted on a confirmed second click; a sheet too large to scan is named and blocks the delete, so a partial answer never removes a style still in use
+- Prepare for sharing: one pass that puts every visible sheet back at A1 and leaves the workbook on the first of them, then reports what a reader would still find - hidden sheets, links to other workbooks, names left on `#REF!` and autocolor still running on every edit; nothing is deleted, hidden sheets are untouched, and zoom cannot be reset because Office.js does not expose it
 
 ## Keyboard shortcuts
 

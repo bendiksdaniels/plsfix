@@ -1,15 +1,17 @@
-// Internal API of the src/excel/ folder: private range, fill, chart-shell and
-// host-capability helpers no pane code calls directly. Exported so sibling
-// section files (and src/excel/links.ts later) can import them - the barrel
-// never re-exports this module, so nothing here is part of the pane's public
-// surface.
+// Internal API of the src/excel/ folder: private range, fill, workbook-scan,
+// defined-name, chart-shell and host-capability helpers no pane code calls
+// directly. Exported so sibling section files (and src/excel/links.ts later)
+// can import them - the barrel never re-exports this module, so nothing here is
+// part of the pane's public surface.
 
+import { ANCHOR_PREFIX } from "../link/model";
 import { type CellValue } from "../model";
 import {
   activeTheme,
   currencyNumberFormat,
   getActiveSettings,
 } from "../settings";
+import { brokenNames } from "../workbook";
 import { type NumberFormatName } from "./shared";
 
 const staticNumberFormats = {
@@ -143,6 +145,62 @@ export function applyFillKey(block: Excel.Range, key: string): void {
 export function hostSupports(apiSet: string): boolean {
   const requirements = Office.context?.requirements;
   return requirements ? requirements.isSetSupported("ExcelApi", apiSet) : true;
+}
+
+export interface ScannedSheet {
+  index: number;
+  name: string;
+  range: Excel.Range;
+}
+
+// Which sheets a workbook-wide scan can read: an empty sheet has nothing in it,
+// and a sheet whose used range runs past the cap would overflow the request
+// payload, so it is named as skipped instead of quietly left out. The ranges
+// come in with isNullObject, cellCount, rowIndex and columnIndex already
+// synced; the caller loads the grids it needs - values, formulas or both -
+// before the next sync.
+export function pickScannableSheets(
+  items: Excel.Worksheet[],
+  ranges: Excel.Range[],
+  cap: number,
+): { scanned: ScannedSheet[]; skippedSheets: string[] } {
+  const scanned: ScannedSheet[] = [];
+  const skippedSheets: string[] = [];
+
+  ranges.forEach((range, index) => {
+    const name = items[index]?.name ?? "";
+    if (range.isNullObject) return;
+    if (range.cellCount > cap) {
+      skippedSheets.push(name);
+      return;
+    }
+    scanned.push({ index, name, range });
+  });
+
+  return { scanned, skippedSheets };
+}
+
+export function loadNames(
+  context: Excel.RequestContext,
+): Excel.NamedItemCollection {
+  const names = context.workbook.names;
+  names.load("items/name,items/formula");
+  return names;
+}
+
+// A link anchor whose rows were deleted is a #REF! hidden name by design: the
+// Links tab reports it as "Source missing" and owns its removal, and treating
+// it as scrub-able here would cut a link the modeller could still heal by
+// undoing the delete.
+export function brokenIn(names: Excel.NamedItemCollection): string[] {
+  return brokenNames(
+    names.items
+      .filter((item) => !item.name.startsWith(ANCHOR_PREFIX))
+      .map((item) => ({
+        name: item.name,
+        formula: typeof item.formula === "string" ? item.formula : "",
+      })),
+  );
 }
 
 const CHART_TEXT_SIZE = 9;

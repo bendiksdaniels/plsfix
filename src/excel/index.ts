@@ -16,6 +16,7 @@ export * from "./reshape";
 export * from "./workbook";
 export * from "./find";
 export * from "./styles";
+export * from "./share";
 export * from "./links";
 export * from "./link-watch";
 export * from "./brand-store";

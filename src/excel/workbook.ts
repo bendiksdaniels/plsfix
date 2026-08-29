@@ -2,9 +2,9 @@
 // activate) and the broken-name scrubber. The TOC sheet is rewritten in full on
 // every run and only ever touches a sheet it marked as its own (the A1 marker).
 
-import { ANCHOR_PREFIX } from "../link/model";
+import { brokenIn, loadNames } from "./internal";
 import { activeTheme, getActiveSettings } from "../settings";
-import { brokenNames, tocRows } from "../workbook";
+import { tocRows } from "../workbook";
 
 const TOC_SHEET = "TOC";
 const TOC_MARKER = "Model Tools - Contents";
@@ -153,26 +153,6 @@ export async function activateSheet(name: string): Promise<void> {
     context.workbook.worksheets.getItem(name).activate();
     await context.sync();
   });
-}
-
-function loadNames(context: Excel.RequestContext): Excel.NamedItemCollection {
-  const names = context.workbook.names;
-  names.load("items/name,items/formula");
-  return names;
-}
-
-// A link anchor whose rows were deleted is a #REF! hidden name by design: the
-// Links tab reports it as "Source missing" and owns its removal, and deleting
-// it here would cut a link the modeller could still heal by undoing the delete.
-function brokenIn(names: Excel.NamedItemCollection): string[] {
-  return brokenNames(
-    names.items
-      .filter((item) => !item.name.startsWith(ANCHOR_PREFIX))
-      .map((item) => ({
-        name: item.name,
-        formula: typeof item.formula === "string" ? item.formula : "",
-      })),
-  );
 }
 
 export async function listBrokenNames(): Promise<string[]> {
