@@ -8,6 +8,7 @@ mod install;
 mod intro;
 mod links;
 pub mod reference;
+mod templates;
 mod tools;
 mod workbook;
 
@@ -58,6 +59,7 @@ pub fn chapters() -> Vec<Chapter> {
         install::setup(),
         intro::pane(),
         tools::tools(),
+        templates::templates(),
         workbook::workbook(),
         links::links(),
         workbook::brand(),
