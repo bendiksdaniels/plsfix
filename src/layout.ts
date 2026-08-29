@@ -1,7 +1,7 @@
-// Where a new object goes so it covers nothing: beside an anchor on a sheet
-// that has no edge (a chart the add-in inserts), or in the free space of a
-// bounded canvas (a slide). Pure geometry in the caller's units; the callers
-// read the occupied boxes and write the one that comes back.
+// Where a new object goes so it covers nothing: dropped clear of what is in the
+// way (a chart the add-in inserts, positioned by src/excel/chart-place.ts), or
+// in the free space of a bounded canvas (a slide). Pure geometry in the
+// caller's units; the callers read the occupied boxes and write what comes back.
 
 export interface Box {
   left: number;
@@ -41,33 +41,16 @@ function clear(box: Box, occupied: readonly Box[], gap: number): boolean {
   return occupied.every((other) => !overlaps(box, other, gap));
 }
 
-/** Right of the anchor first, then below it, then below whatever is in the way. */
-export function placeBeside(
-  anchor: Box,
-  size: Size,
+/**
+ * The same box, moved straight down until nothing occupied is in its way.
+ * Every step moves it under at least one of the boxes blocking it, so the walk
+ * ends within one step per occupied box.
+ */
+export function dropBelow(
+  start: Box,
   occupied: readonly Box[],
   gap: number,
 ): Box {
-  const right = {
-    ...size,
-    left: anchor.left + anchor.width + gap,
-    top: anchor.top,
-  };
-  if (clear(right, occupied, gap)) return right;
-  const below = {
-    ...size,
-    left: anchor.left,
-    top: anchor.top + anchor.height + gap,
-  };
-  if (clear(below, occupied, gap)) return below;
-  const rightColumn = descend(right, occupied, gap);
-  const leftColumn = descend(below, occupied, gap);
-  return leftColumn.top < rightColumn.top ? leftColumn : rightColumn;
-}
-
-// Every step moves the box under at least one of the boxes blocking it, so
-// the walk ends within one step per occupied box.
-function descend(start: Box, occupied: readonly Box[], gap: number): Box {
   let box = start;
   for (let step = 0; step <= occupied.length; step += 1) {
     const blocking = occupied.filter((other) => overlaps(box, other, gap));

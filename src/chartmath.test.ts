@@ -3,9 +3,29 @@ import {
   bridgeSeries,
   cagr,
   formatCagrLabel,
+  seriesSpan,
   type TornadoDriver,
   tornadoSeries,
 } from "./chartmath";
+
+describe("seriesSpan", () => {
+  it("drops the blank cells at both ends", () => {
+    expect(seriesSpan(["", null, 100, 110, "", null])).toEqual({
+      first: 2,
+      last: 3,
+    });
+  });
+
+  it("keeps blanks inside the line, and text at its ends", () => {
+    expect(seriesSpan([100, "", 121])).toEqual({ first: 0, last: 2 });
+    expect(seriesSpan(["n/a", 121])).toEqual({ first: 0, last: 1 });
+  });
+
+  it("answers null for a line holding nothing", () => {
+    expect(seriesSpan(["", null])).toBeNull();
+    expect(seriesSpan([])).toBeNull();
+  });
+});
 
 describe("bridgeSeries", () => {
   it("splits a bridge into base, rise and fall", () => {

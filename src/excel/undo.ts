@@ -5,38 +5,29 @@
 import { SELECTION_CELL_CAP } from "./internal";
 import { parseAddress } from "./shared";
 
-interface UndoSlot {
+// One captured rectangle. A ctrl-clicked selection is several of them, and an
+// action that writes into every area has to be able to put every area back.
+interface UndoBlock {
   sheetId: string;
   address: string;
-  label: string;
   formulas: (string | number | boolean)[][];
   numberFormat: string[][];
   formats: Excel.CellProperties[][];
 }
 
+interface UndoSlot {
+  label: string;
+  blocks: UndoBlock[];
+}
+
 let undoSlot: UndoSlot | null = null;
 
-// Office.js writes never reach Excel's own undo stack, so every mutating action
-// stores what it is about to overwrite here first (user gap #5: undo trust).
-export async function captureUndo(
-  context: Excel.RequestContext,
+// The full settable surface, so a restore is not partial: fills, fonts,
+// borders, alignment, wrapping and indent all come back (row height cannot).
+function requestFormats(
   range: Excel.Range,
-): Promise<void> {
-  range.load("address,rowCount,columnCount");
-  await context.sync();
-
-  // A skipped capture must not leave an older slot behind: the pane would then
-  // offer to restore something that is not the last action.
-  undoSlot = null;
-  if (range.rowCount * range.columnCount > SELECTION_CELL_CAP) {
-    undoSkipped = true;
-    return;
-  }
-  undoSkipped = false;
-
-  // The full settable surface, so a restore is not partial: fills, fonts,
-  // borders, alignment, wrapping and indent all come back (row height cannot).
-  const properties = range.getCellProperties({
+): OfficeExtension.ClientResult<Excel.CellProperties[][]> {
+  return range.getCellProperties({
     format: {
       fill: { color: true, pattern: true, patternColor: true },
       font: {
@@ -54,18 +45,56 @@ export async function captureUndo(
       indentLevel: true,
     },
   });
-  const sheet = range.worksheet;
-  sheet.load("id");
-  range.load("formulas,numberFormat");
+}
+
+// Office.js writes never reach Excel's own undo stack, so every mutating action
+// stores what it is about to overwrite here first (user gap #5: undo trust).
+export async function captureUndo(
+  context: Excel.RequestContext,
+  range: Excel.Range,
+): Promise<void> {
+  await captureUndoAreas(context, [range]);
+}
+
+/** The same capture over every area of a multi-area selection. */
+export async function captureUndoAreas(
+  context: Excel.RequestContext,
+  ranges: Excel.Range[],
+): Promise<void> {
+  for (const range of ranges) range.load("address,rowCount,columnCount");
+  await context.sync();
+
+  // A skipped capture must not leave an older slot behind: the pane would then
+  // offer to restore something that is not the last action.
+  undoSlot = null;
+  const cells = ranges.reduce(
+    (total, range) => total + range.rowCount * range.columnCount,
+    0,
+  );
+  if (cells > SELECTION_CELL_CAP) {
+    undoSkipped = true;
+    return;
+  }
+  undoSkipped = false;
+
+  const pending = ranges.map((range) => {
+    const properties = requestFormats(range);
+    const sheet = range.worksheet;
+    sheet.load("id");
+    range.load("formulas,numberFormat");
+    return { range, sheet, properties };
+  });
   await context.sync();
 
   undoSlot = {
-    sheetId: sheet.id,
-    address: parseAddress(range.address).address,
-    label: range.address,
-    formulas: range.formulas as (string | number | boolean)[][],
-    numberFormat: range.numberFormat as string[][],
-    formats: properties.value,
+    label: pending.map(({ range }) => range.address).join(", "),
+    blocks: pending.map(({ range, sheet, properties }) => ({
+      sheetId: sheet.id,
+      address: parseAddress(range.address).address,
+      formulas: range.formulas as (string | number | boolean)[][],
+      numberFormat: range.numberFormat as string[][],
+      formats: properties.value,
+    })),
   };
 }
 
@@ -90,19 +119,25 @@ export async function undoLastAction(): Promise<string> {
 
   return Excel.run(async (context) => {
     // Sheet id rather than name, so a rename between action and undo is fine.
-    const sheet = context.workbook.worksheets.getItemOrNullObject(slot.sheetId);
-    sheet.load("isNullObject");
+    const sheets = slot.blocks.map((block) =>
+      context.workbook.worksheets.getItemOrNullObject(block.sheetId),
+    );
+    for (const sheet of sheets) sheet.load("isNullObject");
     await context.sync();
 
-    if (sheet.isNullObject) {
+    if (sheets.some((sheet) => sheet.isNullObject)) {
       undoSlot = null;
       throw new Error("The sheet that action ran on is gone.");
     }
 
-    const range = sheet.getRange(slot.address);
-    range.formulas = slot.formulas;
-    range.numberFormat = slot.numberFormat;
-    range.setCellProperties(slot.formats as Excel.SettableCellProperties[][]);
+    slot.blocks.forEach((block, index) => {
+      const range = sheets[index]!.getRange(block.address);
+      range.formulas = block.formulas;
+      range.numberFormat = block.numberFormat;
+      range.setCellProperties(
+        block.formats as Excel.SettableCellProperties[][],
+      );
+    });
     await context.sync();
 
     // Only a restore that landed consumes the slot; a failed one stays retryable.

@@ -1,35 +1,23 @@
 import { describe, expect, it } from "vitest";
 
-import { overlaps, placeBeside, placeInFreeSpace } from "./layout";
+import { dropBelow, overlaps, placeInFreeSpace } from "./layout";
 
-const anchor = { left: 100, top: 100, width: 200, height: 120 };
 const size = { width: 300, height: 200 };
 
-describe("placeBeside", () => {
-  it("goes right of the anchor when that is free", () => {
-    expect(placeBeside(anchor, size, [], 10)).toEqual({
-      left: 310,
-      top: 100,
-      width: 300,
-      height: 200,
-    });
+describe("dropBelow", () => {
+  const box = { ...size, left: 100, top: 100 };
+
+  it("leaves a box nothing is in the way of alone", () => {
+    expect(dropBelow(box, [], 10)).toEqual(box);
   });
 
-  it("goes below the anchor when the right is taken", () => {
-    const right = { left: 320, top: 100, width: 300, height: 120 };
-    expect(placeBeside(anchor, size, [right], 10)).toMatchObject({
-      left: 100,
-      top: 230,
-    });
-  });
-
-  it("steps under everything in the way and takes the higher column", () => {
-    const right = { left: 310, top: 100, width: 300, height: 200 };
-    const below = { left: 100, top: 230, width: 300, height: 400 };
-    const box = placeBeside(anchor, size, [right, below], 10);
-    expect(box).toMatchObject({ left: 310, top: 640 });
-    expect(overlaps(box, right)).toBe(false);
-    expect(overlaps(box, below)).toBe(false);
+  it("steps under everything in the way", () => {
+    const first = { left: 100, top: 100, width: 300, height: 200 };
+    const second = { left: 100, top: 320, width: 300, height: 400 };
+    const dropped = dropBelow(box, [first, second], 10);
+    expect(dropped).toMatchObject({ left: 100, top: 730 });
+    expect(overlaps(dropped, first)).toBe(false);
+    expect(overlaps(dropped, second)).toBe(false);
   });
 });
 

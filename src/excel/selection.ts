@@ -1,343 +1,141 @@
-// Selection formatting: presets, number formats and format-cycling (fill, font
-// color, row style, number, border). Every mutating action captures pls,fix Undo
-// first and enforces the selection cell cap before touching the grid.
+// Selection formatting: the brand presets, the house number formats and the
+// format eraser. Every mutating action captures pls,fix Undo first and writes
+// into every area of the selection, so a ctrl-clicked pair of blocks is treated
+// as one job. The format cycles live next door in format-cycles.ts.
 
-import {
-  numberFormat,
-  SELECTION_CELL_CAP,
-  selectionWithinCap,
-} from "./internal";
-import { applyPresetFormat } from "./presets";
+import { cappedAreas, selectedAreas } from "./areas";
+import { numberFormat, SELECTION_CELL_CAP } from "./internal";
+import { syncWrite } from "./protection";
 import {
   type NumberFormatName,
   type PresetName,
   type SelectionSummary,
 } from "./shared";
-import { captureUndo } from "./undo";
-import {
-  BORDER_EDGE_NAMES,
-  type BorderCycleState,
-  type BorderEdgeName,
-  type BorderReadouts,
-  type BorderSpec,
-  buildBorderCycle,
-  buildFillCycle,
-  buildFontCycle,
-  buildNumberCycles,
-  buildRowStyleCycles,
-  type CellStyle,
-  CLEAR_FILL,
-  matchBorderIndex,
-  matchStyleIndex,
-  nextInCycle,
-  type NumberCycleFamily,
-  type RowStyleKind,
-  type StyleSpec,
-} from "../cycles";
+import { captureUndoAreas } from "./undo";
 import { analyzeGrid, type CellValue, makeFormatGrid } from "../model";
 import { getActiveSettings } from "../settings";
 
+// Every area's metrics added together: a ctrl-clicked selection is one card in
+// the pane, not two, and a passive click must never be an error.
+function totals(areas: Excel.Range[]): Omit<SelectionSummary, "address"> {
+  return areas.reduce(
+    (sum, area) => {
+      const part = analyzeGrid(
+        area.formulas as CellValue[][],
+        area.values as CellValue[][],
+      );
+      return {
+        cells: sum.cells + part.cells,
+        formulas: sum.formulas + part.formulas,
+        errors: sum.errors + part.errors,
+        blanks: sum.blanks + part.blanks,
+      };
+    },
+    { cells: 0, formulas: 0, errors: 0, blanks: 0 },
+  );
+}
+
 export async function inspectSelection(): Promise<SelectionSummary> {
   return Excel.run(async (context) => {
-    const range = context.workbook.getSelectedRange();
-    range.load("address,cellCount");
+    const areas = await selectedAreas(context, "Selection");
+    for (const area of areas) area.load("address,cellCount");
     await context.sync();
 
+    const address = areas.map((area) => area.address).join(", ");
+    const cells = areas.reduce((total, area) => total + area.cellCount, 0);
     // Over the cap the pane shows the address and count only (metrics as "—")
     // instead of asking the host for two full-column grids on a passive click.
-    if (range.cellCount > SELECTION_CELL_CAP) {
-      return {
-        address: range.address,
-        cells: range.cellCount,
-        formulas: -1,
-        errors: -1,
-        blanks: -1,
-      };
+    if (cells > SELECTION_CELL_CAP) {
+      return { address, cells, formulas: -1, errors: -1, blanks: -1 };
     }
 
-    range.load("formulas,values");
+    for (const area of areas) area.load("formulas,values");
     await context.sync();
 
-    const summary = analyzeGrid(
-      range.formulas as CellValue[][],
-      range.values as CellValue[][],
-    );
-
-    return {
-      address: range.address,
-      ...summary,
-    };
+    return { address, ...totals(areas) };
   });
+}
+
+// The look itself, so one area and five areas go through the same code.
+function paintPreset(range: Excel.Range, name: PresetName): void {
+  const { format } = range;
+  const theme = activeTheme();
+  format.font.name = getActiveSettings().font;
+  format.font.size = 10;
+  format.font.bold = false;
+  format.font.italic = false;
+  format.font.color = theme.formulaFont;
+  format.fill.clear();
+  format.horizontalAlignment = Excel.HorizontalAlignment.left;
+  format.verticalAlignment = Excel.VerticalAlignment.center;
+
+  switch (name) {
+    case "title":
+      format.fill.color = theme.titleFill;
+      format.font.color = theme.titleText;
+      format.font.size = 15;
+      format.font.bold = true;
+      format.rowHeight = 25;
+      break;
+    case "header": {
+      format.fill.color = theme.headerFill;
+      format.font.bold = true;
+      const bottom = format.borders.getItem(Excel.BorderIndex.edgeBottom);
+      bottom.style = Excel.BorderLineStyle.continuous;
+      bottom.color = theme.headerBorder;
+      bottom.weight = Excel.BorderWeight.thin;
+      break;
+    }
+    case "input":
+      format.font.color = theme.inputFont;
+      break;
+    case "formula":
+      format.font.color = theme.formulaFont;
+      break;
+    case "result": {
+      format.fill.color = theme.resultFill;
+      format.font.bold = true;
+      const top = format.borders.getItem(Excel.BorderIndex.edgeTop);
+      top.style = Excel.BorderLineStyle.double;
+      top.color = theme.resultBorder;
+      break;
+    }
+  }
 }
 
 export async function applyPreset(name: PresetName): Promise<void> {
   await Excel.run(async (context) => {
-    const range = context.workbook.getSelectedRange();
-    await captureUndo(context, range);
-    applyPresetFormat(range.format, name);
+    const areas = await selectedAreas(context, "Formatting");
+    await captureUndoAreas(context, areas);
+    for (const area of areas) paintPreset(area, name);
     await context.sync();
   });
 }
 
 export async function clearFormats(): Promise<void> {
   await Excel.run(async (context) => {
-    const range = context.workbook.getSelectedRange();
-    await captureUndo(context, range);
-    range.clear(Excel.ClearApplyTo.formats);
+    const areas = await selectedAreas(context, "Clearing formats");
+    await captureUndoAreas(context, areas);
+    for (const area of areas) area.clear(Excel.ClearApplyTo.formats);
     await context.sync();
   });
 }
 
 export async function applyNumberFormat(name: NumberFormatName): Promise<void> {
   await Excel.run(async (context) => {
-    const range = await selectionWithinCap(context, "Number formatting");
-    range.load("rowCount,columnCount");
+    const areas = await cappedAreas(context, "Number formatting");
+    for (const area of areas) area.load("rowCount,columnCount");
     await context.sync();
-    await captureUndo(context, range);
+    await captureUndoAreas(context, areas);
 
-    range.numberFormat = makeFormatGrid(
-      range.rowCount,
-      range.columnCount,
-      numberFormat(name),
-    );
-    await context.sync();
-  });
-}
-
-// Cycle state lives in the cell: every run reads the active cell and steps once.
-function readFill(cell: Excel.Range): string {
-  const { fill } = cell.format;
-  // Excel reports white for unfilled cells, so the pattern decides.
-  return fill.pattern === Excel.FillPattern.none
-    ? CLEAR_FILL
-    : fill.color.toUpperCase();
-}
-
-function readCellStyle(cell: Excel.Range): CellStyle {
-  const fill = readFill(cell);
-  return {
-    fill: fill === CLEAR_FILL ? null : fill,
-    fontColor: cell.format.font.color.toUpperCase(),
-    bold: cell.format.font.bold,
-  };
-}
-
-function applyBorder(
-  format: Excel.RangeFormat,
-  index: Excel.BorderIndex,
-  spec: BorderSpec | null | undefined,
-): void {
-  if (spec === undefined) return;
-  const border = format.borders.getItem(index);
-  if (spec === null) {
-    border.style = Excel.BorderLineStyle.none;
-    return;
-  }
-  if (spec.style === "double") {
-    border.style = Excel.BorderLineStyle.double;
-  } else {
-    border.style = Excel.BorderLineStyle.continuous;
-    border.weight = Excel.BorderWeight.thin;
-  }
-  border.color = spec.color;
-}
-
-function applyStyleSpec(format: Excel.RangeFormat, spec: StyleSpec): void {
-  if (spec.fill === CLEAR_FILL) format.fill.clear();
-  else if (spec.fill !== undefined) format.fill.color = spec.fill;
-  if (spec.fontColor !== undefined) format.font.color = spec.fontColor;
-  if (spec.bold !== undefined) format.font.bold = spec.bold;
-  applyBorder(format, Excel.BorderIndex.edgeTop, spec.topBorder);
-  applyBorder(format, Excel.BorderIndex.edgeBottom, spec.bottomBorder);
-}
-
-export async function applyNumberCycle(
-  family: NumberCycleFamily,
-): Promise<void> {
-  await Excel.run(async (context) => {
-    const range = await selectionWithinCap(context, "Format cycling");
-    const active = range.getCell(0, 0);
-    range.load("rowCount,columnCount");
-    active.load("numberFormat");
-    await context.sync();
-    await captureUndo(context, range);
-
-    const current = active.numberFormat[0]?.[0];
-    const next = nextInCycle(
-      typeof current === "string" ? current : "",
-      buildNumberCycles(getActiveSettings())[family],
-    );
-
-    range.numberFormat = makeFormatGrid(
-      range.rowCount,
-      range.columnCount,
-      next,
-    );
-    await context.sync();
-  });
-}
-
-export async function applyRowStyleCycle(kind: RowStyleKind): Promise<void> {
-  await Excel.run(async (context) => {
-    const range = context.workbook.getSelectedRange();
-    const active = range.getCell(0, 0);
-    range.load("rowCount");
-    active.load(
-      "format/fill/color,format/fill/pattern,format/font/color,format/font/bold",
-    );
-    await context.sync();
-
-    const variants = buildRowStyleCycles(getActiveSettings())[kind];
-    const index = matchStyleIndex(readCellStyle(active), variants);
-    const next = variants[(index + 1) % variants.length];
-    await captureUndo(context, range);
-
-    if (next) {
-      // Edge borders target the whole range, which would leave interior rows
-      // bare in a multi-row selection; row styles are per-row by definition.
-      // Refuse absurd heights instead of silently degrading to edge borders.
-      if (range.rowCount > 500) {
-        throw new Error("Row styles support up to 500 rows at once.");
-      }
-      if (range.rowCount > 1) {
-        for (let row = 0; row < range.rowCount; row += 1) {
-          applyStyleSpec(range.getRow(row).format, next);
-        }
-      } else {
-        applyStyleSpec(range.format, next);
-      }
+    const format = numberFormat(name);
+    for (const area of areas) {
+      area.numberFormat = makeFormatGrid(
+        area.rowCount,
+        area.columnCount,
+        format,
+      );
     }
-
-    await context.sync();
-  });
-}
-
-export async function applyFillCycle(): Promise<void> {
-  await Excel.run(async (context) => {
-    const range = context.workbook.getSelectedRange();
-    const active = range.getCell(0, 0);
-    active.load("format/fill/color,format/fill/pattern");
-    await context.sync();
-
-    const next = nextInCycle(
-      readFill(active),
-      buildFillCycle(getActiveSettings()),
-    );
-    await captureUndo(context, range);
-
-    if (next === CLEAR_FILL) range.format.fill.clear();
-    else range.format.fill.color = next;
-
-    await context.sync();
-  });
-}
-
-export async function applyFontColorCycle(): Promise<void> {
-  await Excel.run(async (context) => {
-    const range = context.workbook.getSelectedRange();
-    const active = range.getCell(0, 0);
-    active.load("format/font/color");
-    await context.sync();
-
-    const next = nextInCycle(
-      active.format.font.color.toUpperCase(),
-      buildFontCycle(getActiveSettings()),
-    );
-    await captureUndo(context, range);
-
-    range.format.font.color = next;
-    await context.sync();
-  });
-}
-
-// Borders belong to the selection, not to the active cell: the state is read
-// from the range's own edges and written back to them.
-interface EdgeHandle {
-  edge: BorderEdgeName;
-  border: Excel.RangeBorder;
-}
-
-function borderIndexes(): Record<BorderEdgeName, Excel.BorderIndex> {
-  return {
-    top: Excel.BorderIndex.edgeTop,
-    bottom: Excel.BorderIndex.edgeBottom,
-    left: Excel.BorderIndex.edgeLeft,
-    right: Excel.BorderIndex.edgeRight,
-    insideHorizontal: Excel.BorderIndex.insideHorizontal,
-    insideVertical: Excel.BorderIndex.insideVertical,
-  };
-}
-
-// An inside line only exists where there is something between: asking a single
-// cell for one is an error in Excel, so those edges are left out entirely.
-function borderHandles(
-  range: Excel.Range,
-  rowCount: number,
-  columnCount: number,
-): EdgeHandle[] {
-  const indexes = borderIndexes();
-  return BORDER_EDGE_NAMES.filter((edge) => {
-    if (edge === "insideHorizontal") return rowCount > 1;
-    if (edge === "insideVertical") return columnCount > 1;
-    return true;
-  }).map((edge) => ({
-    edge,
-    border: range.format.borders.getItem(indexes[edge]),
-  }));
-}
-
-function readEdges(handles: EdgeHandle[]): BorderReadouts {
-  const readouts: BorderReadouts = {};
-  for (const { edge, border } of handles) {
-    // A range whose cells disagree reports nothing for that edge.
-    readouts[edge] = {
-      style: border.style ?? "",
-      weight: border.weight ?? "",
-      color: border.color ?? "",
-    };
-  }
-  return readouts;
-}
-
-function writeEdges(handles: EdgeHandle[], state: BorderCycleState): void {
-  for (const { edge, border } of handles) {
-    const line = state.find((entry) => entry.edge === edge);
-    // Edges this look does not draw are cleared, so stepping never leaves a
-    // line from the previous look behind.
-    if (!line) {
-      border.style = Excel.BorderLineStyle.none;
-      continue;
-    }
-    if (line.style === "double") {
-      // Excel draws a double rule at its own weight; setting one is refused.
-      border.style = Excel.BorderLineStyle.double;
-    } else {
-      border.style = Excel.BorderLineStyle.continuous;
-      border.weight =
-        line.weight === "medium"
-          ? Excel.BorderWeight.medium
-          : Excel.BorderWeight.thin;
-    }
-    border.color = line.color;
-  }
-}
-
-export async function applyBorderCycle(): Promise<void> {
-  await Excel.run(async (context) => {
-    const range = await selectionWithinCap(context, "Border cycling");
-    range.load("rowCount,columnCount");
-    await context.sync();
-
-    const handles = borderHandles(range, range.rowCount, range.columnCount);
-    for (const { border } of handles) border.load("style,color,weight");
-    await context.sync();
-
-    const states = buildBorderCycle(getActiveSettings());
-    const index = matchBorderIndex(readEdges(handles), states);
-    const next = states[(index + 1) % states.length];
-    await captureUndo(context, range);
-
-    if (next) writeEdges(handles, next);
-    await context.sync();
+    await syncWrite(context, "Number formatting");
   });
 }

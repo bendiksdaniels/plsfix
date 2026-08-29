@@ -1178,10 +1178,10 @@ describe("charts", () => {
     );
   });
 
-  it("refuses a bridge that is not two columns of numbers", async () => {
+  it("refuses a bridge that is not two lines of numbers", async () => {
     helpers.select("Model!A1:A5");
     expect(await rejects(() => smt.insertWaterfall())).toBe(
-      "Select two columns, labels and values, with three or more rows.",
+      "Select labels and values in two adjacent columns, or in two adjacent rows, with three or more points.",
     );
 
     helpers.seed("Model!D1", [
@@ -1195,10 +1195,10 @@ describe("charts", () => {
     );
   });
 
-  it("caps a bridge at a hundred rows", async () => {
+  it("caps a bridge at a hundred points", async () => {
     helpers.select("Model!A1:B101");
     expect(await rejects(() => smt.insertWaterfall())).toBe(
-      "A bridge chart supports up to 100 rows.",
+      "A bridge chart supports up to 100 points.",
     );
   });
 
@@ -1516,7 +1516,7 @@ describe("consistent rounding", () => {
     ]);
     helpers.select("Model!A1:B2");
     expect(await rejects(() => smt.insertConsistentRounding())).toBe(
-      SHAPE_ERROR,
+      "Consistent rounding: select a single row or a single column, not a block.",
     );
 
     helpers.select("Model!A1");

@@ -11,7 +11,6 @@ import {
   currencyNumberFormat,
   getActiveSettings,
 } from "../settings";
-import { placeBeside } from "../layout";
 import { formatAmount } from "../numbers";
 import { brokenNames } from "../workbook";
 import { type NumberFormatName } from "./shared";
@@ -32,6 +31,9 @@ export function numberFormat(name: NumberFormatName): string {
 
 export const SELECTION_CELL_CAP = 5_000;
 export const EDIT_CELL_CAP = 500;
+// The grid itself: what a block written beside a selection may not run past.
+export const SHEET_ROWS = 1_048_576;
+export const SHEET_COLUMNS = 16_384;
 // What one workbook-wide scan may read in total. The per-sheet cap alone does
 // not bound a request: thirty sheets just under it queue a hundred and fifty
 // thousand cells into a single sync, which a real model reaches easily and the
@@ -80,8 +82,21 @@ export async function selectedSingleRange(
     if (areas.areaCount > 1) {
       throw new Error(`${stage}: select a single range`);
     }
+    return context.workbook.getSelectedRange();
   }
-  return context.workbook.getSelectedRange();
+
+  // Without RangeAreas the count cannot be asked for at all, so the refusal has
+  // to be caught where office.js reports it: on the sync after the call.
+  const range = context.workbook.getSelectedRange();
+  range.load("address");
+  try {
+    await context.sync();
+  } catch (error) {
+    const { code } = error as { code?: string };
+    if (code !== Excel.ErrorCodes.invalidSelection) throw error;
+    throw new Error(`${stage}: select a single range`);
+  }
+  return range;
 }
 
 // A block written beside the selection has to be free first: pls,fix Undo is a
@@ -284,45 +299,6 @@ export async function syncTolerating(
 }
 
 // Amounts in toasts and labels follow the house style of the pane language.
-const CHART_GAP = 12;
-
-// A chart the add-in adds lands right of its anchor block, or below it, and
-// never on another chart of the sheet: Excel's own default drops it wherever
-// the view happens to be.
-export async function placeChartBeside(
-  context: Excel.RequestContext,
-  sheet: Excel.Worksheet,
-  chart: Excel.Chart,
-  anchor: Excel.Range,
-): Promise<void> {
-  anchor.load("left,top,width,height");
-  chart.load("name,width,height");
-  const charts = sheet.charts;
-  charts.load("items/name,items/left,items/top,items/width,items/height");
-  await context.sync();
-  const occupied = charts.items
-    .filter((other) => other.name !== chart.name)
-    .map((other) => ({
-      left: other.left,
-      top: other.top,
-      width: other.width,
-      height: other.height,
-    }));
-  const box = placeBeside(
-    {
-      left: anchor.left,
-      top: anchor.top,
-      width: anchor.width,
-      height: anchor.height,
-    },
-    { width: chart.width, height: chart.height },
-    occupied,
-    CHART_GAP,
-  );
-  chart.left = box.left;
-  chart.top = box.top;
-}
-
 export function formatChartAmount(value: number): string {
   return formatAmount(value, getActiveSettings().language);
 }

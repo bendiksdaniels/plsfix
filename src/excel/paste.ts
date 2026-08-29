@@ -2,8 +2,9 @@
 // transpose) and formula-preserving paste. The source is remembered by sheet id
 // and address, not a live Excel reference, so it survives a sheet rename.
 
+import { selectedAreas } from "./areas";
 import { parseAddress } from "./shared";
-import { captureUndo } from "./undo";
+import { captureUndoAreas } from "./undo";
 
 export type PasteMode = "values" | "formats" | "transpose";
 
@@ -70,25 +71,32 @@ function pasteCopyType(mode: PasteMode): Excel.RangeCopyType {
 export async function pasteSpecial(mode: PasteMode): Promise<void> {
   await Excel.run(async (context) => {
     const from = await openCopySource(context);
-    const target = context.workbook.getSelectedRange();
+    const targets = await selectedAreas(context, "Paste");
     from.load("rowCount,columnCount");
-    target.load("rowCount,columnCount");
+    for (const target of targets) target.load("rowCount,columnCount");
     await context.sync();
 
     // Excel grows a smaller destination to the source shape, so undo has to
-    // cover the whole footprint, not just what the user selected.
+    // cover the whole footprint, not just what the user selected - once per
+    // area, because every area of the selection takes a copy.
     const transposed = mode === "transpose";
     const rows = transposed ? from.columnCount : from.rowCount;
     const columns = transposed ? from.rowCount : from.columnCount;
-    const footprint = target
-      .getCell(0, 0)
-      .getResizedRange(
-        Math.max(rows, target.rowCount) - 1,
-        Math.max(columns, target.columnCount) - 1,
-      );
-    await captureUndo(context, footprint);
+    await captureUndoAreas(
+      context,
+      targets.map((target) =>
+        target
+          .getCell(0, 0)
+          .getResizedRange(
+            Math.max(rows, target.rowCount) - 1,
+            Math.max(columns, target.columnCount) - 1,
+          ),
+      ),
+    );
 
-    target.copyFrom(from, pasteCopyType(mode), false, transposed);
+    for (const target of targets) {
+      target.copyFrom(from, pasteCopyType(mode), false, transposed);
+    }
     await context.sync();
   });
 }
@@ -98,16 +106,19 @@ export async function pasteSpecial(mode: PasteMode): Promise<void> {
 export async function pastePreserveFormulas(): Promise<void> {
   await Excel.run(async (context) => {
     const from = await openCopySource(context);
-    const target = context.workbook.getSelectedRange();
+    const targets = await selectedAreas(context, "Paste");
     from.load("rowCount,columnCount,formulas");
     await context.sync();
 
-    const destination = target
-      .getCell(0, 0)
-      .getResizedRange(from.rowCount - 1, from.columnCount - 1);
-    await captureUndo(context, destination);
+    const destinations = targets.map((target) =>
+      target
+        .getCell(0, 0)
+        .getResizedRange(from.rowCount - 1, from.columnCount - 1),
+    );
+    await captureUndoAreas(context, destinations);
 
-    destination.formulas = from.formulas;
+    for (const destination of destinations)
+      destination.formulas = from.formulas;
     await context.sync();
   });
 }

@@ -2,19 +2,24 @@
 // the floating CAGR label shape. The brand shell they share lives in
 // internal.ts, next to the other helpers src/excel/tornado.ts also needs.
 
+import { placeChartBeside, UNPLACED_NOTE } from "./chart-place";
 import {
   formatChartAmount,
   hostSupports,
-  placeChartBeside,
+  selectedSingleRange,
   styleChartShell,
   styleChartSurface,
   syncTolerating,
 } from "./internal";
-import { bridgeSeries, cagr, formatCagrLabel } from "../chartmath";
+import { bridgeSeries, cagr, formatCagrLabel, seriesSpan } from "../chartmath";
 import { type CellValue } from "../model";
 import { getActiveSettings, tint } from "../settings";
 
-const BRIDGE_ROW_CAP = 100;
+const BRIDGE_POINT_CAP = 100;
+const BRIDGE_MIN_POINTS = 3;
+const BRIDGE_TITLE = "Bridge";
+const BRIDGE_SHAPE_ERROR =
+  "Select labels and values in two adjacent columns, or in two adjacent rows, with three or more points.";
 const CAGR_LABEL_WIDTH = 104;
 const CAGR_LABEL_HEIGHT = 20;
 const CAGR_LABEL_GAP = 8;
@@ -46,53 +51,82 @@ function chartSeriesColors(): string[] {
   ];
 }
 
-// Native Excel waterfall from a two-column bridge table: labels left, values
-// right, first and last rows the opening and closing totals.
+// Two adjacent columns (labels left, values right) or two adjacent rows (labels
+// on top, values under them): a bridge reads the same either way, and a
+// modeller lays one out both ways.
+function bridgeShape(
+  rowCount: number,
+  columnCount: number,
+): { acrossRow: boolean; points: number } {
+  if (columnCount === 2 && rowCount >= BRIDGE_MIN_POINTS) {
+    return { acrossRow: false, points: rowCount };
+  }
+  if (rowCount === 2 && columnCount >= BRIDGE_MIN_POINTS) {
+    return { acrossRow: true, points: columnCount };
+  }
+  throw new Error(BRIDGE_SHAPE_ERROR);
+}
+
+function bridgeValues(grid: CellValue[][], acrossRow: boolean): number[] {
+  const line = acrossRow ? (grid[1] ?? []) : grid.map((row) => row[1] ?? null);
+  return line.map((value) => {
+    if (typeof value !== "number" || !Number.isFinite(value)) {
+      throw new Error(
+        acrossRow
+          ? "The second row must hold numbers only."
+          : "The second column must hold numbers only.",
+      );
+    }
+    return value;
+  });
+}
+
+// The cell just before the table titles the chart when it holds text: above a
+// pair of columns, left of a pair of rows.
+async function bridgeHeading(
+  context: Excel.RequestContext,
+  sheet: Excel.Worksheet,
+  range: Excel.Range,
+  acrossRow: boolean,
+): Promise<string> {
+  const row = acrossRow ? range.rowIndex : range.rowIndex - 1;
+  const column = acrossRow ? range.columnIndex - 1 : range.columnIndex;
+  if (row < 0 || column < 0) return BRIDGE_TITLE;
+
+  const cell = sheet.getRangeByIndexes(row, column, 1, 1);
+  cell.load("values");
+  await context.sync();
+  const text = (cell.values as CellValue[][])[0]?.[0];
+  return typeof text === "string" && text.trim() ? text.trim() : BRIDGE_TITLE;
+}
+
+// Native Excel waterfall from a bridge table: the first and last points are the
+// opening and closing totals, everything between them a delta.
 export async function insertWaterfall(): Promise<string> {
   return Excel.run(async (context) => {
-    const range = context.workbook.getSelectedRange();
+    const range = await selectedSingleRange(context, "Waterfall");
     const sheet = range.worksheet;
     range.load("rowCount,columnCount,rowIndex,columnIndex,values");
     await context.sync();
 
-    if (range.columnCount !== 2 || range.rowCount < 3) {
+    const { acrossRow, points: count } = bridgeShape(
+      range.rowCount,
+      range.columnCount,
+    );
+    if (count > BRIDGE_POINT_CAP) {
       throw new Error(
-        "Select two columns, labels and values, with three or more rows.",
+        `A bridge chart supports up to ${BRIDGE_POINT_CAP} points.`,
       );
     }
-    if (range.rowCount > BRIDGE_ROW_CAP) {
-      throw new Error("A bridge chart supports up to 100 rows.");
-    }
 
-    const values: number[] = [];
-    for (const row of range.values as CellValue[][]) {
-      const value = row[1];
-      if (typeof value !== "number" || !Number.isFinite(value)) {
-        throw new Error("The second column must hold numbers only.");
-      }
-      values.push(value);
-    }
+    const values = bridgeValues(range.values as CellValue[][], acrossRow);
     const bridge = bridgeSeries(values);
-
-    // The cell above the table is the chart title when it holds text.
-    let heading = "Bridge";
-    if (range.rowIndex > 0) {
-      const above = sheet.getRangeByIndexes(
-        range.rowIndex - 1,
-        range.columnIndex,
-        1,
-        1,
-      );
-      above.load("values");
-      await context.sync();
-      const text = (above.values as CellValue[][])[0]?.[0];
-      if (typeof text === "string" && text.trim()) heading = text.trim();
-    }
+    const heading = await bridgeHeading(context, sheet, range, acrossRow);
 
     const chart = sheet.charts.add(
       Excel.ChartType.waterfall,
       range,
-      Excel.ChartSeriesBy.auto,
+      acrossRow ? Excel.ChartSeriesBy.rows : Excel.ChartSeriesBy.auto,
     );
     styleChartShell(chart, heading, true, false);
     chart.legend.visible = false;
@@ -101,7 +135,10 @@ export async function insertWaterfall(): Promise<string> {
     const series = chart.series.getItemAt(0);
     series.showConnectorLines = true;
     await context.sync();
-    await placeChartBeside(context, sheet, chart, range);
+    // The geometry travels in its own batch: Excel for the web rejects the one
+    // carrying the surface whole, and the placement must not go down with it.
+    const placed = await placeChartBeside(context, sheet, chart, range);
+    await context.sync();
 
     // Excel for the web refuses the surface on chartex charts. It is cosmetic,
     // so the waterfall keeps the host's default font there instead of failing.
@@ -126,10 +163,11 @@ export async function insertWaterfall(): Promise<string> {
     const stated = values[last] ?? 0;
     const ties = Math.abs(implied - stated) <= Math.abs(stated) * 1e-12 + 1e-9;
 
+    const note = placed ? "" : UNPLACED_NOTE;
     if (ties) {
-      return `Waterfall added: ${values.length} points, ties at ${formatChartAmount(stated)}`;
+      return `Waterfall added: ${values.length} points, ties at ${formatChartAmount(stated)}${note}`;
     }
-    return `Waterfall added: deltas imply ${formatChartAmount(implied)}, closing total says ${formatChartAmount(stated)}`;
+    return `Waterfall added: deltas imply ${formatChartAmount(implied)}, closing total says ${formatChartAmount(stated)}${note}`;
   });
 }
 
@@ -174,7 +212,7 @@ export async function formatSelectedChart(): Promise<void> {
 // chart by hand. Shapes are worksheet objects, so no range state is touched.
 export async function addCagrLabel(): Promise<string> {
   return Excel.run(async (context) => {
-    const range = context.workbook.getSelectedRange();
+    const range = await selectedSingleRange(context, "Chart label");
     const sheet = range.worksheet;
     // Range geometry arrived in 1.10; without it the label lands where Excel
     // drops it and the modeller moves it.
@@ -184,14 +222,17 @@ export async function addCagrLabel(): Promise<string> {
     await context.sync();
 
     const { rowCount, columnCount } = range;
-    const periods = (rowCount === 1 ? columnCount : rowCount) - 1;
-    if ((rowCount !== 1 && columnCount !== 1) || periods < 1) {
+    const cells = (range.values as CellValue[][]).flat();
+    // Blank cells at the ends of the line state no period; the series is
+    // whatever sits between the first and the last cell that holds something.
+    const span = seriesSpan(cells);
+    const periods = span ? span.last - span.first : 0;
+    if ((rowCount !== 1 && columnCount !== 1) || !span || periods < 1) {
       throw new Error("Select one row or column with at least two numbers.");
     }
 
-    const cells = (range.values as CellValue[][]).flat();
-    const first = cells[0];
-    const last = cells[cells.length - 1];
+    const first = cells[span.first];
+    const last = cells[span.last];
     if (typeof first !== "number" || typeof last !== "number") {
       throw new Error("The first and last cells must hold numbers.");
     }
@@ -228,6 +269,7 @@ export async function addCagrLabel(): Promise<string> {
     font.color = settings.accent;
 
     await context.sync();
-    return `${label} over ${periods} ${periods === 1 ? "period" : "periods"}`;
+    const note = positioned ? "" : UNPLACED_NOTE;
+    return `${label} over ${periods} ${periods === 1 ? "period" : "periods"}${note}`;
   });
 }

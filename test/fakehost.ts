@@ -14,7 +14,8 @@
 //     getSelectedRanges answers areaCount and nothing else.
 //   * copyFrom(..., formulas) copies text verbatim; Excel rewrites relative refs.
 //   * getImage() hands back a signature-only PNG sized from the fake grid (64pt
-//     columns, 20pt rows) or from the requested chart size, never a real picture.
+//     columns, 15pt rows, plus whatever a test resized) or from the requested
+//     chart size, never a real picture.
 //   * getEntireRow()/getEntireColumn() serve the whole-sheet band Excel does,
 //     but a size write spanning more than maxCells rows or columns is refused
 //     rather than filling a million map entries.
@@ -27,7 +28,6 @@ export const ROW_LIMIT = 1_048_576;
 export const COLUMN_LIMIT = 16_384;
 const DEFAULT_ROW_HEIGHT = 15;
 const DEFAULT_COLUMN_WIDTH = 64;
-const POINTS_PER_ROW = 20;
 
 // ---------------------------------------------------------------------------
 // Addresses
@@ -233,6 +233,13 @@ export class FakeSheet {
   rowHeights = new Map<number, number>();
   columnWidths = new Map<number, number>();
   showGridlines = true;
+  // The merged blocks of the sheet. Only the top-left cell of one holds a
+  // value, and Excel refuses a value write that covers part of a block.
+  merges: Rect[] = [];
+  // Sheet protection: while it is on, every write to a cell outside `unlocked`
+  // is refused with AccessDenied, the way Excel refuses one.
+  isProtected = false;
+  unlocked: Rect[] = [];
   // Stands in for a recalculation: the last value seen for a formula text, so a
   // formula written back over a clobbered cell shows its result again. Kept off
   // the cell record, which is what tests deep-compare.
@@ -247,6 +254,25 @@ export class FakeSheet {
 
   key(row: number, col: number): string {
     return `${row},${col}`;
+  }
+
+  mergedAt(row: number, col: number): Rect | null {
+    return this.merges.find((rect) => inside(rect, row, col)) ?? null;
+  }
+
+  // True when any cell of the rectangle is locked on a protected sheet: Excel
+  // rejects the whole batch, not the cells it could have written.
+  refusesWrite(rect: Rect): boolean {
+    if (!this.isProtected) return false;
+    if (this.unlocked.length === 0) return true;
+    for (let r = 0; r < rect.rowCount; r += 1) {
+      for (let c = 0; c < rect.colCount; c += 1) {
+        const row = rect.row + r;
+        const col = rect.col + c;
+        if (!this.unlocked.some((area) => inside(area, row, col))) return true;
+      }
+    }
+    return false;
   }
 
   // Reads never materialize a cell; only writes do.
@@ -291,14 +317,46 @@ export class FakeSheet {
     if (cell && isDefaultCell(cell)) this.cells.delete(key);
   }
 
+  // Where a row or a column starts and how far it runs, in points: the sizes a
+  // test set, the defaults everywhere else. Range geometry and the row-height
+  // cycles then speak the same units, as they do in Excel.
+  private offset(
+    index: number,
+    sizes: Map<number, number>,
+    fallback: number,
+  ): number {
+    let points = index * fallback;
+    for (const [at, size] of sizes) {
+      if (at < index) points += size - fallback;
+    }
+    return points;
+  }
+
+  rowOffset(row: number): number {
+    return this.offset(row, this.rowHeights, DEFAULT_ROW_HEIGHT);
+  }
+
+  columnOffset(col: number): number {
+    return this.offset(col, this.columnWidths, DEFAULT_COLUMN_WIDTH);
+  }
+
   usedRect(): Rect | null {
+    return this.usedRectIn(null, false);
+  }
+
+  // Excel's used range, narrowed to a window and optionally to cells that hold
+  // something: Range.getUsedRangeOrNullObject(true) answers for that range
+  // alone, and a cell wearing only a style is not used once valuesOnly is on.
+  usedRectIn(within: Rect | null, valuesOnly: boolean): Rect | null {
     let top = Infinity;
     let left = Infinity;
     let bottom = -1;
     let right = -1;
     for (const [key, cell] of this.cells) {
       if (isDefaultCell(cell)) continue;
+      if (valuesOnly && !holdsSomething(cell)) continue;
       const [row, col] = key.split(",").map(Number) as [number, number];
+      if (within && !inside(within, row, col)) continue;
       top = Math.min(top, row);
       left = Math.min(left, col);
       bottom = Math.max(bottom, row);
@@ -312,6 +370,38 @@ export class FakeSheet {
       colCount: right - left + 1,
     };
   }
+}
+
+// A write to a locked cell of a protected sheet: queued the way office.js
+// reports it, so the batch carrying it is rejected on the next sync and none of
+// its writes reach the sheet.
+function refuseProtected(
+  ctx: FakeContext,
+  sheet: FakeSheet,
+  rect: Rect,
+): boolean {
+  if (!sheet.refusesWrite(rect)) return false;
+  ctx.queueError(
+    hostError(
+      ErrorCodes.accessDenied,
+      `The worksheet ${sheet.name} is protected.`,
+    ),
+  );
+  return true;
+}
+
+function holdsSomething(cell: FakeCell): boolean {
+  const empty = (entry: CellValue): boolean => entry === "" || entry === null;
+  return !empty(cell.value) || !empty(cell.formula);
+}
+
+function inside(rect: Rect, row: number, col: number): boolean {
+  return (
+    row >= rect.row &&
+    row < rect.row + rect.rowCount &&
+    col >= rect.col &&
+    col < rect.col + rect.colCount
+  );
 }
 
 export interface FakeAxis {
@@ -612,7 +702,7 @@ const SHAPES: Record<string, Shape> = {
       getActiveChartOrNullObject: "chart",
     },
   },
-  rangeAreas: { scalars: ["areaCount"] },
+  rangeAreas: { scalars: ["areaCount", "address"] },
   worksheets: {
     scalars: ["items"],
     items: "worksheet",
@@ -635,14 +725,23 @@ const SHAPES: Record<string, Shape> = {
       "showGridlines",
       "isNullObject",
     ],
-    children: { charts: "charts", shapes: "shapes" },
+    children: {
+      charts: "charts",
+      shapes: "shapes",
+      protection: "sheetProtection",
+    },
     returns: {
       getRange: "range",
       getRangeByIndexes: "range",
       getUsedRangeOrNullObject: "range",
     },
   },
-  charts: { returns: { add: "chart", getItemOrNullObject: "chart" } },
+  sheetProtection: { scalars: ["protected"] },
+  charts: {
+    scalars: ["items"],
+    items: "chart",
+    returns: { add: "chart", getItemOrNullObject: "chart" },
+  },
   shapes: { returns: { addTextBox: "shape" } },
   range: {
     scalars: [
@@ -700,7 +799,15 @@ const SHAPES: Record<string, Shape> = {
   rangeCollection: { scalars: ["items"], items: "traceArea" },
   traceArea: { scalars: ["address", "cellCount"] },
   chart: {
-    scalars: ["chartType", "name", "width", "height", "isNullObject"],
+    scalars: [
+      "chartType",
+      "name",
+      "width",
+      "height",
+      "left",
+      "top",
+      "isNullObject",
+    ],
     returns: { getImage: "clientResult" },
     children: {
       worksheet: "worksheet",
@@ -1215,6 +1322,7 @@ const ErrorCodes = {
   invalidOperation: "InvalidOperation",
   invalidSelection: "InvalidSelection",
   unsupportedOperation: "UnsupportedOperation",
+  accessDenied: "AccessDenied",
 } as const;
 
 // BorderIndex -> the cell-level edge it writes. The inside indexes are not in
@@ -1328,19 +1436,23 @@ class RangeProxy {
   }
 
   get left(): number {
-    return this.rect.col * DEFAULT_COLUMN_WIDTH;
+    return this.sheet.columnOffset(this.rect.col);
   }
 
   get top(): number {
-    return this.rect.row * POINTS_PER_ROW;
+    return this.sheet.rowOffset(this.rect.row);
   }
 
   get width(): number {
-    return this.rect.colCount * DEFAULT_COLUMN_WIDTH;
+    const { col, colCount } = this.rect;
+    return (
+      this.sheet.columnOffset(col + colCount) - this.sheet.columnOffset(col)
+    );
   }
 
   get height(): number {
-    return this.rect.rowCount * POINTS_PER_ROW;
+    const { row, rowCount } = this.rect;
+    return this.sheet.rowOffset(row + rowCount) - this.sheet.rowOffset(row);
   }
 
   get worksheet(): WorksheetProxy {
@@ -1348,7 +1460,7 @@ class RangeProxy {
   }
 
   get format(): RangeFormatProxy {
-    return new RangeFormatProxy(this.runtime, this.sheet, this.rect);
+    return new RangeFormatProxy(this.runtime, this.ctx, this.sheet, this.rect);
   }
 
   // A guard rather than a hang: an accidental whole-column grid read is a
@@ -1373,6 +1485,7 @@ class RangeProxy {
 
   private each(write: (cell: FakeCell, r: number, c: number) => void): void {
     this.guard("write");
+    if (refuseProtected(this.ctx, this.sheet, this.rect)) return;
     const { row, col, rowCount, colCount } = this.rect;
     for (let r = 0; r < rowCount; r += 1) {
       for (let c = 0; c < colCount; c += 1) {
@@ -1381,12 +1494,50 @@ class RangeProxy {
     }
   }
 
+  // Excel writes a value into the top-left cell of a merged block and nowhere
+  // else in it, and refuses the write outright when the range covers only part
+  // of one. Formatting is not restricted, so only the value setters ask.
+  private eachWritable(
+    write: (cell: FakeCell, r: number, c: number) => void,
+  ): void {
+    const { row, col, rowCount, colCount } = this.rect;
+    for (const merged of this.sheet.merges) {
+      const overlapping =
+        merged.row < row + rowCount &&
+        row < merged.row + merged.rowCount &&
+        merged.col < col + colCount &&
+        col < merged.col + merged.colCount;
+      const covered =
+        merged.row >= row &&
+        merged.row + merged.rowCount <= row + rowCount &&
+        merged.col >= col &&
+        merged.col + merged.colCount <= col + colCount;
+      if (overlapping && !covered) {
+        // Queued, the way office.js reports it: the batch is rejected on the
+        // next sync and none of its writes reach the sheet.
+        this.ctx.queueError(
+          hostError(
+            ErrorCodes.invalidOperation,
+            "Cannot change part of a merged cell.",
+          ),
+        );
+        return;
+      }
+    }
+
+    this.each((cell, r, c) => {
+      const merged = this.sheet.mergedAt(row + r, col + c);
+      if (merged && (merged.row !== row + r || merged.col !== col + c)) return;
+      write(cell, r, c);
+    });
+  }
+
   get values(): CellValue[][] {
     return this.map((cell) => cell.value);
   }
 
   set values(grid: CellValue[][]) {
-    this.each((cell, r, c) => {
+    this.eachWritable((cell, r, c) => {
       const entry = grid[r]?.[c];
       if (entry === undefined) return;
       cell.value = entry;
@@ -1409,7 +1560,7 @@ class RangeProxy {
   // No formula engine: a formula write stores the text and the last result seen
   // for it stands in for a recalculation; a literal write sets both, as Excel does.
   set formulas(grid: CellValue[][]) {
-    this.each((cell, r, c) => {
+    this.eachWritable((cell, r, c) => {
       const entry = grid[r]?.[c];
       if (entry === undefined) return;
       cell.formula = entry;
@@ -1572,8 +1723,12 @@ class RangeProxy {
     return this.at({ row, col, rowCount, colCount });
   }
 
-  getUsedRangeOrNullObject(): RangeProxy & { isNullObject: boolean } {
-    const used = this.sheet.usedRect();
+  // Range.getUsedRangeOrNullObject answers for this range alone, not for the
+  // sheet: what a placement asks when it wants to know whether a block is free.
+  getUsedRangeOrNullObject(
+    valuesOnly = false,
+  ): RangeProxy & { isNullObject: boolean } {
+    const used = this.sheet.usedRectIn(this.rect, valuesOnly);
     const proxy = this.at(used ?? this.rect) as RangeProxy & {
       isNullObject: boolean;
     };
@@ -1828,6 +1983,7 @@ class RangeProxy {
 class RangeFormatProxy {
   constructor(
     private runtime: FakeRuntime,
+    private ctx: FakeContext,
     private sheet: FakeSheet,
     private rect: Rect,
   ) {}
@@ -1839,6 +1995,7 @@ class RangeFormatProxy {
         `fake host refused a ${rowCount * colCount}-cell format write`,
       );
     }
+    if (refuseProtected(this.ctx, this.sheet, this.rect)) return;
     for (let r = 0; r < rowCount; r += 1) {
       for (let c = 0; c < colCount; c += 1)
         write(this.sheet.edit(row + r, col + c));
@@ -1864,7 +2021,7 @@ class RangeFormatProxy {
   }
 
   get borders(): BordersProxy {
-    return new BordersProxy(this.runtime, this.sheet, this.rect);
+    return new BordersProxy(this.runtime, this.ctx, this.sheet, this.rect);
   }
 
   get horizontalAlignment(): string {
@@ -2052,6 +2209,7 @@ class FillProxy {
 class BordersProxy {
   constructor(
     private runtime: FakeRuntime,
+    private ctx: FakeContext,
     private sheet: FakeSheet,
     private rect: Rect,
   ) {}
@@ -2095,13 +2253,14 @@ class BordersProxy {
   }
 
   private at(band: Rect | null, edge: BorderEdge): BorderProxy {
-    return new BorderProxy(this.runtime, this.sheet, band, edge);
+    return new BorderProxy(this.runtime, this.ctx, this.sheet, band, edge);
   }
 }
 
 class BorderProxy {
   constructor(
     private runtime: FakeRuntime,
+    private ctx: FakeContext,
     private sheet: FakeSheet,
     // Null for a line the range does not have: the inside of a single cell.
     private band: Rect | null,
@@ -2114,6 +2273,7 @@ class BorderProxy {
 
   private write(apply: (border: FakeBorder) => void): void {
     if (!this.band) return;
+    if (refuseProtected(this.ctx, this.sheet, this.band)) return;
     const { row, col, rowCount, colCount } = this.band;
     if (rowCount * colCount > this.runtime.maxCells) {
       throw new Error("fake host refused an oversized border write");
@@ -2263,6 +2423,24 @@ class ChartProxy {
 
   set height(value: number) {
     this.record.height = value;
+  }
+
+  // Excel drops a new chart at the view's corner; an unplaced chart in the fake
+  // reads as the origin, which is what the placement code has to move away.
+  get left(): number {
+    return this.record.left ?? 0;
+  }
+
+  set left(value: number) {
+    this.record.left = value;
+  }
+
+  get top(): number {
+    return this.record.top ?? 0;
+  }
+
+  set top(value: number) {
+    this.record.top = value;
   }
 
   get worksheet(): WorksheetProxy {
@@ -2725,6 +2903,18 @@ class WorksheetProxy {
     this.runtime.workbook.activeSheetId = this.sheet.id;
   }
 
+  // Excel.WorksheetProtection, read-only here: whether the sheet is protected
+  // is what a flow asks before it paints something it can afford to skip.
+  get protection(): { protected: boolean; load: () => void } {
+    const sheet = this.sheet;
+    return {
+      get protected(): boolean {
+        return sheet.isProtected;
+      },
+      load: () => undefined,
+    };
+  }
+
   getRange(address: string): RangeProxy {
     return new RangeProxy(this.runtime, this.ctx, this.sheet, parseA1(address));
   }
@@ -2743,8 +2933,10 @@ class WorksheetProxy {
     });
   }
 
-  getUsedRangeOrNullObject(): RangeProxy & { isNullObject: boolean } {
-    const used = this.sheet.usedRect();
+  getUsedRangeOrNullObject(
+    valuesOnly = false,
+  ): RangeProxy & { isNullObject: boolean } {
+    const used = this.sheet.usedRectIn(null, valuesOnly);
     const proxy = new RangeProxy(
       this.runtime,
       this.ctx,
@@ -2943,9 +3135,27 @@ class WorkbookProxy {
     });
   }
 
-  getSelectedRanges(): { areaCount: number; load: () => void } {
+  // Excel.RangeAreas: how many rectangles the selection holds and their one
+  // comma-separated address, each area sheet-qualified the way office.js writes
+  // it. The areas themselves are reopened from that address.
+  getSelectedRanges(): {
+    areaCount: number;
+    address: string;
+    load: () => void;
+  } {
+    const workbook = this.runtime.workbook;
+    const areas =
+      workbook.selectionAreas.length > 0
+        ? workbook.selectionAreas
+        : [workbook.selection];
     return {
-      areaCount: this.runtime.workbook.areaCount(),
+      areaCount: workbook.areaCount(),
+      address: areas
+        .map(
+          (area) =>
+            `${quoteSheet(this.sheetOf(area.sheetId).name)}!${formatA1(area.rect)}`,
+        )
+        .join(","),
       load: () => undefined,
     };
   }
@@ -3176,6 +3386,12 @@ export interface FakeHelpers {
   setActiveCell(address: string): void;
   seed(address: string, grid: SeedEntry[][]): void;
   setNumberFormat(address: string, format: string): void;
+  // A merged block: only its top-left cell takes a value, and a value write
+  // that covers part of it is refused the way Excel refuses one.
+  merge(address: string): void;
+  // Sheet protection: every write to a cell outside `unlocked` is then refused
+  // with AccessDenied, and worksheet.protection.protected reads true.
+  protectSheet(name: string, unlocked?: string[]): void;
   setFill(address: string, fill: Partial<FakeFill>): void;
   setAlignment(address: string, horizontal: string): void;
   setFont(address: string, font: Partial<FakeFont>): void;
@@ -3400,6 +3616,17 @@ export function installFakeHost(options: FakeHostOptions = {}): {
             runtime.format(format);
         }
       }
+    },
+    merge(address) {
+      const { sheet, rect } = resolve(workbook, address);
+      sheet.merges.push(rect);
+    },
+    protectSheet(name, unlocked = []) {
+      const sheet = helpers.sheet(name);
+      sheet.isProtected = true;
+      sheet.unlocked = unlocked.map(
+        (address) => resolve(workbook, address).rect,
+      );
     },
     setFill(address, fill) {
       const { sheet, rect } = resolve(workbook, address);

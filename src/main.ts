@@ -58,6 +58,7 @@ import {
   selectArea,
   setAutocolorOnEdit,
   setSheetVisibility,
+  lastAuditNote,
   toggleAuditOverlay,
   toggleIfErrorGuard,
   traceActiveCell,
@@ -274,7 +275,10 @@ async function traceBack(): Promise<string> {
 async function toggleAudit(): Promise<string> {
   auditOn = await toggleAuditOverlay();
   renderAuditState();
-  return auditOn ? "Audit overlay on" : "Audit overlay off";
+  const state = auditOn ? "Audit overlay on" : "Audit overlay off";
+  // Skipped protected cells, if any, ride along in the same toast.
+  const note = lastAuditNote();
+  return note ? `${state}: ${note}` : state;
 }
 
 // ---------------------------------------------------------------------------
@@ -366,11 +370,9 @@ async function dispatch(action: string): Promise<string> {
         await toggleIfErrorGuard();
         break;
       case "autocolor":
-        await autocolorSelection();
-        break;
+        return autocolorSelection();
       case "insert-color-key":
-        await insertColorKey();
-        break;
+        return insertColorKey();
       case "divide-1000":
         await scaleSelection(0.001);
         break;
