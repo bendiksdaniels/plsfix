@@ -11,8 +11,8 @@ runtime + ribbon + 34 shortcuts, format cycles, autocolor v2 + color key, audit 
 Smart Track, SMT Undo + paste suite + fast fill + CAGR/sign/decimals, native waterfall +
 chart formatter + CAGR label, TOC + sheet explorer + name scrubber. Section 8's core linking
 (export, registry, Inbox, Update selected/slide/all, Break, move-resilient anchors) shipped
-at v2.0; per-workbook brand palette, grouped-shape links, tornado chart and unpivot selection
-followed at v2.1. Open: change source/version resolution, highlight linked cells, native
+at v2.0; per-workbook brand palette, grouped-shape links, tornado chart, unpivot selection and
+change source followed at v2.1. Open: highlight linked cells, native
 PowerPoint tables, link revert (section 8); the PPT companion's own toolset beyond the Links
 tab and all of section 10 (enterprise, M4); the P2/P3 long tail in sections 1-7. See
 tasks/AUTORESUME.md and tasks/v2-backlog.md for the live backlog.
@@ -145,7 +145,7 @@ survive row/column moves (Macabacus mechanism).
 | Export range/chart as image to PPT | both | Range.getImage/Chart.getImage base64 -> PPT shape | shipped v2.0 | P1 (M2) |
 | Link registry + refresh one object | both | Stable link IDs, update in place preserving position/size | shipped v2.0 | P1 (M2) |
 | Link Manager pane (by slide / by source, batch update, filters) | both | Central link control | shipped v2.0 | P1 (M3) |
-| Change source / versioning (Model_v4 detection) | both | Repoint links, newest-file prompts | Backend | P2 (M3) |
+| Change source / versioning (Model_v4 detection) | both | Repoint links, newest-file prompts | shipped v2.1 | P2 (M3) |
 | Export text (cell -> placeholder) | both | Live text links | Backend | P2 (M3) |
 | Native PPT table export | US | Editable table, format survives refresh | Partial (PPT table API at 1.8; format drift risk) | P3 |
 | Preserve cell visibility / image width options | US | Advanced export toggles | Backend | P3 |
@@ -250,7 +250,8 @@ Milestone 3 (link manager) — mostly done at v2.0, three lines still open:
   status); filtering was not built.
 - "- [ ] Update selected, slide, or all links" — shipped v2.0
 - "- [ ] Preserve position and size during refresh" — shipped v2.0
-- "- [ ] Change source and resolve workbook versions" — still open
+- "- [ ] Change source and resolve workbook versions" — shipped v2.1 (PowerPoint "Change
+  source": re-point a tracked picture at another export from the Inbox, slide/position/size kept)
 - "- [ ] Highlight linked cells in Excel" — still open
 - "- [ ] Performance and failure-isolation testing" — still open (blocked on Daniel's real-Office
   pass, `tasks/AUTORESUME.md` open gate 1)
