@@ -1406,7 +1406,7 @@ async function boot(host: Office.HostType, degraded: boolean): Promise<void> {
   // decides whose paint the modeller is left with.
   await restoreOverlayFills();
 
-  installLinksTab({
+  const linksTab = installLinksTab({
     guard,
     toast,
     relay: new RelayClient(relayBaseUrl(document.baseURI)),
@@ -1474,7 +1474,10 @@ async function boot(host: Office.HostType, degraded: boolean): Promise<void> {
     Office.EventType.DocumentSelectionChanged,
     () => {
       window.clearTimeout(selectionTimer);
-      selectionTimer = window.setTimeout(() => void refreshSelection(), 150);
+      selectionTimer = window.setTimeout(() => {
+        void refreshSelection();
+        void linksTab.sheetChanged();
+      }, 150);
     },
   );
 

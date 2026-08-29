@@ -13,6 +13,7 @@ import {
   pushLinks,
   removeLink,
   type WorkbookLinkRow,
+  listActiveSheetCharts,
 } from "../excel";
 import type { RegistryEntry } from "../link/model";
 import type { RelayApi } from "../link/relay";
@@ -150,7 +151,7 @@ async function settle(h: Harness): Promise<void> {
   await new Promise((resolve) => setTimeout(resolve, 0));
 }
 
-function install(h: Harness): { refresh(): Promise<void> } {
+function install(h: Harness): ReturnType<typeof installLinksTab> {
   return installLinksTab({
     guard: h.guard,
     toast: h.toast,
@@ -341,5 +342,24 @@ describe("installLinksTab", () => {
     await settle(h);
     expect(removeLink).toHaveBeenCalledWith(ID_A, h.relay);
     expect(h.messages).toContain("Removed 1 link");
+  });
+});
+
+describe("chart list", () => {
+  it("re-reads the sheet's charts when the selection moves", async () => {
+    vi.mocked(listActiveSheetCharts).mockResolvedValue(["Revenue chart"]);
+    const h = harness();
+    const tab = install(h);
+    await settle(h);
+    const before = vi.mocked(listActiveSheetCharts).mock.calls.length;
+    await tab.sheetChanged();
+    expect(vi.mocked(listActiveSheetCharts).mock.calls.length).toBe(before + 1);
+    const pick =
+      document.querySelector<HTMLSelectElement>("#export-chart-pick")!;
+    expect(pick.hidden).toBe(false);
+    expect(Array.from(pick.options).map((option) => option.value)).toEqual([
+      "",
+      "Revenue chart",
+    ]);
   });
 });

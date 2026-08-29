@@ -75,12 +75,17 @@ interface Tab {
 
 export function installLinksTab(deps: LinksTabDeps): {
   refresh(): Promise<void>;
+  /** The selection moved: the chart list follows if the sheet changed. */
+  sheetChanged(): Promise<void>;
 } {
   const tab = newTab(deps);
   wireBoxes(tab);
   wireActions(tab);
   void boot(tab);
-  return { refresh: () => refresh(tab) };
+  return {
+    refresh: () => refresh(tab),
+    sheetChanged: () => refreshChartPick(tab),
+  };
 }
 
 function newTab(deps: LinksTabDeps): Tab {
@@ -205,6 +210,15 @@ async function refreshChartPick(tab: Tab): Promise<void> {
     names = await listActiveSheetCharts();
   } catch {
     names = [];
+  }
+  const current = Array.from(tab.chartPick.options)
+    .map((option) => option.value)
+    .filter(Boolean);
+  if (
+    current.join("\n") === names.join("\n") &&
+    tab.chartPick.options.length > 0
+  ) {
+    return;
   }
   const keep = tab.chartPick.value;
   tab.chartPick.replaceChildren(
