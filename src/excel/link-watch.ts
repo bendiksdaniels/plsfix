@@ -18,9 +18,10 @@ import { Debouncer, type Clock } from "../link/debounce";
 import { intersects } from "../link/geometry";
 import type { RegistryEntry } from "../link/model";
 import type { RelayApi } from "../link/relay";
-import { readRegistry, resolveSource } from "./link-anchors";
-import { pushLinks, type PushSummary } from "./links";
-import { parseAddress } from "./shared";
+import { readRegistry, resolveSources } from "./link-anchors";
+import { exclusive } from "./link-lock";
+import { pushRegistry, type PushSummary } from "./links";
+import { parseAddress, splitAreas } from "./shared";
 
 export const AUTOPUSH_SETTING = "SMT_AUTOPUSH";
 export const AUTOPUSH_DELAY_MS = 3_000;
@@ -59,10 +60,11 @@ interface Session {
 let session: Session | null = null;
 let handler: OfficeExtension.EventHandlerResult<Excel.WorksheetChangedEventArgs> | null =
   null;
-// Toggles are serialized, and pushes are too: two windows falling due together
-// must not read and write the registry over each other.
+// Toggles are serialized so a fast toggle cannot register the handler twice.
+// Pushes are serialized too, but on the queue every link flow shares: a window
+// falling due while the Links tab is exporting must not read the registry the
+// export is about to add to.
 let toggles: Promise<void> = Promise.resolve();
-let pushes: Promise<void> = Promise.resolve();
 // Worksheet id -> what happened on it since the last flush.
 const edits = new Map<string, SheetEdits>();
 
@@ -113,7 +115,16 @@ async function arm(
   notify: Notify,
   options: AutoPushOptions,
 ): Promise<void> {
-  if (handler) return;
+  // Already watching: keep the one handler, but take this caller's relay and
+  // notify - a re-installed Links tab hands over fresh ones, and pushing to the
+  // client the last install created would report into a pane that is gone.
+  if (handler) {
+    if (session) {
+      session.relay = relay;
+      session.notify = notify;
+    }
+    return;
+  }
   session = {
     relay,
     notify,
@@ -177,9 +188,13 @@ function record(event: Excel.WorksheetChangedEventArgs): void {
   if (!current || !handler) return;
   const edit = edits.get(event.worksheetId) ?? { whole: false, areas: [] };
   if (String(event.changeType) === RANGE_EDITED) {
-    // The address is sheet-qualified on some hosts; the sheet is already known
-    // from the event, so only the local part is kept.
-    edit.areas.push(parseAddress(event.address).address);
+    // A ctrl-clicked edit carries every area it touched in one address, each
+    // sheet-qualified on some hosts. The sheet is already known from the event,
+    // so only the local part of each area is kept - and every area is kept, or
+    // a link in the first block of a two-block paste would never be pushed.
+    for (const area of splitAreas(event.address)) {
+      edit.areas.push(parseAddress(area).address);
+    }
   } else {
     edit.whole = true;
   }
@@ -198,7 +213,9 @@ function flush(sheetIds: string[]): void {
       edits.delete(id);
     }
   }
-  pushes = pushes.then(() => push(current, window));
+  // The registry read, the pushes and the write-back are one section, taken on
+  // the queue the Links tab's own flows go through.
+  void exclusive("auto-push", () => push(current, window));
 }
 
 // Nothing ever throws out of here: this runs from an event, where a rejection
@@ -213,7 +230,7 @@ async function push(
   try {
     const ids = await affected(window);
     if (ids.length === 0) return;
-    report(await pushLinks(ids, current.relay), current.notify);
+    report(await pushRegistry(ids, current.relay), current.notify);
   } catch (error) {
     const reason = error instanceof Error ? error.message : String(error);
     current.notify(`Auto-push failed: ${reason}`);
@@ -262,15 +279,17 @@ async function affected(window: Map<string, SheetEdits>): Promise<string[]> {
     if (registry.links.length === 0) return [];
     const sheets = await editedSheets(context, window);
 
+    // Through the anchors, never the addresses the links were created at: a
+    // source may have moved since, and the edit landed where it is now. All of
+    // them in one batch, because this runs every time the typing pauses.
+    const resolved = await resolveSources(context, registry.links);
     const ids: string[] = [];
-    for (const entry of registry.links) {
-      // Through the anchor, never the address the link was created at: the
-      // source may have moved since, and the edit landed where it is now.
-      const resolved = await resolveSource(context, entry);
-      if (resolved === null) continue;
-      const edit = sheets.get(resolved.sheet);
-      if (edit && touched(entry, resolved.ref, edit)) ids.push(entry.id);
-    }
+    registry.links.forEach((entry, index) => {
+      const source = resolved[index];
+      if (!source) return;
+      const edit = sheets.get(source.sheet);
+      if (edit && touched(entry, source.ref, edit)) ids.push(entry.id);
+    });
     return ids;
   });
 }

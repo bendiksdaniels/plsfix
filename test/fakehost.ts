@@ -1229,6 +1229,9 @@ interface PendingEvent {
 class FakeRuntime {
   changeHandlers: Registration[] = [];
   actions = new Map<string, (event?: { completed: () => void }) => void>();
+  // Every sync attempt, failed ones included: a round trip is a round trip, and
+  // the budget tests count them the way the PowerPoint fake does.
+  syncs = 0;
   failSync: Error | null = null;
   // Armed by helpers.failNextImage(): the next getImage queues this error, so
   // the render fails at the sync that was going to commit the anchor with it.
@@ -3036,6 +3039,7 @@ class FakeContext {
   // registrations, a queued host error and — under strict load semantics — the
   // properties this batch asked for are what a sync really decides.
   async sync(): Promise<void> {
+    this.runtime.syncs += 1;
     const queued = this.error ?? this.runtime.failSync;
     if (queued) {
       this.error = null;
@@ -3113,6 +3117,11 @@ export interface FakeHelpers {
   // protected sheet does, without touching the writes queued beside it.
   failNextImage(error?: Error): void;
   changeHandlerCount(): number;
+  // Round trips so far, for the tests that hold a flow to a sync budget.
+  syncCount(): number;
+  // One area ("C5") or several ("C5,H9"), the way a ctrl-clicked edit arrives:
+  // every area is sheet-qualified in the address the event carries, exactly as
+  // the host writes it.
   fireChanged(sheetIdOrName: string, address: string): Promise<void>;
   actions(): Map<string, (event?: { completed: () => void }) => void>;
 }
@@ -3397,13 +3406,16 @@ export function installFakeHost(options: FakeHostOptions = {}): {
         hostError(ErrorCodes.generalException, "The image failed to render.");
     },
     changeHandlerCount: () => runtime.changeHandlers.length,
+    syncCount: () => runtime.syncs,
     async fireChanged(sheetIdOrName, address) {
       const sheet = workbook.find(sheetIdOrName);
       if (!sheet) throw new Error(`fake host: no sheet "${sheetIdOrName}"`);
-      const rect = parseA1(address);
-      const local = formatA1(rect);
+      const areas = address.split(",").map((area) => formatA1(parseA1(area)));
+      const local = areas[0] ?? "";
       const args = {
-        address: `${quoteSheet(sheet.name)}!${local}`,
+        address: areas
+          .map((area) => `${quoteSheet(sheet.name)}!${area}`)
+          .join(","),
         worksheetId: sheet.id,
         changeType: "RangeEdited",
         source: "Local",

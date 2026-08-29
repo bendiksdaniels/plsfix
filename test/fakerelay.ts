@@ -42,18 +42,56 @@ function omittedReason(
   return null;
 }
 
+// A putLink stopped where the real one is waiting on the network: the test is
+// told the upload started and decides when it finishes, so another flow can run
+// while this one is mid-flight.
+interface PutGate {
+  started: () => void;
+  finish: Promise<void>;
+}
+
+export interface HeldPut {
+  // Resolves once the upload has reached the relay and is waiting.
+  started: Promise<void>;
+  // Lets it finish.
+  release: () => void;
+}
+
 // Same rules as server/src/store.rs, minus TTLs: first PUT fixes the auth,
 // later calls with another auth are forbidden, unknown ids are missing.
 export class FakeRelay implements RelayApi {
   readonly links = new Map<string, StoredLink>();
   readonly inbox = new Map<string, StoredInbox>();
   now = 1_000_000;
+  private gate: PutGate | null = null;
+
+  // Arms the next putLink to block until the caller releases it. One put only:
+  // the flows under test push several, and holding all of them would deadlock
+  // the very race this exists to reproduce.
+  holdNextPut(): HeldPut {
+    let started = (): void => undefined;
+    let release = (): void => undefined;
+    const startedPromise = new Promise<void>((done) => {
+      started = () => done();
+    });
+    const finish = new Promise<void>((done) => {
+      release = () => done();
+    });
+    this.gate = { started, finish };
+    return { started: startedPromise, release };
+  }
 
   async putLink(
     id: string,
     auth: string,
     blob: Uint8Array,
   ): Promise<{ rev: number }> {
+    const gate = this.gate;
+    if (gate) {
+      this.gate = null;
+      gate.started();
+      await gate.finish;
+    }
     const current = this.links.get(id);
     if (current && current.auth !== auth)
       throw new RelayError("auth", "forbidden", 403);

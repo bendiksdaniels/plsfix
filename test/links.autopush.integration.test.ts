@@ -109,6 +109,46 @@ describe("auto-push on edit", () => {
     expect(notes).toEqual(["Pushed 1 link"]);
   });
 
+  // A ctrl-clicked paste or delete arrives as one address with several areas.
+  // Keeping only the last of them left a link in any earlier block with a stale
+  // picture in the deck and nothing anywhere saying so.
+  it("pushes a link in the first area of a multi-area edit", async () => {
+    const id = await armed();
+
+    await helpers.fireChanged("Model", "C5,Z40");
+    clock.advance(watch.AUTOPUSH_DELAY_MS);
+    await vi.waitFor(() => {
+      expect(relay.links.get(id)!.rev).toBe(2);
+    });
+    expect(notes).toEqual(["Pushed 1 link"]);
+  });
+
+  // A sheet name with a comma of its own is quoted in the address, so the
+  // areas cannot simply be split on every comma in the string.
+  it("reads the areas of an edit on a sheet whose name holds a comma", async () => {
+    helpers.addSheet("Q1, 2026");
+    helpers.seed("'Q1, 2026'!B4", [[1, 2]]);
+    helpers.select("'Q1, 2026'!B4:C4");
+    const { id } = await links.exportSelection(ws, relay);
+    await watch.setAutoPush(true, relay, note, { clock });
+
+    await helpers.fireChanged("Q1, 2026", "C4,Z40");
+    clock.advance(watch.AUTOPUSH_DELAY_MS);
+    await vi.waitFor(() => {
+      expect(relay.links.get(id)!.rev).toBe(2);
+    });
+  });
+
+  it("still leaves a link alone when no area of a multi-area edit touches it", async () => {
+    const id = await armed();
+
+    await helpers.fireChanged("Model", "H9,Z40");
+    clock.advance(watch.AUTOPUSH_DELAY_MS);
+    await settle();
+    expect(relay.links.get(id)!.rev).toBe(1);
+    expect(notes).toEqual([]);
+  });
+
   it("leaves the link alone when the edit lands outside it", async () => {
     const id = await armed();
 
@@ -211,5 +251,44 @@ describe("auto-push on edit", () => {
     await links.exportSelection(ws, relay);
     expect(await watch.restoreAutoPush(relay, note, { clock })).toBe(false);
     expect(helpers.changeHandlerCount()).toBe(0);
+  });
+});
+
+// This runs every time the typing pauses, so the round trips it costs must not
+// grow with the number of links in the workbook: anchors are resolved in one
+// batch, never one link at a time.
+describe("what a window costs", () => {
+  async function exportRange(address: string): Promise<string> {
+    helpers.seed(address, [[1, 2]]);
+    helpers.select(address);
+    return (await links.exportSelection(ws, relay)).id;
+  }
+
+  async function windowSyncs(): Promise<number> {
+    const from = helpers.syncCount();
+    await helpers.fireChanged("Model", "C5");
+    clock.advance(watch.AUTOPUSH_DELAY_MS);
+    await vi.waitFor(() => {
+      expect(notes.length).toBeGreaterThan(0);
+    });
+    return helpers.syncCount() - from;
+  }
+
+  it("costs the same round trips for one link as for six", async () => {
+    await exportRange("Model!B4:F5");
+    await watch.setAutoPush(true, relay, note, { clock });
+    const one = await windowSyncs();
+
+    notes = [];
+    for (const address of ["Data!A1:B1", "Data!A3:B3", "Data!A5:B5"]) {
+      await exportRange(address);
+    }
+    helpers.select("Model!B4:F5");
+    const six = await windowSyncs();
+
+    // The edit still touches one link, so the extra links cost the resolve
+    // batch and nothing per link on top of it.
+    expect(notes).toEqual(["Pushed 1 link"]);
+    expect(six).toBe(one);
   });
 });
