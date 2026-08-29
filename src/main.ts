@@ -19,6 +19,7 @@ import {
   copySourceLabel,
   deleteBrokenNames,
   fastFillAuto,
+  findInWorkbook,
   formatSelectedChart,
   insertCagr,
   insertColorKey,
@@ -27,6 +28,7 @@ import {
   insertWaterfall,
   insertToc,
   inspectSelection,
+  jumpToHit,
   lastUndoSkipped,
   restorePersistedOverlay,
   listBrokenNames,
@@ -47,6 +49,8 @@ import {
   undoTarget,
   unpivotSelection,
   writeWorkbookBrand,
+  type FindHit,
+  type FindResult,
   type NumberFormatName,
   type PresetName,
   type SheetEntry,
@@ -54,6 +58,7 @@ import {
   type TraceDirection,
   type TraceResult,
 } from "./excel";
+import { FIND_HIT_CAP } from "./find";
 import { RelayClient, relayBaseUrl } from "./link/relay";
 import { officeKeyStore } from "./link/workspace";
 import { installLinksTab } from "./pane/links-tab";
@@ -349,6 +354,8 @@ async function dispatch(action: string): Promise<string> {
         );
       case "insert-toc":
         return insertTocSheet();
+      case "find":
+        return runFind();
       case "scan-names":
         return scanNames();
       default:
@@ -426,6 +433,7 @@ function registerCommands(): void {
     SMT_CHART_CAGR: addCagrLabel,
     SMT_UNPIVOT: unpivotSelection,
     SMT_TOC: insertTocSheet,
+    SMT_FIND: focusFind,
   };
 
   for (const [id, run] of Object.entries(commands)) {
@@ -901,6 +909,114 @@ async function insertTocSheet(): Promise<string> {
   return "Contents sheet updated";
 }
 
+// ---------------------------------------------------------------------------
+// Super Find
+// ---------------------------------------------------------------------------
+
+const FIND_TEXT_LIMIT = 90;
+const FIND_ICONS: Record<FindHit["kind"], string> = {
+  cell: "▤",
+  name: "⌗",
+  sheet: "☰",
+};
+
+function hitLabel(hit: FindHit): string {
+  if (hit.kind === "name") return `Name · ${hit.address}`;
+  return `${hit.sheet}!${hit.address}`;
+}
+
+// A long label or a formula would push the row out of the pane; the whole text
+// stays in the tooltip.
+function clipText(text: string): string {
+  if (text.length <= FIND_TEXT_LIMIT) return text;
+  return `${text.slice(0, FIND_TEXT_LIMIT)}…`;
+}
+
+async function jumpTo(hit: FindHit): Promise<string> {
+  await jumpToHit(hit);
+  // The jump moved the workbook, so the explorer above marks the sheet it
+  // landed on rather than the one it left.
+  await refreshSheets();
+  return `Jumped to ${hitLabel(hit)}`;
+}
+
+function findRow(hit: FindHit): HTMLButtonElement {
+  const row = document.createElement("button");
+  row.type = "button";
+  row.title = `Go to ${hitLabel(hit)}: ${hit.text}`;
+
+  const icon = document.createElement("span");
+  icon.className = "action-icon names";
+  icon.textContent = FIND_ICONS[hit.kind];
+
+  const where = document.createElement("strong");
+  where.textContent = hitLabel(hit);
+  const what = document.createElement("small");
+  what.textContent = clipText(hit.text);
+  const text = document.createElement("span");
+  text.append(where, what);
+
+  row.append(icon, text);
+  row.addEventListener("click", () => void guard(() => jumpTo(hit)));
+  return row;
+}
+
+function findSummary(result: FindResult): string {
+  const count = result.hits.length;
+  const capped = count >= FIND_HIT_CAP ? ` (first ${FIND_HIT_CAP})` : "";
+  const skipped =
+    result.skippedSheets.length > 0
+      ? ` Too large to search: ${result.skippedSheets.join(", ")}.`
+      : "";
+  if (count === 0) return `No matches.${skipped}`;
+  return `${count} ${count === 1 ? "hit" : "hits"}${capped}.${skipped}`;
+}
+
+// Rows close over the hit they jump to; drop them before rebuilding. A null
+// result is the state before the first search.
+function renderFind(result: FindResult | null): void {
+  const list = getElement<HTMLDivElement>("find-results");
+  list.replaceChildren();
+  // An empty list still costs a row gap under the button, so it goes away.
+  list.hidden = !result || result.hits.length === 0;
+
+  if (!result) {
+    getElement("find-hint").textContent =
+      "Searches values, defined names and sheet names on every sheet.";
+    return;
+  }
+  for (const hit of result.hits) list.append(findRow(hit));
+  getElement("find-hint").textContent = findSummary(result);
+}
+
+async function runFind(): Promise<string> {
+  const query = getElement<HTMLInputElement>("find-query").value.trim();
+  if (query === "") {
+    renderFind(null);
+    throw new Error("Type something to find first.");
+  }
+
+  const result = await findInWorkbook(query, {
+    matchCase: getElement<HTMLInputElement>("find-case").checked,
+    inFormulas: getElement<HTMLInputElement>("find-formulas").checked,
+  });
+  renderFind(result);
+  return findSummary(result);
+}
+
+// The results live in the pane, so the shortcut opens it and puts the caret in
+// the box rather than repeating a query the modeller cannot see.
+async function focusFind(): Promise<string> {
+  await Promise.resolve(Office.addin?.showAsTaskpane()).catch(() => undefined);
+  tabs.activate("tab-workbook");
+  await refreshSheets();
+
+  const input = getElement<HTMLInputElement>("find-query");
+  input.focus();
+  input.select();
+  return "Find ready";
+}
+
 getElement("app-version").textContent = APP_VERSION;
 
 // Installed first so a throw during the rest of boot is still reported.
@@ -909,7 +1025,7 @@ installErrorReporting(
   (message, details) => toast.show(message, "error", details),
 );
 loadSettings();
-installTabs(getElement("tab-bar"));
+const tabs = installTabs(getElement("tab-bar"));
 getElement<HTMLButtonElement>("tab-workbook").addEventListener(
   "click",
   // Sheets change without the pane hearing about it, so the explorer is
@@ -921,6 +1037,7 @@ renderBrand();
 renderAuditState();
 renderActionState();
 renderNames(false);
+renderFind(null);
 
 Office.onReady(async ({ host }) => {
   if (host === Office.HostType.PowerPoint) {
@@ -978,6 +1095,14 @@ Office.onReady(async ({ host }) => {
   getElement<HTMLButtonElement>("refresh-sheets").addEventListener(
     "click",
     () => void refreshSheets(),
+  );
+
+  // Enter is what a search box owes the hands already on the keyboard.
+  getElement<HTMLInputElement>("find-query").addEventListener(
+    "keydown",
+    (event) => {
+      if (event.key === "Enter") void guard(runFind, "find");
+    },
   );
 
   getElement<HTMLButtonElement>("delete-names").addEventListener(

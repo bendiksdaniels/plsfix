@@ -931,6 +931,62 @@
           </p>
         </section>
 
+        <section aria-labelledby="find-heading">
+          <div class="section-heading">
+            <div>
+              <p class="kicker">SEARCH</p>
+              <h2 id="find-heading">Super Find</h2>
+            </div>
+          </div>
+          <label class="key-label" for="find-query">
+            Find in this workbook
+            <input
+              id="find-query"
+              class="key-input"
+              type="search"
+              autocomplete="off"
+              placeholder="Text, number or formula"
+            />
+          </label>
+          <label class="toggle-row" for="find-case">
+            <input id="find-case" type="checkbox" />
+            <span
+              ><strong>Match case</strong
+              ><small>Off finds a word in any casing</small></span
+            >
+          </label>
+          <label class="toggle-row" for="find-formulas">
+            <input id="find-formulas" type="checkbox" checked />
+            <span
+              ><strong>Search formulas</strong
+              ><small>Looks behind the value at the formula text</small></span
+            >
+          </label>
+          <p class="hint">
+            Enter in the box runs the search. Hidden sheets are searched too.
+          </p>
+          <div class="action-list">
+            <button
+              id="find-run"
+              data-action="find"
+              type="button"
+              title="Search every sheet, defined name and sheet name (Ctrl+Shift+Alt+F)"
+            >
+              <span class="action-icon names">⌕</span
+              ><span
+                ><strong>Find in workbook</strong
+                ><small
+                  >Values, formulas, defined names and sheet names</small
+                ></span
+              ><kbd>Ctrl+Shift+Alt+F</kbd>
+            </button>
+            <div class="action-list" id="find-results" hidden></div>
+          </div>
+          <p class="hint" id="find-hint">
+            Searches values, defined names and sheet names on every sheet.
+          </p>
+        </section>
+
         <section aria-labelledby="toc-heading">
           <div class="section-heading">
             <div>
