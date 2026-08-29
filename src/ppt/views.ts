@@ -1,7 +1,8 @@
-// The PowerPoint pane's DOM renderers: the link table body, the inbox list and
-// the two labels both of them read. Pure - each function is handed its
-// container, what to draw and the callback to call, touches nothing else, and
-// clears the container first so a re-render can never leave a stale listener.
+// The PowerPoint pane's DOM renderers: the link table body, the inbox list,
+// the "Change source" candidate list and the labels they read. Pure - each
+// function is handed its container, what to draw and the callback to call,
+// touches nothing else, and clears the container first so a re-render can
+// never leave a stale listener.
 
 import type { InboxItem } from "../link/model";
 import type { LinkStatus } from "../link/status";
@@ -156,4 +157,23 @@ function inboxRow(
 function inboxMeta(item: InboxItem): string {
   const age = relativeStamp(item.createdAt);
   return age === NEVER ? item.src.workbook : `${item.src.workbook} · ${age}`;
+}
+
+// The "Change source" chooser: every waiting export, best match first (the
+// order is candidatesFor's, not this renderer's). The workbook and the age are
+// what tell two exports of the same table apart, so both are on the line.
+export function renderCandidates(
+  select: HTMLSelectElement,
+  items: InboxItem[],
+): void {
+  select.replaceChildren(...items.map(candidateOption));
+}
+
+function candidateOption(item: InboxItem): HTMLOptionElement {
+  const option = document.createElement("option");
+  option.value = item.id;
+  const text = `${item.label} · ${inboxMeta(item)}`;
+  option.textContent = text;
+  option.title = text;
+  return option;
 }

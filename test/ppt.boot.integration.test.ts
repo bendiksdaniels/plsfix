@@ -95,4 +95,20 @@ describe("a host the pane accepted", () => {
 
     expect(toastText()).toBe("Tick the rows to revert.");
   });
+
+  // "Change source" acts on exactly one ticked row, so it is dead until there
+  // is one, and its picker starts closed.
+  it("keeps Change source out of reach with nothing ticked", async () => {
+    await boot(true);
+
+    const button = document.getElementById("change-source");
+    expect((button as HTMLButtonElement).disabled).toBe(true);
+    expect(document.getElementById("change-source-chooser")?.hidden).toBe(true);
+
+    click("change-source-cancel");
+    await settle();
+    expect(toastText()).toBe(
+      "Change source cancelled. Nothing was re-pointed.",
+    );
+  });
 });

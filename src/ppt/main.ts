@@ -1,8 +1,8 @@
 // PowerPoint pane: boot (Office.js, the PowerPoint and PowerPointApi 1.5
 // gates, toast, error reporting, tabs, version), the pane's state - the links
 // this deck holds, which are ticked, and the paired workspace - and one guarded
-// handler per button. Drawing is views.ts, selection maths actions.ts, and
-// every deck or relay call goes through links.ts / host.ts.
+// handler per button. Drawing is views.ts, selection maths actions.ts, the
+// "Change source" picker chooser.ts, and deck/relay calls links.ts / host.ts.
 
 import "../styles.css";
 import type { InboxItem } from "../link/model";
@@ -14,6 +14,7 @@ import {
   officeKeyStore,
   type Workspace,
 } from "../link/workspace";
+import { getElement } from "../ui/dom";
 import { makeGuard } from "../ui/guard";
 import { describeError, installErrorReporting } from "../ui/report";
 import { installTabs } from "../ui/tabs";
@@ -27,6 +28,7 @@ import {
   toRowViews,
   updateDetails,
 } from "./actions";
+import { installChangeSource } from "./chooser";
 import { activeSlideId, breakLink, goToSlide } from "./host";
 import {
   insertFromInbox,
@@ -44,13 +46,6 @@ const REPORT_CONTEXT = { host: "PowerPoint", version: APP_VERSION };
 const NOT_PAIRED =
   "Not paired: paste the link key from Excel > Links > Settings";
 const PAIR_FIRST = "Paste the link key in Settings";
-const NOT_CONNECTED = "PowerPoint is not connected.";
-
-const getElement = <T extends HTMLElement>(id: string): T => {
-  const element = document.getElementById(id);
-  if (!element) throw new Error(`Missing element #${id}`);
-  return element as T;
-};
 
 const connectionStatus = getElement<HTMLSpanElement>("connection-status");
 const linkRowsBody = getElement<HTMLTableSectionElement>("link-rows");
@@ -84,22 +79,23 @@ installTabs(getElement("tab-bar"));
 function renderLinks(): void {
   renderLinkRows(linkRowsBody, toRowViews(rows, selected), toggleSelection);
   linksEmpty.hidden = rows.length > 0;
+  syncChangeSource();
 }
 
 function toggleSelection(key: string, isSelected: boolean): void {
   if (isSelected) selected.add(key);
   else selected.delete(key);
+  syncChangeSource();
 }
 
 // The list is hidden rather than emptied when unpaired, and its children are
 // replaced either way: a stale Insert button must never survive a re-render.
 function renderInboxView(): void {
-  const paired = workspace !== null;
   renderInbox(inboxList, inboxItems, (item) => {
     act(() => insertItem(item), "insert-link");
   });
-  inboxList.hidden = !paired;
-  inboxUnpaired.hidden = paired;
+  inboxList.hidden = workspace === null;
+  inboxUnpaired.hidden = workspace !== null;
 }
 
 function renderPairing(): void {
@@ -111,7 +107,8 @@ function renderPairing(): void {
 // ---------------------------------------------------------------------------
 
 // makeGuard's success path notifies with a message only, so an action with
-// per-link lines to show stages them here; the guard clears them afterwards.
+// per-link lines to show stages them here; the guard clears them afterwards,
+// and a follow-up read that failed is named the same way.
 let stagedDetails: string | undefined;
 
 function noteDetail(line: string): void {
@@ -119,10 +116,16 @@ function noteDetail(line: string): void {
     stagedDetails === undefined ? line : `${stagedDetails}\n${line}`;
 }
 
+function noteFailure(error: unknown, what: string): void {
+  noteDetail(`${what}: ${describeError(error, REPORT_CONTEXT).message}`);
+}
+
 function setBusy(busy: boolean): void {
   const buttons =
     document.querySelectorAll<HTMLButtonElement>(".app-shell button");
   for (const button of buttons) button.disabled = busy;
+  // Blanket re-enabling would undo the one button with a rule of its own.
+  if (!busy) syncChangeSource();
 }
 
 const guard = makeGuard({
@@ -144,7 +147,7 @@ let ready = false;
 // instead, and the connection badge is not the only thing that says so.
 function act(run: () => Promise<string>, action: string): void {
   void guard(async () => {
-    if (!ready) throw new Error(NOT_CONNECTED);
+    if (!ready) throw new Error("PowerPoint is not connected.");
     return run();
   }, action);
 }
@@ -160,15 +163,12 @@ async function reloadLinks(): Promise<void> {
 }
 
 // What an action reports is the point of it, so a rescan that fails afterwards
-// leaves the list as it was and says so in the details rather than replacing
-// the report with its own error.
+// leaves the list as it was and says so in the details, not in place of it.
 async function refreshQuietly(): Promise<void> {
   try {
     await reloadLinks();
   } catch (error) {
-    noteDetail(
-      `The list was not refreshed: ${describeError(error, REPORT_CONTEXT).message}`,
-    );
+    noteFailure(error, "The list was not refreshed");
   }
 }
 
@@ -257,6 +257,21 @@ async function insertItem(item: InboxItem): Promise<string> {
   return `Inserted ${item.label}.`;
 }
 
+// The "Change source" picker owns its own three buttons; the pane hands it the
+// state it must read and the reads that follow a successful change.
+const syncChangeSource = installChangeSource({
+  act,
+  relay,
+  rows: () => selectedRows(rows, selected),
+  inbox: () => inboxItems,
+  workspace: requireWorkspace,
+  note: noteDetail,
+  after: async () => {
+    await inboxQuietly();
+    await refreshQuietly();
+  },
+});
+
 async function saveKey(): Promise<string> {
   const key = workspaceKey.value.trim();
   if (key === "") throw new Error("Paste the link key from Excel first.");
@@ -300,9 +315,7 @@ async function inboxQuietly(): Promise<void> {
   try {
     await refreshInbox();
   } catch (error) {
-    noteDetail(
-      `The inbox was not read: ${describeError(error, REPORT_CONTEXT).message}`,
-    );
+    noteFailure(error, "The inbox was not read");
   }
 }
 
@@ -361,31 +374,26 @@ async function loadPairing(): Promise<void> {
   renderInboxView();
 }
 
-// Unpaired is not a boot failure: the Inbox says so itself, and the Links list
-// works without a key.
-async function loadInbox(): Promise<void> {
-  if (workspace === null) return;
-  await refreshInbox();
+function showConnection(text: string, state: string): void {
+  connectionStatus.textContent = text;
+  connectionStatus.className = `connection ${state}`;
 }
 
 Office.onReady(async ({ host }) => {
   if (host !== Office.HostType.PowerPoint) {
-    connectionStatus.textContent = "PowerPoint required";
-    connectionStatus.className = "connection error";
+    showConnection("PowerPoint required", "error");
     return;
   }
-
   if (!Office.context.requirements.isSetSupported("PowerPointApi", "1.5")) {
-    connectionStatus.textContent = "PowerPoint 2021 / Microsoft 365 required";
-    connectionStatus.className = "connection error";
+    showConnection("PowerPoint 2021 / Microsoft 365 required", "error");
     return;
   }
-
-  connectionStatus.textContent = "PowerPoint connected";
-  connectionStatus.className = "connection ready";
+  showConnection("PowerPoint connected", "ready");
   ready = true;
 
   await bootStep(loadPairing, "load-key");
   await bootStep(reloadLinks, "refresh-links");
-  await bootStep(loadInbox, "refresh-inbox");
+  // Unpaired is not a boot failure: the Inbox says so itself, and the Links
+  // list works without a key.
+  if (workspace !== null) await bootStep(refreshInbox, "refresh-inbox");
 });

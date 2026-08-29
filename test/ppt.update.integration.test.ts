@@ -153,6 +153,7 @@ describe("update", () => {
       insertLink: () => Promise.reject(new Error("unused")),
       refreshLink: () =>
         Promise.reject(new Error("PowerPoint refused the picture")),
+      retagLink: () => Promise.resolve(),
       breakLink: () => Promise.resolve(),
       goToSlide: () => Promise.resolve(),
     };

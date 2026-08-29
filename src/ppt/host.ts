@@ -1,9 +1,10 @@
 // The only PowerPoint Office.js code: scan the deck for shapes carrying the
 // link tags, insert a linked picture, repaint one or a whole batch of them in
-// place (or reinsert on hosts below PowerPointApi 1.8), break a link by
-// dropping its tags, and read or set which slide is active. Identity is always
-// the SMT_LINK tag - never a shape id, name or position. Every flow here is
-// counted in round trips: one sync per batch, never one per shape.
+// place (or reinsert on hosts below PowerPointApi 1.8), re-point one at another
+// link by rewriting its tags, break a link by dropping them, and read or set
+// which slide is active. Identity is always the SMT_LINK tag - never a shape
+// id, name or position. Every flow here is counted in round trips: one sync
+// per batch, never one per shape.
 
 import {
   decodeTag,
@@ -359,6 +360,22 @@ async function reinsertLink(
       .getItem(found.slideId)
       .shapes.getItem(found.shapeId)
       .delete();
+    await context.sync();
+  });
+}
+
+// Re-pointing a link at another export: both tags rewritten in one sync, and
+// nothing else - no picture, no geometry, no z-order. The shape keeps
+// everything the user gave it and only changes what it tracks.
+export async function retagLink(
+  found: FoundLink,
+  tag: LinkTag,
+  token: string,
+): Promise<void> {
+  await PowerPoint.run(async (context) => {
+    const tags = shapeAt(context, found).tags;
+    tags.add(TAG_LINK, encodeTag(tag));
+    tags.add(TAG_KEY, token);
     await context.sync();
   });
 }

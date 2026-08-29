@@ -89,6 +89,7 @@ import {
   setActiveSettings,
 } from "./settings";
 import { type ShareIssue, summarizeShare } from "./share";
+import { getElement } from "./ui/dom";
 import { makeGuard } from "./ui/guard";
 import { describeError, installErrorReporting } from "./ui/report";
 import { installTabs } from "./ui/tabs";
@@ -109,12 +110,6 @@ const PALETTE_SLOTS = [
   "partial",
 ] as const;
 type PaletteSlot = (typeof PALETTE_SLOTS)[number];
-
-const getElement = <T extends HTMLElement>(id: string): T => {
-  const element = document.getElementById(id);
-  if (!element) throw new Error(`Missing element #${id}`);
-  return element as T;
-};
 
 const connectionStatus = getElement<HTMLSpanElement>("connection-status");
 const actionButtons = Array.from(
