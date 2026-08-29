@@ -77,6 +77,19 @@ export async function exportSelectionAsTable(
   return exportRange(ws, relay, "table");
 }
 
+// Both caps are checked before anything is anchored, so a selection too big to
+// send leaves the workbook exactly as it was.
+function requireExportable(range: Excel.Range, kind: "range" | "table"): void {
+  if (range.cellCount > SELECTION_CELL_CAP) {
+    throw new Error(
+      `Export supports up to ${SELECTION_CELL_CAP.toLocaleString()} selected cells at once.`,
+    );
+  }
+  if (kind === "table" && overTableCap(range.rowCount, range.columnCount)) {
+    throw new Error(TABLE_TOO_BIG);
+  }
+}
+
 // Every flow that rewrites the registry runs through the shared link queue: the
 // read, the upload and the write-back are one critical section, or a push that
 // began earlier puts its own copy of the registry back over this new link.
@@ -93,16 +106,7 @@ async function exportRange(
       const range = await selectedSingleRange(context, "export");
       range.load("address,cellCount,rowCount,columnCount,worksheet/name");
       await context.sync();
-      if (range.cellCount > SELECTION_CELL_CAP) {
-        throw new Error(
-          `Export supports up to ${SELECTION_CELL_CAP.toLocaleString()} selected cells at once.`,
-        );
-      }
-      // Both caps are checked before anything is anchored, so a selection too
-      // big to send leaves the workbook exactly as it was.
-      if (kind === "table" && overTableCap(range.rowCount, range.columnCount)) {
-        throw new Error(TABLE_TOO_BIG);
-      }
+      requireExportable(range, kind);
 
       const resolved: ResolvedSource = {
         kind,

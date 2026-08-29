@@ -1,10 +1,11 @@
 // The host itself: the runtime a test installs, the request context PowerPoint
 // hands a batch, and the PowerPoint, Office and OfficeRuntime globals the pane
 // talks to. The slide, shape and tag objects the context leads to live in
-// model.ts, next to the deck they read.
+// objects.ts, over the deck in model.ts.
 
 import type { Box, FakePptHelpers, FakePptOptions, SelectionInsert } from ".";
-import { FakePresentation, SlideCollectionProxy } from "./model";
+import { FakePresentation } from "./model";
+import { SlideCollectionProxy } from "./objects";
 import { Loadable, StrictLoads } from "./strict";
 
 interface SelectionOptions {
