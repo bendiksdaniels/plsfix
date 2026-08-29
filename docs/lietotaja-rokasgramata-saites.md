@@ -13,6 +13,7 @@ Excel cilnē "Links" atlasiet šūnu apgabalu vai diagrammu, ko vēlaties nosūt
 
 - Šūnu apgabalam nospiediet "Export selection".
 - Diagrammai nospiediet "Export active chart".
+- Ar "Export as table" tas pats šūnu apgabals tiek nosūtīts kā rediģējama PowerPoint tabula (līdz 60 rindām un 20 kolonnām).
 
 Excel izveido avotam slēptu nosaukumu, kas seko tam arī tad, kad virs apgabala tiek ievietotas rindas vai lapa tiek pārdēvēta. Attēls tiek nosūtīts uz releju un PowerPoint pusē parādās kā gaidošs vienums.
 

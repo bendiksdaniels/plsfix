@@ -70,6 +70,7 @@ describe("selection", () => {
     expect(views.map((view) => view.slide)).toEqual([1, 2]);
     expect(views[1]!.label).toBe("Model!B4:F12");
     expect(views[1]!.source).toBe("Model_v4.xlsx");
+    expect(views[1]!.kind).toBe("range");
     expect(views[1]!.status).toBe("missing");
   });
 

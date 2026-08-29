@@ -25,6 +25,7 @@ export function toRowViews(
       slide: row.found.slideIndex + 1,
       label: sourceLabel(row.found.tag.src, row.found.tag.kind),
       source: row.found.tag.src.workbook,
+      kind: row.found.tag.kind,
       status: row.status,
       pushedAt: row.pushedAt,
       selected: selected.has(key),

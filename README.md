@@ -140,7 +140,8 @@ Export a range or a chart from Excel and keep it fresh in a deck without re-past
 
 - Excel, tab **Links**: *Export selection* or *Export chart* renders a picture, anchors the
   source with a hidden defined name (`PLSFIX_LINK_<id>`, so rows can be inserted above it) or the
-  chart's name, and sends the picture to the relay. *Push all* re-renders every link through
+  chart's name, and sends the picture to the relay. *Export as table* sends the same range as an
+  editable PowerPoint table instead (up to 60 rows and 20 columns, PowerPoint 2021 or Microsoft 365). *Push all* re-renders every link through
   its anchor. Generate the **link key** once under Links > Settings and paste it into
   PowerPoint once. **Auto-push on edit** (a tick box under the list) re-pushes a link
   three seconds after the last edit inside it, so a deck's *Update all* always finds the
