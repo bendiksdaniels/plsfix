@@ -136,7 +136,9 @@ Export a range or a chart from Excel and keep it fresh in a deck without re-past
   source with a hidden defined name (`SMT_LINK_<id>`, so rows can be inserted above it) or the
   chart's name, and sends the picture to the relay. *Push all* re-renders every link through
   its anchor. Generate the **link key** once under Links > Settings and paste it into
-  PowerPoint once.
+  PowerPoint once. **Auto-push on edit** (a tick box under the list) re-pushes a link
+  three seconds after the last edit inside it, so a deck's *Update all* always finds the
+  current picture; it runs only while the pane is open and is remembered per workbook.
 - PowerPoint, tab **Model Tools > Links**: the **Inbox** lists exports waiting to be placed;
   *Insert* puts a picture on the selected slide with a tracker in the shape's tags. The
   **Links** list shows every tracked picture in the deck (slide, source, status) and
