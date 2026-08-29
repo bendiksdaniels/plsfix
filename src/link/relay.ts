@@ -60,6 +60,11 @@ export interface RelayApi {
     auth: string,
     knownRev?: number,
   ): Promise<{ rev: number; blob: Uint8Array } | "unchanged">;
+  getLinkRev(
+    id: string,
+    auth: string,
+    rev: number,
+  ): Promise<{ rev: number; blob: Uint8Array }>;
   deleteLink(id: string, auth: string): Promise<void>;
   status(items: StatusQuery[]): Promise<RelayStatus[]>;
   postInbox(
@@ -252,6 +257,33 @@ export class RelayClient implements RelayApi {
       [200, 304],
     );
     if (response.status === 304) return "unchanged";
+    return this.blobFrom(response, path);
+  }
+
+  // One exact revision, the relay's second-newest at most: what "Revert last
+  // update" repaints from. No If-None-Match, because the deck is asking for a
+  // picture it does not hold; a revision retention or the TTL has dropped is
+  // a 404 like any other missing link.
+  async getLinkRev(
+    id: string,
+    auth: string,
+    rev: number,
+  ): Promise<{ rev: number; blob: Uint8Array }> {
+    const path = `links/${id}?rev=${String(rev)}`;
+    const response = await this.request(
+      path,
+      { method: "GET", headers: { Authorization: bearer(auth) } },
+      [200],
+    );
+    return this.blobFrom(response, path);
+  }
+
+  // The revision a body belongs to is the ETag's word, never the caller's
+  // guess, so a relay that answered with another one is a bad response.
+  private async blobFrom(
+    response: Response,
+    path: string,
+  ): Promise<{ rev: number; blob: Uint8Array }> {
     const match = ETAG_REV.exec(response.headers.get("ETag") ?? "");
     if (match === null) {
       throw new RelayError(
@@ -259,9 +291,10 @@ export class RelayClient implements RelayApi {
         `relay GET ${this.resolve(path).pathname}: bad ETag`,
       );
     }
-    const rev = Number(match[1]);
-    const blob = new Uint8Array(await response.arrayBuffer());
-    return { rev, blob };
+    return {
+      rev: Number(match[1]),
+      blob: new Uint8Array(await response.arrayBuffer()),
+    };
   }
 
   async deleteLink(id: string, auth: string): Promise<void> {
