@@ -314,8 +314,10 @@ export interface SizeCycles {
 }
 
 // Rows start on Excel's default 15 pt and climb through the bands a model
-// uses - a roomier line, a header, a title - before coming home. Columns start
-// on the default 64 pt, widen for labels, then end narrow for a spacer column.
+// uses - a roomier line, a header, a title - before coming home. Columns widen
+// for labels and end narrow for a spacer column; Excel's own default column is
+// 8.43 characters, which is 48 pt, so the last rung is the one a default column
+// steps home to rather than the first.
 export function buildSizeCycles(): SizeCycles {
   return {
     rowHeight: [15, 18, 21, 24, 30],

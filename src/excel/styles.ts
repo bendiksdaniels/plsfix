@@ -3,7 +3,11 @@
 // style table and the sheet list, then every used range's extent, then the
 // grids of the sheets small enough to read - never one sync per sheet.
 
-import { SELECTION_CELL_CAP } from "./internal";
+import {
+  pickScannableSheets,
+  SCAN_CELL_CAP,
+  SELECTION_CELL_CAP,
+} from "./internal";
 import { unusedStyles, type WorkbookStyle } from "../styles-audit";
 
 export interface StyleScan {
@@ -19,27 +23,30 @@ export interface StyleScan {
 
 type CellGrid = OfficeExtension.ClientResult<Excel.CellProperties[][]>;
 
-// Which sheets are worth reading: an empty sheet dresses no cells, and a sheet
-// whose used range runs past the cap would overflow the request payload, so it
-// is reported as skipped rather than half-read.
+// Which sheets are worth reading is the same question Super Find and Prepare
+// for sharing ask, so it is asked in the same place: an empty sheet dresses no
+// cells, and a sheet - or a run of them - past the cap would overflow the
+// request payload, so it is reported as skipped rather than half-read. Style
+// properties are the heaviest read of the three, which is why the cap matters
+// most here.
 function readStyles(
   sheets: Excel.Worksheet[],
   ranges: Excel.Range[],
   cap: number,
+  totalCap: number,
 ): { grids: CellGrid[]; skippedSheets: string[] } {
-  const grids: CellGrid[] = [];
-  const skippedSheets: string[] = [];
-
-  ranges.forEach((range, index) => {
-    if (range.isNullObject) return;
-    if (range.cellCount > cap) {
-      skippedSheets.push(sheets[index]?.name ?? "");
-      return;
-    }
-    grids.push(range.getCellProperties({ style: true }));
-  });
-
-  return { grids, skippedSheets };
+  const { scanned, skippedSheets } = pickScannableSheets(
+    sheets,
+    ranges,
+    cap,
+    totalCap,
+  );
+  return {
+    grids: scanned.map((sheet) =>
+      sheet.range.getCellProperties({ style: true }),
+    ),
+    skippedSheets,
+  };
 }
 
 function wornStyles(grids: CellGrid[]): Set<string> {
@@ -59,6 +66,7 @@ function wornStyles(grids: CellGrid[]): Set<string> {
 async function scanStyles(
   context: Excel.RequestContext,
   cap: number,
+  totalCap: number,
 ): Promise<StyleScan> {
   const styles = context.workbook.styles;
   styles.load("items/name,items/builtIn");
@@ -76,7 +84,12 @@ async function scanStyles(
   for (const range of ranges) range.load("isNullObject,cellCount");
   await context.sync();
 
-  const { grids, skippedSheets } = readStyles(sheets.items, ranges, cap);
+  const { grids, skippedSheets } = readStyles(
+    sheets.items,
+    ranges,
+    cap,
+    totalCap,
+  );
   await context.sync();
 
   return {
@@ -88,8 +101,9 @@ async function scanStyles(
 
 export async function listUnusedStyles(
   maxCells = SELECTION_CELL_CAP,
+  maxTotalCells = SCAN_CELL_CAP,
 ): Promise<StyleScan> {
-  return Excel.run((context) => scanStyles(context, maxCells));
+  return Excel.run((context) => scanStyles(context, maxCells, maxTotalCells));
 }
 
 // Irreversible, and every cell wearing a deleted style is restyled with it, so
@@ -99,9 +113,10 @@ export async function listUnusedStyles(
 export async function deleteUnusedStyles(
   names: string[],
   maxCells = SELECTION_CELL_CAP,
+  maxTotalCells = SCAN_CELL_CAP,
 ): Promise<number> {
   return Excel.run(async (context) => {
-    const scan = await scanStyles(context, maxCells);
+    const scan = await scanStyles(context, maxCells, maxTotalCells);
     if (scan.skippedSheets.length > 0) {
       throw new Error("styles: some sheets were too large to scan");
     }

@@ -53,11 +53,31 @@ export function fillGrid(
   );
 }
 
+// Every store there is. Two overlays must never both hold fills: the second to
+// paint would snapshot the first's colour as the modeller's own formatting, and
+// on the way out one of them would hand that colour back as if it belonged to
+// the model. Whoever paints asks here first, so the refusal is symmetric by
+// construction rather than by one of them remembering to check the other.
+const stores: FillStore[] = [];
+
 export class FillStore {
   private readonly snapshots = new Map<string, FillSnapshot>();
 
-  // The setting key is the store's identity: two overlays never share one.
-  constructor(private readonly setting: string) {}
+  // The setting key is the store's identity: two overlays never share one. The
+  // label is how the *other* overlay names this one when it refuses to paint.
+  constructor(
+    private readonly setting: string,
+    private readonly label: string,
+  ) {
+    stores.push(this);
+  }
+
+  // Refuses while another overlay owns the fills, naming both the flow that
+  // asked and the overlay standing in its way.
+  requireSoleOwner(stage: string): void {
+    const other = stores.find((store) => store !== this && store.painted);
+    if (other) throw new Error(`${stage}: turn ${other.label} off first`);
+  }
 
   // Whether this overlay is on: it owns a fill exactly while it remembers what
   // was under it.

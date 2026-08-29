@@ -24,7 +24,7 @@ const LONE_FILL = "#E8B4B4";
 // snapshot rides along in this workbook setting and startup restores it before
 // the stripes can be mistaken for model formatting or re-snapshotted.
 const OVERLAY_SETTING = "smtAuditOverlay";
-const overlay = new FillStore(OVERLAY_SETTING);
+const overlay = new FillStore(OVERLAY_SETTING, "the audit overlay");
 
 // Read by the linked-cell highlight before it paints: two overlays cannot own
 // the same fill, and a highlight painted over these stripes would be snapshot
@@ -80,6 +80,10 @@ export async function restoreFills(
 }
 
 export async function toggleAuditOverlay(): Promise<boolean> {
+  // The linked-cell highlight owns fills of its own, and both stores hand back
+  // what they covered: painting over the other one would give the modeller our
+  // tint back as if it were their formatting.
+  overlay.requireSoleOwner("audit overlay");
   return Excel.run(async (context) => {
     const selected = context.workbook.getSelectedRange();
     selected.load("rowCount,columnCount");

@@ -177,55 +177,49 @@ export function createChartAnchor(chart: Excel.Chart, anchor: string): void {
   chart.name = anchor;
 }
 
-async function anchorRange(
-  context: Excel.RequestContext,
-  anchor: string,
-): Promise<Excel.Range | null> {
-  const named = context.workbook.names.getItemOrNullObject(anchor);
-  named.load("isNullObject");
-  await context.sync();
-  if (named.isNullObject) return null;
-
-  // The name outlives what it points at: Excel rewrites its formula to #REF!
-  // when the rows go, and the name itself stays behind.
-  const range = named.getRangeOrNullObject();
-  range.load("isNullObject,address,worksheet/name");
-  await context.sync();
-  return range.isNullObject ? null : range;
+// One entry's handles, in the order the phases fill them in: the range a hidden
+// name points at, or the chart carrying the anchor as its own name.
+interface Resolving {
+  entry: RegistryEntry;
+  named: Excel.NamedItem | null;
+  range: Excel.Range | null;
+  candidates: Excel.Chart[];
+  chart: Excel.Chart | null;
 }
 
 // A chart keeps its name when it is dragged to another sheet, so every sheet is
-// asked - in one batch - rather than trusting the sheet it was exported from.
-async function findChart(
-  context: Excel.RequestContext,
+// asked rather than trusting the sheet the link was exported from.
+function chartCandidates(
+  sheets: Excel.WorksheetCollection | null,
   anchor: string,
-): Promise<Excel.Chart | null> {
-  const sheets = context.workbook.worksheets;
-  sheets.load("items/name");
-  await context.sync();
-
-  const candidates = sheets.items.map((sheet) =>
-    sheet.charts.getItemOrNullObject(anchor),
-  );
-  for (const candidate of candidates) candidate.load("isNullObject");
-  await context.sync();
-
-  const found = candidates.find((candidate) => !candidate.isNullObject);
-  if (!found) return null;
-  found.load("name,width,height,worksheet/name");
-  await context.sync();
-  return found;
+): Excel.Chart[] {
+  if (!sheets) return [];
+  return sheets.items.map((sheet) => sheet.charts.getItemOrNullObject(anchor));
 }
 
-// Null means the source is gone: the caller reports it, it never falls back to
-// the address the link was created with.
-export async function resolveSource(
-  context: Excel.RequestContext,
-  entry: RegistryEntry,
-): Promise<ResolvedSource | null> {
-  if (entry.kind === "range") {
-    const range = await anchorRange(context, entry.anchor);
-    if (!range) return null;
+// Phase 2: the name outlives what it points at - Excel rewrites its formula to
+// #REF! when the rows go and leaves the name behind - so the range is asked for
+// separately, and every entry's question rides in the same batch.
+function queueTargets(
+  resolving: Resolving[],
+  sheets: Excel.WorksheetCollection | null,
+): void {
+  for (const one of resolving) {
+    if (one.entry.kind === "range") {
+      if (!one.named || one.named.isNullObject) continue;
+      one.range = one.named.getRangeOrNullObject();
+      one.range.load("isNullObject,address,worksheet/name");
+      continue;
+    }
+    one.candidates = chartCandidates(sheets, one.entry.anchor);
+    for (const candidate of one.candidates) candidate.load("isNullObject");
+  }
+}
+
+function assemble(one: Resolving): ResolvedSource | null {
+  if (one.entry.kind === "range") {
+    const { range } = one;
+    if (!range || range.isNullObject) return null;
     return {
       kind: "range",
       sheet: range.worksheet.name,
@@ -233,16 +227,65 @@ export async function resolveSource(
       range,
     };
   }
-  const chart = await findChart(context, entry.anchor);
+  const { chart } = one;
   if (!chart) return null;
   return {
     kind: "chart",
     sheet: chart.worksheet.name,
-    ref: chartRef(entry.label),
+    ref: chartRef(one.entry.label),
     chart,
     width: chart.width,
     height: chart.height,
   };
+}
+
+// Every anchor resolved in three syncs whatever the link count: the names and
+// the sheet list, then each name's range and each sheet's chart of that name,
+// then the geometry of the charts that answered. Auto-push runs this on a timer
+// and the highlight over every anchored range, so one round trip per link would
+// cost a workbook of them every time the typing pauses. Null in a slot means
+// that source is gone: the caller reports it, and it never falls back to the
+// address the link was created with.
+export async function resolveSources(
+  context: Excel.RequestContext,
+  entries: RegistryEntry[],
+): Promise<(ResolvedSource | null)[]> {
+  if (entries.length === 0) return [];
+  const resolving: Resolving[] = entries.map((entry) => ({
+    entry,
+    named:
+      entry.kind === "range"
+        ? context.workbook.names.getItemOrNullObject(entry.anchor)
+        : null,
+    range: null,
+    candidates: [],
+    chart: null,
+  }));
+  for (const one of resolving) one.named?.load("isNullObject");
+
+  const wantsCharts = entries.some((entry) => entry.kind === "chart");
+  const sheets = wantsCharts ? context.workbook.worksheets : null;
+  sheets?.load("items/name");
+  await context.sync();
+
+  queueTargets(resolving, sheets);
+  await context.sync();
+
+  for (const one of resolving) {
+    one.chart = one.candidates.find((chart) => !chart.isNullObject) ?? null;
+    one.chart?.load("name,width,height,worksheet/name");
+  }
+  if (resolving.some((one) => one.chart !== null)) await context.sync();
+
+  return resolving.map(assemble);
+}
+
+export async function resolveSource(
+  context: Excel.RequestContext,
+  entry: RegistryEntry,
+): Promise<ResolvedSource | null> {
+  const [resolved] = await resolveSources(context, [entry]);
+  return resolved ?? null;
 }
 
 // The anchor is bound in the same batch the picture is asked for, and office.js
@@ -307,8 +350,8 @@ export async function releaseAnchor(
     if (!named.isNullObject) named.delete();
     return;
   }
-  const chart = await findChart(context, entry.anchor);
-  if (chart) chart.name = chartRef(entry.label);
+  const resolved = await resolveSource(context, entry);
+  if (resolved?.kind === "chart") resolved.chart.name = chartRef(entry.label);
 }
 
 // A link the relay never had, or has already dropped, is the outcome we want.

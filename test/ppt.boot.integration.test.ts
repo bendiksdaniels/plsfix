@@ -93,6 +93,6 @@ describe("a host the pane accepted", () => {
     click("revert-selected");
     await settle();
 
-    expect(toastText()).toBe("Tick the rows to revert");
+    expect(toastText()).toBe("Tick the rows to revert.");
   });
 });

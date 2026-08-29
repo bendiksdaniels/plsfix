@@ -147,6 +147,39 @@ describe("find in workbook", () => {
     });
   });
 
+  // The per-sheet cap does not bound one request: sheets each just under it
+  // add up to a payload the host refuses, with no stage and no sheet named.
+  it("stops at the scan cap and names the sheets it did not read", async () => {
+    await boot(["Model", "Data", "Notes"]);
+    for (const sheet of ["Model", "Data", "Notes"]) {
+      helpers.seed(`${sheet}!A1`, [
+        ["Total", "Total"],
+        ["Total", "Total"],
+      ]);
+    }
+
+    expect(
+      await smt.findInWorkbook("Total", {
+        ...LOOSE,
+        maxCells: 4,
+        maxTotalCells: 8,
+      }),
+    ).toEqual({
+      hits: [
+        { kind: "cell", sheet: "Model", address: "A1", text: "Total" },
+        { kind: "cell", sheet: "Model", address: "B1", text: "Total" },
+        { kind: "cell", sheet: "Model", address: "A2", text: "Total" },
+        { kind: "cell", sheet: "Model", address: "B2", text: "Total" },
+        { kind: "cell", sheet: "Data", address: "A1", text: "Total" },
+        { kind: "cell", sheet: "Data", address: "B1", text: "Total" },
+        { kind: "cell", sheet: "Data", address: "A2", text: "Total" },
+        { kind: "cell", sheet: "Data", address: "B2", text: "Total" },
+      ],
+      skippedSheets: ["Notes"],
+      commentsSkipped: false,
+    });
+  });
+
   it("finds nothing in an empty workbook without reading a null range", async () => {
     expect(await smt.findInWorkbook("anything", LOOSE)).toEqual({
       hits: [],
@@ -304,5 +337,27 @@ describe("jump to a hit", () => {
       "Data is hidden, so there is nowhere to jump.",
     );
     expect(workbook.activeSheetId).toBe(helpers.sheet("Model").id);
+  });
+
+  // A name matches on its formula too, so a constant is a perfectly ordinary
+  // hit; getRange() on one throws a bare host string with no flow in it.
+  it("says which name has no range instead of throwing the host's message", async () => {
+    helpers.addName("TaxRate", "=0.21");
+    const { hits } = await smt.findInWorkbook("TaxRate", LOOSE);
+    expect(hits[0]!.kind).toBe("name");
+
+    expect(await rejects(() => smt.jumpToHit(hits[0]!))).toBe(
+      'find: name "TaxRate" has no range',
+    );
+  });
+
+  it("says the same for a name Excel has left on #REF!", async () => {
+    helpers.addName("Costs", "=Data!$C$3");
+    const { hits } = await smt.findInWorkbook("Costs", LOOSE);
+    helpers.breakName("Costs");
+
+    expect(await rejects(() => smt.jumpToHit(hits[0]!))).toBe(
+      'find: name "Costs" has no range',
+    );
   });
 });

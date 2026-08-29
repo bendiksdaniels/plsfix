@@ -22,7 +22,7 @@ Model Tools is an Excel productivity add-in for financial modelling teams. It is
 - Brand tab: company palette (pickers, hex entry, or logo upload with local color extraction), font and currency settings, JSON import/export; all presets and autocolor follow the palette; persisted in the task pane and saved with the workbook, so a model keeps its brand when it is opened on another computer
 - the add-in's ribbon tab with one-click commands (autocolor, fills, IFERROR) and customizable keyboard shortcuts via the shared runtime (`public/shortcuts.json`)
 - Workbook tab: a sheet explorer that jumps to, hides and shows sheets (very hidden ones are listed but never touched), a hyperlinked contents sheet rebuilt on demand, and a scrubber that finds and deletes defined names left pointing at `#REF!`
-- Super Find: one search across every sheet (hidden ones included) over values, formula text, defined names, sheet names and cell comments, listed in workbook order with one click to jump to the hit
+- Super Find: one search across every sheet (hidden ones included) over values, formula text, workbook-level defined names, sheet names and cell comments, listed in workbook order with one click to jump to the hit
 - Style scrubber: the custom cell styles no cell in the workbook wears, listed with a count and deleted on a confirmed second click; a sheet too large to scan is named and blocks the delete, so a partial answer never removes a style still in use
 - Prepare for sharing: one pass that puts every visible sheet back at A1 and leaves the workbook on the first of them, then reports what a reader would still find - hidden sheets, links to other workbooks, names left on `#REF!` and autocolor still running on every edit; nothing is deleted, hidden sheets are untouched, and zoom cannot be reset because Office.js does not expose it
 
@@ -92,7 +92,9 @@ branded equivalent. Users can remap under Office add-in shortcut preferences.
 - Tracing and auditing work within the open workbook; Office.js cannot cross into
   other files.
 
-The task pane runs locally. It has no backend and sends no workbook data anywhere.
+The task pane runs locally and reads the workbook in the Excel process. The only data that
+leaves the machine is a linked object's rendered picture, encrypted in the pane before it is
+uploaded (see *Linked objects in PowerPoint*); a workbook with no links sends nothing anywhere.
 
 ## Run locally
 

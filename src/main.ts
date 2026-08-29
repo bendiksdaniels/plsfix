@@ -997,8 +997,11 @@ const SHARE_ROW_CAP = 20;
 const SHARE_BADGES: Record<ShareIssue["kind"], string> = {
   hiddenSheet: "Hidden",
   externalLink: "External",
+  addinFormula: "Needs add-in",
   brokenName: "Broken name",
   skippedSheet: "Too large",
+  overlayPainted: "Overlay on",
+  linkTokens: "Links",
   autocolorOnEdit: "Autocolor",
 };
 // Excel exposes no worksheet zoom to add-ins (pageLayout.zoom is print zoom),
@@ -1050,6 +1053,10 @@ function renderShare(result: ShareResult | null): void {
 }
 
 async function prepareShare(): Promise<string> {
+  // The report lands in the pane, and the pass moves every sheet to A1: run
+  // from the ribbon with the pane shut, it would rearrange the workbook and say
+  // nothing. Its two ribbon siblings open the pane the same way.
+  await Promise.resolve(Office.addin?.showAsTaskpane()).catch(() => undefined);
   const result = await prepareForSharing();
   renderShare(result);
   // The pass moved the workbook, so the explorer marks the sheet it landed on.
@@ -1107,7 +1114,8 @@ function findRow(hit: FindHit): HTMLButtonElement {
   text.append(where, what);
 
   row.append(icon, text);
-  row.addEventListener("click", () => void guard(() => jumpTo(hit)));
+  // Named, so a jump that cannot land says which flow refused it.
+  row.addEventListener("click", () => void guard(() => jumpTo(hit), "find"));
   return row;
 }
 
@@ -1135,7 +1143,7 @@ function renderFind(result: FindResult | null): void {
 
   if (!result) {
     getElement("find-hint").textContent =
-      "Searches values, defined names, sheet names and comments on every sheet.";
+      "Searches values, workbook-level defined names, sheet names and comments on every sheet.";
     return;
   }
   for (const hit of result.hits) list.append(findRow(hit));
@@ -1144,9 +1152,11 @@ function renderFind(result: FindResult | null): void {
 
 async function runFind(): Promise<string> {
   const query = getElement<HTMLInputElement>("find-query").value.trim();
+  // An empty box is not a failure: it reads back as a plain note rather than a
+  // red toast with a "Copy details" button behind it.
   if (query === "") {
     renderFind(null);
-    throw new Error("Type something to find first.");
+    return "Type something to find first.";
   }
 
   const result = await findInWorkbook(query, {
@@ -1297,6 +1307,21 @@ renderFind(null);
 renderStyles();
 renderShare(null);
 
+// Both overlays saved what they covered inside the workbook, and both put those
+// fills back at boot. They are restored one after the other, never side by
+// side: two floating promises could interleave, and the one that lands second
+// would write its snapshot - which is the other one's tint - over cells that
+// had just been handed their originals back.
+async function restoreOverlayFills(): Promise<void> {
+  try {
+    if (await restorePersistedOverlay()) {
+      toast.show("Audit overlay fills from the last session were restored.");
+    }
+  } catch {
+    return;
+  }
+}
+
 Office.onReady(async ({ host }) => {
   if (host === Office.HostType.PowerPoint) {
     location.replace("pptpane.html");
@@ -1324,6 +1349,11 @@ Office.onReady(async ({ host }) => {
   registerCommands();
   syncAutocolorOnEdit();
   void adoptWorkbookBrand();
+
+  // Before the Links tab, whose own boot restores the linked-cell highlight:
+  // the two snapshots cover overlapping cells, so the order they go back in
+  // decides whose paint the modeller is left with.
+  await restoreOverlayFills();
 
   installLinksTab({
     guard,
@@ -1396,14 +1426,6 @@ Office.onReady(async ({ host }) => {
       selectionTimer = window.setTimeout(() => void refreshSelection(), 150);
     },
   );
-
-  void restorePersistedOverlay()
-    .then((restored) => {
-      if (restored) {
-        toast.show("Audit overlay fills from the last session were restored.");
-      }
-    })
-    .catch(() => undefined);
 
   await refreshSelection();
 });

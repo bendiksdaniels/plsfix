@@ -97,6 +97,33 @@ describe("list unused styles", () => {
       skippedSheets: [],
     });
   });
+
+  // Style properties are the heaviest read of the three workbook scans, and no
+  // single sheet has to be large for the request to be: the running total is
+  // what stops it, and the sheets left out are named.
+  it("stops at the scan cap and names the sheets it did not read", async () => {
+    await boot(["Model", "Data", "Notes"]);
+    helpers.addStyle("Assumption");
+    for (const sheet of ["Model", "Data", "Notes"]) {
+      helpers.seed(`${sheet}!A1`, [
+        ["a", "b"],
+        ["c", "d"],
+      ]);
+    }
+    helpers.setStyle("Notes!A1", "Assumption");
+
+    // Two sheets fit under the total; the third is skipped, so the style only
+    // it wears reads as unused and the delete has to refuse.
+    expect(await smt.listUnusedStyles(4, 8)).toEqual({
+      unused: ["Assumption"],
+      total: 2,
+      skippedSheets: ["Notes"],
+    });
+    expect(
+      await rejects(() => smt.deleteUnusedStyles(["Assumption"], 4, 8)),
+    ).toBe("styles: some sheets were too large to scan");
+    expect(workbook.styles).toHaveLength(2);
+  });
 });
 
 describe("delete unused styles", () => {
