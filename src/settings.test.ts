@@ -106,8 +106,8 @@ describe("palette import and export", () => {
 
   it("keeps palettes stored before the external and partial colors existed", () => {
     const stored = JSON.stringify({
-      primary: "#22313F",
-      accent: "#1B998B",
+      primary: "#14213D",
+      accent: "#2EC4B6",
       input: "#0057B8",
       formula: "#1F1D1B",
       link: "#17823B",

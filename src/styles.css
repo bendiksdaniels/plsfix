@@ -1,14 +1,14 @@
 :root {
-  color: #22313f;
+  color: #14213d;
   background: #eef2f5;
   font-family: "Aptos", "Segoe UI", system-ui, sans-serif;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
-  --ink: #22313f;
+  --ink: #14213d;
   --muted: #6b7580;
   --paper: #fbfcfd;
   --line: #d8e0e6;
-  --accent: #1b998b;
+  --accent: #2ec4b6;
   --green: #2f6b4f;
   --red: #a33f32;
 }
@@ -498,9 +498,9 @@ kbd {
   font-variant-numeric: tabular-nums;
 }
 .pv-title td {
-  border-color: var(--pv-title-fill, #22313f);
+  border-color: var(--pv-title-fill, #14213d);
   color: var(--pv-title-text, #ffffff);
-  background: var(--pv-title-fill, #22313f);
+  background: var(--pv-title-fill, #14213d);
   font-size: 12px;
   font-weight: 700;
 }

@@ -749,7 +749,7 @@ function wireBrand(): void {
     hex?.addEventListener("change", () => {
       const value = normalizeHex(hex.value);
       if (!value) {
-        toast.show(`"${hex.value}" is not a hex color like #1B998B.`, "error");
+        toast.show(`"${hex.value}" is not a hex color like #2EC4B6.`, "error");
         renderBrand();
         return;
       }

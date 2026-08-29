@@ -9,7 +9,7 @@ use crate::layout::{
     PNL_SHEET, TITLE_ROW,
 };
 use crate::pen::Pen;
-use crate::style::{Styles, TEAL, SLATE, EUR_K};
+use crate::style::{Styles, TEAL, NAVY, EUR_K};
 use crate::tally::Tally;
 
 pub const NAME: &str = "Bridge";
@@ -117,7 +117,7 @@ fn margin_chart() -> Chart {
         .add_series()
         .set_categories((PNL_SHEET, HEADER_ROW, FIRST_YEAR_COL, HEADER_ROW, last_year_col()))
         .set_values((PNL_SHEET, EBITDA_MARGIN, FIRST_YEAR_COL, EBITDA_MARGIN, last_year_col()))
-        .set_format(ChartLine::new().set_color(SLATE).set_width(LINE_WIDTH));
+        .set_format(ChartLine::new().set_color(NAVY).set_width(LINE_WIDTH));
     chart.y_axis().set_num_format("0%");
     chart.set_width(CHART_WIDTH).set_height(CHART_HEIGHT);
     chart
