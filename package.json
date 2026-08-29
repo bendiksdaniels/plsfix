@@ -36,8 +36,11 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "check": "npm run typecheck && npm run lint && npm run format:check && npm test && npm run test:server && npm run manifest:check && npm run validate && npm run functions:check && npm run version:check",
-    "ux:check": "node scripts/ux-check.mjs"
+    "check": "npm run typecheck && npm run lint && npm run format:check && npm test && npm run test:server && npm run test:demo && npm run manifest:check && npm run validate && npm run functions:check && npm run version:check",
+    "ux:check": "node scripts/ux-check.mjs",
+    "demo": "sh scripts/demo-open.sh",
+    "demo:build": "cargo run --quiet --manifest-path demo/Cargo.toml",
+    "test:demo": "cargo test --manifest-path demo/Cargo.toml"
   },
   "dependencies": {
     "office-js": "0.1.0"

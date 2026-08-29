@@ -11,3 +11,7 @@ target-linux/
 .superpowers/
 data/
 public/functions.js
+
+# demo workbook generator
+demo/target/
+demo/out/

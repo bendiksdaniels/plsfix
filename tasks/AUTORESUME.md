@@ -1,5 +1,19 @@
 # AUTORESUME - Model Tools (v2.1.20 LIVE 2026-08-29)
 
+## 29.08 evening: demo on the Mac (uncommitted), web pass pending
+
+- Daniel: "launch it now and create a demo where I could play around with it". Done on the Mac:
+  `demo/` (Rust, rust_xlsxwriter) builds `demo/out/Demo Model.xlsx` (8 sheets, 435 cells,
+  reconciled by `demo/tests/workbook.rs`); `npm run demo` = build + prod manifest into both wef
+  folders + open Excel on the workbook + PowerPoint on a new deck. `npm run check` green with
+  `test:demo` added. Excel had the OLD 1.0.0.0 manifest until now; both wef files are v2.1.20.
+  Nothing committed yet (Daniel commits on request): `git status` shows demo/, scripts/demo-open.sh,
+  package.json, .gitignore, CLAUDE.md.
+- No desktop control: Daniel will not grant computer-use (macOS perms), so the ribbon on his Mac is
+  unverified by me; the "Start here" sheet is his checklist. Verification route instead: Office for
+  the web in a CDP Chrome (`scratchpad/driver/drive.mjs`, port 9222, scratch profile) with the
+  manifest sideloaded by upload; blocked on Daniel signing in to Microsoft in that window.
+
 ## State
 
 v2.1.20 is deployed at dbautomatizacijas.com/modelis/ (`/version` -> 2.1.20): Excel pane with the

@@ -1,0 +1,12 @@
+[package]
+name = "smt-demo"
+version = "0.1.0"
+edition = "2021"
+publish = false
+description = "Builds the play-around workbook for Model Tools"
+
+[dependencies]
+rust_xlsxwriter = "0.93"
+
+[dev-dependencies]
+zip = { version = "7.2", default-features = false, features = ["deflate"] }
