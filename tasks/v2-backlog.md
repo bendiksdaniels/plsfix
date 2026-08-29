@@ -55,4 +55,5 @@ each item. Stop when Daniel intervenes or the list is empty.
       test file under 400 lines.
 - [x] C7 Docs: `docs/FEATURES.md` status column refreshed from what shipped (ROADMAP.md stays
       Daniel's; deltas listed for sign-off).
+- [x] Auto-push on edit (spec v2.1 flag; done v2.1.10).
 - Milestone after every 3 merged items: deploy + tag + AUTORESUME refresh.
