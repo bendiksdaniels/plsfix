@@ -9,6 +9,7 @@ import {
   hostSupports,
   requireEmptyBlock,
   selectedSingleRange,
+  SHEET_COLUMNS,
   styleChartShell,
 } from "./internal";
 import { captureUndo } from "./undo";
@@ -25,6 +26,9 @@ const TORNADO_TITLE = "Sensitivity";
 const TORNADO_HEADERS = ["Driver", "Low", "High"];
 const TORNADO_SHAPE_ERROR =
   "tornado: need 3 columns (label, low, high) and at least 2 rows";
+// Bar overlap and gap width arrived in ExcelApi 1.8; without them the tornado
+// is drawn as a plain clustered bar chart, which is worth saying out loud.
+const BASIC_BARS_NOTE = "; plain bars on this build";
 
 function isFiniteNumber(value: CellValue | undefined): value is number {
   return typeof value === "number" && Number.isFinite(value);
@@ -113,6 +117,12 @@ export async function insertTornado(): Promise<string> {
     if (range.rowCount > TORNADO_ROW_CAP) {
       throw new Error(`tornado: supports up to ${TORNADO_ROW_CAP} drivers`);
     }
+    if (
+      range.columnIndex + range.columnCount + TORNADO_COLUMNS >
+      SHEET_COLUMNS
+    ) {
+      throw new Error("tornado: no room to the right of the selection");
+    }
 
     const drivers = readDrivers(range.values as CellValue[][]);
     const { heading, base } = await readTornadoHeader(context, sheet, range);
@@ -151,7 +161,10 @@ export async function insertTornado(): Promise<string> {
     await context.sync();
 
     const count = series.labels.length;
-    const note = placed ? "" : UNPLACED_NOTE;
-    return `Tornado added: ${count} drivers, base ${formatChartAmount(series.base)}${note}`;
+    const notes = [
+      placed ? "" : UNPLACED_NOTE,
+      hostSupports("1.8") ? "" : BASIC_BARS_NOTE,
+    ].join("");
+    return `Tornado added: ${count} drivers, base ${formatChartAmount(series.base)}${notes}`;
   });
 }

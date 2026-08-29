@@ -1,5 +1,22 @@
 // Chart maths kept out of the Office.js layer so it is testable on its own.
 
+import { type CellValue } from "./model";
+
+// Where a series really starts and ends. A modeller selects the whole row a
+// growth line sits on, blank cells at its ends included; those state nothing, so
+// they are not periods. Null when the line holds nothing at all.
+export function seriesSpan(
+  cells: CellValue[],
+): { first: number; last: number } | null {
+  const blank = (value: CellValue | undefined): boolean =>
+    value === undefined || value === null || value === "";
+  let first = 0;
+  let last = cells.length - 1;
+  while (first <= last && blank(cells[first])) first += 1;
+  while (last >= first && blank(cells[last])) last -= 1;
+  return first > last ? null : { first, last };
+}
+
 export interface BridgeSeries {
   base: number[];
   rise: number[];

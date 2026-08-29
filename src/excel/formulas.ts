@@ -14,6 +14,7 @@ import {
 } from "./internal";
 import { parseAddress } from "./shared";
 import { captureUndo, captureUndoAreas } from "./undo";
+import { seriesSpan } from "../chartmath";
 import { type CellValue, scaleCells } from "../model";
 import {
   absoluteRef,
@@ -54,13 +55,42 @@ async function editAreas(
   });
 }
 
+// The two lines beside the origin, each read away from it: the data in them is
+// what sizes an automatic fill.
+function neighbourLines(
+  sheet: Excel.Worksheet,
+  rowIndex: number,
+  columnIndex: number,
+  down: boolean,
+): Excel.Range[] {
+  const span = Math.min(
+    FILL_SCAN_LIMIT,
+    down ? SHEET_ROWS - rowIndex : SHEET_COLUMNS - columnIndex,
+  );
+  return (
+    down ? [columnIndex - 1, columnIndex + 1] : [rowIndex - 1, rowIndex + 1]
+  )
+    .filter(
+      (index) => index >= 0 && index < (down ? SHEET_COLUMNS : SHEET_ROWS),
+    )
+    .map((index) =>
+      down
+        ? sheet.getRangeByIndexes(rowIndex, index, span, 1)
+        : sheet.getRangeByIndexes(index, columnIndex, 1, span),
+    );
+}
+
 // Macabacus-style fast fill: the data beside the origin decides how far the
-// formula travels, so nobody has to select the block first.
+// formula travels, so nobody has to select the block first. A block with
+// nothing beside it falls back to how far the selection itself reaches, which
+// is what selecting the block said in the first place.
 export async function fastFillAuto(direction: "right" | "down"): Promise<void> {
   await Excel.run(async (context) => {
+    const selection = await selectedSingleRange(context, "Fill");
     const cell = context.workbook.getActiveCell();
     const sheet = cell.worksheet;
     cell.load("rowIndex,columnIndex,formulas");
+    selection.load("rowCount,columnCount");
     await context.sync();
 
     const formula = (cell.formulas as CellValue[][])[0]?.[0] ?? null;
@@ -68,33 +98,22 @@ export async function fastFillAuto(direction: "right" | "down"): Promise<void> {
       throw new Error("The active cell must contain a formula.");
     }
 
-    const { rowIndex, columnIndex } = cell;
     const down = direction === "down";
-    const span = Math.min(
-      FILL_SCAN_LIMIT,
-      down ? SHEET_ROWS - rowIndex : SHEET_COLUMNS - columnIndex,
-    );
-    const lines = (
-      down ? [columnIndex - 1, columnIndex + 1] : [rowIndex - 1, rowIndex + 1]
-    )
-      .filter(
-        (index) => index >= 0 && index < (down ? SHEET_COLUMNS : SHEET_ROWS),
-      )
-      .map((index) =>
-        down
-          ? sheet.getRangeByIndexes(rowIndex, index, span, 1)
-          : sheet.getRangeByIndexes(index, columnIndex, 1, span),
-      );
+    const lines = neighbourLines(sheet, cell.rowIndex, cell.columnIndex, down);
     for (const line of lines) line.load("values");
     await context.sync();
 
-    const extent = detectFillExtent(
+    const neighbours = detectFillExtent(
       lines.map((line) => {
         const values = line.values as CellValue[][];
         return down ? values.map((row) => row[0] ?? null) : (values[0] ?? []);
       }),
     );
-    if (extent === 0) throw new Error("No neighbor data to size the fill.");
+    const own = down ? selection.rowCount : selection.columnCount;
+    if (neighbours === 0 && own < 2) {
+      throw new Error("No neighbor data to size the fill.");
+    }
+    const extent = neighbours > 0 ? neighbours : own;
 
     const destination = down
       ? cell.getResizedRange(extent - 1, 0)
@@ -136,25 +155,32 @@ export async function applyDecimalStep(delta: 1 | -1): Promise<void> {
 
 export async function insertCagr(): Promise<void> {
   await Excel.run(async (context) => {
-    const range = context.workbook.getSelectedRange();
-    range.load("rowCount,columnCount");
+    const range = await selectedSingleRange(context, "CAGR");
+    range.load("rowCount,columnCount,values");
     await context.sync();
 
     const { rowCount, columnCount } = range;
-    const periods = (rowCount === 1 ? columnCount : rowCount) - 1;
-    if ((rowCount !== 1 && columnCount !== 1) || periods < 1) {
+    const acrossRow = rowCount === 1;
+    // Blank cells at the ends of the line state no period; the series is
+    // whatever sits between the first and the last cell that holds something.
+    const span = seriesSpan((range.values as CellValue[][]).flat());
+    const periods = span ? span.last - span.first : 0;
+    if ((!acrossRow && columnCount !== 1) || !span || periods < 1) {
       throw new Error("Select one row or column with at least two periods.");
     }
 
-    const first = range.getCell(0, 0);
-    const last = range.getCell(rowCount - 1, columnCount - 1);
+    const at = (index: number): Excel.Range =>
+      acrossRow ? range.getCell(0, index) : range.getCell(index, 0);
+    const first = at(span.first);
+    const last = at(span.last);
     first.load("address");
     last.load("address");
     await context.sync();
 
     // The result lands just past the series, where a growth row usually sits.
-    const destination =
-      rowCount === 1 ? last.getOffsetRange(0, 1) : last.getOffsetRange(1, 0);
+    const destination = acrossRow
+      ? last.getOffsetRange(0, 1)
+      : last.getOffsetRange(1, 0);
     await captureUndo(context, destination);
 
     destination.numberFormat = [[numberFormat("percent")]];
@@ -173,6 +199,10 @@ export async function insertCagr(): Promise<void> {
 
 const ROUNDING_SHAPE_ERROR =
   "Consistent rounding: select one row or column with at least two numbers.";
+// A block has no single order to allocate along, so it is refused by name
+// rather than under the message a one-cell selection gets.
+const ROUNDING_BLOCK_ERROR =
+  "Consistent rounding: select a single row or a single column, not a block.";
 
 // Every cell of the group carries the whole group as its first argument, so a
 // change anywhere in it recalculates all of them; the position is a literal,
@@ -209,9 +239,10 @@ export async function insertConsistentRounding(): Promise<string> {
     const { rowCount, columnCount } = range;
     const acrossRow = rowCount === 1;
     const count = acrossRow ? columnCount : rowCount;
-    if ((!acrossRow && columnCount !== 1) || count < 2) {
-      throw new Error(ROUNDING_SHAPE_ERROR);
+    if (rowCount > 1 && columnCount > 1) {
+      throw new Error(ROUNDING_BLOCK_ERROR);
     }
+    if (count < 2) throw new Error(ROUNDING_SHAPE_ERROR);
     if (count > ROUNDING_CELL_CAP) {
       throw new Error(
         `Consistent rounding groups up to ${ROUNDING_CELL_CAP} cells at once.`,
