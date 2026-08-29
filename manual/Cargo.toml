@@ -1,0 +1,13 @@
+[package]
+name = "manual"
+version = "0.1.0"
+edition = "2024"
+description = "Generates the Latvian pls,fix user manual as a Word document."
+
+[dependencies]
+docx-rs = "0.4.22"
+serde_json = "1.0.151"
+zip = { version = "8", default-features = false, features = ["deflate"] }
+
+[dev-dependencies]
+zip = { version = "8", default-features = false, features = ["deflate"] }
