@@ -1,4 +1,4 @@
-# AUTORESUME - pls,fix (v2.2.1 LIVE 2026-08-29)
+# AUTORESUME - pls,fix (v2.2.2 LIVE 2026-08-29)
 
 ## 29.08 night: rebrand to pls,fix (v2.2.0)
 
