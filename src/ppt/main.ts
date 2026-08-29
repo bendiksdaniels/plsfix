@@ -16,6 +16,7 @@ import {
 } from "../link/workspace";
 import { getElement } from "../ui/dom";
 import { makeGuard } from "../ui/guard";
+import { installHelp } from "../ui/help";
 import { describeError, installErrorReporting } from "../ui/report";
 import { installTabs } from "../ui/tabs";
 import { createToast } from "../ui/toast";
@@ -71,6 +72,8 @@ installErrorReporting(REPORT_CONTEXT, (message, details) =>
   toast.show(message, "error", details),
 );
 installTabs(getElement("tab-bar"));
+// The "?" on every section heading, added once the markup is in place.
+installHelp(document);
 
 // ---------------------------------------------------------------------------
 // Rendering
