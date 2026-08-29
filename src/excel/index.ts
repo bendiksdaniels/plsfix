@@ -3,6 +3,7 @@
 export * from "./shared";
 export * from "./undo";
 export * from "./selection";
+export * from "./paintbrush";
 export * from "./sizes";
 export * from "./formulas";
 export * from "./paste";

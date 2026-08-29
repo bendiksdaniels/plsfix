@@ -14,7 +14,9 @@ import {
   applyRowHeightCycle,
   applyRowStyleCycle,
   applySignFlip,
+  applySlot,
   autocolorSelection,
+  captureSlot,
   clearFormats,
   copySourceLabel,
   deleteBrokenNames,
@@ -57,6 +59,13 @@ import {
 import { RelayClient, relayBaseUrl } from "./link/relay";
 import { officeKeyStore } from "./link/workspace";
 import { installLinksTab } from "./pane/links-tab";
+import {
+  emptySlots,
+  type PaintSlots,
+  parseSlots,
+  serializeSlots,
+  slotLabel,
+} from "./paintbrush";
 import {
   activeTheme,
   type BrandSettings,
@@ -246,9 +255,55 @@ async function toggleAudit(): Promise<string> {
   return auditOn ? "Audit overlay on" : "Audit overlay off";
 }
 
+// ---------------------------------------------------------------------------
+// Paintbrush slots
+// ---------------------------------------------------------------------------
+
+// Three captured formats, kept on the machine like the brand palette: they
+// outlive the pane, and nothing about them is written into the workbook.
+const PAINT_KEY = "smt.paint.v1";
+let paintSlots: PaintSlots = emptySlots();
+
+function loadPaintSlots(): void {
+  let raw: string | null = null;
+  try {
+    raw = localStorage.getItem(PAINT_KEY);
+  } catch {
+    raw = null;
+  }
+  paintSlots = parseSlots(raw);
+}
+
+function renderPaintSlots(): void {
+  paintSlots.forEach((slot, index) => {
+    getElement(`paint-slot-${index + 1}`).textContent = slotLabel(slot);
+  });
+}
+
+async function capturePaintSlot(index: number): Promise<string> {
+  const slot = await captureSlot(index);
+  paintSlots[index - 1] = slot;
+  try {
+    localStorage.setItem(PAINT_KEY, serializeSlots(paintSlots));
+  } catch {
+    // Storage can be unavailable in private webviews; slots stay in memory.
+  }
+  renderPaintSlots();
+  return `Slot ${index}: ${slotLabel(slot)}`;
+}
+
+async function applyPaintSlot(index: number): Promise<string> {
+  await applySlot(index, paintSlots[index - 1] ?? null);
+  return `Painted slot ${index}`;
+}
+
 async function dispatch(action: string): Promise<string> {
   if (action.startsWith("style-")) {
     await applyPreset(action.replace("style-", "") as PresetName);
+  } else if (action.startsWith("paint-capture-")) {
+    return capturePaintSlot(Number(action.replace("paint-capture-", "")));
+  } else if (action.startsWith("paint-apply-")) {
+    return applyPaintSlot(Number(action.replace("paint-apply-", "")));
   } else if (action.startsWith("number-")) {
     await applyNumberFormat(action.replace("number-", "") as NumberFormatName);
   } else if (action.startsWith("cycle-number-")) {
@@ -420,6 +475,12 @@ function registerCommands(): void {
     SMT_CYC_BORDER: applyBorderCycle,
     SMT_CYC_ROWH: applyRowHeightCycle,
     SMT_CYC_COLW: applyColumnWidthCycle,
+    SMT_PAINT_CAP1: () => capturePaintSlot(1),
+    SMT_PAINT_CAP2: () => capturePaintSlot(2),
+    SMT_PAINT_CAP3: () => capturePaintSlot(3),
+    SMT_PAINT_APP1: () => applyPaintSlot(1),
+    SMT_PAINT_APP2: () => applyPaintSlot(2),
+    SMT_PAINT_APP3: () => applyPaintSlot(3),
     SMT_WATERFALL: insertWaterfall,
     SMT_TORNADO: insertTornado,
     SMT_CHARTFMT: formatSelectedChart,
@@ -909,6 +970,7 @@ installErrorReporting(
   (message, details) => toast.show(message, "error", details),
 );
 loadSettings();
+loadPaintSlots();
 installTabs(getElement("tab-bar"));
 getElement<HTMLButtonElement>("tab-workbook").addEventListener(
   "click",
@@ -918,6 +980,7 @@ getElement<HTMLButtonElement>("tab-workbook").addEventListener(
 );
 wireBrand();
 renderBrand();
+renderPaintSlots();
 renderAuditState();
 renderActionState();
 renderNames(false);
