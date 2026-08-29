@@ -26,6 +26,7 @@ if (!done) {
 }
 fs.writeFileSync(file, lines.join("\n"));
 '
+npm install --no-audit --no-fund >/dev/null
 cargo check --manifest-path server/Cargo.toml -q
 npm run manifest:build >/dev/null
 npm run version:check
