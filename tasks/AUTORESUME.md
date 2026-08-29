@@ -1,9 +1,9 @@
-# AUTORESUME - pls,fix (v2.1.22 LIVE 2026-08-29)
+# AUTORESUME - pls,fix (v2.2.1 LIVE 2026-08-29)
 
 ## 29.08 night: rebrand to pls,fix (v2.2.0)
 
 - Daniel: drop the old brand, make it his own, name with an IB joke: **pls,fix** (the comma is the
-  joke). Colours Slate & Teal (`#22313F` / `#1B998B`), brand mark a comma, new icons. Custom
+  joke). Colours navy & mint (`#14213D` / `#2EC4B6`, Daniel's tweak of the first slate/teal pick), brand mark a comma, new icons. Custom
   functions `=PLSFIX.ROUND` / `=PLSFIX.ROUNDSUM`; tags `PLSFIX_LINK` / `PLSFIX_KEY`, hidden names
   `PLSFIX_LINK_<id8>`, settings keys `PLSFIX_*` / `plsfix.*`, relay header `X-PLSFIX-Link-Id`,
   HKDF labels `plsfix-*` (no shim: nothing was in production). PowerPoint ribbon group is
