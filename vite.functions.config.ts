@@ -1,5 +1,3 @@
-import { defineConfig } from "vite";
-
 // Second build pass, run straight after the pane build by npm run build.
 // Office injects functions.js into the shared runtime page as a plain script,
 // so it cannot be an ES module and it cannot share a chunk with the panes:
@@ -7,6 +5,8 @@ import { defineConfig } from "vite";
 // which is the URL manifest/spec.ts publishes as SMT.Functions.Script.Url.
 // emptyOutDir stays false so this pass adds to the pane build instead of
 // wiping it, and publicDir stays false so public/ is not copied twice.
+import { defineConfig } from "vite";
+
 export default defineConfig({
   publicDir: false,
   build: {

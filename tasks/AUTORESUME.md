@@ -29,9 +29,12 @@ Execution ledgers (git-ignored, rulings + per-task spend): `.superpowers/sdd/*/p
    to another deck; `Range.getImage` orientation + pixel density on Mac; `OfficeRuntime.storage`
    shared across hosts (would make pairing automatic); team PowerPoint builds vs PowerPointApi
    1.8. Findings go to `docs/research/officejs-feasibility.md`.
-3. M365 centralized deployment: upload `manifest.prod.xml` (now two hosts) in the admin
-   center (steps in `tasks/v1-plan.md`); the v1 Excel-only upload never happened, so this is
-   the first upload. JS-only updates afterwards need no admin action.
+3. M365 centralized deployment: upload `manifest.prod.xml` (now two hosts, and since C8 the
+   `CustomFunctions` extension point that publishes `=SMT.ROUND` / `=SMT.ROUNDSUM`) in the
+   admin center (steps in `tasks/v1-plan.md`); the v1 Excel-only upload never happened, so
+   this is the first upload. JS-only updates afterwards need no admin action, except that
+   Office caches `functions.js` / `functions.json` separately: per Microsoft those two can
+   take up to 24 hours to reach users (docs/research/custom-functions.md, section 5).
 4. v1 visual pass in Excel is still unconfirmed (calendar 28.08 19:00).
 
 ## Known limits / deferred (from reviews)
