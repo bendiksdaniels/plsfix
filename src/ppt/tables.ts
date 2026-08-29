@@ -137,8 +137,18 @@ function addTable(
 export function columnWidths(payload: TablePayload, width: number): number[] {
   const total = payload.widths.reduce((sum, one) => sum + one, 0);
   if (total <= 0) return payload.widths.map(() => width / payload.cols);
+  // Whole points only: PowerPoint for the web refuses a fractional width.
+  // The widest column absorbs the rounding remainder, so the columns still
+  // add up to the table and no narrow one is squeezed to nothing.
   const scale = width / total;
-  return payload.widths.map((one) => Math.round(one * scale * 100) / 100);
+  const widths = payload.widths.map((one) =>
+    Math.max(1, Math.round(one * scale)),
+  );
+  const remainder =
+    Math.round(width) - widths.reduce((sum, one) => sum + one, 0);
+  const widest = widths.indexOf(Math.max(...widths));
+  widths[widest] = Math.max(1, (widths[widest] ?? 1) + remainder);
+  return widths;
 }
 
 // Text is written on a repaint only: an insert carries it in `values`, so a
