@@ -69,7 +69,7 @@ each item. Stop when Daniel intervenes or the list is empty.
 - [x] D3 Batched relay fetch: `POST /api/links/fetch` with `[{id, auth, knownRev}]` returning the blobs
       that changed (base64url) in one response (4 MiB total cap, 413 above); client + PowerPoint update
       path use it; per-row fallback to GET stays.
-- [ ] D4 Super Find phase 4: comments (`worksheet.comments`, ExcelApi 1.10, gated) with a "comment" hit kind.
+- [x] D4 Super Find phase 4: comments (`worksheet.comments`, ExcelApi 1.10, gated) with a "comment" hit kind.
 - [ ] D5 Byte-budgeted update batches (flush a repaint batch at 8 MiB of payload).
 - [ ] D6 Second whole-branch review (since v2.1.2) -> one fix wave -> deploy.
 - [ ] D7 Change source / workbook version resolution (M3): PowerPoint "Change source" that re-keys a
