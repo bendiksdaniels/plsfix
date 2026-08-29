@@ -5,6 +5,18 @@
 // mode: whatever the relay defers past its response cap - and a whole batch it
 // refused outright - falls back to the per-row GET this replaced. No Office.js,
 // so the relay is injectable like everything else in this folder.
+//
+// Two ceilings bound an update-all, and they are deliberately not the same one:
+//   - the wire, here: MAX_FETCH_ITEMS (200) queries per request, so a big deck
+//     asks in several; and FETCH_BLOB_CAP (4 MiB) of blobs per answer, which
+//     the relay enforces by calling the overflow "deferred" - those links are
+//     then fetched one GET each below.
+//   - the repaint, in `batching.ts`: REPAINT_BUDGET_BYTES (8 MiB) of payload
+//     per PowerPoint.run, applied by `applyBatch` once everything here has been
+//     opened. Twice the response cap on purpose, so a full batch answer still
+//     repaints in a single round trip.
+// Neither bound counts the other's bytes: the first keeps one HTTP response
+// sane, the second keeps one host request out of the deck's memory.
 
 import { deriveLinkKeys, open, type LinkKeys } from "../link/crypto";
 import { decodePayload } from "../link/model";

@@ -5,9 +5,10 @@
 // semantics are on, so a batch that reads a scalar it never loaded fails here.
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { InboxItem } from "../src/link/model";
+import type { InboxItem, Payload } from "../src/link/model";
 import { FETCH_BLOB_CAP } from "../src/link/relay";
 import { createWorkspace } from "../src/link/workspace";
+import { REPAINT_BUDGET_BYTES } from "../src/ppt/batching";
 import type { FakeRelay } from "./fakerelay";
 import { fakePng } from "./fakepng";
 import {
@@ -17,7 +18,7 @@ import {
   type FakePptShape,
   type FakePresentation,
 } from "./fakeppt";
-import { bootPpt, memoryStore, pushAgain, seedLink } from "./ppt.support";
+import { bootPpt, memoryStore, pushAgain, seedLink, src } from "./ppt.support";
 import type * as LinksModule from "../src/ppt/links";
 
 enableStrictLoadSemantics();
@@ -28,11 +29,19 @@ const PNG = fakePng(800, 400);
 // Padded to about 2.5 MiB sealed: two of these are past the response cap.
 const BIG = fakePng(800, 400, 2_000_000);
 
+// fakePng's header, in bytes: base64 spends four characters on every three.
+const HEADER_BYTES = (fakePng(1, 1).length / 4) * 3;
+// A full-slide render: exactly 5 MiB of base64, so three of them are three
+// repaint batches and never one.
+const HUGE_PNG_BYTES = 5 * 1024 * 1024;
+const HUGE_PADDING = (HUGE_PNG_BYTES / 4) * 3 - HEADER_BYTES;
+
 // One batched load for the slides, one for every slide's shapes, one per level
 // of grouping and one for every shape's tags: four, whatever N is.
 const SCAN_SYNC_BUDGET = 4;
-// Every in-place repaint of an update-all travels in one batch.
-const UPDATE_SYNC_BUDGET = 3;
+// Sixty small pictures are far inside the repaint budget, so every in-place
+// repaint of this update-all travels in one batch and one sync.
+const UPDATE_SYNC_BUDGET = 1;
 
 let links: typeof LinksModule;
 let presentation: FakePresentation;
@@ -72,6 +81,23 @@ async function seedDeck(): Promise<InboxItem[]> {
 
 function trips(syncs: number, ms: number): string {
   return `${String(syncs)} ${syncs === 1 ? "sync" : "syncs"} in ${ms.toFixed(0)} ms`;
+}
+
+// A repaint payload built here instead of pushed through the relay: what is
+// under test is how many host batches the bytes buy, not another round of
+// sealing and opening.
+function hugePayload(png: string): Payload {
+  return {
+    v: 1,
+    kind: "picture",
+    mime: "image/png",
+    width: 800,
+    height: 400,
+    png,
+    src,
+    pushedAt: new Date().toISOString(),
+    hash: "2".repeat(64),
+  };
 }
 
 // The pictures themselves, group or no group: one per slide, in slide order.
@@ -159,6 +185,49 @@ describe("update all on a 60-slide deck", () => {
         .slice(0, 2)
         .map((slide) => slide.shapes[0]!.setImageCalls),
     ).toEqual([2, 2]);
+  });
+
+  // What bounds a repaint batch is bytes, not rows: three full-slide pictures
+  // are past the budget together, so they travel in three host requests
+  // instead of holding 15 MiB in one.
+  it("cuts the repaint into one host batch per 8 MiB of payload", async ({
+    annotate,
+  }) => {
+    const ws = await createWorkspace(memoryStore());
+    for (const slide of presentation.slides) {
+      helpers.selectSlide(slide.id);
+      await links.insertFromInbox(await seedLink(PNG), ws, relay);
+    }
+    const rows = await links.listLinks(relay);
+    const host = await import("../src/ppt/host");
+    const png = fakePng(800, 400, HUGE_PADDING);
+    expect(png.length).toBe(HUGE_PNG_BYTES);
+    expect(rows.length * png.length).toBeGreaterThan(REPAINT_BUDGET_BYTES);
+    const batch = rows.map((row) => ({
+      found: row.found,
+      payload: hugePayload(png),
+      rev: 2,
+    }));
+
+    const failures: unknown[] = [];
+    const from = helpers.syncCount();
+    const start = performance.now();
+    const painted = await links.applyBatch(batch, host, (_found, error) => {
+      failures.push(error);
+    });
+    const syncs = helpers.syncCount() - from;
+    await annotate(
+      `${String(batch.length)} payloads of ` +
+        `${(png.length / 1024 / 1024).toFixed(1)} MiB: ` +
+        trips(syncs, performance.now() - start),
+    );
+
+    expect(failures).toEqual([]);
+    expect(painted).toBe(rows.length);
+    expect(syncs).toBe(rows.length);
+    expect(pictures().map((shape) => shape.setImageCalls)).toEqual(
+      new Array<number>(rows.length).fill(2),
+    );
   });
 
   // The batch is a speed-up, not a new failure mode: a shape the host refuses
