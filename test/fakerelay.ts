@@ -2,11 +2,17 @@ import type { InboxRow, RelayApi, StatusQuery } from "../src/link/relay";
 import { RelayError } from "../src/link/relay";
 import type { RelayStatus } from "../src/link/status";
 
-interface StoredLink {
-  auth: string;
+interface StoredRev {
   rev: number;
-  pushedAt: number;
   blob: Uint8Array;
+}
+
+interface StoredLink extends StoredRev {
+  auth: string;
+  pushedAt: number;
+  // The store keeps two revisions, so the fake keeps the one a push displaced
+  // and nothing older: that is exactly what a revert can still reach.
+  previous?: StoredRev;
 }
 interface StoredInbox {
   ws: string;
@@ -31,7 +37,9 @@ export class FakeRelay implements RelayApi {
     if (current && current.auth !== auth)
       throw new RelayError("auth", "forbidden", 403);
     const rev = (current?.rev ?? 0) + 1;
-    this.links.set(id, { auth, rev, pushedAt: this.now, blob });
+    const link: StoredLink = { auth, rev, pushedAt: this.now, blob };
+    if (current) link.previous = { rev: current.rev, blob: current.blob };
+    this.links.set(id, link);
     return { rev };
   }
   async getLink(
@@ -44,6 +52,21 @@ export class FakeRelay implements RelayApi {
     if (current.auth !== auth) throw new RelayError("auth", "forbidden", 403);
     if (knownRev !== undefined && knownRev === current.rev) return "unchanged";
     return { rev: current.rev, blob: current.blob };
+  }
+  async getLinkRev(
+    id: string,
+    auth: string,
+    rev: number,
+  ): Promise<{ rev: number; blob: Uint8Array }> {
+    const current = this.links.get(id);
+    if (!current) throw new RelayError("missing", "not found", 404);
+    if (current.auth !== auth) throw new RelayError("auth", "forbidden", 403);
+    const held = [current, current.previous].find(
+      (candidate) => candidate?.rev === rev,
+    );
+    // A revision the two-revision rule has dropped reads like an unknown link.
+    if (!held) throw new RelayError("missing", "not found", 404);
+    return { rev: held.rev, blob: held.blob };
   }
   async deleteLink(id: string, auth: string): Promise<void> {
     const current = this.links.get(id);

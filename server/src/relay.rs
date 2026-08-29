@@ -8,7 +8,7 @@ use std::sync::Arc;
 
 use axum::{
     body::Bytes,
-    extract::{DefaultBodyLimit, Path, State},
+    extract::{DefaultBodyLimit, Path, Query, State},
     http::{header, HeaderMap, StatusCode},
     response::{IntoResponse, Response},
     routing::{delete, get, post},
@@ -45,6 +45,7 @@ type Api = State<Arc<AppState>>;
 enum Refused {
     Unauthorized,
     BadId,
+    BadRev,
     BadBody,
     TooManyItems,
     Forbidden,
@@ -57,6 +58,7 @@ impl Refused {
         match self {
             Refused::Unauthorized => (StatusCode::UNAUTHORIZED, "bearer required"),
             Refused::BadId => (StatusCode::BAD_REQUEST, "bad id"),
+            Refused::BadRev => (StatusCode::BAD_REQUEST, "bad rev"),
             Refused::BadBody => (StatusCode::BAD_REQUEST, "bad body"),
             Refused::TooManyItems => (StatusCode::BAD_REQUEST, "too many items"),
             Refused::Forbidden => (StatusCode::FORBIDDEN, "another key owns this"),
@@ -174,12 +176,39 @@ async fn put_link(
     }
 }
 
-async fn get_link(State(state): Api, Path(id): Path<String>, headers: HeaderMap) -> Reply {
+/// `?rev=<n>` on the GET, which is how "Revert last update" asks for the
+/// revision below the head. Absent means "the newest one" as before.
+#[derive(Deserialize)]
+struct RevQuery {
+    rev: Option<String>,
+}
+
+// Parsed here rather than by serde, so a rev that is not a positive integer
+// answers with the JSON error shape every other refusal uses - and never
+// falls back to the head, which would silently repaint what the user is
+// trying to undo.
+fn wanted_rev(query: &RevQuery) -> Result<Option<i64>, Refused> {
+    let Some(text) = query.rev.as_deref() else {
+        return Ok(None);
+    };
+    match text.parse::<i64>() {
+        Ok(rev) if rev >= 1 => Ok(Some(rev)),
+        _ => Err(Refused::BadRev),
+    }
+}
+
+async fn get_link(
+    State(state): Api,
+    Path(id): Path<String>,
+    Query(query): Query<RevQuery>,
+    headers: HeaderMap,
+) -> Reply {
     let auth = link_auth(&headers, &id)?;
-    let found = state
-        .store
-        .get_link(&id, &auth, now())
-        .map_err(|error| failed("get_link", &id, &error))?;
+    let found = match wanted_rev(&query)? {
+        Some(rev) => state.store.get_link_rev(&id, &auth, rev, now()),
+        None => state.store.get_link(&id, &auth, now()),
+    }
+    .map_err(|error| failed("get_link", &id, &error))?;
     match found {
         Get::Found(found) => Ok(link_response(&headers, found)),
         Get::Forbidden => Err(Refused::Forbidden),

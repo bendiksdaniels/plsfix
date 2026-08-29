@@ -123,6 +123,36 @@ describe("RelayClient", () => {
       blob: new Uint8Array([9]),
     });
   });
+  it("GET ?rev names one revision and never sends If-None-Match", async () => {
+    const { relay, calls } = client(
+      () =>
+        new Response(new Uint8Array([4, 2]), {
+          status: 200,
+          headers: { ETag: '"1"' },
+        }),
+    );
+    const result = await relay.getLinkRev("a".repeat(32), "AUTH", 1);
+    expect(result).toEqual({ rev: 1, blob: new Uint8Array([4, 2]) });
+    expect(calls[0]!.url).toBe(
+      `https://x.test/modelis/api/links/${"a".repeat(32)}?rev=1`,
+    );
+    // A named revision is the one thing a 304 must never answer: the pane is
+    // asking for a picture it does not hold.
+    expect(new Headers(calls[0]!.init.headers).get("if-none-match")).toBe(null);
+  });
+  it("GET ?rev maps a dropped revision to missing", async () => {
+    const { relay } = client(() => new Response("", { status: 404 }));
+    const error = await rejection(relay.getLinkRev("a".repeat(32), "AUTH", 1));
+    expect(isRelayError(error) && error.kind).toBe("missing");
+  });
+  it("GET ?rev refuses an ETag that is not the revision asked for", async () => {
+    const { relay } = client(
+      () => new Response(new Uint8Array([9]), { status: 200, headers: {} }),
+    );
+    const error = await rejection(relay.getLinkRev("a".repeat(32), "AUTH", 2));
+    expect(isRelayError(error) && error.kind).toBe("server");
+    expect(String(error)).toContain("bad ETag");
+  });
   it("GET refuses a missing or unparsable ETag instead of reading rev 0", async () => {
     const headerSets: Record<string, string>[] = [
       {},

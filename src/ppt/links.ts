@@ -176,39 +176,42 @@ export async function updateLinks(
       countFailure(summary, row.found, error);
     }
   }
-  await applyRefreshes(summary, batch, host);
+  summary.updated += await applyBatch(batch, host, (found, error) => {
+    countFailure(summary, found, error);
+  });
   return summary;
 }
 
-// Every picture the relay had something new for, repainted in one round trip.
-// The batch is a speed-up, never a new failure mode: a host that refuses one
-// shape rejects the whole run, so the rows go through one at a time and only
-// the bad one is counted as a failure. Replaying a row the batch had already
-// applied costs nothing - a repaint writes the same picture, tag and height.
-async function applyRefreshes(
-  summary: UpdateSummary,
+// Every picture a run has something to paint, applied in one round trip, and
+// the count of the ones that landed. The batch is a speed-up, never a new
+// failure mode: a host that refuses one shape rejects the whole run, so the
+// rows go through one at a time and only the bad one is reported. Replaying a
+// row the batch had already applied costs nothing - a repaint writes the same
+// picture, tag and height. Shared with revert.ts, which paints an older
+// revision through exactly the same path.
+export async function applyBatch(
   batch: RefreshRequest[],
   host: PptHost,
-): Promise<void> {
-  if (batch.length === 0) return;
+  onFailure: (found: FoundLink, error: unknown) => void,
+): Promise<number> {
+  if (batch.length === 0) return 0;
   if (host.refreshLinks) {
     try {
-      if (await host.refreshLinks(batch)) {
-        summary.updated += batch.length;
-        return;
-      }
+      if (await host.refreshLinks(batch)) return batch.length;
     } catch {
       // One shape in the batch; the rows below name it.
     }
   }
+  let painted = 0;
   for (const entry of batch) {
     try {
       await host.refreshLink(entry.found, entry.payload, entry.rev);
-      summary.updated += 1;
+      painted += 1;
     } catch (error) {
-      countFailure(summary, entry.found, error);
+      onFailure(entry.found, error);
     }
   }
+  return painted;
 }
 
 function countSkipped(summary: UpdateSummary, status: LinkStatus): void {
@@ -250,7 +253,7 @@ function countFailure(
 
 // Every failure names its link. The host already stages its own errors as
 // "refresh <label>: ...", so the label is not stuttered back onto those.
-function failureLine(found: FoundLink, error: unknown): string {
+export function failureLine(found: FoundLink, error: unknown): string {
   const label = sourceLabel(found.tag.src, found.tag.kind);
   const message = error instanceof Error ? error.message : String(error);
   return message.includes(label) ? message : `${label}: ${message}`;

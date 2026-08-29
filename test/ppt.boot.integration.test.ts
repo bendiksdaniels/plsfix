@@ -84,4 +84,15 @@ describe("a host the pane accepted", () => {
     await settle();
     expect(toastText()).toBe("No linked objects in this deck.");
   });
+
+  // "Revert last update" acts on ticks, so with none it must say which ticks
+  // it wants rather than reverting the whole deck by surprise.
+  it("asks for ticks before reverting anything", async () => {
+    await boot(true);
+
+    click("revert-selected");
+    await settle();
+
+    expect(toastText()).toBe("Tick the rows to revert");
+  });
 });

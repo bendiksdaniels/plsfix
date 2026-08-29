@@ -145,8 +145,9 @@ Export a range or a chart from Excel and keep it fresh in a deck without re-past
   *Insert* puts a picture on the selected slide with a tracker in the shape's tags. The
   **Links** list shows every tracked picture in the deck (slide, source, status) and
   *Update selected / slide / all* repaints them in place: position and size are kept, only
-  the height follows when the picture's aspect ratio changed. *Break link* removes the
-  tracker and leaves the picture.
+  the height follows when the picture's aspect ratio changed. *Revert last update* puts the
+  ticked rows back to the previous render, the one revision the relay still holds. *Break
+  link* removes the tracker and leaves the picture.
 - The relay stores only encrypted blobs for 7 days; anyone holding the deck can pull a
   linked picture for that long, so **break links before sending a deck outside**.
 
