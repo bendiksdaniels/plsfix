@@ -203,7 +203,7 @@ async function updateSlide(): Promise<string> {
 async function revertSelected(): Promise<string> {
   const subset = requireSelection(
     selectedRows(rows, selected),
-    "Tick the rows to revert",
+    "Tick the rows to revert.",
   );
   const summary = await revertLinks(subset, relay);
   stagedDetails =

@@ -361,8 +361,10 @@ describe("border cycle", () => {
 describe("size cycles", () => {
   const { rowHeight, columnWidth } = buildSizeCycles();
 
-  // Points, the unit Office.js takes: 15 pt and 64 pt are Excel's own defaults.
-  it("starts both ladders on the Excel default", () => {
+  // Points, the unit Office.js takes. 15 pt is Excel's default row height; a
+  // default column is 48 pt, which is the ladder's last rung, so a column steps
+  // 48 -> 64 and wraps home.
+  it("starts the row ladder on the Excel default", () => {
     expect(rowHeight).toEqual([15, 18, 21, 24, 30]);
     expect(columnWidth).toEqual([64, 80, 96, 120, 48]);
   });

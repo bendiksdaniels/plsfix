@@ -92,7 +92,9 @@ branded equivalent. Users can remap under Office add-in shortcut preferences.
 - Tracing and auditing work within the open workbook; Office.js cannot cross into
   other files.
 
-The task pane runs locally. It has no backend and sends no workbook data anywhere.
+The task pane runs locally and reads the workbook in the Excel process. The only data that
+leaves the machine is a linked object's rendered picture, encrypted in the pane before it is
+uploaded (see *Linked objects in PowerPoint*); a workbook with no links sends nothing anywhere.
 
 ## Run locally
 
