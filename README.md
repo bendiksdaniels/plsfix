@@ -110,6 +110,7 @@ For browser-only UI development, use `npm run dev` and open `https://localhost:3
 npm test
 npm run build
 npm run validate
+npm run ux:check  # needs `npm run dev` running first: both panes at 320/360/420px, screenshots + defect list
 ```
 
 ## Deploy
