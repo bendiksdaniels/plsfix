@@ -7,6 +7,7 @@ import { FillStore, fillGrid, requestFills } from "./fill-store";
 import {
   applyFillKey,
   BASE_WHITE,
+  selectedSingleRange,
   SELECTION_CELL_CAP,
   writeRuns,
 } from "./internal";
@@ -99,7 +100,7 @@ export async function toggleAuditOverlay(): Promise<boolean> {
   overlay.requireSoleOwner("audit overlay");
   overlayNote = null;
   return Excel.run(async (context) => {
-    const selected = context.workbook.getSelectedRange();
+    const selected = await selectedSingleRange(context, OVERLAY_STAGE);
     selected.load("rowCount,columnCount");
     await context.sync();
 

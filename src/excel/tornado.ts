@@ -163,7 +163,7 @@ export async function insertTornado(): Promise<string> {
     const count = series.labels.length;
     const notes = [
       placed ? "" : UNPLACED_NOTE,
-      hostSupports("1.8") ? "" : BASIC_BARS_NOTE,
+      hostSupports("1.7") && hostSupports("1.8") ? "" : BASIC_BARS_NOTE,
     ].join("");
     return `Tornado added: ${count} drivers, base ${formatChartAmount(series.base)}${notes}`;
   });

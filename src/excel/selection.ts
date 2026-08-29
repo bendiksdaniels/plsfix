@@ -14,36 +14,44 @@ import { captureUndoAreas } from "./undo";
 import { analyzeGrid, type CellValue, makeFormatGrid } from "../model";
 import { activeTheme, getActiveSettings } from "../settings";
 
+// Every area's metrics added together: a ctrl-clicked selection is one card in
+// the pane, not two, and a passive click must never be an error.
+function totals(areas: Excel.Range[]): Omit<SelectionSummary, "address"> {
+  return areas.reduce(
+    (sum, area) => {
+      const part = analyzeGrid(
+        area.formulas as CellValue[][],
+        area.values as CellValue[][],
+      );
+      return {
+        cells: sum.cells + part.cells,
+        formulas: sum.formulas + part.formulas,
+        errors: sum.errors + part.errors,
+        blanks: sum.blanks + part.blanks,
+      };
+    },
+    { cells: 0, formulas: 0, errors: 0, blanks: 0 },
+  );
+}
+
 export async function inspectSelection(): Promise<SelectionSummary> {
   return Excel.run(async (context) => {
-    const range = context.workbook.getSelectedRange();
-    range.load("address,cellCount");
+    const areas = await selectedAreas(context, "Selection");
+    for (const area of areas) area.load("address,cellCount");
     await context.sync();
 
+    const address = areas.map((area) => area.address).join(", ");
+    const cells = areas.reduce((total, area) => total + area.cellCount, 0);
     // Over the cap the pane shows the address and count only (metrics as "—")
     // instead of asking the host for two full-column grids on a passive click.
-    if (range.cellCount > SELECTION_CELL_CAP) {
-      return {
-        address: range.address,
-        cells: range.cellCount,
-        formulas: -1,
-        errors: -1,
-        blanks: -1,
-      };
+    if (cells > SELECTION_CELL_CAP) {
+      return { address, cells, formulas: -1, errors: -1, blanks: -1 };
     }
 
-    range.load("formulas,values");
+    for (const area of areas) area.load("formulas,values");
     await context.sync();
 
-    const summary = analyzeGrid(
-      range.formulas as CellValue[][],
-      range.values as CellValue[][],
-    );
-
-    return {
-      address: range.address,
-      ...summary,
-    };
+    return { address, ...totals(areas) };
   });
 }
 

@@ -194,6 +194,64 @@ describe("editing every area", () => {
   });
 });
 
+describe("reading and colouring every area", () => {
+  it("adds the areas up in one selection card", async () => {
+    helpers.seed("Model!A1", [[1], [{ formula: "=A1*2", value: 2 }], [""]]);
+    helpers.seed("Model!C1", [["#REF!"], [10], [20]]);
+    helpers.selectAreas(["Model!A1:A3", "Model!C1:C3"]);
+
+    expect(await smt.inspectSelection()).toEqual({
+      address: "Model!A1:A3, Model!C1:C3",
+      cells: 6,
+      formulas: 1,
+      errors: 1,
+      blanks: 1,
+    });
+  });
+
+  it("colours both blocks and counts them together", async () => {
+    helpers.seed("Model!A1", [[1], [{ formula: "=A1*2", value: 2 }]]);
+    helpers.seed("Model!C1", [[10], [{ formula: "=Data!B1", value: 4 }]]);
+    helpers.selectAreas(["Model!A1:A2", "Model!C1:C2"]);
+
+    expect(await smt.autocolorSelection()).toBe("Autocolor: 4 cells");
+    expect(helpers.font("Model!C1").color).toBe(theme.inputFont);
+    expect(helpers.font("Model!C2").color).toBe(theme.linkFont);
+  });
+});
+
+describe("the flows that still need one block", () => {
+  it("name themselves when a ctrl-clicked selection reaches them", async () => {
+    selectTwoBlocks();
+
+    expect(await rejects(() => smt.insertWaterfall())).toBe(
+      "Waterfall: select a single range",
+    );
+    expect(await rejects(() => smt.addCagrLabel())).toBe(
+      "Chart label: select a single range",
+    );
+    expect(await rejects(() => smt.insertCagr())).toBe(
+      "CAGR: select a single range",
+    );
+    expect(await rejects(() => smt.toggleAuditOverlay())).toBe(
+      "Audit overlay: select a single range",
+    );
+    expect(await rejects(() => smt.fastFillAuto("right"))).toBe(
+      "Fill: select a single range",
+    );
+  });
+
+  it("says the same on a host without RangeAreas", async () => {
+    await boot();
+    helpers.setSupported((_set, version) => version !== "1.9");
+    selectTwoBlocks();
+
+    expect(await rejects(() => smt.insertTornado())).toBe(
+      "tornado: select a single range",
+    );
+  });
+});
+
 describe("undo over every area", () => {
   it("names every area and puts them all back", async () => {
     selectTwoBlocks();

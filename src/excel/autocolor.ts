@@ -2,9 +2,10 @@
 // font color accordingly, plus the color-key legend and the opt-in onChanged
 // handler that recolors edited cells live. The handler is off by default.
 
+import { activeArea, selectedAreas } from "./areas";
 import { EDIT_CELL_CAP, SELECTION_CELL_CAP, writeRuns } from "./internal";
 import { paintSync, protectedNote, sheetProtected } from "./protection";
-import { captureUndo } from "./undo";
+import { captureUndo, captureUndoAreas } from "./undo";
 import { type CellClass, classifyCell } from "../classify";
 import { type CellValue } from "../model";
 import {
@@ -59,29 +60,35 @@ const AUTOCOLOR = "Autocolor";
 
 export async function autocolorSelection(): Promise<string> {
   return Excel.run(async (context) => {
-    const range = context.workbook.getSelectedRange();
-    const sheet = range.worksheet;
-    range.load("rowCount,columnCount,formulas,values");
+    const areas = await selectedAreas(context, AUTOCOLOR);
+    for (const area of areas) area.load("rowCount,columnCount,formulas,values");
     await context.sync();
 
-    if (range.rowCount * range.columnCount > SELECTION_CELL_CAP) {
+    const cells = areas.reduce(
+      (total, area) => total + area.rowCount * area.columnCount,
+      0,
+    );
+    if (cells > SELECTION_CELL_CAP) {
       throw new Error("Autocolor supports up to 5,000 selected cells at once.");
     }
     // A protected sheet refuses every one of these writes. Colouring is a
     // reading aid, not an edit worth an error dialog, so it is skipped instead
     // and the undo slot is left holding the previous action.
-    if (await sheetProtected(context, sheet)) return protectedNote(AUTOCOLOR);
-    await captureUndo(context, range);
+    if (await sheetProtected(context, activeArea(areas).worksheet)) {
+      return protectedNote(AUTOCOLOR);
+    }
+    await captureUndoAreas(context, areas);
 
-    colorGrid(
-      range,
-      range.rowCount,
-      range.columnCount,
-      range.formulas as CellValue[][],
-      range.values as CellValue[][],
-    );
+    for (const area of areas) {
+      colorGrid(
+        area,
+        area.rowCount,
+        area.columnCount,
+        area.formulas as CellValue[][],
+        area.values as CellValue[][],
+      );
+    }
 
-    const cells = range.rowCount * range.columnCount;
     return paintSync(
       context,
       AUTOCOLOR,

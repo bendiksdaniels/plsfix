@@ -6,6 +6,7 @@ import { placeChartBeside, UNPLACED_NOTE } from "./chart-place";
 import {
   formatChartAmount,
   hostSupports,
+  selectedSingleRange,
   styleChartShell,
   styleChartSurface,
   syncTolerating,
@@ -103,7 +104,7 @@ async function bridgeHeading(
 // opening and closing totals, everything between them a delta.
 export async function insertWaterfall(): Promise<string> {
   return Excel.run(async (context) => {
-    const range = context.workbook.getSelectedRange();
+    const range = await selectedSingleRange(context, "Waterfall");
     const sheet = range.worksheet;
     range.load("rowCount,columnCount,rowIndex,columnIndex,values");
     await context.sync();
@@ -211,7 +212,7 @@ export async function formatSelectedChart(): Promise<void> {
 // chart by hand. Shapes are worksheet objects, so no range state is touched.
 export async function addCagrLabel(): Promise<string> {
   return Excel.run(async (context) => {
-    const range = context.workbook.getSelectedRange();
+    const range = await selectedSingleRange(context, "Chart label");
     const sheet = range.worksheet;
     // Range geometry arrived in 1.10; without it the label lands where Excel
     // drops it and the modeller moves it.

@@ -82,8 +82,21 @@ export async function selectedSingleRange(
     if (areas.areaCount > 1) {
       throw new Error(`${stage}: select a single range`);
     }
+    return context.workbook.getSelectedRange();
   }
-  return context.workbook.getSelectedRange();
+
+  // Without RangeAreas the count cannot be asked for at all, so the refusal has
+  // to be caught where office.js reports it: on the sync after the call.
+  const range = context.workbook.getSelectedRange();
+  range.load("address");
+  try {
+    await context.sync();
+  } catch (error) {
+    const { code } = error as { code?: string };
+    if (code !== Excel.ErrorCodes.invalidSelection) throw error;
+    throw new Error(`${stage}: select a single range`);
+  }
+  return range;
 }
 
 // A block written beside the selection has to be free first: pls,fix Undo is a
