@@ -1,12 +1,12 @@
-# AUTORESUME - Model Tools (v2.1.11 LIVE 2026-08-29)
+# AUTORESUME - Model Tools (v2.1.19 LIVE 2026-08-29)
 
 ## State
 
-v2.1.11 is deployed at dbautomatizacijas.com/modelis/ (`/version` -> 2.1.11): Excel pane with the
+v2.1.19 is deployed at dbautomatizacijas.com/modelis/ (`/version` -> 2.1.19): Excel pane with the
 new **Links** tab, PowerPoint pane (`pptpane.html`), and the end-to-end encrypted link relay
 (`/api/links`, `/api/inbox`, sqlite at `/opt/plsfix/data`). `npm run check` green on
-main (564 vitest, 23 cargo, tsc, eslint, prettier, manifest and version gates); GitHub Actions
-runs the same gate. Tags `v2.0.0`, `v2.0.4`, `v2.1.0`, `v2.1.2`, `v2.1.5`, `v2.1.8`, `v2.1.11`. Since v2.0.0 (loop, `tasks/v2-backlog.md`):
+main (662+ vitest, 31 cargo, tsc, eslint, prettier, manifest and version gates); GitHub Actions
+runs the same gate. Tags `v2.0.0`, `v2.0.4`, `v2.1.0`, `v2.1.2`, `v2.1.5`, `v2.1.8`, `v2.1.11`, `v2.1.16`, `v2.1.19`. Since v2.0.0 (loop, `tasks/v2-backlog.md`):
 link-record split, shared time/clipboard helpers, active-slide update, server minors, links inside
 groups (PowerPointApi 1.8), brand palette saved in the workbook, 12 more ribbon buttons (5 groups),
 tornado chart + unpivot selection; then the whole-branch review fix wave (v2.1.2: stale-rev
@@ -16,7 +16,10 @@ update-all in one sync, border + row/column size cycles, Latvian user guide
 (GO). Then: pane UX pass (0 defects at 320/360/420 px, `npm run ux:check`), `=SMT.ROUND`/`=SMT.ROUNDSUM`
 custom functions (manifest CustomFunctions extension point, `functions.js`; needs the M365 re-upload),
 paintbrush slots, Super Find, unused-style scrubber, auto-push on edit (Links tab checkbox).
-Remaining in the loop: prepare for sharing (C5-f), FEATURES.md row marks, badge tooltip.
+Round D shipped: revert after Update all (`?rev=` route), highlight linked cells, batched relay fetch
+(`POST /api/links/fetch`), comments in Super Find, byte-budgeted repaint batches, second whole-branch
+review + fix wave (registry lock, multi-area edits, chunked status, error bodies, dev functions.js,
+`npm run validate` in `check`). Remaining: D7 change source (design note first).
 
 Design: `docs/superpowers/specs/2026-08-28-ppt-links-design.md`. Plans (all tasks done):
 `docs/superpowers/plans/2026-08-28-tier1-groundwork.md`, `2026-08-28-ppt-links.md`.

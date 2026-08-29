@@ -71,7 +71,7 @@ each item. Stop when Daniel intervenes or the list is empty.
       path use it; per-row fallback to GET stays.
 - [x] D4 Super Find phase 4: comments (`worksheet.comments`, ExcelApi 1.10, gated) with a "comment" hit kind.
 - [x] D5 Byte-budgeted update batches (flush a repaint batch at 8 MiB of payload).
-- [ ] D6 Second whole-branch review (since v2.1.2) -> one fix wave -> deploy.
+- [x] D6 Second whole-branch review (since v2.1.2) -> one fix wave -> deploy.
 - [ ] D7 Change source / workbook version resolution (M3): PowerPoint "Change source" that re-keys a
       link to a newer export of the same anchor label from the inbox; design note first, then build.
 - Milestone after every 3 merged items: deploy + tag + AUTORESUME refresh.
