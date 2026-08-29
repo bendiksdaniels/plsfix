@@ -13,7 +13,7 @@ import {
 } from "./shared";
 import { captureUndoAreas } from "./undo";
 import { analyzeGrid, type CellValue, makeFormatGrid } from "../model";
-import { getActiveSettings } from "../settings";
+import { activeTheme, getActiveSettings } from "../settings";
 
 // Every area's metrics added together: a ctrl-clicked selection is one card in
 // the pane, not two, and a passive click must never be an error.

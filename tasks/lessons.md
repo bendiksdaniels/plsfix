@@ -86,3 +86,10 @@ found no source and stopped (about 180k tokens for nothing). Rule: run `cd ~/pls
 the last shell command before any `isolation: worktree` dispatch, tell the agent which repo it
 must be in (`git remote -v`, `ls package.json`) and to report BLOCKED otherwise, and verify with
 `git worktree list` right after launching.
+
+## 2026-08-30: an agent symlinked the repo's node_modules into its worktree
+
+`~/plsfix/node_modules` became a symlink to a worktree's install; the gates then died with
+exit 194 while `tsc` still ran. Rule for every dispatch brief: never touch the main checkout's
+`node_modules` (worktrees get their own `npm install`); the controller checks
+`test -d node_modules && ! test -L node_modules` before running the gates after a merge.
