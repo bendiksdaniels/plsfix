@@ -12,7 +12,11 @@ import {
 } from "../link/model";
 import type { RelayApi } from "../link/relay";
 import type { Workspace } from "../link/workspace";
-import { SELECTION_CELL_CAP, selectedSingleRange } from "./internal";
+import {
+  SELECTION_CELL_CAP,
+  hostSupports,
+  selectedSingleRange,
+} from "./internal";
 import {
   createChartAnchor,
   createRangeAnchor,
@@ -343,4 +347,16 @@ export async function removeLink(id: string, relay: RelayApi): Promise<void> {
       await context.sync();
     }),
   );
+}
+
+// The pane's chart list follows the active sheet. Older hosts (below ExcelApi
+// 1.7) have no worksheet activation event; the tab-open refresh covers them.
+export function watchActiveSheet(handler: () => Promise<void>): void {
+  if (!hostSupports("1.7")) return;
+  Excel.run(async (context) => {
+    context.workbook.worksheets.onActivated.add(async () => {
+      await handler();
+    });
+    await context.sync();
+  }).catch(() => undefined);
 }

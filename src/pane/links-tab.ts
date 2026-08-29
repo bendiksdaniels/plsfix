@@ -5,6 +5,7 @@
 import {
   exportActiveChart,
   listActiveSheetCharts,
+  watchActiveSheet,
   exportSelection,
   goToSource,
   listWorkbookLinks,
@@ -149,6 +150,7 @@ function wireActions(tab: Tab): void {
 async function boot(tab: Tab): Promise<void> {
   await loadKey(tab);
   await refresh(tab);
+  watchSheetChanges(tab);
   // Both boxes are told by the workbook, never by what they last showed. The
   // refresh above tells the same story in the table.
   await restoreToggles(tab.toggles);
@@ -211,6 +213,16 @@ async function refreshChartPick(tab: Tab): Promise<void> {
   );
   tab.chartPick.value = names.includes(keep) ? keep : "";
   tab.chartPick.hidden = names.length === 0;
+}
+
+// The chart list belongs to the active sheet: it is redrawn when the tab is
+// opened and when the modeller moves to another sheet. A host without the
+// worksheet event (ExcelApi 1.7) keeps the tab-open refresh.
+function watchSheetChanges(tab: Tab): void {
+  tab.deps.root
+    .querySelector("#tab-links")
+    ?.addEventListener("click", () => void refreshChartPick(tab));
+  watchActiveSheet(() => refreshChartPick(tab));
 }
 
 function renderKey(tab: Tab): void {

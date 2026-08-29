@@ -192,7 +192,7 @@ h2 {
   padding: 8px 10px;
   border-radius: 8px;
   color: #4a5568;
-  background: #efece5;
+  background: #e9eef3;
   font:
     600 11px/1.2 ui-monospace,
     SFMono-Regular,
@@ -264,7 +264,7 @@ h2 {
   background: var(--green);
 }
 .style-clear i {
-  background: linear-gradient(#d5d1c8 45%, transparent 45%);
+  background: linear-gradient(#cbd5dd 45%, transparent 45%);
 }
 
 button {
@@ -367,7 +367,7 @@ button:disabled {
   height: 28px;
   border-radius: 8px;
   color: var(--ink);
-  background: #f0ebe3;
+  background: #e6edf2;
   font-weight: 800;
 }
 .action-icon.colors {
@@ -401,7 +401,7 @@ kbd {
   border-bottom-width: 2px;
   border-radius: 5px;
   color: var(--muted);
-  background: #faf9f6;
+  background: #f7f9fb;
   font:
     700 11px ui-monospace,
     monospace;
@@ -484,13 +484,17 @@ kbd {
 
 .preview-table {
   width: 100%;
+  table-layout: fixed;
   border-collapse: collapse;
   background: #fff;
   font-size: 11px;
 }
 .preview-table td {
+  overflow: hidden;
   padding: 5px 8px;
-  border: 1px solid #edeae4;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  border: 1px solid #dfe5ea;
 }
 .preview-table td:nth-child(2),
 .preview-table td:nth-child(3) {
@@ -506,7 +510,7 @@ kbd {
 }
 .pv-header td {
   border-bottom: 1px solid var(--pv-header-border, #b5b2ae);
-  background: var(--pv-header-fill, #eeeeed);
+  background: var(--pv-header-fill, #e9edf0);
   font-weight: 700;
 }
 .pv-input {
@@ -526,7 +530,7 @@ kbd {
 }
 .pv-result td {
   border-top: 3px double var(--pv-result-border, #86603f);
-  background: var(--pv-result-fill, #f4ede7);
+  background: var(--pv-result-fill, #eaf0f4);
   font-weight: 700;
 }
 
@@ -1243,4 +1247,29 @@ footer span:last-child {
 }
 .action-icon.links {
   color: var(--accent);
+}
+
+/* Nothing in a view may widen the pane: a section wider than the pane would
+   drag the tab strip past the edge with it. */
+.view,
+.view > section {
+  min-width: 0;
+  max-width: 100%;
+}
+
+/* The chart list under "Export active chart": one of the pane's selects. */
+#export-chart-pick {
+  width: 100%;
+  min-height: 34px;
+  margin-top: 6px;
+  padding: 4px 8px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  color: var(--ink);
+  background: #fff;
+  font:
+    600 11px "Aptos",
+    "Segoe UI",
+    system-ui,
+    sans-serif;
 }
