@@ -103,10 +103,10 @@ export async function requireEmptyBlock(
 // One write per run of same-key cells instead of one per cell: model rows are
 // usually uniform, so this keeps the batch small on wide selections. A null key
 // leaves the cell untouched.
-export function writeRuns(
+export function writeRuns<Key extends string>(
   range: Excel.Range,
-  keys: (string | null)[][],
-  write: (block: Excel.Range, key: string) => void,
+  keys: (Key | null)[][],
+  write: (block: Excel.Range, key: Key) => void,
 ): void {
   keys.forEach((row, rowIndex) => {
     let start = 0;

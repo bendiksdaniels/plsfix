@@ -7,6 +7,7 @@ import {
   SELECTION_CELL_CAP,
   selectionWithinCap,
 } from "./internal";
+import { applyPresetFormat } from "./presets";
 import {
   type NumberFormatName,
   type PresetName,
@@ -34,7 +35,7 @@ import {
   type StyleSpec,
 } from "../cycles";
 import { analyzeGrid, type CellValue, makeFormatGrid } from "../model";
-import { activeTheme, getActiveSettings } from "../settings";
+import { getActiveSettings } from "../settings";
 
 export async function inspectSelection(): Promise<SelectionSummary> {
   return Excel.run(async (context) => {
@@ -73,51 +74,7 @@ export async function applyPreset(name: PresetName): Promise<void> {
   await Excel.run(async (context) => {
     const range = context.workbook.getSelectedRange();
     await captureUndo(context, range);
-    const { format } = range;
-
-    const theme = activeTheme();
-    format.font.name = getActiveSettings().font;
-    format.font.size = 10;
-    format.font.bold = false;
-    format.font.italic = false;
-    format.font.color = theme.formulaFont;
-    format.fill.clear();
-    format.horizontalAlignment = Excel.HorizontalAlignment.left;
-    format.verticalAlignment = Excel.VerticalAlignment.center;
-
-    switch (name) {
-      case "title":
-        format.fill.color = theme.titleFill;
-        format.font.color = theme.titleText;
-        format.font.size = 15;
-        format.font.bold = true;
-        format.rowHeight = 25;
-        break;
-      case "header": {
-        format.fill.color = theme.headerFill;
-        format.font.bold = true;
-        const bottom = format.borders.getItem(Excel.BorderIndex.edgeBottom);
-        bottom.style = Excel.BorderLineStyle.continuous;
-        bottom.color = theme.headerBorder;
-        bottom.weight = Excel.BorderWeight.thin;
-        break;
-      }
-      case "input":
-        format.font.color = theme.inputFont;
-        break;
-      case "formula":
-        format.font.color = theme.formulaFont;
-        break;
-      case "result": {
-        format.fill.color = theme.resultFill;
-        format.font.bold = true;
-        const top = format.borders.getItem(Excel.BorderIndex.edgeTop);
-        top.style = Excel.BorderLineStyle.double;
-        top.color = theme.resultBorder;
-        break;
-      }
-    }
-
+    applyPresetFormat(range.format, name);
     await context.sync();
   });
 }

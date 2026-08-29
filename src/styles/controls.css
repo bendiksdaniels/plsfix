@@ -116,6 +116,7 @@ button:disabled {
 .action-icon.key,
 .action-icon.links,
 .action-icon.names,
+.action-icon.template,
 .action-icon.toc {
   color: var(--accent-ink);
 }

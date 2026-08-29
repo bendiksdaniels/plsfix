@@ -37,6 +37,7 @@ import {
   insertCagr,
   insertColorKey,
   insertConsistentRounding,
+  insertTemplate,
   insertTornado,
   insertWaterfall,
   insertToc,
@@ -333,6 +334,8 @@ async function dispatch(action: string): Promise<string> {
     );
   } else if (action.startsWith("cycle-row-")) {
     await applyRowStyleCycle(action.replace("cycle-row-", "") as RowStyleKind);
+  } else if (action.startsWith("template-")) {
+    return insertTemplate(action.replace("template-", ""));
   } else {
     switch (action) {
       case "cycle-fill":
