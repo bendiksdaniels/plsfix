@@ -1,33 +1,11 @@
-import { describe, expect, it, vi } from "vitest";
+// The relay client route by route: what each call puts on the wire (method,
+// bearer, headers, body), what it reads back off it, and how every non-success
+// outcome reaches the pane as a typed RelayError carrying the reason the relay
+// named. The bodies a 200 can still be unusable with live in
+// relay.badbody.test.ts; both suites share relay.support.ts.
+import { describe, expect, it } from "vitest";
 import { isRelayError, RelayClient, relayBaseUrl, RelayError } from "./relay";
-
-type Handler = (url: string, init: RequestInit) => Response;
-function client(handler: Handler): {
-  relay: RelayClient;
-  calls: { url: string; init: RequestInit }[];
-} {
-  const calls: { url: string; init: RequestInit }[] = [];
-  const fetchImpl = vi.fn(
-    async (input: RequestInfo | URL, init?: RequestInit) => {
-      const url = String(input);
-      calls.push({ url, init: init ?? {} });
-      return handler(url, init ?? {});
-    },
-  ) as unknown as typeof fetch;
-  return {
-    relay: new RelayClient("https://x.test/modelis/api/", fetchImpl),
-    calls,
-  };
-}
-
-// What a call rejected with, so a test can assert on the kind and the message
-// of the same object rather than matching a shape twice.
-function rejection(call: Promise<unknown>): Promise<unknown> {
-  return call.then(
-    () => undefined,
-    (error: unknown) => error,
-  );
-}
+import { client, rejection } from "./relay.support";
 
 describe("relayBaseUrl", () => {
   it("sits beside the pane page", () => {
@@ -188,6 +166,60 @@ describe("RelayClient", () => {
       { kind: "network" },
     );
   });
+  // Every refusal the relay makes names itself in the body; without it a 400
+  // reaches the pane as a bare status code, and "your batch is too long" is
+  // indistinguishable from "your id is malformed".
+  it("puts the relay's reason for refusing into the message", async () => {
+    const { relay } = client(
+      () =>
+        new Response(JSON.stringify({ error: "too many items" }), {
+          status: 400,
+        }),
+    );
+    const error = await rejection(relay.status([{ id: "a", auth: "x" }]));
+    expect(isRelayError(error) && error.kind).toBe("server");
+    expect(String(error)).toBe(
+      "RelayError: relay POST /modelis/api/links/status: 400 too many items",
+    );
+  });
+
+  it("carries the reason on every route and kind, not just status", async () => {
+    for (const [status, kind, reason] of [
+      [400, "server", "bad rev"],
+      [403, "auth", "another key owns this"],
+      [404, "missing", "not found"],
+      [500, "server", "store error"],
+    ] as const) {
+      const { relay } = client(
+        () => new Response(JSON.stringify({ error: reason }), { status }),
+      );
+      const error = await rejection(relay.getLinkRev("a".repeat(32), "K", 3));
+      expect(isRelayError(error) && error.kind).toBe(kind);
+      expect(String(error)).toBe(
+        `RelayError: relay GET /modelis/api/links/${"a".repeat(32)}: ${String(status)} ${reason}`,
+      );
+    }
+  });
+
+  // A refusal with no body at all, one that is not JSON (an Access
+  // interstitial), and one shaped differently: the status is still the answer,
+  // so the message keeps it and adds nothing rather than failing to be built.
+  it("falls back to the bare status when the body names nothing", async () => {
+    const bodies = [
+      new Response("", { status: 400 }),
+      new Response("<html>denied</html>", { status: 400 }),
+      new Response(JSON.stringify({ message: "nope" }), { status: 400 }),
+      new Response(JSON.stringify({ error: 17 }), { status: 400 }),
+    ];
+    for (const body of bodies) {
+      const { relay } = client(() => body.clone());
+      const error = await rejection(relay.status([{ id: "a", auth: "x" }]));
+      expect(String(error)).toBe(
+        "RelayError: relay POST /modelis/api/links/status: 400",
+      );
+    }
+  });
+
   it("batches status queries", async () => {
     const { relay, calls } = client(
       () =>
@@ -276,117 +308,4 @@ describe("RelayClient", () => {
     );
     expect(calls[0]!.init.body).toEqual(new Uint8Array([5, 6]));
   });
-});
-
-// A 200 is not a promise that the body is what the route documents: a captive
-// portal, an Access interstitial or the dev proxy answering with index.html
-// all arrive as 200. Every one of these must reach the pane as a RelayError
-// with a kind, never as the SyntaxError a bare response.json() would throw.
-describe("RelayClient rejects a 200 whose body is not the promised shape", () => {
-  const id = "a".repeat(32);
-  const garbage = () => new Response("<!doctype html><html></html>");
-
-  const cases: {
-    name: string;
-    body: Response;
-    method: string;
-    call: (relay: RelayClient) => Promise<unknown>;
-    path: string;
-  }[] = [
-    {
-      name: "PUT answered with HTML",
-      body: garbage(),
-      method: "PUT",
-      call: (relay) => relay.putLink(id, "AUTH", new Uint8Array([1])),
-      path: `/modelis/api/links/${id}`,
-    },
-    {
-      name: "PUT answered with JSON that has no rev",
-      body: new Response(JSON.stringify({ ok: true })),
-      method: "PUT",
-      call: (relay) => relay.putLink(id, "AUTH", new Uint8Array([1])),
-      path: `/modelis/api/links/${id}`,
-    },
-    {
-      name: "status answered with HTML",
-      body: garbage(),
-      method: "POST",
-      call: (relay) => relay.status([{ id, auth: "x" }]),
-      path: "/modelis/api/links/status",
-    },
-    {
-      name: "status answered with an object instead of rows",
-      body: new Response(JSON.stringify({ id, rev: 2 })),
-      method: "POST",
-      call: (relay) => relay.status([{ id, auth: "x" }]),
-      path: "/modelis/api/links/status",
-    },
-    {
-      name: "a status row whose rev is a string",
-      body: new Response(JSON.stringify([{ id, rev: "2", pushedAt: 1 }])),
-      method: "POST",
-      call: (relay) => relay.status([{ id, auth: "x" }]),
-      path: "/modelis/api/links/status",
-    },
-    {
-      name: "a fetch batch answered with rows instead of the two lists",
-      body: new Response(JSON.stringify([{ id, rev: 2, blob: "AQI" }])),
-      method: "POST",
-      call: (relay) => relay.fetchLinks([{ id, auth: "x", knownRev: 1 }]),
-      path: "/modelis/api/links/fetch",
-    },
-    {
-      name: "a fetch batch omitting a link for a reason we do not know",
-      body: new Response(
-        JSON.stringify({ items: [], omitted: [{ id, reason: "later" }] }),
-      ),
-      method: "POST",
-      call: (relay) => relay.fetchLinks([{ id, auth: "x", knownRev: 1 }]),
-      path: "/modelis/api/links/fetch",
-    },
-    {
-      name: "a fetched blob outside the base64url alphabet",
-      body: new Response(
-        JSON.stringify({
-          items: [{ id, rev: 2, blob: "a*b" }],
-          omitted: [],
-        }),
-      ),
-      method: "POST",
-      call: (relay) => relay.fetchLinks([{ id, auth: "x", knownRev: 1 }]),
-      path: "/modelis/api/links/fetch",
-    },
-    {
-      name: "inbox answered with HTML",
-      body: garbage(),
-      method: "GET",
-      call: (relay) => relay.listInbox("WS", "AUTH"),
-      path: "/modelis/api/inbox/WS",
-    },
-    {
-      name: "an inbox row with a null blob",
-      body: new Response(JSON.stringify([{ id, createdAt: 5, blob: null }])),
-      method: "GET",
-      call: (relay) => relay.listInbox("WS", "AUTH"),
-      path: "/modelis/api/inbox/WS",
-    },
-    {
-      name: "an inbox blob outside the base64url alphabet",
-      body: new Response(JSON.stringify([{ id, createdAt: 5, blob: "a*b" }])),
-      method: "GET",
-      call: (relay) => relay.listInbox("WS", "AUTH"),
-      path: "/modelis/api/inbox/WS",
-    },
-  ];
-
-  for (const { name, body, method, call, path } of cases) {
-    it(`fails as kind "server" for ${name}`, async () => {
-      const { relay } = client(() => body.clone());
-      const error = await rejection(call(relay));
-      expect(isRelayError(error) && error.kind).toBe("server");
-      expect(String(error)).toBe(
-        `RelayError: relay ${method} ${path}: bad response`,
-      );
-    });
-  }
 });

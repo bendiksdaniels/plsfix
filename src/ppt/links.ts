@@ -13,6 +13,7 @@ import {
 } from "../link/model";
 import {
   isRelayError,
+  MAX_STATUS_ITEMS,
   RelayError,
   type RelayApi,
   type StatusQuery,
@@ -24,7 +25,7 @@ import {
   type RelayStatus,
 } from "../link/status";
 import type { Workspace } from "../link/workspace";
-import { planBatches, REPAINT_BUDGET_BYTES } from "./batching";
+import { chunk, planBatches, REPAINT_BUDGET_BYTES } from "./batching";
 import { fetchUpdates } from "./fetch";
 import * as realHost from "./host";
 import type { FoundLink, RefreshRequest } from "./host";
@@ -82,7 +83,12 @@ function pairKey(id: string, auth: string): string {
 
 // The relay answers per (id, auth) and in request order: copies of a shape
 // share both and are queried once; a re-keyed copy gets its own query. A reply
-// that does not line up row for row cannot be read positionally at all.
+// that does not line up row for row cannot be read positionally at all, so the
+// count is checked per request. A deck can hold more distinct pairs than one
+// request may carry - the relay refuses a longer batch with a 400, which used
+// to leave a big pitch book unable to list a single link - so the pairs are
+// asked about MAX_STATUS_ITEMS at a time and each answer is matched against
+// the slice that earned it.
 async function statusByPair(
   keyed: Keyed[],
   relay: RelayApi,
@@ -92,18 +98,18 @@ async function statusByPair(
     if (auth !== null)
       pairs.set(pairKey(link.tag.id, auth), { id: link.tag.id, auth });
   }
-  if (pairs.size === 0) return new Map();
-  const keys = [...pairs.keys()];
-  const statuses = await relay.status([...pairs.values()]);
-  if (statuses.length !== keys.length) {
-    throw new RelayError(
-      "server",
-      `relay status: expected ${String(keys.length)} rows, got ${String(statuses.length)}`,
-    );
+  const byPair = new Map<string, RelayStatus | undefined>();
+  for (const part of chunk([...pairs], MAX_STATUS_ITEMS)) {
+    const statuses = await relay.status(part.map(([, query]) => query));
+    if (statuses.length !== part.length) {
+      throw new RelayError(
+        "server",
+        `relay status: expected ${String(part.length)} rows, got ${String(statuses.length)}`,
+      );
+    }
+    part.forEach(([key], index) => byPair.set(key, statuses[index]));
   }
-  return new Map<string, RelayStatus | undefined>(
-    keys.map((key, index) => [key, statuses[index]]),
-  );
+  return byPair;
 }
 
 export async function listLinks(

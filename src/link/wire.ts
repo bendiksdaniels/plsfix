@@ -24,6 +24,14 @@ export function isPutResult(value: unknown): value is { rev: number } {
   return isRecord(value) && typeof value.rev === "number";
 }
 
+// Why the relay refused, in the shape every non-success body carries:
+// {"error":"too many items"}. Without it a 400 reaches the pane as a bare
+// status code, where "your batch is too long", "your id is malformed" and a
+// genuine server fault all read the same.
+export function isErrorBody(value: unknown): value is { error: string } {
+  return isRecord(value) && typeof value.error === "string";
+}
+
 export function isStatusRow(value: unknown): value is RelayStatus {
   return (
     isRecord(value) &&

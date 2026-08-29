@@ -6,6 +6,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { newToken } from "../src/link/crypto";
 import { TAG_KEY } from "../src/link/model";
+import type { InboxItem } from "../src/link/model";
 import { createWorkspace } from "../src/link/workspace";
 import type { FakeRelay } from "./fakerelay";
 import { fakePng } from "./fakepng";
@@ -19,6 +20,10 @@ import { bootPpt, memoryStore, pushAgain, seedLink } from "./ppt.support";
 import type * as LinksModule from "../src/ppt/links";
 
 enableStrictLoadSemantics();
+
+// One full chunk of MAX_STATUS_ITEMS and a short second one: enough to prove
+// both the split and that the tail is not silently dropped.
+const MANY_LINKS = 250;
 
 let links: typeof LinksModule;
 let presentation: FakePresentation;
@@ -95,6 +100,42 @@ describe("scan and status", () => {
     expect(rows.map((r) => r.status)).toEqual(["wrongKey", "current"]);
     expect(rows[0]!.relayRev).toBeNull();
     expect(rows[1]!.relayRev).toBe(1);
+  });
+
+  // A pitch book past the relay's per-request ceiling. The server refuses a
+  // longer batch with "400 too many items" (the fake does too), so before the
+  // poll was chunked such a deck could not list a single row: listLinks threw
+  // before the first one, and the Links tab, "Update all", "Revert last
+  // update" and "Break link" were all dead with it.
+  it("polls status in chunks of 200 and matches each answer to its own slice", async () => {
+    const ws = await createWorkspace(memoryStore());
+    const items: InboxItem[] = [];
+    for (let index = 0; index < MANY_LINKS; index += 1) {
+      const item = await seedLink(fakePng(10, 10));
+      await links.insertFromInbox(item, ws, relay);
+      items.push(item);
+    }
+    // The one row carrying an update sits in the second chunk, so an answer
+    // read positionally against the whole list would land on the wrong link.
+    const changed = MANY_LINKS - 7;
+    await pushAgain(items[changed]!, fakePng(10, 10));
+    const status = vi.spyOn(relay, "status");
+
+    const rows = await links.listLinks(relay);
+
+    expect(status.mock.calls.map(([batch]) => batch.length)).toEqual([200, 50]);
+    expect(rows.map((row) => row.found.tag.id)).toEqual(
+      items.map((item) => item.id),
+    );
+    expect(
+      rows.flatMap((row, index) =>
+        row.status === "updateAvailable" ? [index] : [],
+      ),
+    ).toEqual([changed]);
+    expect(rows[changed]!.relayRev).toBe(2);
+    expect(rows.filter((row) => row.status === "current")).toHaveLength(
+      MANY_LINKS - 1,
+    );
   });
 
   it("refuses a status answer that does not line up with the request", async () => {
