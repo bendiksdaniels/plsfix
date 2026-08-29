@@ -213,6 +213,41 @@ describe("RelayClient", () => {
       { id: "b", auth: "y" },
     ]);
   });
+  it("batches a fetch and decodes the blobs it answers with", async () => {
+    const { relay, calls } = client(
+      () =>
+        new Response(
+          JSON.stringify({
+            items: [{ id: "a", rev: 3, blob: "AQI" }],
+            omitted: [
+              { id: "b", reason: "unchanged" },
+              { id: "c", reason: "deferred" },
+            ],
+          }),
+        ),
+    );
+    const result = await relay.fetchLinks([
+      { id: "a", auth: "x", knownRev: 2 },
+      { id: "b", auth: "y", knownRev: 1 },
+      { id: "c", auth: "z" },
+    ]);
+    expect(result.items).toEqual([
+      { id: "a", rev: 3, blob: new Uint8Array([1, 2]) },
+    ]);
+    expect(result.omitted).toEqual([
+      { id: "b", reason: "unchanged" },
+      { id: "c", reason: "deferred" },
+    ]);
+    expect(calls[0]!.url).toBe("https://x.test/modelis/api/links/fetch");
+    expect(calls[0]!.init.method).toBe("POST");
+    // No bearer: a batch carries a key per item, like the status poll.
+    expect(new Headers(calls[0]!.init.headers).get("authorization")).toBe(null);
+    expect(JSON.parse(String(calls[0]!.init.body))).toEqual([
+      { id: "a", auth: "x", knownRev: 2 },
+      { id: "b", auth: "y", knownRev: 1 },
+      { id: "c", auth: "z" },
+    ]);
+  });
   it("lists inbox rows with decoded blobs", async () => {
     const { relay } = client(
       () =>
@@ -292,6 +327,34 @@ describe("RelayClient rejects a 200 whose body is not the promised shape", () =>
       method: "POST",
       call: (relay) => relay.status([{ id, auth: "x" }]),
       path: "/modelis/api/links/status",
+    },
+    {
+      name: "a fetch batch answered with rows instead of the two lists",
+      body: new Response(JSON.stringify([{ id, rev: 2, blob: "AQI" }])),
+      method: "POST",
+      call: (relay) => relay.fetchLinks([{ id, auth: "x", knownRev: 1 }]),
+      path: "/modelis/api/links/fetch",
+    },
+    {
+      name: "a fetch batch omitting a link for a reason we do not know",
+      body: new Response(
+        JSON.stringify({ items: [], omitted: [{ id, reason: "later" }] }),
+      ),
+      method: "POST",
+      call: (relay) => relay.fetchLinks([{ id, auth: "x", knownRev: 1 }]),
+      path: "/modelis/api/links/fetch",
+    },
+    {
+      name: "a fetched blob outside the base64url alphabet",
+      body: new Response(
+        JSON.stringify({
+          items: [{ id, rev: 2, blob: "a*b" }],
+          omitted: [],
+        }),
+      ),
+      method: "POST",
+      call: (relay) => relay.fetchLinks([{ id, auth: "x", knownRev: 1 }]),
+      path: "/modelis/api/links/fetch",
     },
     {
       name: "inbox answered with HTML",
