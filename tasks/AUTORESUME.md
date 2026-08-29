@@ -12,6 +12,10 @@
   Excel's own separators (ExcelApi 1.11) and the Brand tab says what Excel shows and where to
   change it (separators are an Excel setting, format codes cannot force them). Fake host gained
   `application` + `separators` option and a trailing-symbol currency rewrite.
+- PowerPoint re-verified on the web after the rebrand (v2.2.3): new key, export, pair, Inbox ->
+  Insert (tags `PLSFIX_LINK`/`PLSFIX_KEY`), move + edit + Push all, Update all (rev 2, height
+  refit to the kept width because the picture's aspect changed), Revert (rev 1), Break (tags
+  gone). A shape still carrying old `SMT_*` tags is ignored, as intended.
 
 ## 29.08 night: rebrand to pls,fix (v2.2.0)
 
