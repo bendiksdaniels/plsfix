@@ -1,6 +1,7 @@
-// Super Find's matching rules: which cells of a grid a query hits, what each hit
-// reads as, and in what order the workbook's hits are listed. Pure: the adapter
-// in src/excel/find.ts reads the sheets and turns these hits into addresses.
+// Super Find's matching rules: which cells of a grid and which comments a query
+// hits, what each hit reads as, and in what order the workbook's hits are
+// listed. Pure: the adapter in src/excel/find.ts reads the sheets and the
+// comments and turns these hits into addresses.
 
 import { type CellValue, isFormula } from "./model";
 
@@ -112,6 +113,61 @@ export function rankHits<T extends RankedHit>(hits: T[]): T[] {
         left.col - right.col,
     )
     .slice(0, FIND_HIT_CAP);
+}
+
+// ---------------------------------------------------------------------------
+// Comments
+// ---------------------------------------------------------------------------
+
+// A comment as the workbook hands it over: the cell it hangs on, what it says
+// and who said it. A reply is one of these too - the adapter keeps the two
+// apart, so a search for "reply" cannot match every reply there is.
+export interface CommentEntry {
+  sheet: string;
+  address: string;
+  content: string;
+  author: string;
+}
+
+export interface CommentHit {
+  // Where the comment sat in the list handed in: a comment has no grid
+  // coordinates of its own, so this is what carries the workbook's order back
+  // to the caller holding the rest of the record.
+  order: number;
+  text: string;
+}
+
+// A thread can run to paragraphs; the row shows its opening, and the modeller
+// reads the rest in the cell the hit jumps to.
+export const COMMENT_TEXT_LIMIT = 120;
+
+// Comments hang off the grid rather than sit in it, so they sort past Excel's
+// last row: a sheet's comments land after its cells, in the workbook's order.
+export const COMMENT_ROW = 2_000_000;
+
+// The author is searched beside the content: "who flagged this" is as much a
+// question as "what did they say". The cap is the cells' cap, counted here too
+// so a workbook papered in comments cannot build a list nothing will render.
+export function matchComments(
+  comments: CommentEntry[],
+  query: string,
+  options: MatchOptions,
+): CommentHit[] {
+  const hits: CommentHit[] = [];
+  if (query === "") return hits;
+
+  for (let order = 0; order < comments.length; order += 1) {
+    if (hits.length >= FIND_HIT_CAP) return hits;
+    const comment = comments[order];
+    if (!comment) continue;
+    const matched =
+      includesQuery(comment.content, query, options.matchCase) ||
+      includesQuery(comment.author, query, options.matchCase);
+    if (matched) {
+      hits.push({ order, text: comment.content.slice(0, COMMENT_TEXT_LIMIT) });
+    }
+  }
+  return hits;
 }
 
 const ALPHABET = 26;

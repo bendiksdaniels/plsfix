@@ -88,7 +88,7 @@ not yet built.
 |---|---|---|---|---|
 | Smart Track / Trace In-Out pane (precedents/dependents tree, keyboard nav, color trail) | both | Drill into inputs and back | shipped v1.1 | P1 |
 | Show all precedents for multiple cells | MB | Multi-cell trace | Yes* (same; cap cell count) | P2 |
-| Super Find (values/formulas/comments across workbook) | MB | Better Find with results pane | shipped v2.1 (this workbook only, no other open workbooks; comments not searched yet) | P2 |
+| Super Find (values/formulas/comments across workbook) | MB | Better Find with results pane | shipped v2.1 (this workbook only, no other open workbooks; comments and replies searched on ExcelApi 1.10, author included) | P2 |
 | Explorer (workbook/sheet tree navigator) | US | Sheet navigation pane with search | shipped v1.1 | P1 |
 | Workbook TOC sheet | both | Hyperlinked contents sheet, auto-updating | shipped v1.1 | P1 |
 | Sheet tools (move/bury/unhide-multi/activate dialog) | MB | Sheet management | Yes (visibility incl. VeryHidden) | P2 |

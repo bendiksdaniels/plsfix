@@ -1,6 +1,6 @@
 // Super Find against the strict fake host: what one pass over a workbook finds
-// in cells, defined names and sheet names, which sheets it refuses to read, and
-// where a result jumps to.
+// in cells, defined names, sheet names and comments, which sheets it refuses to
+// read, what an old host cannot search, and where a result jumps to.
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
@@ -55,6 +55,7 @@ describe("find in workbook", () => {
         { kind: "cell", sheet: "Data", address: "C3", text: "revenue growth" },
       ],
       skippedSheets: [],
+      commentsSkipped: false,
     });
   });
 
@@ -142,6 +143,7 @@ describe("find in workbook", () => {
     ).toEqual({
       hits: [{ kind: "cell", sheet: "Model", address: "A1", text: "Total" }],
       skippedSheets: ["Data"],
+      commentsSkipped: false,
     });
   });
 
@@ -149,6 +151,89 @@ describe("find in workbook", () => {
     expect(await smt.findInWorkbook("anything", LOOSE)).toEqual({
       hits: [],
       skippedSheets: [],
+      commentsSkipped: false,
+    });
+  });
+});
+
+describe("find in comments", () => {
+  it("lists a comment and its replies after the cells of their sheet", async () => {
+    helpers.seed("Model!A1", [["Margin check"]]);
+    helpers.addComment("Model!B2", "Margin looks light", "Anna Ozola", [
+      { content: "Agreed, margin fixed", author: "Peteris Krumins" },
+    ]);
+    helpers.addComment("Data!C3", "Source: margin file", "Anna Ozola");
+
+    expect((await smt.findInWorkbook("margin", LOOSE)).hits).toEqual([
+      { kind: "cell", sheet: "Model", address: "A1", text: "Margin check" },
+      {
+        kind: "comment",
+        sheet: "Model",
+        address: "B2",
+        text: "Margin looks light",
+      },
+      {
+        kind: "comment",
+        sheet: "Model",
+        address: "B2",
+        text: "(reply) Agreed, margin fixed",
+      },
+      {
+        kind: "comment",
+        sheet: "Data",
+        address: "C3",
+        text: "Source: margin file",
+      },
+    ]);
+  });
+
+  it("finds a comment by the name of whoever wrote it", async () => {
+    helpers.addComment("Model!B2", "Looks fine", "Anna Ozola");
+
+    expect((await smt.findInWorkbook("ozola", LOOSE)).hits).toEqual([
+      { kind: "comment", sheet: "Model", address: "B2", text: "Looks fine" },
+    ]);
+  });
+
+  it("still finds the comments on a sheet too large to read", async () => {
+    helpers.seed("Data!A1", [
+      ["Total", "Total"],
+      ["Total", "Total"],
+    ]);
+    helpers.addComment("Data!D9", "Total is stale", "Anna Ozola");
+
+    expect(
+      await smt.findInWorkbook("Total", { ...LOOSE, maxCells: 3 }),
+    ).toEqual({
+      hits: [
+        {
+          kind: "comment",
+          sheet: "Data",
+          address: "D9",
+          text: "Total is stale",
+        },
+      ],
+      skippedSheets: ["Data"],
+      commentsSkipped: false,
+    });
+  });
+
+  it("leaves comments out when the box is unticked", async () => {
+    helpers.addComment("Model!B2", "Margin looks light", "Anna Ozola");
+
+    expect(
+      await smt.findInWorkbook("margin", { ...LOOSE, inComments: false }),
+    ).toEqual({ hits: [], skippedSheets: [], commentsSkipped: false });
+  });
+
+  it("says comments were skipped on a host below ExcelApi 1.10", async () => {
+    helpers.setSupported((_set, version) => version !== "1.10");
+    helpers.addComment("Model!B2", "Margin looks light", "Anna Ozola");
+
+    expect(await smt.findInWorkbook("margin", LOOSE)).toEqual({
+      hits: [],
+      skippedSheets: [],
+      commentsSkipped: true,
     });
   });
 });
@@ -157,6 +242,19 @@ describe("jump to a hit", () => {
   it("activates the sheet and selects the cell", async () => {
     helpers.seed("Data!B7", [["Target"]]);
     const { hits } = await smt.findInWorkbook("Target", LOOSE);
+
+    await smt.jumpToHit(hits[0]!);
+
+    expect(workbook.activeSheetId).toBe(helpers.sheet("Data").id);
+    expect(workbook.selection).toEqual({
+      sheetId: helpers.sheet("Data").id,
+      rect: { row: 6, col: 1, rowCount: 1, colCount: 1 },
+    });
+  });
+
+  it("selects the cell a comment hangs on", async () => {
+    helpers.addComment("Data!B7", "Check this number", "Anna Ozola");
+    const { hits } = await smt.findInWorkbook("Check this", LOOSE);
 
     await smt.jumpToHit(hits[0]!);
 

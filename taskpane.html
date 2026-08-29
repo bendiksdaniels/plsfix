@@ -1015,6 +1015,13 @@
               ><small>Looks behind the value at the formula text</small></span
             >
           </label>
+          <label class="toggle-row" for="find-comments">
+            <input id="find-comments" type="checkbox" checked />
+            <span
+              ><strong>Comments</strong
+              ><small>Threads and replies, author too (Excel 365)</small></span
+            >
+          </label>
           <p class="hint">
             Enter in the box runs the search. Hidden sheets are searched too.
           </p>
@@ -1023,20 +1030,19 @@
               id="find-run"
               data-action="find"
               type="button"
-              title="Search every sheet, defined name and sheet name (Ctrl+Shift+Alt+F)"
+              title="Search every sheet, defined name, sheet name and comment (Ctrl+Shift+Alt+F)"
             >
               <span class="action-icon names">⌕</span
               ><span
                 ><strong>Find in workbook</strong
-                ><small
-                  >Values, formulas, defined names and sheet names</small
-                ></span
+                ><small>Values, formulas, names, sheets, comments</small></span
               ><kbd>Ctrl+Shift+Alt+F</kbd>
             </button>
             <div class="action-list" id="find-results" hidden></div>
           </div>
           <p class="hint" id="find-hint">
-            Searches values, defined names and sheet names on every sheet.
+            Searches values, defined names, sheet names and comments on every
+            sheet.
           </p>
         </section>
 

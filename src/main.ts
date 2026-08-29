@@ -1066,10 +1066,12 @@ const FIND_ICONS: Record<FindHit["kind"], string> = {
   cell: "▤",
   name: "⌗",
   sheet: "☰",
+  comment: "❝",
 };
 
 function hitLabel(hit: FindHit): string {
   if (hit.kind === "name") return `Name · ${hit.address}`;
+  if (hit.kind === "comment") return `Comment · ${hit.sheet}!${hit.address}`;
   return `${hit.sheet}!${hit.address}`;
 }
 
@@ -1116,8 +1118,11 @@ function findSummary(result: FindResult): string {
     result.skippedSheets.length > 0
       ? ` Too large to search: ${result.skippedSheets.join(", ")}.`
       : "";
-  if (count === 0) return `No matches.${skipped}`;
-  return `${count} ${count === 1 ? "hit" : "hits"}${capped}.${skipped}`;
+  // An old host has no comment collection at all, so "no matches" would read
+  // as "nothing was written there" rather than "nobody looked".
+  const gated = result.commentsSkipped ? " Comments need Excel 365." : "";
+  if (count === 0) return `No matches.${skipped}${gated}`;
+  return `${count} ${count === 1 ? "hit" : "hits"}${capped}.${skipped}${gated}`;
 }
 
 // Rows close over the hit they jump to; drop them before rebuilding. A null
@@ -1130,7 +1135,7 @@ function renderFind(result: FindResult | null): void {
 
   if (!result) {
     getElement("find-hint").textContent =
-      "Searches values, defined names and sheet names on every sheet.";
+      "Searches values, defined names, sheet names and comments on every sheet.";
     return;
   }
   for (const hit of result.hits) list.append(findRow(hit));
@@ -1147,6 +1152,7 @@ async function runFind(): Promise<string> {
   const result = await findInWorkbook(query, {
     matchCase: getElement<HTMLInputElement>("find-case").checked,
     inFormulas: getElement<HTMLInputElement>("find-formulas").checked,
+    inComments: getElement<HTMLInputElement>("find-comments").checked,
   });
   renderFind(result);
   return findSummary(result);

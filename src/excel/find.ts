@@ -1,13 +1,18 @@
 // Super Find: one pass over the whole workbook - every sheet's used range, the
-// defined names and the sheet names themselves - and the jump that follows a
-// result back to its cell. Three syncs, one per phase, never one per sheet: the
-// sheet list and names, then every used range's extent, then the grids of the
-// sheets small enough to read.
+// defined names, the sheet names themselves and the comments - and the jump
+// that follows a result back to its cell. Four syncs, one per phase, never one
+// per sheet or per comment: the sheet list, the names and the comments, then
+// every used range's extent, then the grids of the sheets small enough to read,
+// then every comment's cell and reply thread in one batch (and that fourth sync
+// only where there are comments at all).
 
 import {
   cellAddress,
+  COMMENT_ROW,
+  type CommentEntry,
   includesQuery,
   matchCells,
+  matchComments,
   type MatchOptions,
   type RankedHit,
   NAME_ORDER,
@@ -15,15 +20,26 @@ import {
   SHEET_NAME_ROW,
 } from "../find";
 import {
+  hostSupports,
   pickScannableSheets,
   type ScannedSheet,
   SELECTION_CELL_CAP,
 } from "./internal";
 import { ANCHOR_PREFIX } from "../link/model";
 import { type CellValue } from "../model";
+import { parseAddress } from "./shared";
+
+// Comments arrived with ExcelApi 1.10; older hosts have no collection to read.
+const COMMENT_API_SET = "1.10";
+
+// What every comment says and who wrote it. A reply thread is not a load option
+// of the comment collection, so it cannot be expanded from here: the replies are
+// asked for one level down, beside the locations.
+const COMMENT_LOAD = "items/content,items/authorName";
+const REPLY_LOAD = "items/content,items/authorName";
 
 export interface FindHit {
-  kind: "cell" | "name" | "sheet";
+  kind: "cell" | "name" | "sheet" | "comment";
   sheet: string;
   address: string;
   text: string;
@@ -33,6 +49,9 @@ export interface FindOptions extends MatchOptions {
   // The used range a sheet may have before it is skipped instead of read.
   // Defaults to the selection cap; the tests use a smaller one.
   maxCells?: number;
+  // Comments are their own phase with their own host requirement, so the pane
+  // can leave them out; on unless the box is unticked, as it is on screen.
+  inComments?: boolean;
 }
 
 export interface FindResult {
@@ -40,6 +59,15 @@ export interface FindResult {
   // Sheets whose used range was too large to read, named so the pane can say
   // the answer is incomplete rather than quietly leaving them out.
   skippedSheets: string[];
+  // The search wanted comments and the host is below ExcelApi 1.10: the pane
+  // says so rather than letting a modeller read "no matches" as "none there".
+  commentsSkipped: boolean;
+}
+
+// A comment and each of its replies become one row apiece; only the adapter
+// knows which is which, so a query never matches the "(reply)" mark itself.
+interface CommentRecord extends CommentEntry {
+  reply: boolean;
 }
 
 interface ScanRow extends RankedHit {
@@ -127,6 +155,106 @@ function cellHits(
   return rows;
 }
 
+// The box is ticked by default, so an option that says nothing means yes.
+function wantsComments(options: FindOptions): boolean {
+  return options.inComments !== false;
+}
+
+// The comments are asked for in the first batch, beside the names: their cells
+// and threads cannot be, because both need the items themselves in hand.
+function loadComments(
+  context: Excel.RequestContext,
+  options: FindOptions,
+): Excel.CommentCollection | null {
+  if (!wantsComments(options) || !hostSupports(COMMENT_API_SET)) return null;
+  const comments = context.workbook.comments;
+  comments.load(COMMENT_LOAD);
+  return comments;
+}
+
+// One flat row per comment and per reply, all on the comment's own cell.
+function commentRecords(
+  comments: Excel.CommentCollection,
+  locations: Excel.Range[],
+): CommentRecord[] {
+  const records: CommentRecord[] = [];
+  comments.items.forEach((comment, index) => {
+    const at = parseAddress(locations[index]?.address ?? "");
+    records.push({
+      ...at,
+      content: comment.content,
+      author: comment.authorName,
+      reply: false,
+    });
+    for (const reply of comment.replies.items) {
+      records.push({
+        ...at,
+        content: reply.content,
+        author: reply.authorName,
+        reply: true,
+      });
+    }
+  });
+  return records;
+}
+
+function commentRows(
+  records: CommentRecord[],
+  sheetOrder: Map<string, number>,
+  query: string,
+  options: FindOptions,
+): ScanRow[] {
+  const rows: ScanRow[] = [];
+  for (const hit of matchComments(records, query, options)) {
+    const record = records[hit.order];
+    if (!record) continue;
+    const sheetIndex = sheetOrder.get(record.sheet);
+    if (sheetIndex === undefined) continue;
+    rows.push({
+      sheetIndex,
+      row: COMMENT_ROW,
+      col: hit.order,
+      hit: {
+        kind: "comment",
+        sheet: record.sheet,
+        address: record.address,
+        text: record.reply ? `(reply) ${hit.text}` : hit.text,
+      },
+    });
+  }
+  return rows;
+}
+
+// Phase 4, and the one extra sync: every comment's cell and every reply thread
+// are queued in the same batch, so a workbook with comments costs one round
+// trip more however many of them there are, and one without costs nothing.
+async function commentHits(
+  context: Excel.RequestContext,
+  comments: Excel.CommentCollection | null,
+  sheets: Excel.Worksheet[],
+  query: string,
+  options: FindOptions,
+): Promise<ScanRow[]> {
+  if (!comments || comments.items.length === 0) return [];
+  const locations = comments.items.map((comment) => {
+    comment.replies.load(REPLY_LOAD);
+    const location = comment.getLocation();
+    location.load("address");
+    return location;
+  });
+  await context.sync();
+
+  const order = new Map<string, number>(
+    sheets.map((sheet, index) => [sheet.name, index]),
+  );
+  return commentRows(
+    commentRecords(comments, locations),
+    order,
+    query,
+    options,
+  );
+}
+
 // Hidden sheets are searched as well: a number that moved is usually hiding on
 // one, and the jump is what tells the modeller the sheet is out of reach.
 export async function findInWorkbook(
@@ -138,6 +266,7 @@ export async function findInWorkbook(
     sheets.load("items/name");
     const names = context.workbook.names;
     names.load("items/name,items/formula");
+    const comments = loadComments(context, options);
     await context.sync();
 
     const used = sheets.items.map((sheet) =>
@@ -160,13 +289,19 @@ export async function findInWorkbook(
       ...nameHits(names.items, query, options),
       ...sheetHits(sheets.items, query, options),
       ...cellHits(scanned, query, options),
+      ...(await commentHits(context, comments, sheets.items, query, options)),
     ];
-    return { hits: rankHits(rows).map((row) => row.hit), skippedSheets };
+    return {
+      hits: rankHits(rows).map((row) => row.hit),
+      skippedSheets,
+      commentsSkipped: wantsComments(options) && comments === null,
+    };
   });
 }
 
 // Excel cannot select on a sheet it is not showing, so the jump activates first
-// and refuses a hidden sheet by name rather than letting the host throw.
+// and refuses a hidden sheet by name rather than letting the host throw. A
+// comment jumps to the cell it hangs on, exactly as a cell hit does.
 export async function jumpToHit(hit: FindHit): Promise<void> {
   await Excel.run(async (context) => {
     const range =
