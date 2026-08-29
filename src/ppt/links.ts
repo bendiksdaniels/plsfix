@@ -7,6 +7,7 @@ import { deriveLinkKeys, open } from "../link/crypto";
 import {
   decodeInboxItem,
   decodePayload,
+  payloadBytes,
   sourceLabel,
   type InboxItem,
   type Payload,
@@ -200,9 +201,9 @@ export async function applyBatch(
 function splitByBytes(batch: RefreshRequest[]): RefreshRequest[][] {
   const items = batch.map((entry, index) => ({
     key: String(index),
-    // The base64 text is what the host request carries, so it is what the
-    // budget counts: about four bytes for every three of picture.
-    bytes: entry.payload.png.length,
+    // What the host request carries is what the budget counts: a picture's
+    // base64, about four bytes for every three of picture, or a table's cells.
+    bytes: payloadBytes(entry.payload),
   }));
   return planBatches(items, REPAINT_BUDGET_BYTES).map((keys) =>
     keys.map((key) => batch[Number(key)]!),

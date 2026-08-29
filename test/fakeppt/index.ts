@@ -13,6 +13,7 @@ export type {
   FakeSlide,
   ShapeSite,
 } from "./model";
+export type { FakeTable, FakeTableCell } from "./tables";
 export { FakePresentation } from "./model";
 
 export interface Box {

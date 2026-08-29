@@ -44,6 +44,7 @@ const KINDS: Record<string, Descriptor> = {
       getItem: "shape",
       getItemOrNullObject: "shape",
       addGeometricShape: "shape",
+      addTable: "shape",
       getCount: "clientResult",
     },
   },
@@ -66,7 +67,7 @@ const KINDS: Record<string, Descriptor> = {
       group: "group",
       textFrame: "textFrame",
     },
-    returns: { getParentSlideOrNullObject: "slide" },
+    returns: { getParentSlideOrNullObject: "slide", getTable: "table" },
   },
   // A shape of type Group and the shapes inside it: one more level of the same
   // items/<property> load paths, which is how office.js reads a group too.
@@ -82,6 +83,18 @@ const KINDS: Record<string, Descriptor> = {
   fill: {},
   lineFormat: { scalars: ["visible"] },
   textFrame: { scalars: ["hasText"] },
+  // A native table and one of its cells: the counts are read to decide whether
+  // a repaint fits, everything else is written.
+  table: {
+    scalars: ["rowCount", "columnCount"],
+    returns: { getCellOrNullObject: "tableCell" },
+  },
+  tableCell: {
+    scalars: ["text", "horizontalAlignment"],
+    children: { font: "tableCellFont", fill: "tableCellFill" },
+  },
+  tableCellFont: { scalars: ["bold", "italic", "color", "size"] },
+  tableCellFill: {},
   tags: { items: "tag", returns: { getItemOrNullObject: "tag" } },
   tag: { scalars: ["key", "value", "isNullObject"] },
   clientResult: { result: true },

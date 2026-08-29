@@ -4,6 +4,7 @@
 // and reads the deck on each access, so it sees a move or a delete happen.
 
 import { FakeClientResult, Loadable } from "./strict";
+import { newFakeTable, TableProxy, type FakeTable } from "./tables";
 
 export interface FakePptShape {
   id: string;
@@ -23,6 +24,8 @@ export interface FakePptShape {
   hasText: boolean;
   // The shapes a group holds; null on everything that is not a group.
   group: FakeShapeGroup | null;
+  // The grid a shape of type Table holds; null on everything else.
+  table: FakeTable | null;
 }
 
 export interface FakeShapeGroup {
@@ -109,6 +112,7 @@ export class FakePresentation {
       setImageCalls: 0,
       hasText: init.hasText ?? false,
       group: null,
+      table: null,
     };
     slide.shapes.push(shape);
     renumber(slide.shapes);
@@ -140,6 +144,7 @@ export class FakePresentation {
       lineVisible: true,
       setImageCalls: 0,
       hasText: false,
+      table: null,
       group: { id: `group-${seq}`, shapes: children },
     };
     slide.shapes.push(group);
@@ -199,6 +204,9 @@ export class FakePresentation {
       ...shape,
       id: `shape-${seq}`,
       tags: new Map(shape.tags),
+      table: shape.table
+        ? (JSON.parse(JSON.stringify(shape.table)) as FakeTable)
+        : null,
       group: group
         ? {
             id: `group-${seq}`,
@@ -361,6 +369,24 @@ class ShapeCollectionProxy extends Handle {
     return new ShapeProxy(this.deck, shape.id);
   }
 
+  // PowerPoint.ShapeCollection.addTable (PowerPointApi 1.8): the grid arrives
+  // with its text already in it, and every format inherited from the style.
+  addTable(
+    rowCount: number,
+    columnCount: number,
+    options: BoxOptions & { values?: string[][] } = {},
+  ): ShapeProxy {
+    const slide = this.slide();
+    const { values, ...box } = options;
+    const shape = this.deck.addShape(slide, {
+      name: `Table ${String(slide.shapes.length + 1)}`,
+      type: "Table",
+      ...box,
+    });
+    shape.table = newFakeTable(rowCount, columnCount, values);
+    return new ShapeProxy(this.deck, shape.id);
+  }
+
   private slide(): FakeSlide {
     return this.deck.findSlideOrThrow(this.handleId);
   }
@@ -438,6 +464,9 @@ class ShapeProxy extends ShapeBound {
     return new ShapeGroupProxy(this.deck, this.handleId);
   }
 
+  getTable(): TableProxy {
+    return new TableProxy(this.deck, this.handleId);
+  }
   delete(): void {
     this.deck.deleteShape(this.handleId);
   }

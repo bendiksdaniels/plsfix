@@ -1,10 +1,11 @@
-// The only PowerPoint Office.js code: scan the deck for shapes carrying the
-// link tags, insert a linked picture, repaint one or a whole batch of them in
-// place (or reinsert on hosts below PowerPointApi 1.8), re-point one at another
-// link by rewriting its tags, break a link by dropping them, and read or set
-// which slide is active. Identity is always the PLSFIX_LINK tag - never a shape
-// id, name or position. Every flow here is counted in round trips: one sync
-// per batch, never one per shape.
+// The PowerPoint Office.js code every link flow goes through: scan the deck
+// for shapes carrying the link tags, insert a linked picture (tables.ts does
+// the table), repaint one or a whole batch of them in place (or reinsert on
+// hosts below PowerPointApi 1.8), re-point one at another link by rewriting
+// its tags, break a link by dropping them, and read or set which slide is
+// active. Identity is always the PLSFIX_LINK tag - never a shape id, name or
+// position. Every flow here is counted in round trips: one sync per batch,
+// never one per shape.
 
 import {
   decodeTag,
@@ -15,11 +16,16 @@ import {
   type InboxItem,
   type LinkTag,
   type Payload,
+  type PicturePayload,
 } from "../link/model";
 import { base64ToBytes, pngSize } from "../link/png";
 import { aspectChanged, fitToSlide } from "../link/status";
 import { insertPictureBySelection } from "./picture";
-import { placeOnSlide } from "./placement";
+import {
+  placeOnSlide,
+  readSelectedSlideId,
+  selectedSlideId,
+} from "./placement";
 import {
   expandGroups,
   GROUP_API,
@@ -30,6 +36,7 @@ import {
   type PlacedShape,
   type ShapePath,
 } from "./shapes";
+import { insertTable, refreshTable } from "./tables";
 
 export interface FoundLink extends ShapePath {
   slideIndex: number;
@@ -131,24 +138,6 @@ function tagFor(
   };
 }
 
-async function readSelectedSlideId(
-  context: PowerPoint.RequestContext,
-): Promise<string | null> {
-  const selected = context.presentation.getSelectedSlides();
-  selected.load("items/id");
-  await context.sync();
-  return selected.items[0]?.id ?? null;
-}
-
-async function selectedSlideId(
-  context: PowerPoint.RequestContext,
-  stage: string,
-): Promise<string> {
-  const id = await readSelectedSlideId(context);
-  if (!id) throw new Error(`${stage}: select a slide first.`);
-  return id;
-}
-
 // What "Update this slide" acts on: PowerPoint's own selection, not a tick in
 // the pane - the pane cannot see the selection any other way. Null when
 // nothing is selected, so the caller can say so instead of guessing a slide.
@@ -190,9 +179,12 @@ export async function insertLink(
   rev: number,
 ): Promise<InsertResult> {
   const stage = `insert ${item.label}`;
+  const tag = tagFor(item, payload, rev);
+  if (payload.kind === "table") {
+    return insertTable(stage, item, payload, tag);
+  }
   const size = pngSize(base64ToBytes(payload.png));
   const fitted = fitToSlide(size.width, size.height);
-  const tag = tagFor(item, payload, rev);
   if (!supportsInPlaceRefresh()) {
     const placed = await PowerPoint.run(async (context) => {
       const slideId = await selectedSlideId(context, stage);
@@ -243,6 +235,14 @@ export interface RefreshRequest {
   rev: number;
 }
 
+interface PictureRequest extends RefreshRequest {
+  payload: PicturePayload;
+}
+
+function isPicture(entry: RefreshRequest): entry is PictureRequest {
+  return entry.payload.kind === "picture";
+}
+
 // One link repainted: the batch of one on a host with fill.setImage, and the
 // reinsertion fallback below it.
 export async function refreshLink(
@@ -250,6 +250,10 @@ export async function refreshLink(
   payload: Payload,
   rev: number,
 ): Promise<void> {
+  if (payload.kind === "table") {
+    await refreshTable(found, payload, tagFor(found.tag, payload, rev));
+    return;
+  }
   if (supportsInPlaceRefresh()) {
     await refreshLinks([{ found, payload, rev }]);
     return;
@@ -282,6 +286,9 @@ export async function refreshLink(
 // writes the same picture, tag and height however often it runs.
 export async function refreshLinks(batch: RefreshRequest[]): Promise<boolean> {
   if (!supportsInPlaceRefresh()) return false;
+  // A table is written cell by cell, not with one setImage: a batch holding
+  // one goes back to the caller, which replays every row on its own.
+  if (!batch.every(isPicture)) return false;
   if (batch.length === 0) return true;
   await PowerPoint.run(async (context) => {
     for (const entry of batch) queueRefresh(context, entry);
@@ -295,7 +302,7 @@ export async function refreshLinks(batch: RefreshRequest[]): Promise<boolean> {
 // one the scan already read.
 function queueRefresh(
   context: PowerPoint.RequestContext,
-  { found, payload, rev }: RefreshRequest,
+  { found, payload, rev }: PictureRequest,
 ): void {
   const height = refreshedHeight(found, pngSize(base64ToBytes(payload.png)));
   const shape = shapeAt(context, found);

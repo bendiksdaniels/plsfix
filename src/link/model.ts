@@ -1,10 +1,10 @@
 // Link core: the JSON shapes carried by the Excel tag, the workbook registry,
-// the relay payload and the PowerPoint inbox item, plus their codecs. Every
-// decoder validates its shape before trusting it - garbage in never becomes a
-// typed value out.
+// the relay payload (a picture or a table) and the PowerPoint inbox item, plus
+// their codecs. Every decoder validates its shape before trusting it - garbage
+// in never becomes a typed value out.
 
 export type LinkId = string; // 32 lowercase hex chars
-export type LinkKind = "range" | "chart";
+export type LinkKind = "range" | "chart" | "table";
 
 export interface Source {
   workbook: string;
@@ -38,7 +38,7 @@ export interface Registry {
   links: RegistryEntry[];
 }
 
-export interface Payload {
+export interface PicturePayload {
   v: 1;
   kind: "picture";
   mime: "image/png";
@@ -48,6 +48,56 @@ export interface Payload {
   src: Source;
   pushedAt: string;
   hash: string;
+}
+
+// One cell of a table, as small as it can be said: `t` is the text Excel
+// displays, and every other key is omitted when the cell wears the default, so
+// a plain grid travels as little more than its own words. `f` absent means no
+// fill at all, not white.
+export interface TableCell {
+  t: string;
+  b?: true;
+  i?: true;
+  c?: string;
+  f?: string;
+  a?: "l" | "c" | "r";
+  z?: number;
+}
+
+// The grid itself: `rows` and `cols` say what `cells` must be, and `widths`
+// carries one column width in points per column.
+export interface TablePayload {
+  v: 1;
+  kind: "table";
+  rows: number;
+  cols: number;
+  cells: TableCell[][];
+  widths: number[];
+  src: Source;
+  pushedAt: string;
+  hash: string;
+}
+
+export type Payload = PicturePayload | TablePayload;
+
+// A native PowerPoint table is written cell by cell, so its size is what an
+// insert costs: past this, a picture is the honest answer.
+export const TABLE_MAX_ROWS = 60;
+export const TABLE_MAX_COLS = 20;
+export const TABLE_TOO_BIG =
+  `Tables go up to ${String(TABLE_MAX_ROWS)} rows and ` +
+  `${String(TABLE_MAX_COLS)} columns; export a picture for more.`;
+
+export function overTableCap(rows: number, cols: number): boolean {
+  return rows > TABLE_MAX_ROWS || cols > TABLE_MAX_COLS;
+}
+
+// What one repaint round trip carries: the base64 of a picture, or the JSON of
+// a table's cells - the two are the payload, everything else is a header.
+export function payloadBytes(payload: Payload): number {
+  return payload.kind === "picture"
+    ? payload.png.length
+    : JSON.stringify(payload.cells).length;
 }
 
 export interface InboxItem {
@@ -100,7 +150,7 @@ function isSource(value: unknown): value is Source {
 }
 
 function isKind(value: unknown): value is LinkKind {
-  return value === "range" || value === "chart";
+  return value === "range" || value === "chart" || value === "table";
 }
 
 function isTag(value: unknown): value is LinkTag {
@@ -138,7 +188,7 @@ function isRegistry(value: unknown): value is Registry {
   );
 }
 
-function isPayload(value: unknown): value is Payload {
+function isPicturePayload(value: unknown): value is PicturePayload {
   return (
     isRecord(value) &&
     value.v === 1 &&
@@ -151,6 +201,63 @@ function isPayload(value: unknown): value is Payload {
     typeof value.pushedAt === "string" &&
     typeof value.hash === "string"
   );
+}
+
+function isOptional(value: unknown, ok: (entry: unknown) => boolean): boolean {
+  return value === undefined || ok(value);
+}
+
+// A key that is present must carry a value the writer would have written: an
+// absent bold and a `false` bold are not the same thing here, because the
+// encoder omits every default rather than spelling it out.
+function isTableCell(value: unknown): value is TableCell {
+  return (
+    isRecord(value) &&
+    typeof value.t === "string" &&
+    isOptional(value.b, (entry) => entry === true) &&
+    isOptional(value.i, (entry) => entry === true) &&
+    isOptional(value.c, (entry) => typeof entry === "string") &&
+    isOptional(value.f, (entry) => typeof entry === "string") &&
+    isOptional(value.z, (entry) => typeof entry === "number") &&
+    isOptional(
+      value.a,
+      (entry) => entry === "l" || entry === "c" || entry === "r",
+    )
+  );
+}
+
+// The counts are not a second opinion about the grid: a payload whose cells do
+// not make exactly rows x cols is refused rather than half-drawn.
+function isCellGrid(value: unknown, rows: number, cols: number): boolean {
+  return (
+    Array.isArray(value) &&
+    value.length === rows &&
+    value.every(
+      (row) =>
+        Array.isArray(row) && row.length === cols && row.every(isTableCell),
+    )
+  );
+}
+
+function isTablePayload(value: unknown): value is TablePayload {
+  return (
+    isRecord(value) &&
+    value.v === 1 &&
+    value.kind === "table" &&
+    typeof value.rows === "number" &&
+    typeof value.cols === "number" &&
+    isCellGrid(value.cells, value.rows, value.cols) &&
+    Array.isArray(value.widths) &&
+    value.widths.length === value.cols &&
+    value.widths.every((width) => typeof width === "number") &&
+    isSource(value.src) &&
+    typeof value.pushedAt === "string" &&
+    typeof value.hash === "string"
+  );
+}
+
+function isPayload(value: unknown): value is Payload {
+  return isPicturePayload(value) || isTablePayload(value);
 }
 
 function isInboxItem(value: unknown): value is InboxItem {
@@ -241,8 +348,10 @@ export function decodeInboxItem(bytes: Uint8Array): InboxItem {
   return parsed;
 }
 
+// A table names its range and says so: two links can point at the same cells,
+// one as a picture and one as a table, and the list has to tell them apart.
 export function sourceLabel(src: Source, kind: LinkKind): string {
-  return kind === "range"
-    ? `${src.sheet}!${src.ref}`
-    : `${src.sheet}: ${src.ref}`;
+  if (kind === "chart") return `${src.sheet}: ${src.ref}`;
+  const range = `${src.sheet}!${src.ref}`;
+  return kind === "table" ? `${range} table` : range;
 }

@@ -1,8 +1,9 @@
-// Where an inserted link lands on a slide: the boxes the slide's other shapes
-// already occupy, and the first free spot placeInFreeSpace finds for the new
-// one. Owns the slide geometry constants and the empty-placeholder rule.
-// Invariant: an empty layout placeholder never counts as occupied; every other
-// shape does, so a second insert cannot land on the first.
+// Which slide an inserted link goes on and where it lands: PowerPoint's own
+// selection, the boxes the slide's other shapes occupy, and the first free
+// spot placeInFreeSpace finds. Owns the slide geometry constants and the
+// empty-placeholder rule. Invariant: an empty layout placeholder never counts
+// as occupied and every other shape does, so a second insert cannot land on
+// the first.
 
 import {
   placeInFreeSpace,
@@ -23,6 +24,26 @@ const PLACEHOLDER = "Placeholder";
 
 export const SLIDE = SLIDE_16_9;
 export const CONTENT_WIDTH = SLIDE.width - 2 * SLIDE_MARGIN;
+
+// The slide PowerPoint reports as selected; null when there is none, so the
+// caller can say so instead of guessing one.
+export async function readSelectedSlideId(
+  context: PowerPoint.RequestContext,
+): Promise<string | null> {
+  const selected = context.presentation.getSelectedSlides();
+  selected.load("items/id");
+  await context.sync();
+  return selected.items[0]?.id ?? null;
+}
+
+export async function selectedSlideId(
+  context: PowerPoint.RequestContext,
+  stage: string,
+): Promise<string> {
+  const id = await readSelectedSlideId(context);
+  if (!id) throw new Error(`${stage}: select a slide first.`);
+  return id;
+}
 
 // The box for a new object of this size on that slide. Two syncs: the slide's
 // shapes, then - only when the slide has placeholders - whether each holds

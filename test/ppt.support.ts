@@ -1,7 +1,7 @@
 // Shared PowerPoint fake-host setup for the ppt.*.integration.test.ts suites:
-// the workspace key store, the relay-seeding helpers (seedLink, pushAgain),
-// the source-cell constant they publish under, and the per-test boot
-// (bootPpt) that installs a fresh fake deck and relay.
+// the workspace key store, the relay-seeding helpers (seedLink and seedTable,
+// pushAgain and pushTable), the source-cell constant they publish under, and
+// the per-test boot (bootPpt) that installs a fresh fake deck and relay.
 
 import { vi } from "vitest";
 import { deriveLinkKeys, newToken, seal } from "../src/link/crypto";
@@ -10,6 +10,8 @@ import {
   newLinkId,
   type InboxItem,
   type Payload,
+  type TableCell,
+  type TablePayload,
 } from "../src/link/model";
 import type { KeyStore } from "../src/link/workspace";
 import { FakeRelay } from "./fakerelay";
@@ -43,13 +45,80 @@ export function memoryStore(): KeyStore {
   };
 }
 
+function newId(): string {
+  return newLinkId((n) =>
+    new Uint8Array(n).map(() => Math.floor(Math.random() * 256)),
+  );
+}
+
+async function publish(
+  id: string,
+  token: string,
+  payload: Payload,
+): Promise<void> {
+  const keys = await deriveLinkKeys(token);
+  await relay.putLink(
+    id,
+    keys.auth,
+    await seal(keys.enc, id, encodePayload(payload)),
+  );
+}
+
+function tablePayload(
+  cells: TableCell[][],
+  widths: number[],
+  hash: string,
+): TablePayload {
+  return {
+    v: 1,
+    kind: "table",
+    rows: cells.length,
+    cols: widths.length,
+    cells,
+    widths,
+    src,
+    pushedAt: new Date().toISOString(),
+    hash,
+  };
+}
+
+// A table export waiting in the inbox, sealed the way Excel would have sealed
+// it: the label is the one sourceLabel gives a table link.
+export async function seedTable(
+  cells: TableCell[][],
+  widths: number[],
+): Promise<InboxItem> {
+  const id = newId();
+  const token = newToken();
+  const payload = tablePayload(cells, widths, "0".repeat(64));
+  await publish(id, token, payload);
+  return {
+    id,
+    token,
+    kind: "table",
+    label: `${src.sheet}!${src.ref} table`,
+    src: payload.src,
+    createdAt: payload.pushedAt,
+  };
+}
+
+export async function pushTable(
+  item: InboxItem,
+  cells: TableCell[][],
+  widths: number[],
+): Promise<void> {
+  await publish(
+    item.id,
+    item.token,
+    tablePayload(cells, widths, "1".repeat(64)),
+  );
+}
+
 export async function seedLink(
   png: string,
   workbook = src.workbook,
 ): Promise<InboxItem> {
-  const id = newLinkId((n) =>
-    new Uint8Array(n).map(() => Math.floor(Math.random() * 256)),
-  );
+  const id = newId();
   const token = newToken();
   const payload: Payload = {
     v: 1,
@@ -62,12 +131,7 @@ export async function seedLink(
     pushedAt: new Date().toISOString(),
     hash: "0".repeat(64),
   };
-  const keys = await deriveLinkKeys(token);
-  await relay.putLink(
-    id,
-    keys.auth,
-    await seal(keys.enc, id, encodePayload(payload)),
-  );
+  await publish(id, token, payload);
   return {
     id,
     token,
@@ -94,12 +158,7 @@ export async function pushAgain(
     pushedAt: new Date().toISOString(),
     hash: "1".repeat(64),
   };
-  const keys = await deriveLinkKeys(item.token);
-  await relay.putLink(
-    item.id,
-    keys.auth,
-    await seal(keys.enc, item.id, encodePayload(payload)),
-  );
+  await publish(item.id, item.token, payload);
 }
 
 // The per-test boot: a fresh fake deck (3 slides, slide 0 selected) and a
