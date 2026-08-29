@@ -78,3 +78,11 @@ the web rejects `chart.format.font` and `roundedCorners` on chartex charts (the 
 applies its surface in a tolerated batch of its own); and "Fill formula right" sizes by the
 neighbouring rows, so a demo row with blank neighbours cannot be filled. Deleting rows inside
 an exported range shrinks its hidden name; only removing the whole block gives "source missing".
+
+## 2026-08-30: a worktree agent forks from the shell's CURRENT directory, not the project
+
+Three agents launched right after a `cd` into the memory repo got worktrees of the memory repo,
+found no source and stopped (about 180k tokens for nothing). Rule: run `cd ~/plsfix && pwd` as
+the last shell command before any `isolation: worktree` dispatch, tell the agent which repo it
+must be in (`git remote -v`, `ls package.json`) and to report BLOCKED otherwise, and verify with
+`git worktree list` right after launching.
