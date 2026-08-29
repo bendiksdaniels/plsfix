@@ -2,10 +2,10 @@
 // the floating CAGR label shape. The brand shell they share lives in
 // internal.ts, next to the other helpers src/excel/tornado.ts also needs.
 
+import { placeChartBeside, UNPLACED_NOTE } from "./chart-place";
 import {
   formatChartAmount,
   hostSupports,
-  placeChartBeside,
   styleChartShell,
   styleChartSurface,
   syncTolerating,
@@ -101,7 +101,10 @@ export async function insertWaterfall(): Promise<string> {
     const series = chart.series.getItemAt(0);
     series.showConnectorLines = true;
     await context.sync();
-    await placeChartBeside(context, sheet, chart, range);
+    // The geometry travels in its own batch: Excel for the web rejects the one
+    // carrying the surface whole, and the placement must not go down with it.
+    const placed = await placeChartBeside(context, sheet, chart, range);
+    await context.sync();
 
     // Excel for the web refuses the surface on chartex charts. It is cosmetic,
     // so the waterfall keeps the host's default font there instead of failing.
@@ -126,10 +129,11 @@ export async function insertWaterfall(): Promise<string> {
     const stated = values[last] ?? 0;
     const ties = Math.abs(implied - stated) <= Math.abs(stated) * 1e-12 + 1e-9;
 
+    const note = placed ? "" : UNPLACED_NOTE;
     if (ties) {
-      return `Waterfall added: ${values.length} points, ties at ${formatChartAmount(stated)}`;
+      return `Waterfall added: ${values.length} points, ties at ${formatChartAmount(stated)}${note}`;
     }
-    return `Waterfall added: deltas imply ${formatChartAmount(implied)}, closing total says ${formatChartAmount(stated)}`;
+    return `Waterfall added: deltas imply ${formatChartAmount(implied)}, closing total says ${formatChartAmount(stated)}${note}`;
   });
 }
 

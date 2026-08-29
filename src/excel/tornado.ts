@@ -3,12 +3,12 @@
 // ranges only and the deltas are not in the model, so they are written to a
 // helper block beside the selection and charted from there.
 
+import { placeChartBeside, UNPLACED_NOTE } from "./chart-place";
 import {
   formatChartAmount,
   hostSupports,
   requireEmptyBlock,
   selectedSingleRange,
-  placeChartBeside,
   styleChartShell,
 } from "./internal";
 import { captureUndo } from "./undo";
@@ -147,10 +147,11 @@ export async function insertTornado(): Promise<string> {
     );
     styleTornado(chart, heading);
     await context.sync();
-    await placeChartBeside(context, sheet, chart, block);
+    const placed = await placeChartBeside(context, sheet, chart, block);
     await context.sync();
 
     const count = series.labels.length;
-    return `Tornado added: ${count} drivers, base ${formatChartAmount(series.base)}`;
+    const note = placed ? "" : UNPLACED_NOTE;
+    return `Tornado added: ${count} drivers, base ${formatChartAmount(series.base)}${note}`;
   });
 }

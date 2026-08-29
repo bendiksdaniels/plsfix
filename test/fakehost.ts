@@ -14,7 +14,8 @@
 //     getSelectedRanges answers areaCount and nothing else.
 //   * copyFrom(..., formulas) copies text verbatim; Excel rewrites relative refs.
 //   * getImage() hands back a signature-only PNG sized from the fake grid (64pt
-//     columns, 20pt rows) or from the requested chart size, never a real picture.
+//     columns, 15pt rows, plus whatever a test resized) or from the requested
+//     chart size, never a real picture.
 //   * getEntireRow()/getEntireColumn() serve the whole-sheet band Excel does,
 //     but a size write spanning more than maxCells rows or columns is refused
 //     rather than filling a million map entries.
@@ -27,7 +28,6 @@ export const ROW_LIMIT = 1_048_576;
 export const COLUMN_LIMIT = 16_384;
 const DEFAULT_ROW_HEIGHT = 15;
 const DEFAULT_COLUMN_WIDTH = 64;
-const POINTS_PER_ROW = 20;
 
 // ---------------------------------------------------------------------------
 // Addresses
@@ -291,14 +291,46 @@ export class FakeSheet {
     if (cell && isDefaultCell(cell)) this.cells.delete(key);
   }
 
+  // Where a row or a column starts and how far it runs, in points: the sizes a
+  // test set, the defaults everywhere else. Range geometry and the row-height
+  // cycles then speak the same units, as they do in Excel.
+  private offset(
+    index: number,
+    sizes: Map<number, number>,
+    fallback: number,
+  ): number {
+    let points = index * fallback;
+    for (const [at, size] of sizes) {
+      if (at < index) points += size - fallback;
+    }
+    return points;
+  }
+
+  rowOffset(row: number): number {
+    return this.offset(row, this.rowHeights, DEFAULT_ROW_HEIGHT);
+  }
+
+  columnOffset(col: number): number {
+    return this.offset(col, this.columnWidths, DEFAULT_COLUMN_WIDTH);
+  }
+
   usedRect(): Rect | null {
+    return this.usedRectIn(null, false);
+  }
+
+  // Excel's used range, narrowed to a window and optionally to cells that hold
+  // something: Range.getUsedRangeOrNullObject(true) answers for that range
+  // alone, and a cell wearing only a style is not used once valuesOnly is on.
+  usedRectIn(within: Rect | null, valuesOnly: boolean): Rect | null {
     let top = Infinity;
     let left = Infinity;
     let bottom = -1;
     let right = -1;
     for (const [key, cell] of this.cells) {
       if (isDefaultCell(cell)) continue;
+      if (valuesOnly && !holdsSomething(cell)) continue;
       const [row, col] = key.split(",").map(Number) as [number, number];
+      if (within && !inside(within, row, col)) continue;
       top = Math.min(top, row);
       left = Math.min(left, col);
       bottom = Math.max(bottom, row);
@@ -312,6 +344,20 @@ export class FakeSheet {
       colCount: right - left + 1,
     };
   }
+}
+
+function holdsSomething(cell: FakeCell): boolean {
+  const empty = (entry: CellValue): boolean => entry === "" || entry === null;
+  return !empty(cell.value) || !empty(cell.formula);
+}
+
+function inside(rect: Rect, row: number, col: number): boolean {
+  return (
+    row >= rect.row &&
+    row < rect.row + rect.rowCount &&
+    col >= rect.col &&
+    col < rect.col + rect.colCount
+  );
 }
 
 export interface FakeAxis {
@@ -642,7 +688,11 @@ const SHAPES: Record<string, Shape> = {
       getUsedRangeOrNullObject: "range",
     },
   },
-  charts: { returns: { add: "chart", getItemOrNullObject: "chart" } },
+  charts: {
+    scalars: ["items"],
+    items: "chart",
+    returns: { add: "chart", getItemOrNullObject: "chart" },
+  },
   shapes: { returns: { addTextBox: "shape" } },
   range: {
     scalars: [
@@ -700,7 +750,15 @@ const SHAPES: Record<string, Shape> = {
   rangeCollection: { scalars: ["items"], items: "traceArea" },
   traceArea: { scalars: ["address", "cellCount"] },
   chart: {
-    scalars: ["chartType", "name", "width", "height", "isNullObject"],
+    scalars: [
+      "chartType",
+      "name",
+      "width",
+      "height",
+      "left",
+      "top",
+      "isNullObject",
+    ],
     returns: { getImage: "clientResult" },
     children: {
       worksheet: "worksheet",
@@ -1328,19 +1386,23 @@ class RangeProxy {
   }
 
   get left(): number {
-    return this.rect.col * DEFAULT_COLUMN_WIDTH;
+    return this.sheet.columnOffset(this.rect.col);
   }
 
   get top(): number {
-    return this.rect.row * POINTS_PER_ROW;
+    return this.sheet.rowOffset(this.rect.row);
   }
 
   get width(): number {
-    return this.rect.colCount * DEFAULT_COLUMN_WIDTH;
+    const { col, colCount } = this.rect;
+    return (
+      this.sheet.columnOffset(col + colCount) - this.sheet.columnOffset(col)
+    );
   }
 
   get height(): number {
-    return this.rect.rowCount * POINTS_PER_ROW;
+    const { row, rowCount } = this.rect;
+    return this.sheet.rowOffset(row + rowCount) - this.sheet.rowOffset(row);
   }
 
   get worksheet(): WorksheetProxy {
@@ -1572,8 +1634,12 @@ class RangeProxy {
     return this.at({ row, col, rowCount, colCount });
   }
 
-  getUsedRangeOrNullObject(): RangeProxy & { isNullObject: boolean } {
-    const used = this.sheet.usedRect();
+  // Range.getUsedRangeOrNullObject answers for this range alone, not for the
+  // sheet: what a placement asks when it wants to know whether a block is free.
+  getUsedRangeOrNullObject(
+    valuesOnly = false,
+  ): RangeProxy & { isNullObject: boolean } {
+    const used = this.sheet.usedRectIn(this.rect, valuesOnly);
     const proxy = this.at(used ?? this.rect) as RangeProxy & {
       isNullObject: boolean;
     };
@@ -2265,6 +2331,24 @@ class ChartProxy {
     this.record.height = value;
   }
 
+  // Excel drops a new chart at the view's corner; an unplaced chart in the fake
+  // reads as the origin, which is what the placement code has to move away.
+  get left(): number {
+    return this.record.left ?? 0;
+  }
+
+  set left(value: number) {
+    this.record.left = value;
+  }
+
+  get top(): number {
+    return this.record.top ?? 0;
+  }
+
+  set top(value: number) {
+    this.record.top = value;
+  }
+
   get worksheet(): WorksheetProxy {
     const sheet = this.runtime.workbook.find(this.record.sheetName);
     return sheet
@@ -2743,8 +2827,10 @@ class WorksheetProxy {
     });
   }
 
-  getUsedRangeOrNullObject(): RangeProxy & { isNullObject: boolean } {
-    const used = this.sheet.usedRect();
+  getUsedRangeOrNullObject(
+    valuesOnly = false,
+  ): RangeProxy & { isNullObject: boolean } {
+    const used = this.sheet.usedRectIn(null, valuesOnly);
     const proxy = new RangeProxy(
       this.runtime,
       this.ctx,

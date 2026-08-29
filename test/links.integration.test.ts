@@ -97,7 +97,7 @@ describe("exportSelection", () => {
       ref: "B4:F5",
       anchor: anchorName(result.id),
     });
-    expect(payload.png).toBe(fakePng(5 * 64, 2 * 20));
+    expect(payload.png).toBe(fakePng(5 * 64, 2 * 15));
     expect(payload.width).toBe(320);
     const inbox = await relay.listInbox(ws.id, ws.auth);
     expect(
@@ -160,7 +160,7 @@ describe("pushLinks", () => {
       .token;
     const payload = await payloadOf(id, token);
     expect(payload.src.ref).toBe("B10:F18");
-    expect(payload.png).toBe(fakePng(5 * 64, 9 * 20));
+    expect(payload.png).toBe(fakePng(5 * 64, 9 * 15));
     expect(relay.links.get(id)!.rev).toBe(2);
   });
   it("reports a broken anchor as missing and lists it as such", async () => {

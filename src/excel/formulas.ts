@@ -8,6 +8,8 @@ import {
   requireEmptyBlock,
   selectedSingleRange,
   selectionWithinCap,
+  SHEET_COLUMNS,
+  SHEET_ROWS,
 } from "./internal";
 import { parseAddress } from "./shared";
 import { captureUndo } from "./undo";
@@ -25,8 +27,6 @@ import {
 import { ROUNDING_CELL_CAP } from "../rounding";
 
 const FILL_SCAN_LIMIT = 1_000;
-const SHEET_ROWS = 1_048_576;
-const SHEET_COLUMNS = 16_384;
 
 // Macabacus-style fast fill: the data beside the origin decides how far the
 // formula travels, so nobody has to select the block first.
