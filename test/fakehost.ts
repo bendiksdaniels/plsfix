@@ -159,6 +159,10 @@ export interface FakeHyperlink {
   screenTip?: string;
 }
 
+// Excel's own default style: the one every untouched cell wears, and the one
+// entry a workbook's style table can never be without.
+export const NORMAL_STYLE = "Normal";
+
 export interface FakeCell {
   value: CellValue;
   formula: CellValue;
@@ -172,6 +176,8 @@ export interface FakeCell {
   wrapText: boolean;
   indentLevel: number;
   hyperlink: FakeHyperlink | null;
+  // The cell style worn by the cell; every cell wears one, "Normal" by default.
+  style: string;
 }
 
 export function defaultCell(): FakeCell {
@@ -200,6 +206,7 @@ export function defaultCell(): FakeCell {
     wrapText: false,
     indentLevel: 0,
     hyperlink: null,
+    style: NORMAL_STYLE,
   };
 }
 
@@ -392,6 +399,11 @@ export interface FakeName {
   visible: boolean;
 }
 
+export interface FakeStyle {
+  name: string;
+  builtIn: boolean;
+}
+
 export interface TraceArea {
   address: string;
   cellCount: number;
@@ -405,6 +417,9 @@ export class FakeWorkbook {
   // What getFilePropertiesAsync reports; empty means an unsaved workbook.
   fileUrl = "";
   names: FakeName[] = [];
+  // Excel ships a style table with every workbook; the built-ins in it cannot
+  // be deleted, which is what the scrubber has to leave alone.
+  styles: FakeStyle[] = [{ name: NORMAL_STYLE, builtIn: true }];
   charts: FakeChart[] = [];
   shapes: FakeShape[] = [];
   selection: { sheetId: string; rect: Rect } = {
@@ -557,6 +572,7 @@ const SHAPES: Record<string, Shape> = {
       worksheets: "worksheets",
       settings: "settings",
       names: "names",
+      styles: "styles",
     },
     returns: {
       getSelectedRange: "range",
@@ -730,6 +746,8 @@ const SHAPES: Record<string, Shape> = {
     scalars: ["name", "formula", "visible", "isNullObject"],
     returns: { getRange: "range", getRangeOrNullObject: "range" },
   },
+  styles: { scalars: ["items"], items: "style", returns: { getItem: "style" } },
+  style: { scalars: ["name", "builtIn"] },
 };
 
 interface LoadState {
@@ -1656,6 +1674,7 @@ class RangeProxy {
       const out: Record<string, unknown> = {};
       if (Object.keys(format).length > 0) out.format = format;
       if (options?.hyperlink) out.hyperlink = clone(cell.hyperlink);
+      if (options?.style) out.style = cell.style;
       return out;
     });
 
@@ -2441,6 +2460,43 @@ class NamedItemProxy {
 }
 
 // ---------------------------------------------------------------------------
+// Style
+// ---------------------------------------------------------------------------
+
+class StyleProxy {
+  constructor(
+    private runtime: FakeRuntime,
+    private record: FakeStyle,
+  ) {}
+
+  load(): this {
+    return this;
+  }
+
+  get name(): string {
+    return this.record.name;
+  }
+
+  get builtIn(): boolean {
+    return this.record.builtIn;
+  }
+
+  // Excel refuses to delete one of its own styles; a scrubber that offered one
+  // would fail at the host rather than quietly do nothing.
+  delete(): void {
+    if (this.record.builtIn) {
+      throw hostError(
+        ErrorCodes.invalidArgument,
+        `${this.record.name} is a built-in style.`,
+      );
+    }
+    const list = this.runtime.workbook.styles;
+    const index = list.indexOf(this.record);
+    if (index >= 0) list.splice(index, 1);
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Worksheet
 // ---------------------------------------------------------------------------
 
@@ -2813,6 +2869,25 @@ class WorkbookProxy {
       },
     };
   }
+
+  get styles() {
+    const runtime = this.runtime;
+    const list = runtime.workbook.styles;
+    const wrap = (record: FakeStyle) => new StyleProxy(runtime, record);
+    return {
+      load: () => undefined,
+      get items() {
+        return list.map(wrap);
+      },
+      getItem(name: string): StyleProxy {
+        const record = list.find((entry) => entry.name === name);
+        if (!record) {
+          throw hostError(ErrorCodes.itemNotFound, `No style ${name}.`);
+        }
+        return wrap(record);
+      },
+    };
+  }
 }
 
 class FakeContext {
@@ -2880,6 +2955,8 @@ export interface FakeHelpers {
   setNumberFormat(address: string, format: string): void;
   setFill(address: string, fill: Partial<FakeFill>): void;
   setFont(address: string, font: Partial<FakeFont>): void;
+  addStyle(name: string, builtIn?: boolean): void;
+  setStyle(address: string, name: string): void;
   cell(address: string): FakeCell;
   fill(address: string): FakeFill;
   font(address: string): FakeFont;
@@ -3097,6 +3174,19 @@ export function installFakeHost(options: FakeHostOptions = {}): {
       for (let r = 0; r < rect.rowCount; r += 1) {
         for (let c = 0; c < rect.colCount; c += 1) {
           Object.assign(sheet.edit(rect.row + r, rect.col + c).font, font);
+        }
+      }
+    },
+    // A style the workbook knows about; built-in ones are Excel's own, which no
+    // add-in may delete.
+    addStyle(name, builtIn = false) {
+      workbook.styles.push({ name, builtIn });
+    },
+    setStyle(address, name) {
+      const { sheet, rect } = resolve(workbook, address);
+      for (let r = 0; r < rect.rowCount; r += 1) {
+        for (let c = 0; c < rect.colCount; c += 1) {
+          sheet.edit(rect.row + r, rect.col + c).style = name;
         }
       }
     },
