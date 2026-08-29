@@ -14,6 +14,8 @@ export const FIND_HIT_CAP = 200;
 // every sheet; a sheet-name hit sorts ahead of that sheet's own cells.
 export const NAME_ORDER = -1;
 export const SHEET_NAME_ROW = -1;
+// A sheet-name hit has no cell, so it sorts ahead of column A as well.
+export const SHEET_NAME_COL = -1;
 
 export interface FindGrid {
   values: CellValue[][];

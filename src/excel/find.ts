@@ -17,11 +17,13 @@ import {
   type RankedHit,
   NAME_ORDER,
   rankHits,
+  SHEET_NAME_COL,
   SHEET_NAME_ROW,
 } from "../find";
 import {
   hostSupports,
   pickScannableSheets,
+  SCAN_CELL_CAP,
   type ScannedSheet,
   SELECTION_CELL_CAP,
 } from "./internal";
@@ -49,6 +51,9 @@ export interface FindOptions extends MatchOptions {
   // The used range a sheet may have before it is skipped instead of read.
   // Defaults to the selection cap; the tests use a smaller one.
   maxCells?: number;
+  // What the whole scan may read across every sheet, so a workbook of middling
+  // sheets cannot queue one request the host refuses.
+  maxTotalCells?: number;
   // Comments are their own phase with their own host requirement, so the pane
   // can leave them out; on unless the box is unticked, as it is on screen.
   inComments?: boolean;
@@ -111,7 +116,7 @@ function sheetHits(
     rows.push({
       sheetIndex: index,
       row: SHEET_NAME_ROW,
-      col: SHEET_NAME_ROW,
+      col: SHEET_NAME_COL,
       hit: {
         kind: "sheet",
         sheet: sheet.name,
@@ -281,6 +286,7 @@ export async function findInWorkbook(
       sheets.items,
       used,
       options.maxCells ?? SELECTION_CELL_CAP,
+      options.maxTotalCells ?? SCAN_CELL_CAP,
     );
     for (const sheet of scanned) sheet.range.load("values,formulas");
     await context.sync();
@@ -299,6 +305,24 @@ export async function findInWorkbook(
   });
 }
 
+// A name is matched on its formula as well as on its own name, so a hit can be
+// a constant - "Tax" finds TaxRate = 0.21 - or a name Excel has rewritten to
+// #REF!. Neither points at a range, and getRange() answers that with a bare
+// host string, so the null object is asked for instead and the refusal names
+// the flow and the name.
+async function namedRange(
+  context: Excel.RequestContext,
+  name: string,
+): Promise<Excel.Range> {
+  const range = context.workbook.names.getItem(name).getRangeOrNullObject();
+  range.load("isNullObject");
+  await context.sync();
+  if (range.isNullObject) {
+    throw new Error(`find: name "${name}" has no range`);
+  }
+  return range;
+}
+
 // Excel cannot select on a sheet it is not showing, so the jump activates first
 // and refuses a hidden sheet by name rather than letting the host throw. A
 // comment jumps to the cell it hangs on, exactly as a cell hit does.
@@ -306,7 +330,7 @@ export async function jumpToHit(hit: FindHit): Promise<void> {
   await Excel.run(async (context) => {
     const range =
       hit.kind === "name"
-        ? context.workbook.names.getItem(hit.address).getRange()
+        ? await namedRange(context, hit.address)
         : context.workbook.worksheets.getItem(hit.sheet).getRange(hit.address);
     const sheet = range.worksheet;
     sheet.load("name,visibility");
