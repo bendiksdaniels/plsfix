@@ -63,14 +63,14 @@ export function isExternalFormula(formula: CellValue): formula is string {
   return classifyCell(formula, null) === "external" && formula.includes("]");
 }
 
-// =SMT.ROUND and =SMT.ROUNDSUM are this add-in's own functions. Opened without
-// it, Excel keeps them as _xlfn.SMT.ROUND and every one of those cells reads
+// =PLSFIX.ROUND and =PLSFIX.ROUNDSUM are this add-in's own functions. Opened without
+// it, Excel keeps them as _xlfn.PLSFIX.ROUND and every one of those cells reads
 // #NAME?, so a model full of them is only a model on a machine that has the
 // add-in. The namespace is matched either way round: the stored formula carries
 // the _xlfn. prefix once the workbook has been opened somewhere without us.
 export function isAddinFormula(formula: CellValue): formula is string {
   if (!isFormula(formula)) return false;
-  return formula.toUpperCase().includes("SMT.");
+  return formula.toUpperCase().includes("PLSFIX.");
 }
 
 function isVisible(sheet: ShareSheet): boolean {

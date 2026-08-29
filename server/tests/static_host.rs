@@ -24,7 +24,7 @@ mod tests {
             std::fs::create_dir_all(&assets).unwrap();
             std::fs::write(
                 dir.join("taskpane.html"),
-                "<title>Model Tools</title>",
+                "<title>pls,fix</title>",
             )
             .unwrap();
             std::fs::write(dir.join("shortcuts.json"), "{\"actions\":[]}").unwrap();
@@ -74,7 +74,7 @@ mod tests {
     async fn pane_and_shortcuts_are_served_uncached() {
         let (status, cache, body) = call("/taskpane.html").await;
         assert_eq!(status, StatusCode::OK);
-        assert!(body.contains("Model Tools"));
+        assert!(body.contains("pls,fix"));
         assert_eq!(cache.as_deref(), Some("no-cache"));
 
         let (status, cache, _) = call("/shortcuts.json").await;

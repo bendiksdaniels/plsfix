@@ -1894,7 +1894,7 @@ class RangeFormatProxy {
     return count;
   }
 
-  // Row height and column width are sheet state, not cell state: SMT Undo
+  // Row height and column width are sheet state, not cell state: pls,fix Undo
   // cannot reach them, which the suite asserts explicitly.
   get rowHeight(): number {
     return this.sheet.rowHeights.get(this.rect.row) ?? DEFAULT_ROW_HEIGHT;

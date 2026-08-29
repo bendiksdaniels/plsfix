@@ -356,7 +356,7 @@ export class RelayClient implements RelayApi {
         headers: {
           Authorization: bearer(auth),
           "Content-Type": "application/octet-stream",
-          "X-SMT-Link-Id": id,
+          "X-PLSFIX-Link-Id": id,
         },
         body: toBody(blob),
       },

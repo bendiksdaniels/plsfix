@@ -1,4 +1,4 @@
-// Model Tools demo workbook: a small DemoCo model whose every sheet gives
+// pls,fix demo workbook: a small DemoCo model whose every sheet gives
 // one of the add-in's tools something to act on. `build` returns the workbook
 // and a per-sheet tally of what was written, so main.rs can log it and the
 // test can reconcile the saved file against it, cell for cell.

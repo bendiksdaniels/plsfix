@@ -9,10 +9,10 @@
   xmlns:ov="http://schemas.microsoft.com/office/taskpaneappversionoverrides"
   xsi:type="TaskPaneApp">
   <Id>FF1B34D8-DD7D-4B39-8FA9-6248CA09DB6E</Id>
-  <Version>2.1.22.0</Version>
+  <Version>2.2.0.0</Version>
   <ProviderName>Daniels Bendiks</ProviderName>
   <DefaultLocale>en-US</DefaultLocale>
-  <DisplayName DefaultValue="Model Tools"/>
+  <DisplayName DefaultValue="pls,fix"/>
   <Description DefaultValue="Fast, consistent financial modelling tools for Excel and PowerPoint."/>
   <IconUrl DefaultValue="https://dbautomatizacijas.com/modelis/assets/icon-32.png"/>
   <SupportUrl DefaultValue="https://dbautomatizacijas.com"/>
@@ -36,360 +36,360 @@
     <Hosts>
       <Host xsi:type="Workbook">
         <Runtimes>
-          <Runtime resid="SMT.Taskpane.Url" lifetime="long"/>
+          <Runtime resid="PLSFIX.Taskpane.Url" lifetime="long"/>
         </Runtimes>
         <AllFormFactors>
           <ExtensionPoint xsi:type="CustomFunctions">
             <Script>
-              <SourceLocation resid="SMT.Functions.Script.Url"/>
+              <SourceLocation resid="PLSFIX.Functions.Script.Url"/>
             </Script>
             <Page>
-              <SourceLocation resid="SMT.Taskpane.Url"/>
+              <SourceLocation resid="PLSFIX.Taskpane.Url"/>
             </Page>
             <Metadata>
-              <SourceLocation resid="SMT.Functions.Metadata.Url"/>
+              <SourceLocation resid="PLSFIX.Functions.Metadata.Url"/>
             </Metadata>
-            <Namespace resid="SMT.Functions.Namespace"/>
+            <Namespace resid="PLSFIX.Functions.Namespace"/>
           </ExtensionPoint>
         </AllFormFactors>
         <DesktopFormFactor>
-          <FunctionFile resid="SMT.Taskpane.Url"/>
+          <FunctionFile resid="PLSFIX.Taskpane.Url"/>
           <ExtensionPoint xsi:type="PrimaryCommandSurface">
-            <CustomTab id="SMT.Tab">
-              <Group id="SMT.Group.Tools">
-                <Label resid="SMT.Group.Tools.Label"/>
+            <CustomTab id="PLSFIX.Tab">
+              <Group id="PLSFIX.Group.Tools">
+                <Label resid="PLSFIX.Group.Tools.Label"/>
                 <Icon>
-                  <bt:Image size="16" resid="SMT.Icon.16"/>
-                  <bt:Image size="32" resid="SMT.Icon.32"/>
-                  <bt:Image size="80" resid="SMT.Icon.80"/>
+                  <bt:Image size="16" resid="PLSFIX.Icon.16"/>
+                  <bt:Image size="32" resid="PLSFIX.Icon.32"/>
+                  <bt:Image size="80" resid="PLSFIX.Icon.80"/>
                 </Icon>
-                <Control xsi:type="Button" id="SMT.Button.OpenPane">
-                  <Label resid="SMT.OpenPane.Label"/>
+                <Control xsi:type="Button" id="PLSFIX.Button.OpenPane">
+                  <Label resid="PLSFIX.OpenPane.Label"/>
                   <Supertip>
-                    <Title resid="SMT.OpenPane.Label"/>
-                    <Description resid="SMT.OpenPane.Tip"/>
+                    <Title resid="PLSFIX.OpenPane.Label"/>
+                    <Description resid="PLSFIX.OpenPane.Tip"/>
                   </Supertip>
                   <Icon>
-                    <bt:Image size="16" resid="SMT.Icon.16"/>
-                    <bt:Image size="32" resid="SMT.Icon.32"/>
-                    <bt:Image size="80" resid="SMT.Icon.80"/>
+                    <bt:Image size="16" resid="PLSFIX.Icon.16"/>
+                    <bt:Image size="32" resid="PLSFIX.Icon.32"/>
+                    <bt:Image size="80" resid="PLSFIX.Icon.80"/>
                   </Icon>
                   <Action xsi:type="ShowTaskpane">
-                    <TaskpaneId>SMT.Taskpane</TaskpaneId>
-                    <SourceLocation resid="SMT.Taskpane.Url"/>
+                    <TaskpaneId>PLSFIX.Taskpane</TaskpaneId>
+                    <SourceLocation resid="PLSFIX.Taskpane.Url"/>
                   </Action>
                 </Control>
-                <Control xsi:type="Button" id="SMT.Button.Autocolor">
-                  <Label resid="SMT.Autocolor.Label"/>
+                <Control xsi:type="Button" id="PLSFIX.Button.Autocolor">
+                  <Label resid="PLSFIX.Autocolor.Label"/>
                   <Supertip>
-                    <Title resid="SMT.Autocolor.Label"/>
-                    <Description resid="SMT.Autocolor.Tip"/>
+                    <Title resid="PLSFIX.Autocolor.Label"/>
+                    <Description resid="PLSFIX.Autocolor.Tip"/>
                   </Supertip>
                   <Icon>
-                    <bt:Image size="16" resid="SMT.Icon.16"/>
-                    <bt:Image size="32" resid="SMT.Icon.32"/>
-                    <bt:Image size="80" resid="SMT.Icon.80"/>
+                    <bt:Image size="16" resid="PLSFIX.Icon.16"/>
+                    <bt:Image size="32" resid="PLSFIX.Icon.32"/>
+                    <bt:Image size="80" resid="PLSFIX.Icon.80"/>
                   </Icon>
                   <Action xsi:type="ExecuteFunction">
-                    <FunctionName>SMT_AUTOCOLOR</FunctionName>
+                    <FunctionName>PLSFIX_AUTOCOLOR</FunctionName>
                   </Action>
                 </Control>
-                <Control xsi:type="Button" id="SMT.Button.FillRight">
-                  <Label resid="SMT.FillRight.Label"/>
+                <Control xsi:type="Button" id="PLSFIX.Button.FillRight">
+                  <Label resid="PLSFIX.FillRight.Label"/>
                   <Supertip>
-                    <Title resid="SMT.FillRight.Label"/>
-                    <Description resid="SMT.FillRight.Tip"/>
+                    <Title resid="PLSFIX.FillRight.Label"/>
+                    <Description resid="PLSFIX.FillRight.Tip"/>
                   </Supertip>
                   <Icon>
-                    <bt:Image size="16" resid="SMT.Icon.16"/>
-                    <bt:Image size="32" resid="SMT.Icon.32"/>
-                    <bt:Image size="80" resid="SMT.Icon.80"/>
+                    <bt:Image size="16" resid="PLSFIX.Icon.16"/>
+                    <bt:Image size="32" resid="PLSFIX.Icon.32"/>
+                    <bt:Image size="80" resid="PLSFIX.Icon.80"/>
                   </Icon>
                   <Action xsi:type="ExecuteFunction">
-                    <FunctionName>SMT_FILLRIGHT</FunctionName>
+                    <FunctionName>PLSFIX_FILLRIGHT</FunctionName>
                   </Action>
                 </Control>
-                <Control xsi:type="Button" id="SMT.Button.FillDown">
-                  <Label resid="SMT.FillDown.Label"/>
+                <Control xsi:type="Button" id="PLSFIX.Button.FillDown">
+                  <Label resid="PLSFIX.FillDown.Label"/>
                   <Supertip>
-                    <Title resid="SMT.FillDown.Label"/>
-                    <Description resid="SMT.FillDown.Tip"/>
+                    <Title resid="PLSFIX.FillDown.Label"/>
+                    <Description resid="PLSFIX.FillDown.Tip"/>
                   </Supertip>
                   <Icon>
-                    <bt:Image size="16" resid="SMT.Icon.16"/>
-                    <bt:Image size="32" resid="SMT.Icon.32"/>
-                    <bt:Image size="80" resid="SMT.Icon.80"/>
+                    <bt:Image size="16" resid="PLSFIX.Icon.16"/>
+                    <bt:Image size="32" resid="PLSFIX.Icon.32"/>
+                    <bt:Image size="80" resid="PLSFIX.Icon.80"/>
                   </Icon>
                   <Action xsi:type="ExecuteFunction">
-                    <FunctionName>SMT_FILLDOWN</FunctionName>
+                    <FunctionName>PLSFIX_FILLDOWN</FunctionName>
                   </Action>
                 </Control>
-                <Control xsi:type="Button" id="SMT.Button.IfError">
-                  <Label resid="SMT.IfError.Label"/>
+                <Control xsi:type="Button" id="PLSFIX.Button.IfError">
+                  <Label resid="PLSFIX.IfError.Label"/>
                   <Supertip>
-                    <Title resid="SMT.IfError.Label"/>
-                    <Description resid="SMT.IfError.Tip"/>
+                    <Title resid="PLSFIX.IfError.Label"/>
+                    <Description resid="PLSFIX.IfError.Tip"/>
                   </Supertip>
                   <Icon>
-                    <bt:Image size="16" resid="SMT.Icon.16"/>
-                    <bt:Image size="32" resid="SMT.Icon.32"/>
-                    <bt:Image size="80" resid="SMT.Icon.80"/>
+                    <bt:Image size="16" resid="PLSFIX.Icon.16"/>
+                    <bt:Image size="32" resid="PLSFIX.Icon.32"/>
+                    <bt:Image size="80" resid="PLSFIX.Icon.80"/>
                   </Icon>
                   <Action xsi:type="ExecuteFunction">
-                    <FunctionName>SMT_IFERROR</FunctionName>
+                    <FunctionName>PLSFIX_IFERROR</FunctionName>
                   </Action>
                 </Control>
               </Group>
-              <Group id="SMT.Group.Audit">
-                <Label resid="SMT.Group.Audit.Label"/>
+              <Group id="PLSFIX.Group.Audit">
+                <Label resid="PLSFIX.Group.Audit.Label"/>
                 <Icon>
-                  <bt:Image size="16" resid="SMT.Icon.16"/>
-                  <bt:Image size="32" resid="SMT.Icon.32"/>
-                  <bt:Image size="80" resid="SMT.Icon.80"/>
+                  <bt:Image size="16" resid="PLSFIX.Icon.16"/>
+                  <bt:Image size="32" resid="PLSFIX.Icon.32"/>
+                  <bt:Image size="80" resid="PLSFIX.Icon.80"/>
                 </Icon>
-                <Control xsi:type="Button" id="SMT.Button.Audit">
-                  <Label resid="SMT.Audit.Label"/>
+                <Control xsi:type="Button" id="PLSFIX.Button.Audit">
+                  <Label resid="PLSFIX.Audit.Label"/>
                   <Supertip>
-                    <Title resid="SMT.Audit.Label"/>
-                    <Description resid="SMT.Audit.Tip"/>
+                    <Title resid="PLSFIX.Audit.Label"/>
+                    <Description resid="PLSFIX.Audit.Tip"/>
                   </Supertip>
                   <Icon>
-                    <bt:Image size="16" resid="SMT.Icon.16"/>
-                    <bt:Image size="32" resid="SMT.Icon.32"/>
-                    <bt:Image size="80" resid="SMT.Icon.80"/>
+                    <bt:Image size="16" resid="PLSFIX.Icon.16"/>
+                    <bt:Image size="32" resid="PLSFIX.Icon.32"/>
+                    <bt:Image size="80" resid="PLSFIX.Icon.80"/>
                   </Icon>
                   <Action xsi:type="ExecuteFunction">
-                    <FunctionName>SMT_AUDIT</FunctionName>
+                    <FunctionName>PLSFIX_AUDIT</FunctionName>
                   </Action>
                 </Control>
-                <Control xsi:type="Button" id="SMT.Button.TracePre">
-                  <Label resid="SMT.TracePre.Label"/>
+                <Control xsi:type="Button" id="PLSFIX.Button.TracePre">
+                  <Label resid="PLSFIX.TracePre.Label"/>
                   <Supertip>
-                    <Title resid="SMT.TracePre.Label"/>
-                    <Description resid="SMT.TracePre.Tip"/>
+                    <Title resid="PLSFIX.TracePre.Label"/>
+                    <Description resid="PLSFIX.TracePre.Tip"/>
                   </Supertip>
                   <Icon>
-                    <bt:Image size="16" resid="SMT.Icon.16"/>
-                    <bt:Image size="32" resid="SMT.Icon.32"/>
-                    <bt:Image size="80" resid="SMT.Icon.80"/>
+                    <bt:Image size="16" resid="PLSFIX.Icon.16"/>
+                    <bt:Image size="32" resid="PLSFIX.Icon.32"/>
+                    <bt:Image size="80" resid="PLSFIX.Icon.80"/>
                   </Icon>
                   <Action xsi:type="ExecuteFunction">
-                    <FunctionName>SMT_TRACE_PRE</FunctionName>
+                    <FunctionName>PLSFIX_TRACE_PRE</FunctionName>
                   </Action>
                 </Control>
-                <Control xsi:type="Button" id="SMT.Button.TraceDep">
-                  <Label resid="SMT.TraceDep.Label"/>
+                <Control xsi:type="Button" id="PLSFIX.Button.TraceDep">
+                  <Label resid="PLSFIX.TraceDep.Label"/>
                   <Supertip>
-                    <Title resid="SMT.TraceDep.Label"/>
-                    <Description resid="SMT.TraceDep.Tip"/>
+                    <Title resid="PLSFIX.TraceDep.Label"/>
+                    <Description resid="PLSFIX.TraceDep.Tip"/>
                   </Supertip>
                   <Icon>
-                    <bt:Image size="16" resid="SMT.Icon.16"/>
-                    <bt:Image size="32" resid="SMT.Icon.32"/>
-                    <bt:Image size="80" resid="SMT.Icon.80"/>
+                    <bt:Image size="16" resid="PLSFIX.Icon.16"/>
+                    <bt:Image size="32" resid="PLSFIX.Icon.32"/>
+                    <bt:Image size="80" resid="PLSFIX.Icon.80"/>
                   </Icon>
                   <Action xsi:type="ExecuteFunction">
-                    <FunctionName>SMT_TRACE_DEP</FunctionName>
+                    <FunctionName>PLSFIX_TRACE_DEP</FunctionName>
                   </Action>
                 </Control>
               </Group>
-              <Group id="SMT.Group.Paste">
-                <Label resid="SMT.Group.Paste.Label"/>
+              <Group id="PLSFIX.Group.Paste">
+                <Label resid="PLSFIX.Group.Paste.Label"/>
                 <Icon>
-                  <bt:Image size="16" resid="SMT.Icon.16"/>
-                  <bt:Image size="32" resid="SMT.Icon.32"/>
-                  <bt:Image size="80" resid="SMT.Icon.80"/>
+                  <bt:Image size="16" resid="PLSFIX.Icon.16"/>
+                  <bt:Image size="32" resid="PLSFIX.Icon.32"/>
+                  <bt:Image size="80" resid="PLSFIX.Icon.80"/>
                 </Icon>
-                <Control xsi:type="Button" id="SMT.Button.Undo">
-                  <Label resid="SMT.Undo.Label"/>
+                <Control xsi:type="Button" id="PLSFIX.Button.Undo">
+                  <Label resid="PLSFIX.Undo.Label"/>
                   <Supertip>
-                    <Title resid="SMT.Undo.Label"/>
-                    <Description resid="SMT.Undo.Tip"/>
+                    <Title resid="PLSFIX.Undo.Label"/>
+                    <Description resid="PLSFIX.Undo.Tip"/>
                   </Supertip>
                   <Icon>
-                    <bt:Image size="16" resid="SMT.Icon.16"/>
-                    <bt:Image size="32" resid="SMT.Icon.32"/>
-                    <bt:Image size="80" resid="SMT.Icon.80"/>
+                    <bt:Image size="16" resid="PLSFIX.Icon.16"/>
+                    <bt:Image size="32" resid="PLSFIX.Icon.32"/>
+                    <bt:Image size="80" resid="PLSFIX.Icon.80"/>
                   </Icon>
                   <Action xsi:type="ExecuteFunction">
-                    <FunctionName>SMT_UNDO</FunctionName>
+                    <FunctionName>PLSFIX_UNDO</FunctionName>
                   </Action>
                 </Control>
-                <Control xsi:type="Button" id="SMT.Button.PasteValues">
-                  <Label resid="SMT.PasteValues.Label"/>
+                <Control xsi:type="Button" id="PLSFIX.Button.PasteValues">
+                  <Label resid="PLSFIX.PasteValues.Label"/>
                   <Supertip>
-                    <Title resid="SMT.PasteValues.Label"/>
-                    <Description resid="SMT.PasteValues.Tip"/>
+                    <Title resid="PLSFIX.PasteValues.Label"/>
+                    <Description resid="PLSFIX.PasteValues.Tip"/>
                   </Supertip>
                   <Icon>
-                    <bt:Image size="16" resid="SMT.Icon.16"/>
-                    <bt:Image size="32" resid="SMT.Icon.32"/>
-                    <bt:Image size="80" resid="SMT.Icon.80"/>
+                    <bt:Image size="16" resid="PLSFIX.Icon.16"/>
+                    <bt:Image size="32" resid="PLSFIX.Icon.32"/>
+                    <bt:Image size="80" resid="PLSFIX.Icon.80"/>
                   </Icon>
                   <Action xsi:type="ExecuteFunction">
-                    <FunctionName>SMT_PASTE_VALUES</FunctionName>
+                    <FunctionName>PLSFIX_PASTE_VALUES</FunctionName>
                   </Action>
                 </Control>
-                <Control xsi:type="Button" id="SMT.Button.PasteFormats">
-                  <Label resid="SMT.PasteFormats.Label"/>
+                <Control xsi:type="Button" id="PLSFIX.Button.PasteFormats">
+                  <Label resid="PLSFIX.PasteFormats.Label"/>
                   <Supertip>
-                    <Title resid="SMT.PasteFormats.Label"/>
-                    <Description resid="SMT.PasteFormats.Tip"/>
+                    <Title resid="PLSFIX.PasteFormats.Label"/>
+                    <Description resid="PLSFIX.PasteFormats.Tip"/>
                   </Supertip>
                   <Icon>
-                    <bt:Image size="16" resid="SMT.Icon.16"/>
-                    <bt:Image size="32" resid="SMT.Icon.32"/>
-                    <bt:Image size="80" resid="SMT.Icon.80"/>
+                    <bt:Image size="16" resid="PLSFIX.Icon.16"/>
+                    <bt:Image size="32" resid="PLSFIX.Icon.32"/>
+                    <bt:Image size="80" resid="PLSFIX.Icon.80"/>
                   </Icon>
                   <Action xsi:type="ExecuteFunction">
-                    <FunctionName>SMT_PASTE_FORMATS</FunctionName>
+                    <FunctionName>PLSFIX_PASTE_FORMATS</FunctionName>
                   </Action>
                 </Control>
               </Group>
-              <Group id="SMT.Group.Model">
-                <Label resid="SMT.Group.Model.Label"/>
+              <Group id="PLSFIX.Group.Model">
+                <Label resid="PLSFIX.Group.Model.Label"/>
                 <Icon>
-                  <bt:Image size="16" resid="SMT.Icon.16"/>
-                  <bt:Image size="32" resid="SMT.Icon.32"/>
-                  <bt:Image size="80" resid="SMT.Icon.80"/>
+                  <bt:Image size="16" resid="PLSFIX.Icon.16"/>
+                  <bt:Image size="32" resid="PLSFIX.Icon.32"/>
+                  <bt:Image size="80" resid="PLSFIX.Icon.80"/>
                 </Icon>
-                <Control xsi:type="Button" id="SMT.Button.Cagr">
-                  <Label resid="SMT.Cagr.Label"/>
+                <Control xsi:type="Button" id="PLSFIX.Button.Cagr">
+                  <Label resid="PLSFIX.Cagr.Label"/>
                   <Supertip>
-                    <Title resid="SMT.Cagr.Label"/>
-                    <Description resid="SMT.Cagr.Tip"/>
+                    <Title resid="PLSFIX.Cagr.Label"/>
+                    <Description resid="PLSFIX.Cagr.Tip"/>
                   </Supertip>
                   <Icon>
-                    <bt:Image size="16" resid="SMT.Icon.16"/>
-                    <bt:Image size="32" resid="SMT.Icon.32"/>
-                    <bt:Image size="80" resid="SMT.Icon.80"/>
+                    <bt:Image size="16" resid="PLSFIX.Icon.16"/>
+                    <bt:Image size="32" resid="PLSFIX.Icon.32"/>
+                    <bt:Image size="80" resid="PLSFIX.Icon.80"/>
                   </Icon>
                   <Action xsi:type="ExecuteFunction">
-                    <FunctionName>SMT_CAGR</FunctionName>
+                    <FunctionName>PLSFIX_CAGR</FunctionName>
                   </Action>
                 </Control>
-                <Control xsi:type="Button" id="SMT.Button.Sign">
-                  <Label resid="SMT.Sign.Label"/>
+                <Control xsi:type="Button" id="PLSFIX.Button.Sign">
+                  <Label resid="PLSFIX.Sign.Label"/>
                   <Supertip>
-                    <Title resid="SMT.Sign.Label"/>
-                    <Description resid="SMT.Sign.Tip"/>
+                    <Title resid="PLSFIX.Sign.Label"/>
+                    <Description resid="PLSFIX.Sign.Tip"/>
                   </Supertip>
                   <Icon>
-                    <bt:Image size="16" resid="SMT.Icon.16"/>
-                    <bt:Image size="32" resid="SMT.Icon.32"/>
-                    <bt:Image size="80" resid="SMT.Icon.80"/>
+                    <bt:Image size="16" resid="PLSFIX.Icon.16"/>
+                    <bt:Image size="32" resid="PLSFIX.Icon.32"/>
+                    <bt:Image size="80" resid="PLSFIX.Icon.80"/>
                   </Icon>
                   <Action xsi:type="ExecuteFunction">
-                    <FunctionName>SMT_SIGN</FunctionName>
+                    <FunctionName>PLSFIX_SIGN</FunctionName>
                   </Action>
                 </Control>
-                <Control xsi:type="Button" id="SMT.Button.ScaleUp">
-                  <Label resid="SMT.ScaleUp.Label"/>
+                <Control xsi:type="Button" id="PLSFIX.Button.ScaleUp">
+                  <Label resid="PLSFIX.ScaleUp.Label"/>
                   <Supertip>
-                    <Title resid="SMT.ScaleUp.Label"/>
-                    <Description resid="SMT.ScaleUp.Tip"/>
+                    <Title resid="PLSFIX.ScaleUp.Label"/>
+                    <Description resid="PLSFIX.ScaleUp.Tip"/>
                   </Supertip>
                   <Icon>
-                    <bt:Image size="16" resid="SMT.Icon.16"/>
-                    <bt:Image size="32" resid="SMT.Icon.32"/>
-                    <bt:Image size="80" resid="SMT.Icon.80"/>
+                    <bt:Image size="16" resid="PLSFIX.Icon.16"/>
+                    <bt:Image size="32" resid="PLSFIX.Icon.32"/>
+                    <bt:Image size="80" resid="PLSFIX.Icon.80"/>
                   </Icon>
                   <Action xsi:type="ExecuteFunction">
-                    <FunctionName>SMT_SCALEUP</FunctionName>
+                    <FunctionName>PLSFIX_SCALEUP</FunctionName>
                   </Action>
                 </Control>
-                <Control xsi:type="Button" id="SMT.Button.ScaleDown">
-                  <Label resid="SMT.ScaleDown.Label"/>
+                <Control xsi:type="Button" id="PLSFIX.Button.ScaleDown">
+                  <Label resid="PLSFIX.ScaleDown.Label"/>
                   <Supertip>
-                    <Title resid="SMT.ScaleDown.Label"/>
-                    <Description resid="SMT.ScaleDown.Tip"/>
+                    <Title resid="PLSFIX.ScaleDown.Label"/>
+                    <Description resid="PLSFIX.ScaleDown.Tip"/>
                   </Supertip>
                   <Icon>
-                    <bt:Image size="16" resid="SMT.Icon.16"/>
-                    <bt:Image size="32" resid="SMT.Icon.32"/>
-                    <bt:Image size="80" resid="SMT.Icon.80"/>
+                    <bt:Image size="16" resid="PLSFIX.Icon.16"/>
+                    <bt:Image size="32" resid="PLSFIX.Icon.32"/>
+                    <bt:Image size="80" resid="PLSFIX.Icon.80"/>
                   </Icon>
                   <Action xsi:type="ExecuteFunction">
-                    <FunctionName>SMT_SCALEDOWN</FunctionName>
+                    <FunctionName>PLSFIX_SCALEDOWN</FunctionName>
                   </Action>
                 </Control>
               </Group>
-              <Group id="SMT.Group.Workbook">
-                <Label resid="SMT.Group.Workbook.Label"/>
+              <Group id="PLSFIX.Group.Workbook">
+                <Label resid="PLSFIX.Group.Workbook.Label"/>
                 <Icon>
-                  <bt:Image size="16" resid="SMT.Icon.16"/>
-                  <bt:Image size="32" resid="SMT.Icon.32"/>
-                  <bt:Image size="80" resid="SMT.Icon.80"/>
+                  <bt:Image size="16" resid="PLSFIX.Icon.16"/>
+                  <bt:Image size="32" resid="PLSFIX.Icon.32"/>
+                  <bt:Image size="80" resid="PLSFIX.Icon.80"/>
                 </Icon>
-                <Control xsi:type="Button" id="SMT.Button.Waterfall">
-                  <Label resid="SMT.Waterfall.Label"/>
+                <Control xsi:type="Button" id="PLSFIX.Button.Waterfall">
+                  <Label resid="PLSFIX.Waterfall.Label"/>
                   <Supertip>
-                    <Title resid="SMT.Waterfall.Label"/>
-                    <Description resid="SMT.Waterfall.Tip"/>
+                    <Title resid="PLSFIX.Waterfall.Label"/>
+                    <Description resid="PLSFIX.Waterfall.Tip"/>
                   </Supertip>
                   <Icon>
-                    <bt:Image size="16" resid="SMT.Icon.16"/>
-                    <bt:Image size="32" resid="SMT.Icon.32"/>
-                    <bt:Image size="80" resid="SMT.Icon.80"/>
+                    <bt:Image size="16" resid="PLSFIX.Icon.16"/>
+                    <bt:Image size="32" resid="PLSFIX.Icon.32"/>
+                    <bt:Image size="80" resid="PLSFIX.Icon.80"/>
                   </Icon>
                   <Action xsi:type="ExecuteFunction">
-                    <FunctionName>SMT_WATERFALL</FunctionName>
+                    <FunctionName>PLSFIX_WATERFALL</FunctionName>
                   </Action>
                 </Control>
-                <Control xsi:type="Button" id="SMT.Button.Toc">
-                  <Label resid="SMT.Toc.Label"/>
+                <Control xsi:type="Button" id="PLSFIX.Button.Toc">
+                  <Label resid="PLSFIX.Toc.Label"/>
                   <Supertip>
-                    <Title resid="SMT.Toc.Label"/>
-                    <Description resid="SMT.Toc.Tip"/>
+                    <Title resid="PLSFIX.Toc.Label"/>
+                    <Description resid="PLSFIX.Toc.Tip"/>
                   </Supertip>
                   <Icon>
-                    <bt:Image size="16" resid="SMT.Icon.16"/>
-                    <bt:Image size="32" resid="SMT.Icon.32"/>
-                    <bt:Image size="80" resid="SMT.Icon.80"/>
+                    <bt:Image size="16" resid="PLSFIX.Icon.16"/>
+                    <bt:Image size="32" resid="PLSFIX.Icon.32"/>
+                    <bt:Image size="80" resid="PLSFIX.Icon.80"/>
                   </Icon>
                   <Action xsi:type="ExecuteFunction">
-                    <FunctionName>SMT_TOC</FunctionName>
+                    <FunctionName>PLSFIX_TOC</FunctionName>
                   </Action>
                 </Control>
               </Group>
-              <Label resid="SMT.Tab.Label"/>
+              <Label resid="PLSFIX.Tab.Label"/>
             </CustomTab>
           </ExtensionPoint>
         </DesktopFormFactor>
       </Host>
       <Host xsi:type="Presentation">
         <Runtimes>
-          <Runtime resid="SMT.Pptpane.Url" lifetime="long"/>
+          <Runtime resid="PLSFIX.Pptpane.Url" lifetime="long"/>
         </Runtimes>
         <DesktopFormFactor>
-          <FunctionFile resid="SMT.Pptpane.Url"/>
+          <FunctionFile resid="PLSFIX.Pptpane.Url"/>
           <ExtensionPoint xsi:type="PrimaryCommandSurface">
-            <CustomTab id="SMT.Tab">
-              <Group id="SMT.Group.Links">
-                <Label resid="SMT.Group.Links.Label"/>
+            <CustomTab id="PLSFIX.Tab">
+              <Group id="PLSFIX.Group.Links">
+                <Label resid="PLSFIX.Group.Links.Label"/>
                 <Icon>
-                  <bt:Image size="16" resid="SMT.Icon.16"/>
-                  <bt:Image size="32" resid="SMT.Icon.32"/>
-                  <bt:Image size="80" resid="SMT.Icon.80"/>
+                  <bt:Image size="16" resid="PLSFIX.Icon.16"/>
+                  <bt:Image size="32" resid="PLSFIX.Icon.32"/>
+                  <bt:Image size="80" resid="PLSFIX.Icon.80"/>
                 </Icon>
-                <Control xsi:type="Button" id="SMT.Button.OpenLinks">
-                  <Label resid="SMT.OpenLinks.Label"/>
+                <Control xsi:type="Button" id="PLSFIX.Button.OpenLinks">
+                  <Label resid="PLSFIX.OpenLinks.Label"/>
                   <Supertip>
-                    <Title resid="SMT.OpenLinks.Label"/>
-                    <Description resid="SMT.OpenLinks.Tip"/>
+                    <Title resid="PLSFIX.OpenLinks.Label"/>
+                    <Description resid="PLSFIX.OpenLinks.Tip"/>
                   </Supertip>
                   <Icon>
-                    <bt:Image size="16" resid="SMT.Icon.16"/>
-                    <bt:Image size="32" resid="SMT.Icon.32"/>
-                    <bt:Image size="80" resid="SMT.Icon.80"/>
+                    <bt:Image size="16" resid="PLSFIX.Icon.16"/>
+                    <bt:Image size="32" resid="PLSFIX.Icon.32"/>
+                    <bt:Image size="80" resid="PLSFIX.Icon.80"/>
                   </Icon>
                   <Action xsi:type="ShowTaskpane">
-                    <TaskpaneId>SMT.Pptpane</TaskpaneId>
-                    <SourceLocation resid="SMT.Pptpane.Url"/>
+                    <TaskpaneId>PLSFIX.Pptpane</TaskpaneId>
+                    <SourceLocation resid="PLSFIX.Pptpane.Url"/>
                   </Action>
                 </Control>
               </Group>
-              <Label resid="SMT.Tab.Label"/>
+              <Label resid="PLSFIX.Tab.Label"/>
             </CustomTab>
           </ExtensionPoint>
         </DesktopFormFactor>
@@ -397,63 +397,63 @@
     </Hosts>
     <Resources>
       <bt:Images>
-        <bt:Image id="SMT.Icon.16" DefaultValue="https://dbautomatizacijas.com/modelis/assets/icon-16.png"/>
-        <bt:Image id="SMT.Icon.32" DefaultValue="https://dbautomatizacijas.com/modelis/assets/icon-32.png"/>
-        <bt:Image id="SMT.Icon.80" DefaultValue="https://dbautomatizacijas.com/modelis/assets/icon-80.png"/>
+        <bt:Image id="PLSFIX.Icon.16" DefaultValue="https://dbautomatizacijas.com/modelis/assets/icon-16.png"/>
+        <bt:Image id="PLSFIX.Icon.32" DefaultValue="https://dbautomatizacijas.com/modelis/assets/icon-32.png"/>
+        <bt:Image id="PLSFIX.Icon.80" DefaultValue="https://dbautomatizacijas.com/modelis/assets/icon-80.png"/>
       </bt:Images>
       <bt:Urls>
-        <bt:Url id="SMT.Taskpane.Url" DefaultValue="https://dbautomatizacijas.com/modelis/taskpane.html"/>
-        <bt:Url id="SMT.Pptpane.Url" DefaultValue="https://dbautomatizacijas.com/modelis/pptpane.html"/>
-        <bt:Url id="SMT.Functions.Script.Url" DefaultValue="https://dbautomatizacijas.com/modelis/functions.js"/>
-        <bt:Url id="SMT.Functions.Metadata.Url" DefaultValue="https://dbautomatizacijas.com/modelis/functions.json"/>
+        <bt:Url id="PLSFIX.Taskpane.Url" DefaultValue="https://dbautomatizacijas.com/modelis/taskpane.html"/>
+        <bt:Url id="PLSFIX.Pptpane.Url" DefaultValue="https://dbautomatizacijas.com/modelis/pptpane.html"/>
+        <bt:Url id="PLSFIX.Functions.Script.Url" DefaultValue="https://dbautomatizacijas.com/modelis/functions.js"/>
+        <bt:Url id="PLSFIX.Functions.Metadata.Url" DefaultValue="https://dbautomatizacijas.com/modelis/functions.json"/>
       </bt:Urls>
       <bt:ShortStrings>
-        <bt:String id="SMT.Tab.Label" DefaultValue="Model Tools"/>
-        <bt:String id="SMT.Group.Tools.Label" DefaultValue="Model Tools"/>
-        <bt:String id="SMT.OpenPane.Label" DefaultValue="Model Tools"/>
-        <bt:String id="SMT.Autocolor.Label" DefaultValue="Autocolor"/>
-        <bt:String id="SMT.FillRight.Label" DefaultValue="Fill Right"/>
-        <bt:String id="SMT.FillDown.Label" DefaultValue="Fill Down"/>
-        <bt:String id="SMT.IfError.Label" DefaultValue="IFERROR"/>
-        <bt:String id="SMT.Group.Audit.Label" DefaultValue="Audit"/>
-        <bt:String id="SMT.Audit.Label" DefaultValue="Audit overlay"/>
-        <bt:String id="SMT.TracePre.Label" DefaultValue="Precedents"/>
-        <bt:String id="SMT.TraceDep.Label" DefaultValue="Dependents"/>
-        <bt:String id="SMT.Group.Paste.Label" DefaultValue="Paste"/>
-        <bt:String id="SMT.Undo.Label" DefaultValue="SMT Undo"/>
-        <bt:String id="SMT.PasteValues.Label" DefaultValue="Paste values"/>
-        <bt:String id="SMT.PasteFormats.Label" DefaultValue="Paste formats"/>
-        <bt:String id="SMT.Group.Model.Label" DefaultValue="Model"/>
-        <bt:String id="SMT.Cagr.Label" DefaultValue="CAGR"/>
-        <bt:String id="SMT.Sign.Label" DefaultValue="Sign flip"/>
-        <bt:String id="SMT.ScaleUp.Label" DefaultValue="x1000"/>
-        <bt:String id="SMT.ScaleDown.Label" DefaultValue="/1000"/>
-        <bt:String id="SMT.Group.Workbook.Label" DefaultValue="Workbook"/>
-        <bt:String id="SMT.Waterfall.Label" DefaultValue="Waterfall"/>
-        <bt:String id="SMT.Toc.Label" DefaultValue="Contents sheet"/>
-        <bt:String id="SMT.Group.Links.Label" DefaultValue="Model Tools Links"/>
-        <bt:String id="SMT.OpenLinks.Label" DefaultValue="Links"/>
-        <bt:String id="SMT.Functions.Namespace" DefaultValue="SMT"/>
+        <bt:String id="PLSFIX.Tab.Label" DefaultValue="pls,fix"/>
+        <bt:String id="PLSFIX.Group.Tools.Label" DefaultValue="Model Tools"/>
+        <bt:String id="PLSFIX.OpenPane.Label" DefaultValue="Model Tools"/>
+        <bt:String id="PLSFIX.Autocolor.Label" DefaultValue="Autocolor"/>
+        <bt:String id="PLSFIX.FillRight.Label" DefaultValue="Fill Right"/>
+        <bt:String id="PLSFIX.FillDown.Label" DefaultValue="Fill Down"/>
+        <bt:String id="PLSFIX.IfError.Label" DefaultValue="IFERROR"/>
+        <bt:String id="PLSFIX.Group.Audit.Label" DefaultValue="Audit"/>
+        <bt:String id="PLSFIX.Audit.Label" DefaultValue="Audit overlay"/>
+        <bt:String id="PLSFIX.TracePre.Label" DefaultValue="Precedents"/>
+        <bt:String id="PLSFIX.TraceDep.Label" DefaultValue="Dependents"/>
+        <bt:String id="PLSFIX.Group.Paste.Label" DefaultValue="Paste"/>
+        <bt:String id="PLSFIX.Undo.Label" DefaultValue="pls,fix Undo"/>
+        <bt:String id="PLSFIX.PasteValues.Label" DefaultValue="Paste values"/>
+        <bt:String id="PLSFIX.PasteFormats.Label" DefaultValue="Paste formats"/>
+        <bt:String id="PLSFIX.Group.Model.Label" DefaultValue="Model"/>
+        <bt:String id="PLSFIX.Cagr.Label" DefaultValue="CAGR"/>
+        <bt:String id="PLSFIX.Sign.Label" DefaultValue="Sign flip"/>
+        <bt:String id="PLSFIX.ScaleUp.Label" DefaultValue="x1000"/>
+        <bt:String id="PLSFIX.ScaleDown.Label" DefaultValue="/1000"/>
+        <bt:String id="PLSFIX.Group.Workbook.Label" DefaultValue="Workbook"/>
+        <bt:String id="PLSFIX.Waterfall.Label" DefaultValue="Waterfall"/>
+        <bt:String id="PLSFIX.Toc.Label" DefaultValue="Contents sheet"/>
+        <bt:String id="PLSFIX.Group.Links.Label" DefaultValue="Links"/>
+        <bt:String id="PLSFIX.OpenLinks.Label" DefaultValue="Links"/>
+        <bt:String id="PLSFIX.Functions.Namespace" DefaultValue="PLSFIX"/>
       </bt:ShortStrings>
       <bt:LongStrings>
-        <bt:String id="SMT.OpenPane.Tip" DefaultValue="Open the Model Tools task pane."/>
-        <bt:String id="SMT.Autocolor.Tip" DefaultValue="Color inputs, formulas and links in your palette."/>
-        <bt:String id="SMT.FillRight.Tip" DefaultValue="Fill the formula from the left cell across the selection."/>
-        <bt:String id="SMT.FillDown.Tip" DefaultValue="Fill the formula from the top cell down the selection."/>
-        <bt:String id="SMT.IfError.Tip" DefaultValue="Wrap selected formulas with IFERROR."/>
-        <bt:String id="SMT.Audit.Tip" DefaultValue="Toggle the formula consistency overlay."/>
-        <bt:String id="SMT.TracePre.Tip" DefaultValue="Jump to the direct precedents of the active cell."/>
-        <bt:String id="SMT.TraceDep.Tip" DefaultValue="Jump to the direct dependents of the active cell."/>
-        <bt:String id="SMT.Undo.Tip" DefaultValue="Restore the last range changed by Model Tools."/>
-        <bt:String id="SMT.PasteValues.Tip" DefaultValue="Paste the copied source as values."/>
-        <bt:String id="SMT.PasteFormats.Tip" DefaultValue="Paste the copied source&apos;s formats only."/>
-        <bt:String id="SMT.Cagr.Tip" DefaultValue="Insert a CAGR formula for the selection."/>
-        <bt:String id="SMT.Sign.Tip" DefaultValue="Flip the sign of the selected formulas and values."/>
-        <bt:String id="SMT.ScaleUp.Tip" DefaultValue="Scale the selection up by a thousand."/>
-        <bt:String id="SMT.ScaleDown.Tip" DefaultValue="Scale the selection down by a thousand."/>
-        <bt:String id="SMT.Waterfall.Tip" DefaultValue="Build a waterfall chart from the selected bridge table."/>
-        <bt:String id="SMT.Toc.Tip" DefaultValue="Insert or refresh the workbook contents sheet."/>
-        <bt:String id="SMT.OpenLinks.Tip" DefaultValue="Open the Model Tools linked-objects pane."/>
+        <bt:String id="PLSFIX.OpenPane.Tip" DefaultValue="Open the pls,fix task pane."/>
+        <bt:String id="PLSFIX.Autocolor.Tip" DefaultValue="Color inputs, formulas and links in your palette."/>
+        <bt:String id="PLSFIX.FillRight.Tip" DefaultValue="Fill the formula from the left cell across the selection."/>
+        <bt:String id="PLSFIX.FillDown.Tip" DefaultValue="Fill the formula from the top cell down the selection."/>
+        <bt:String id="PLSFIX.IfError.Tip" DefaultValue="Wrap selected formulas with IFERROR."/>
+        <bt:String id="PLSFIX.Audit.Tip" DefaultValue="Toggle the formula consistency overlay."/>
+        <bt:String id="PLSFIX.TracePre.Tip" DefaultValue="Jump to the direct precedents of the active cell."/>
+        <bt:String id="PLSFIX.TraceDep.Tip" DefaultValue="Jump to the direct dependents of the active cell."/>
+        <bt:String id="PLSFIX.Undo.Tip" DefaultValue="Restore the last range changed by pls,fix."/>
+        <bt:String id="PLSFIX.PasteValues.Tip" DefaultValue="Paste the copied source as values."/>
+        <bt:String id="PLSFIX.PasteFormats.Tip" DefaultValue="Paste the copied source&apos;s formats only."/>
+        <bt:String id="PLSFIX.Cagr.Tip" DefaultValue="Insert a CAGR formula for the selection."/>
+        <bt:String id="PLSFIX.Sign.Tip" DefaultValue="Flip the sign of the selected formulas and values."/>
+        <bt:String id="PLSFIX.ScaleUp.Tip" DefaultValue="Scale the selection up by a thousand."/>
+        <bt:String id="PLSFIX.ScaleDown.Tip" DefaultValue="Scale the selection down by a thousand."/>
+        <bt:String id="PLSFIX.Waterfall.Tip" DefaultValue="Build a waterfall chart from the selected bridge table."/>
+        <bt:String id="PLSFIX.Toc.Tip" DefaultValue="Insert or refresh the workbook contents sheet."/>
+        <bt:String id="PLSFIX.OpenLinks.Tip" DefaultValue="Open the pls,fix linked-objects pane."/>
       </bt:LongStrings>
     </Resources>
     <VersionOverrides xmlns="http://schemas.microsoft.com/office/taskpaneappversionoverrides/1.1" xsi:type="VersionOverridesV1_1">
@@ -465,360 +465,360 @@
       <Hosts>
         <Host xsi:type="Workbook">
           <Runtimes>
-            <Runtime resid="SMT.Taskpane.Url" lifetime="long"/>
+            <Runtime resid="PLSFIX.Taskpane.Url" lifetime="long"/>
           </Runtimes>
           <AllFormFactors>
             <ExtensionPoint xsi:type="CustomFunctions">
               <Script>
-                <SourceLocation resid="SMT.Functions.Script.Url"/>
+                <SourceLocation resid="PLSFIX.Functions.Script.Url"/>
               </Script>
               <Page>
-                <SourceLocation resid="SMT.Taskpane.Url"/>
+                <SourceLocation resid="PLSFIX.Taskpane.Url"/>
               </Page>
               <Metadata>
-                <SourceLocation resid="SMT.Functions.Metadata.Url"/>
+                <SourceLocation resid="PLSFIX.Functions.Metadata.Url"/>
               </Metadata>
-              <Namespace resid="SMT.Functions.Namespace"/>
+              <Namespace resid="PLSFIX.Functions.Namespace"/>
             </ExtensionPoint>
           </AllFormFactors>
           <DesktopFormFactor>
-            <FunctionFile resid="SMT.Taskpane.Url"/>
+            <FunctionFile resid="PLSFIX.Taskpane.Url"/>
             <ExtensionPoint xsi:type="PrimaryCommandSurface">
-              <CustomTab id="SMT.Tab">
-                <Group id="SMT.Group.Tools">
-                  <Label resid="SMT.Group.Tools.Label"/>
+              <CustomTab id="PLSFIX.Tab">
+                <Group id="PLSFIX.Group.Tools">
+                  <Label resid="PLSFIX.Group.Tools.Label"/>
                   <Icon>
-                    <bt:Image size="16" resid="SMT.Icon.16"/>
-                    <bt:Image size="32" resid="SMT.Icon.32"/>
-                    <bt:Image size="80" resid="SMT.Icon.80"/>
+                    <bt:Image size="16" resid="PLSFIX.Icon.16"/>
+                    <bt:Image size="32" resid="PLSFIX.Icon.32"/>
+                    <bt:Image size="80" resid="PLSFIX.Icon.80"/>
                   </Icon>
-                  <Control xsi:type="Button" id="SMT.Button.OpenPane">
-                    <Label resid="SMT.OpenPane.Label"/>
+                  <Control xsi:type="Button" id="PLSFIX.Button.OpenPane">
+                    <Label resid="PLSFIX.OpenPane.Label"/>
                     <Supertip>
-                      <Title resid="SMT.OpenPane.Label"/>
-                      <Description resid="SMT.OpenPane.Tip"/>
+                      <Title resid="PLSFIX.OpenPane.Label"/>
+                      <Description resid="PLSFIX.OpenPane.Tip"/>
                     </Supertip>
                     <Icon>
-                      <bt:Image size="16" resid="SMT.Icon.16"/>
-                      <bt:Image size="32" resid="SMT.Icon.32"/>
-                      <bt:Image size="80" resid="SMT.Icon.80"/>
+                      <bt:Image size="16" resid="PLSFIX.Icon.16"/>
+                      <bt:Image size="32" resid="PLSFIX.Icon.32"/>
+                      <bt:Image size="80" resid="PLSFIX.Icon.80"/>
                     </Icon>
                     <Action xsi:type="ShowTaskpane">
-                      <TaskpaneId>SMT.Taskpane</TaskpaneId>
-                      <SourceLocation resid="SMT.Taskpane.Url"/>
+                      <TaskpaneId>PLSFIX.Taskpane</TaskpaneId>
+                      <SourceLocation resid="PLSFIX.Taskpane.Url"/>
                     </Action>
                   </Control>
-                  <Control xsi:type="Button" id="SMT.Button.Autocolor">
-                    <Label resid="SMT.Autocolor.Label"/>
+                  <Control xsi:type="Button" id="PLSFIX.Button.Autocolor">
+                    <Label resid="PLSFIX.Autocolor.Label"/>
                     <Supertip>
-                      <Title resid="SMT.Autocolor.Label"/>
-                      <Description resid="SMT.Autocolor.Tip"/>
+                      <Title resid="PLSFIX.Autocolor.Label"/>
+                      <Description resid="PLSFIX.Autocolor.Tip"/>
                     </Supertip>
                     <Icon>
-                      <bt:Image size="16" resid="SMT.Icon.16"/>
-                      <bt:Image size="32" resid="SMT.Icon.32"/>
-                      <bt:Image size="80" resid="SMT.Icon.80"/>
+                      <bt:Image size="16" resid="PLSFIX.Icon.16"/>
+                      <bt:Image size="32" resid="PLSFIX.Icon.32"/>
+                      <bt:Image size="80" resid="PLSFIX.Icon.80"/>
                     </Icon>
                     <Action xsi:type="ExecuteFunction">
-                      <FunctionName>SMT_AUTOCOLOR</FunctionName>
+                      <FunctionName>PLSFIX_AUTOCOLOR</FunctionName>
                     </Action>
                   </Control>
-                  <Control xsi:type="Button" id="SMT.Button.FillRight">
-                    <Label resid="SMT.FillRight.Label"/>
+                  <Control xsi:type="Button" id="PLSFIX.Button.FillRight">
+                    <Label resid="PLSFIX.FillRight.Label"/>
                     <Supertip>
-                      <Title resid="SMT.FillRight.Label"/>
-                      <Description resid="SMT.FillRight.Tip"/>
+                      <Title resid="PLSFIX.FillRight.Label"/>
+                      <Description resid="PLSFIX.FillRight.Tip"/>
                     </Supertip>
                     <Icon>
-                      <bt:Image size="16" resid="SMT.Icon.16"/>
-                      <bt:Image size="32" resid="SMT.Icon.32"/>
-                      <bt:Image size="80" resid="SMT.Icon.80"/>
+                      <bt:Image size="16" resid="PLSFIX.Icon.16"/>
+                      <bt:Image size="32" resid="PLSFIX.Icon.32"/>
+                      <bt:Image size="80" resid="PLSFIX.Icon.80"/>
                     </Icon>
                     <Action xsi:type="ExecuteFunction">
-                      <FunctionName>SMT_FILLRIGHT</FunctionName>
+                      <FunctionName>PLSFIX_FILLRIGHT</FunctionName>
                     </Action>
                   </Control>
-                  <Control xsi:type="Button" id="SMT.Button.FillDown">
-                    <Label resid="SMT.FillDown.Label"/>
+                  <Control xsi:type="Button" id="PLSFIX.Button.FillDown">
+                    <Label resid="PLSFIX.FillDown.Label"/>
                     <Supertip>
-                      <Title resid="SMT.FillDown.Label"/>
-                      <Description resid="SMT.FillDown.Tip"/>
+                      <Title resid="PLSFIX.FillDown.Label"/>
+                      <Description resid="PLSFIX.FillDown.Tip"/>
                     </Supertip>
                     <Icon>
-                      <bt:Image size="16" resid="SMT.Icon.16"/>
-                      <bt:Image size="32" resid="SMT.Icon.32"/>
-                      <bt:Image size="80" resid="SMT.Icon.80"/>
+                      <bt:Image size="16" resid="PLSFIX.Icon.16"/>
+                      <bt:Image size="32" resid="PLSFIX.Icon.32"/>
+                      <bt:Image size="80" resid="PLSFIX.Icon.80"/>
                     </Icon>
                     <Action xsi:type="ExecuteFunction">
-                      <FunctionName>SMT_FILLDOWN</FunctionName>
+                      <FunctionName>PLSFIX_FILLDOWN</FunctionName>
                     </Action>
                   </Control>
-                  <Control xsi:type="Button" id="SMT.Button.IfError">
-                    <Label resid="SMT.IfError.Label"/>
+                  <Control xsi:type="Button" id="PLSFIX.Button.IfError">
+                    <Label resid="PLSFIX.IfError.Label"/>
                     <Supertip>
-                      <Title resid="SMT.IfError.Label"/>
-                      <Description resid="SMT.IfError.Tip"/>
+                      <Title resid="PLSFIX.IfError.Label"/>
+                      <Description resid="PLSFIX.IfError.Tip"/>
                     </Supertip>
                     <Icon>
-                      <bt:Image size="16" resid="SMT.Icon.16"/>
-                      <bt:Image size="32" resid="SMT.Icon.32"/>
-                      <bt:Image size="80" resid="SMT.Icon.80"/>
+                      <bt:Image size="16" resid="PLSFIX.Icon.16"/>
+                      <bt:Image size="32" resid="PLSFIX.Icon.32"/>
+                      <bt:Image size="80" resid="PLSFIX.Icon.80"/>
                     </Icon>
                     <Action xsi:type="ExecuteFunction">
-                      <FunctionName>SMT_IFERROR</FunctionName>
+                      <FunctionName>PLSFIX_IFERROR</FunctionName>
                     </Action>
                   </Control>
                 </Group>
-                <Group id="SMT.Group.Audit">
-                  <Label resid="SMT.Group.Audit.Label"/>
+                <Group id="PLSFIX.Group.Audit">
+                  <Label resid="PLSFIX.Group.Audit.Label"/>
                   <Icon>
-                    <bt:Image size="16" resid="SMT.Icon.16"/>
-                    <bt:Image size="32" resid="SMT.Icon.32"/>
-                    <bt:Image size="80" resid="SMT.Icon.80"/>
+                    <bt:Image size="16" resid="PLSFIX.Icon.16"/>
+                    <bt:Image size="32" resid="PLSFIX.Icon.32"/>
+                    <bt:Image size="80" resid="PLSFIX.Icon.80"/>
                   </Icon>
-                  <Control xsi:type="Button" id="SMT.Button.Audit">
-                    <Label resid="SMT.Audit.Label"/>
+                  <Control xsi:type="Button" id="PLSFIX.Button.Audit">
+                    <Label resid="PLSFIX.Audit.Label"/>
                     <Supertip>
-                      <Title resid="SMT.Audit.Label"/>
-                      <Description resid="SMT.Audit.Tip"/>
+                      <Title resid="PLSFIX.Audit.Label"/>
+                      <Description resid="PLSFIX.Audit.Tip"/>
                     </Supertip>
                     <Icon>
-                      <bt:Image size="16" resid="SMT.Icon.16"/>
-                      <bt:Image size="32" resid="SMT.Icon.32"/>
-                      <bt:Image size="80" resid="SMT.Icon.80"/>
+                      <bt:Image size="16" resid="PLSFIX.Icon.16"/>
+                      <bt:Image size="32" resid="PLSFIX.Icon.32"/>
+                      <bt:Image size="80" resid="PLSFIX.Icon.80"/>
                     </Icon>
                     <Action xsi:type="ExecuteFunction">
-                      <FunctionName>SMT_AUDIT</FunctionName>
+                      <FunctionName>PLSFIX_AUDIT</FunctionName>
                     </Action>
                   </Control>
-                  <Control xsi:type="Button" id="SMT.Button.TracePre">
-                    <Label resid="SMT.TracePre.Label"/>
+                  <Control xsi:type="Button" id="PLSFIX.Button.TracePre">
+                    <Label resid="PLSFIX.TracePre.Label"/>
                     <Supertip>
-                      <Title resid="SMT.TracePre.Label"/>
-                      <Description resid="SMT.TracePre.Tip"/>
+                      <Title resid="PLSFIX.TracePre.Label"/>
+                      <Description resid="PLSFIX.TracePre.Tip"/>
                     </Supertip>
                     <Icon>
-                      <bt:Image size="16" resid="SMT.Icon.16"/>
-                      <bt:Image size="32" resid="SMT.Icon.32"/>
-                      <bt:Image size="80" resid="SMT.Icon.80"/>
+                      <bt:Image size="16" resid="PLSFIX.Icon.16"/>
+                      <bt:Image size="32" resid="PLSFIX.Icon.32"/>
+                      <bt:Image size="80" resid="PLSFIX.Icon.80"/>
                     </Icon>
                     <Action xsi:type="ExecuteFunction">
-                      <FunctionName>SMT_TRACE_PRE</FunctionName>
+                      <FunctionName>PLSFIX_TRACE_PRE</FunctionName>
                     </Action>
                   </Control>
-                  <Control xsi:type="Button" id="SMT.Button.TraceDep">
-                    <Label resid="SMT.TraceDep.Label"/>
+                  <Control xsi:type="Button" id="PLSFIX.Button.TraceDep">
+                    <Label resid="PLSFIX.TraceDep.Label"/>
                     <Supertip>
-                      <Title resid="SMT.TraceDep.Label"/>
-                      <Description resid="SMT.TraceDep.Tip"/>
+                      <Title resid="PLSFIX.TraceDep.Label"/>
+                      <Description resid="PLSFIX.TraceDep.Tip"/>
                     </Supertip>
                     <Icon>
-                      <bt:Image size="16" resid="SMT.Icon.16"/>
-                      <bt:Image size="32" resid="SMT.Icon.32"/>
-                      <bt:Image size="80" resid="SMT.Icon.80"/>
+                      <bt:Image size="16" resid="PLSFIX.Icon.16"/>
+                      <bt:Image size="32" resid="PLSFIX.Icon.32"/>
+                      <bt:Image size="80" resid="PLSFIX.Icon.80"/>
                     </Icon>
                     <Action xsi:type="ExecuteFunction">
-                      <FunctionName>SMT_TRACE_DEP</FunctionName>
+                      <FunctionName>PLSFIX_TRACE_DEP</FunctionName>
                     </Action>
                   </Control>
                 </Group>
-                <Group id="SMT.Group.Paste">
-                  <Label resid="SMT.Group.Paste.Label"/>
+                <Group id="PLSFIX.Group.Paste">
+                  <Label resid="PLSFIX.Group.Paste.Label"/>
                   <Icon>
-                    <bt:Image size="16" resid="SMT.Icon.16"/>
-                    <bt:Image size="32" resid="SMT.Icon.32"/>
-                    <bt:Image size="80" resid="SMT.Icon.80"/>
+                    <bt:Image size="16" resid="PLSFIX.Icon.16"/>
+                    <bt:Image size="32" resid="PLSFIX.Icon.32"/>
+                    <bt:Image size="80" resid="PLSFIX.Icon.80"/>
                   </Icon>
-                  <Control xsi:type="Button" id="SMT.Button.Undo">
-                    <Label resid="SMT.Undo.Label"/>
+                  <Control xsi:type="Button" id="PLSFIX.Button.Undo">
+                    <Label resid="PLSFIX.Undo.Label"/>
                     <Supertip>
-                      <Title resid="SMT.Undo.Label"/>
-                      <Description resid="SMT.Undo.Tip"/>
+                      <Title resid="PLSFIX.Undo.Label"/>
+                      <Description resid="PLSFIX.Undo.Tip"/>
                     </Supertip>
                     <Icon>
-                      <bt:Image size="16" resid="SMT.Icon.16"/>
-                      <bt:Image size="32" resid="SMT.Icon.32"/>
-                      <bt:Image size="80" resid="SMT.Icon.80"/>
+                      <bt:Image size="16" resid="PLSFIX.Icon.16"/>
+                      <bt:Image size="32" resid="PLSFIX.Icon.32"/>
+                      <bt:Image size="80" resid="PLSFIX.Icon.80"/>
                     </Icon>
                     <Action xsi:type="ExecuteFunction">
-                      <FunctionName>SMT_UNDO</FunctionName>
+                      <FunctionName>PLSFIX_UNDO</FunctionName>
                     </Action>
                   </Control>
-                  <Control xsi:type="Button" id="SMT.Button.PasteValues">
-                    <Label resid="SMT.PasteValues.Label"/>
+                  <Control xsi:type="Button" id="PLSFIX.Button.PasteValues">
+                    <Label resid="PLSFIX.PasteValues.Label"/>
                     <Supertip>
-                      <Title resid="SMT.PasteValues.Label"/>
-                      <Description resid="SMT.PasteValues.Tip"/>
+                      <Title resid="PLSFIX.PasteValues.Label"/>
+                      <Description resid="PLSFIX.PasteValues.Tip"/>
                     </Supertip>
                     <Icon>
-                      <bt:Image size="16" resid="SMT.Icon.16"/>
-                      <bt:Image size="32" resid="SMT.Icon.32"/>
-                      <bt:Image size="80" resid="SMT.Icon.80"/>
+                      <bt:Image size="16" resid="PLSFIX.Icon.16"/>
+                      <bt:Image size="32" resid="PLSFIX.Icon.32"/>
+                      <bt:Image size="80" resid="PLSFIX.Icon.80"/>
                     </Icon>
                     <Action xsi:type="ExecuteFunction">
-                      <FunctionName>SMT_PASTE_VALUES</FunctionName>
+                      <FunctionName>PLSFIX_PASTE_VALUES</FunctionName>
                     </Action>
                   </Control>
-                  <Control xsi:type="Button" id="SMT.Button.PasteFormats">
-                    <Label resid="SMT.PasteFormats.Label"/>
+                  <Control xsi:type="Button" id="PLSFIX.Button.PasteFormats">
+                    <Label resid="PLSFIX.PasteFormats.Label"/>
                     <Supertip>
-                      <Title resid="SMT.PasteFormats.Label"/>
-                      <Description resid="SMT.PasteFormats.Tip"/>
+                      <Title resid="PLSFIX.PasteFormats.Label"/>
+                      <Description resid="PLSFIX.PasteFormats.Tip"/>
                     </Supertip>
                     <Icon>
-                      <bt:Image size="16" resid="SMT.Icon.16"/>
-                      <bt:Image size="32" resid="SMT.Icon.32"/>
-                      <bt:Image size="80" resid="SMT.Icon.80"/>
+                      <bt:Image size="16" resid="PLSFIX.Icon.16"/>
+                      <bt:Image size="32" resid="PLSFIX.Icon.32"/>
+                      <bt:Image size="80" resid="PLSFIX.Icon.80"/>
                     </Icon>
                     <Action xsi:type="ExecuteFunction">
-                      <FunctionName>SMT_PASTE_FORMATS</FunctionName>
+                      <FunctionName>PLSFIX_PASTE_FORMATS</FunctionName>
                     </Action>
                   </Control>
                 </Group>
-                <Group id="SMT.Group.Model">
-                  <Label resid="SMT.Group.Model.Label"/>
+                <Group id="PLSFIX.Group.Model">
+                  <Label resid="PLSFIX.Group.Model.Label"/>
                   <Icon>
-                    <bt:Image size="16" resid="SMT.Icon.16"/>
-                    <bt:Image size="32" resid="SMT.Icon.32"/>
-                    <bt:Image size="80" resid="SMT.Icon.80"/>
+                    <bt:Image size="16" resid="PLSFIX.Icon.16"/>
+                    <bt:Image size="32" resid="PLSFIX.Icon.32"/>
+                    <bt:Image size="80" resid="PLSFIX.Icon.80"/>
                   </Icon>
-                  <Control xsi:type="Button" id="SMT.Button.Cagr">
-                    <Label resid="SMT.Cagr.Label"/>
+                  <Control xsi:type="Button" id="PLSFIX.Button.Cagr">
+                    <Label resid="PLSFIX.Cagr.Label"/>
                     <Supertip>
-                      <Title resid="SMT.Cagr.Label"/>
-                      <Description resid="SMT.Cagr.Tip"/>
+                      <Title resid="PLSFIX.Cagr.Label"/>
+                      <Description resid="PLSFIX.Cagr.Tip"/>
                     </Supertip>
                     <Icon>
-                      <bt:Image size="16" resid="SMT.Icon.16"/>
-                      <bt:Image size="32" resid="SMT.Icon.32"/>
-                      <bt:Image size="80" resid="SMT.Icon.80"/>
+                      <bt:Image size="16" resid="PLSFIX.Icon.16"/>
+                      <bt:Image size="32" resid="PLSFIX.Icon.32"/>
+                      <bt:Image size="80" resid="PLSFIX.Icon.80"/>
                     </Icon>
                     <Action xsi:type="ExecuteFunction">
-                      <FunctionName>SMT_CAGR</FunctionName>
+                      <FunctionName>PLSFIX_CAGR</FunctionName>
                     </Action>
                   </Control>
-                  <Control xsi:type="Button" id="SMT.Button.Sign">
-                    <Label resid="SMT.Sign.Label"/>
+                  <Control xsi:type="Button" id="PLSFIX.Button.Sign">
+                    <Label resid="PLSFIX.Sign.Label"/>
                     <Supertip>
-                      <Title resid="SMT.Sign.Label"/>
-                      <Description resid="SMT.Sign.Tip"/>
+                      <Title resid="PLSFIX.Sign.Label"/>
+                      <Description resid="PLSFIX.Sign.Tip"/>
                     </Supertip>
                     <Icon>
-                      <bt:Image size="16" resid="SMT.Icon.16"/>
-                      <bt:Image size="32" resid="SMT.Icon.32"/>
-                      <bt:Image size="80" resid="SMT.Icon.80"/>
+                      <bt:Image size="16" resid="PLSFIX.Icon.16"/>
+                      <bt:Image size="32" resid="PLSFIX.Icon.32"/>
+                      <bt:Image size="80" resid="PLSFIX.Icon.80"/>
                     </Icon>
                     <Action xsi:type="ExecuteFunction">
-                      <FunctionName>SMT_SIGN</FunctionName>
+                      <FunctionName>PLSFIX_SIGN</FunctionName>
                     </Action>
                   </Control>
-                  <Control xsi:type="Button" id="SMT.Button.ScaleUp">
-                    <Label resid="SMT.ScaleUp.Label"/>
+                  <Control xsi:type="Button" id="PLSFIX.Button.ScaleUp">
+                    <Label resid="PLSFIX.ScaleUp.Label"/>
                     <Supertip>
-                      <Title resid="SMT.ScaleUp.Label"/>
-                      <Description resid="SMT.ScaleUp.Tip"/>
+                      <Title resid="PLSFIX.ScaleUp.Label"/>
+                      <Description resid="PLSFIX.ScaleUp.Tip"/>
                     </Supertip>
                     <Icon>
-                      <bt:Image size="16" resid="SMT.Icon.16"/>
-                      <bt:Image size="32" resid="SMT.Icon.32"/>
-                      <bt:Image size="80" resid="SMT.Icon.80"/>
+                      <bt:Image size="16" resid="PLSFIX.Icon.16"/>
+                      <bt:Image size="32" resid="PLSFIX.Icon.32"/>
+                      <bt:Image size="80" resid="PLSFIX.Icon.80"/>
                     </Icon>
                     <Action xsi:type="ExecuteFunction">
-                      <FunctionName>SMT_SCALEUP</FunctionName>
+                      <FunctionName>PLSFIX_SCALEUP</FunctionName>
                     </Action>
                   </Control>
-                  <Control xsi:type="Button" id="SMT.Button.ScaleDown">
-                    <Label resid="SMT.ScaleDown.Label"/>
+                  <Control xsi:type="Button" id="PLSFIX.Button.ScaleDown">
+                    <Label resid="PLSFIX.ScaleDown.Label"/>
                     <Supertip>
-                      <Title resid="SMT.ScaleDown.Label"/>
-                      <Description resid="SMT.ScaleDown.Tip"/>
+                      <Title resid="PLSFIX.ScaleDown.Label"/>
+                      <Description resid="PLSFIX.ScaleDown.Tip"/>
                     </Supertip>
                     <Icon>
-                      <bt:Image size="16" resid="SMT.Icon.16"/>
-                      <bt:Image size="32" resid="SMT.Icon.32"/>
-                      <bt:Image size="80" resid="SMT.Icon.80"/>
+                      <bt:Image size="16" resid="PLSFIX.Icon.16"/>
+                      <bt:Image size="32" resid="PLSFIX.Icon.32"/>
+                      <bt:Image size="80" resid="PLSFIX.Icon.80"/>
                     </Icon>
                     <Action xsi:type="ExecuteFunction">
-                      <FunctionName>SMT_SCALEDOWN</FunctionName>
+                      <FunctionName>PLSFIX_SCALEDOWN</FunctionName>
                     </Action>
                   </Control>
                 </Group>
-                <Group id="SMT.Group.Workbook">
-                  <Label resid="SMT.Group.Workbook.Label"/>
+                <Group id="PLSFIX.Group.Workbook">
+                  <Label resid="PLSFIX.Group.Workbook.Label"/>
                   <Icon>
-                    <bt:Image size="16" resid="SMT.Icon.16"/>
-                    <bt:Image size="32" resid="SMT.Icon.32"/>
-                    <bt:Image size="80" resid="SMT.Icon.80"/>
+                    <bt:Image size="16" resid="PLSFIX.Icon.16"/>
+                    <bt:Image size="32" resid="PLSFIX.Icon.32"/>
+                    <bt:Image size="80" resid="PLSFIX.Icon.80"/>
                   </Icon>
-                  <Control xsi:type="Button" id="SMT.Button.Waterfall">
-                    <Label resid="SMT.Waterfall.Label"/>
+                  <Control xsi:type="Button" id="PLSFIX.Button.Waterfall">
+                    <Label resid="PLSFIX.Waterfall.Label"/>
                     <Supertip>
-                      <Title resid="SMT.Waterfall.Label"/>
-                      <Description resid="SMT.Waterfall.Tip"/>
+                      <Title resid="PLSFIX.Waterfall.Label"/>
+                      <Description resid="PLSFIX.Waterfall.Tip"/>
                     </Supertip>
                     <Icon>
-                      <bt:Image size="16" resid="SMT.Icon.16"/>
-                      <bt:Image size="32" resid="SMT.Icon.32"/>
-                      <bt:Image size="80" resid="SMT.Icon.80"/>
+                      <bt:Image size="16" resid="PLSFIX.Icon.16"/>
+                      <bt:Image size="32" resid="PLSFIX.Icon.32"/>
+                      <bt:Image size="80" resid="PLSFIX.Icon.80"/>
                     </Icon>
                     <Action xsi:type="ExecuteFunction">
-                      <FunctionName>SMT_WATERFALL</FunctionName>
+                      <FunctionName>PLSFIX_WATERFALL</FunctionName>
                     </Action>
                   </Control>
-                  <Control xsi:type="Button" id="SMT.Button.Toc">
-                    <Label resid="SMT.Toc.Label"/>
+                  <Control xsi:type="Button" id="PLSFIX.Button.Toc">
+                    <Label resid="PLSFIX.Toc.Label"/>
                     <Supertip>
-                      <Title resid="SMT.Toc.Label"/>
-                      <Description resid="SMT.Toc.Tip"/>
+                      <Title resid="PLSFIX.Toc.Label"/>
+                      <Description resid="PLSFIX.Toc.Tip"/>
                     </Supertip>
                     <Icon>
-                      <bt:Image size="16" resid="SMT.Icon.16"/>
-                      <bt:Image size="32" resid="SMT.Icon.32"/>
-                      <bt:Image size="80" resid="SMT.Icon.80"/>
+                      <bt:Image size="16" resid="PLSFIX.Icon.16"/>
+                      <bt:Image size="32" resid="PLSFIX.Icon.32"/>
+                      <bt:Image size="80" resid="PLSFIX.Icon.80"/>
                     </Icon>
                     <Action xsi:type="ExecuteFunction">
-                      <FunctionName>SMT_TOC</FunctionName>
+                      <FunctionName>PLSFIX_TOC</FunctionName>
                     </Action>
                   </Control>
                 </Group>
-                <Label resid="SMT.Tab.Label"/>
+                <Label resid="PLSFIX.Tab.Label"/>
               </CustomTab>
             </ExtensionPoint>
           </DesktopFormFactor>
         </Host>
         <Host xsi:type="Presentation">
           <Runtimes>
-            <Runtime resid="SMT.Pptpane.Url" lifetime="long"/>
+            <Runtime resid="PLSFIX.Pptpane.Url" lifetime="long"/>
           </Runtimes>
           <DesktopFormFactor>
-            <FunctionFile resid="SMT.Pptpane.Url"/>
+            <FunctionFile resid="PLSFIX.Pptpane.Url"/>
             <ExtensionPoint xsi:type="PrimaryCommandSurface">
-              <CustomTab id="SMT.Tab">
-                <Group id="SMT.Group.Links">
-                  <Label resid="SMT.Group.Links.Label"/>
+              <CustomTab id="PLSFIX.Tab">
+                <Group id="PLSFIX.Group.Links">
+                  <Label resid="PLSFIX.Group.Links.Label"/>
                   <Icon>
-                    <bt:Image size="16" resid="SMT.Icon.16"/>
-                    <bt:Image size="32" resid="SMT.Icon.32"/>
-                    <bt:Image size="80" resid="SMT.Icon.80"/>
+                    <bt:Image size="16" resid="PLSFIX.Icon.16"/>
+                    <bt:Image size="32" resid="PLSFIX.Icon.32"/>
+                    <bt:Image size="80" resid="PLSFIX.Icon.80"/>
                   </Icon>
-                  <Control xsi:type="Button" id="SMT.Button.OpenLinks">
-                    <Label resid="SMT.OpenLinks.Label"/>
+                  <Control xsi:type="Button" id="PLSFIX.Button.OpenLinks">
+                    <Label resid="PLSFIX.OpenLinks.Label"/>
                     <Supertip>
-                      <Title resid="SMT.OpenLinks.Label"/>
-                      <Description resid="SMT.OpenLinks.Tip"/>
+                      <Title resid="PLSFIX.OpenLinks.Label"/>
+                      <Description resid="PLSFIX.OpenLinks.Tip"/>
                     </Supertip>
                     <Icon>
-                      <bt:Image size="16" resid="SMT.Icon.16"/>
-                      <bt:Image size="32" resid="SMT.Icon.32"/>
-                      <bt:Image size="80" resid="SMT.Icon.80"/>
+                      <bt:Image size="16" resid="PLSFIX.Icon.16"/>
+                      <bt:Image size="32" resid="PLSFIX.Icon.32"/>
+                      <bt:Image size="80" resid="PLSFIX.Icon.80"/>
                     </Icon>
                     <Action xsi:type="ShowTaskpane">
-                      <TaskpaneId>SMT.Pptpane</TaskpaneId>
-                      <SourceLocation resid="SMT.Pptpane.Url"/>
+                      <TaskpaneId>PLSFIX.Pptpane</TaskpaneId>
+                      <SourceLocation resid="PLSFIX.Pptpane.Url"/>
                     </Action>
                   </Control>
                 </Group>
-                <Label resid="SMT.Tab.Label"/>
+                <Label resid="PLSFIX.Tab.Label"/>
               </CustomTab>
             </ExtensionPoint>
           </DesktopFormFactor>
@@ -826,63 +826,63 @@
       </Hosts>
       <Resources>
         <bt:Images>
-          <bt:Image id="SMT.Icon.16" DefaultValue="https://dbautomatizacijas.com/modelis/assets/icon-16.png"/>
-          <bt:Image id="SMT.Icon.32" DefaultValue="https://dbautomatizacijas.com/modelis/assets/icon-32.png"/>
-          <bt:Image id="SMT.Icon.80" DefaultValue="https://dbautomatizacijas.com/modelis/assets/icon-80.png"/>
+          <bt:Image id="PLSFIX.Icon.16" DefaultValue="https://dbautomatizacijas.com/modelis/assets/icon-16.png"/>
+          <bt:Image id="PLSFIX.Icon.32" DefaultValue="https://dbautomatizacijas.com/modelis/assets/icon-32.png"/>
+          <bt:Image id="PLSFIX.Icon.80" DefaultValue="https://dbautomatizacijas.com/modelis/assets/icon-80.png"/>
         </bt:Images>
         <bt:Urls>
-          <bt:Url id="SMT.Taskpane.Url" DefaultValue="https://dbautomatizacijas.com/modelis/taskpane.html"/>
-          <bt:Url id="SMT.Pptpane.Url" DefaultValue="https://dbautomatizacijas.com/modelis/pptpane.html"/>
-          <bt:Url id="SMT.Functions.Script.Url" DefaultValue="https://dbautomatizacijas.com/modelis/functions.js"/>
-          <bt:Url id="SMT.Functions.Metadata.Url" DefaultValue="https://dbautomatizacijas.com/modelis/functions.json"/>
+          <bt:Url id="PLSFIX.Taskpane.Url" DefaultValue="https://dbautomatizacijas.com/modelis/taskpane.html"/>
+          <bt:Url id="PLSFIX.Pptpane.Url" DefaultValue="https://dbautomatizacijas.com/modelis/pptpane.html"/>
+          <bt:Url id="PLSFIX.Functions.Script.Url" DefaultValue="https://dbautomatizacijas.com/modelis/functions.js"/>
+          <bt:Url id="PLSFIX.Functions.Metadata.Url" DefaultValue="https://dbautomatizacijas.com/modelis/functions.json"/>
         </bt:Urls>
         <bt:ShortStrings>
-          <bt:String id="SMT.Tab.Label" DefaultValue="Model Tools"/>
-          <bt:String id="SMT.Group.Tools.Label" DefaultValue="Model Tools"/>
-          <bt:String id="SMT.OpenPane.Label" DefaultValue="Model Tools"/>
-          <bt:String id="SMT.Autocolor.Label" DefaultValue="Autocolor"/>
-          <bt:String id="SMT.FillRight.Label" DefaultValue="Fill Right"/>
-          <bt:String id="SMT.FillDown.Label" DefaultValue="Fill Down"/>
-          <bt:String id="SMT.IfError.Label" DefaultValue="IFERROR"/>
-          <bt:String id="SMT.Group.Audit.Label" DefaultValue="Audit"/>
-          <bt:String id="SMT.Audit.Label" DefaultValue="Audit overlay"/>
-          <bt:String id="SMT.TracePre.Label" DefaultValue="Precedents"/>
-          <bt:String id="SMT.TraceDep.Label" DefaultValue="Dependents"/>
-          <bt:String id="SMT.Group.Paste.Label" DefaultValue="Paste"/>
-          <bt:String id="SMT.Undo.Label" DefaultValue="SMT Undo"/>
-          <bt:String id="SMT.PasteValues.Label" DefaultValue="Paste values"/>
-          <bt:String id="SMT.PasteFormats.Label" DefaultValue="Paste formats"/>
-          <bt:String id="SMT.Group.Model.Label" DefaultValue="Model"/>
-          <bt:String id="SMT.Cagr.Label" DefaultValue="CAGR"/>
-          <bt:String id="SMT.Sign.Label" DefaultValue="Sign flip"/>
-          <bt:String id="SMT.ScaleUp.Label" DefaultValue="x1000"/>
-          <bt:String id="SMT.ScaleDown.Label" DefaultValue="/1000"/>
-          <bt:String id="SMT.Group.Workbook.Label" DefaultValue="Workbook"/>
-          <bt:String id="SMT.Waterfall.Label" DefaultValue="Waterfall"/>
-          <bt:String id="SMT.Toc.Label" DefaultValue="Contents sheet"/>
-          <bt:String id="SMT.Group.Links.Label" DefaultValue="Model Tools Links"/>
-          <bt:String id="SMT.OpenLinks.Label" DefaultValue="Links"/>
-          <bt:String id="SMT.Functions.Namespace" DefaultValue="SMT"/>
+          <bt:String id="PLSFIX.Tab.Label" DefaultValue="pls,fix"/>
+          <bt:String id="PLSFIX.Group.Tools.Label" DefaultValue="Model Tools"/>
+          <bt:String id="PLSFIX.OpenPane.Label" DefaultValue="Model Tools"/>
+          <bt:String id="PLSFIX.Autocolor.Label" DefaultValue="Autocolor"/>
+          <bt:String id="PLSFIX.FillRight.Label" DefaultValue="Fill Right"/>
+          <bt:String id="PLSFIX.FillDown.Label" DefaultValue="Fill Down"/>
+          <bt:String id="PLSFIX.IfError.Label" DefaultValue="IFERROR"/>
+          <bt:String id="PLSFIX.Group.Audit.Label" DefaultValue="Audit"/>
+          <bt:String id="PLSFIX.Audit.Label" DefaultValue="Audit overlay"/>
+          <bt:String id="PLSFIX.TracePre.Label" DefaultValue="Precedents"/>
+          <bt:String id="PLSFIX.TraceDep.Label" DefaultValue="Dependents"/>
+          <bt:String id="PLSFIX.Group.Paste.Label" DefaultValue="Paste"/>
+          <bt:String id="PLSFIX.Undo.Label" DefaultValue="pls,fix Undo"/>
+          <bt:String id="PLSFIX.PasteValues.Label" DefaultValue="Paste values"/>
+          <bt:String id="PLSFIX.PasteFormats.Label" DefaultValue="Paste formats"/>
+          <bt:String id="PLSFIX.Group.Model.Label" DefaultValue="Model"/>
+          <bt:String id="PLSFIX.Cagr.Label" DefaultValue="CAGR"/>
+          <bt:String id="PLSFIX.Sign.Label" DefaultValue="Sign flip"/>
+          <bt:String id="PLSFIX.ScaleUp.Label" DefaultValue="x1000"/>
+          <bt:String id="PLSFIX.ScaleDown.Label" DefaultValue="/1000"/>
+          <bt:String id="PLSFIX.Group.Workbook.Label" DefaultValue="Workbook"/>
+          <bt:String id="PLSFIX.Waterfall.Label" DefaultValue="Waterfall"/>
+          <bt:String id="PLSFIX.Toc.Label" DefaultValue="Contents sheet"/>
+          <bt:String id="PLSFIX.Group.Links.Label" DefaultValue="Links"/>
+          <bt:String id="PLSFIX.OpenLinks.Label" DefaultValue="Links"/>
+          <bt:String id="PLSFIX.Functions.Namespace" DefaultValue="PLSFIX"/>
         </bt:ShortStrings>
         <bt:LongStrings>
-          <bt:String id="SMT.OpenPane.Tip" DefaultValue="Open the Model Tools task pane."/>
-          <bt:String id="SMT.Autocolor.Tip" DefaultValue="Color inputs, formulas and links in your palette."/>
-          <bt:String id="SMT.FillRight.Tip" DefaultValue="Fill the formula from the left cell across the selection."/>
-          <bt:String id="SMT.FillDown.Tip" DefaultValue="Fill the formula from the top cell down the selection."/>
-          <bt:String id="SMT.IfError.Tip" DefaultValue="Wrap selected formulas with IFERROR."/>
-          <bt:String id="SMT.Audit.Tip" DefaultValue="Toggle the formula consistency overlay."/>
-          <bt:String id="SMT.TracePre.Tip" DefaultValue="Jump to the direct precedents of the active cell."/>
-          <bt:String id="SMT.TraceDep.Tip" DefaultValue="Jump to the direct dependents of the active cell."/>
-          <bt:String id="SMT.Undo.Tip" DefaultValue="Restore the last range changed by Model Tools."/>
-          <bt:String id="SMT.PasteValues.Tip" DefaultValue="Paste the copied source as values."/>
-          <bt:String id="SMT.PasteFormats.Tip" DefaultValue="Paste the copied source&apos;s formats only."/>
-          <bt:String id="SMT.Cagr.Tip" DefaultValue="Insert a CAGR formula for the selection."/>
-          <bt:String id="SMT.Sign.Tip" DefaultValue="Flip the sign of the selected formulas and values."/>
-          <bt:String id="SMT.ScaleUp.Tip" DefaultValue="Scale the selection up by a thousand."/>
-          <bt:String id="SMT.ScaleDown.Tip" DefaultValue="Scale the selection down by a thousand."/>
-          <bt:String id="SMT.Waterfall.Tip" DefaultValue="Build a waterfall chart from the selected bridge table."/>
-          <bt:String id="SMT.Toc.Tip" DefaultValue="Insert or refresh the workbook contents sheet."/>
-          <bt:String id="SMT.OpenLinks.Tip" DefaultValue="Open the Model Tools linked-objects pane."/>
+          <bt:String id="PLSFIX.OpenPane.Tip" DefaultValue="Open the pls,fix task pane."/>
+          <bt:String id="PLSFIX.Autocolor.Tip" DefaultValue="Color inputs, formulas and links in your palette."/>
+          <bt:String id="PLSFIX.FillRight.Tip" DefaultValue="Fill the formula from the left cell across the selection."/>
+          <bt:String id="PLSFIX.FillDown.Tip" DefaultValue="Fill the formula from the top cell down the selection."/>
+          <bt:String id="PLSFIX.IfError.Tip" DefaultValue="Wrap selected formulas with IFERROR."/>
+          <bt:String id="PLSFIX.Audit.Tip" DefaultValue="Toggle the formula consistency overlay."/>
+          <bt:String id="PLSFIX.TracePre.Tip" DefaultValue="Jump to the direct precedents of the active cell."/>
+          <bt:String id="PLSFIX.TraceDep.Tip" DefaultValue="Jump to the direct dependents of the active cell."/>
+          <bt:String id="PLSFIX.Undo.Tip" DefaultValue="Restore the last range changed by pls,fix."/>
+          <bt:String id="PLSFIX.PasteValues.Tip" DefaultValue="Paste the copied source as values."/>
+          <bt:String id="PLSFIX.PasteFormats.Tip" DefaultValue="Paste the copied source&apos;s formats only."/>
+          <bt:String id="PLSFIX.Cagr.Tip" DefaultValue="Insert a CAGR formula for the selection."/>
+          <bt:String id="PLSFIX.Sign.Tip" DefaultValue="Flip the sign of the selected formulas and values."/>
+          <bt:String id="PLSFIX.ScaleUp.Tip" DefaultValue="Scale the selection up by a thousand."/>
+          <bt:String id="PLSFIX.ScaleDown.Tip" DefaultValue="Scale the selection down by a thousand."/>
+          <bt:String id="PLSFIX.Waterfall.Tip" DefaultValue="Build a waterfall chart from the selected bridge table."/>
+          <bt:String id="PLSFIX.Toc.Tip" DefaultValue="Insert or refresh the workbook contents sheet."/>
+          <bt:String id="PLSFIX.OpenLinks.Tip" DefaultValue="Open the pls,fix linked-objects pane."/>
         </bt:LongStrings>
       </Resources>
       <ExtendedOverrides Url="https://dbautomatizacijas.com/modelis/shortcuts.json"/>

@@ -1,5 +1,5 @@
 // The typed source of public/functions.json, the registration file Office reads
-// to publish =SMT.ROUND and =SMT.ROUNDSUM (the SMT. prefix comes from the
+// to publish =PLSFIX.ROUND and =PLSFIX.ROUNDSUM (the PLSFIX. prefix comes from the
 // manifest's <Namespace>, so the ids here stay unqualified). Every id must be
 // associated in src/functions/index.ts: a registered function with nothing
 // behind it returns #N/A in the cell.
@@ -61,7 +61,7 @@ export const CUSTOM_FUNCTIONS: readonly CustomFunctionSpec[] = [
     id: "ROUNDSUM",
     name: "ROUNDSUM",
     description:
-      "The group's total, rounded so it equals the sum of SMT.ROUND over the same range.",
+      "The group's total, rounded so it equals the sum of PLSFIX.ROUND over the same range.",
     result: SCALAR_NUMBER,
     parameters: [RANGE, DECIMALS],
   },

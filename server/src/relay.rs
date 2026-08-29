@@ -34,7 +34,7 @@ const BATCH_LIMIT: usize = 64 * 1024;
 /// One poll or fetch covers a deck; a longer batch is a client bug.
 pub(crate) const MAX_BATCH_ITEMS: usize = 200;
 /// The inbox POST names its link here - the body is the sealed item.
-const LINK_ID_HEADER: &str = "x-smt-link-id";
+const LINK_ID_HEADER: &str = "x-plsfix-link-id";
 
 /// Everything the routes share: one store, one connection.
 pub struct AppState {

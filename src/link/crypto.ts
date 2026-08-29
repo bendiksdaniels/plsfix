@@ -72,7 +72,7 @@ export function fromBase64Url(text: string): Uint8Array {
   }
 }
 
-// Info separates the purposes of one secret ("smt-link-enc" vs "smt-link-auth").
+// Info separates the purposes of one secret ("plsfix-link-enc" vs "plsfix-link-auth").
 // Bytes are accepted so published test vectors, whose info is not UTF-8, are
 // checkable; the salt defaults to empty, which HMAC pads to the RFC 5869 zeros.
 export async function hkdf(
@@ -161,7 +161,7 @@ export interface LinkKeys {
   auth: string;
 }
 
-// The token is the whole secret of one link: it lives in the deck's SMT_KEY tag
+// The token is the whole secret of one link: it lives in the deck's PLSFIX_KEY tag
 // and the workbook registry, never on the relay.
 export function newToken(): string {
   return toBase64Url(randomBytes(KEY_BYTES));
@@ -173,8 +173,8 @@ export async function deriveLinkKeys(token: string): Promise<LinkKeys> {
     throw new Error(`deriveLinkKeys: token must be ${KEY_BYTES} bytes`);
   }
   return {
-    enc: await hkdf(secret, "smt-link-enc"),
-    auth: toBase64Url(await hkdf(secret, "smt-link-auth")),
+    enc: await hkdf(secret, "plsfix-link-enc"),
+    auth: toBase64Url(await hkdf(secret, "plsfix-link-auth")),
   };
 }
 

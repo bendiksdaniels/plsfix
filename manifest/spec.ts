@@ -13,19 +13,19 @@ export interface ManifestEnvironment {
 }
 
 export interface ButtonSpec {
-  id: string; // e.g. "Autocolor" -> control id SMT.Button.Autocolor
+  id: string; // e.g. "Autocolor" -> control id PLSFIX.Button.Autocolor
   label: string;
   tip: string;
   action: { kind: "showPane" } | { kind: "function"; name: string };
 }
 
 export interface GroupSpec {
-  id: string; // e.g. "SMT.Group.Audit" -> resource id SMT.Group.Audit.Label
+  id: string; // e.g. "PLSFIX.Group.Audit" -> resource id PLSFIX.Group.Audit.Label
   label: string;
   buttons: ButtonSpec[];
 }
 
-// Excel custom functions (=SMT.ROUND, =SMT.ROUNDSUM): the script and the
+// Excel custom functions (=PLSFIX.ROUND, =PLSFIX.ROUNDSUM): the script and the
 // registration JSON Office loads, plus the namespace it prefixes to every
 // function name. They run in the pane's own shared runtime, so there is no
 // second runtime and no second page - docs/research/custom-functions.md.
@@ -86,146 +86,146 @@ export const ENVIRONMENTS: readonly ManifestEnvironment[] = [
 export const WORKBOOK_HOST: HostSpec = {
   name: "Workbook",
   page: "taskpane.html",
-  urlResid: "SMT.Taskpane.Url",
-  taskpaneId: "SMT.Taskpane",
+  urlResid: "PLSFIX.Taskpane.Url",
+  taskpaneId: "PLSFIX.Taskpane",
   customFunctions: {
-    namespace: "SMT",
-    namespaceResid: "SMT.Functions.Namespace",
+    namespace: "PLSFIX",
+    namespaceResid: "PLSFIX.Functions.Namespace",
     scriptFile: "functions.js",
-    scriptResid: "SMT.Functions.Script.Url",
+    scriptResid: "PLSFIX.Functions.Script.Url",
     metadataFile: "functions.json",
-    metadataResid: "SMT.Functions.Metadata.Url",
+    metadataResid: "PLSFIX.Functions.Metadata.Url",
   },
   groups: [
     {
-      id: "SMT.Group.Tools",
+      id: "PLSFIX.Group.Tools",
       label: "Model Tools",
       buttons: [
         {
           id: "OpenPane",
           label: "Model Tools",
-          tip: "Open the Model Tools task pane.",
+          tip: "Open the pls,fix task pane.",
           action: { kind: "showPane" },
         },
         {
           id: "Autocolor",
           label: "Autocolor",
           tip: "Color inputs, formulas and links in your palette.",
-          action: { kind: "function", name: "SMT_AUTOCOLOR" },
+          action: { kind: "function", name: "PLSFIX_AUTOCOLOR" },
         },
         {
           id: "FillRight",
           label: "Fill Right",
           tip: "Fill the formula from the left cell across the selection.",
-          action: { kind: "function", name: "SMT_FILLRIGHT" },
+          action: { kind: "function", name: "PLSFIX_FILLRIGHT" },
         },
         {
           id: "FillDown",
           label: "Fill Down",
           tip: "Fill the formula from the top cell down the selection.",
-          action: { kind: "function", name: "SMT_FILLDOWN" },
+          action: { kind: "function", name: "PLSFIX_FILLDOWN" },
         },
         {
           id: "IfError",
           label: "IFERROR",
           tip: "Wrap selected formulas with IFERROR.",
-          action: { kind: "function", name: "SMT_IFERROR" },
+          action: { kind: "function", name: "PLSFIX_IFERROR" },
         },
       ],
     },
     {
-      id: "SMT.Group.Audit",
+      id: "PLSFIX.Group.Audit",
       label: "Audit",
       buttons: [
         {
           id: "Audit",
           label: "Audit overlay",
           tip: "Toggle the formula consistency overlay.",
-          action: { kind: "function", name: "SMT_AUDIT" },
+          action: { kind: "function", name: "PLSFIX_AUDIT" },
         },
         {
           id: "TracePre",
           label: "Precedents",
           tip: "Jump to the direct precedents of the active cell.",
-          action: { kind: "function", name: "SMT_TRACE_PRE" },
+          action: { kind: "function", name: "PLSFIX_TRACE_PRE" },
         },
         {
           id: "TraceDep",
           label: "Dependents",
           tip: "Jump to the direct dependents of the active cell.",
-          action: { kind: "function", name: "SMT_TRACE_DEP" },
+          action: { kind: "function", name: "PLSFIX_TRACE_DEP" },
         },
       ],
     },
     {
-      id: "SMT.Group.Paste",
+      id: "PLSFIX.Group.Paste",
       label: "Paste",
       buttons: [
         {
           id: "Undo",
-          label: "SMT Undo",
-          tip: "Restore the last range changed by Model Tools.",
-          action: { kind: "function", name: "SMT_UNDO" },
+          label: "pls,fix Undo",
+          tip: "Restore the last range changed by pls,fix.",
+          action: { kind: "function", name: "PLSFIX_UNDO" },
         },
         {
           id: "PasteValues",
           label: "Paste values",
           tip: "Paste the copied source as values.",
-          action: { kind: "function", name: "SMT_PASTE_VALUES" },
+          action: { kind: "function", name: "PLSFIX_PASTE_VALUES" },
         },
         {
           id: "PasteFormats",
           label: "Paste formats",
           tip: "Paste the copied source's formats only.",
-          action: { kind: "function", name: "SMT_PASTE_FORMATS" },
+          action: { kind: "function", name: "PLSFIX_PASTE_FORMATS" },
         },
       ],
     },
     {
-      id: "SMT.Group.Model",
+      id: "PLSFIX.Group.Model",
       label: "Model",
       buttons: [
         {
           id: "Cagr",
           label: "CAGR",
           tip: "Insert a CAGR formula for the selection.",
-          action: { kind: "function", name: "SMT_CAGR" },
+          action: { kind: "function", name: "PLSFIX_CAGR" },
         },
         {
           id: "Sign",
           label: "Sign flip",
           tip: "Flip the sign of the selected formulas and values.",
-          action: { kind: "function", name: "SMT_SIGN" },
+          action: { kind: "function", name: "PLSFIX_SIGN" },
         },
         {
           id: "ScaleUp",
           label: "x1000",
           tip: "Scale the selection up by a thousand.",
-          action: { kind: "function", name: "SMT_SCALEUP" },
+          action: { kind: "function", name: "PLSFIX_SCALEUP" },
         },
         {
           id: "ScaleDown",
           label: "/1000",
           tip: "Scale the selection down by a thousand.",
-          action: { kind: "function", name: "SMT_SCALEDOWN" },
+          action: { kind: "function", name: "PLSFIX_SCALEDOWN" },
         },
       ],
     },
     {
-      id: "SMT.Group.Workbook",
+      id: "PLSFIX.Group.Workbook",
       label: "Workbook",
       buttons: [
         {
           id: "Waterfall",
           label: "Waterfall",
           tip: "Build a waterfall chart from the selected bridge table.",
-          action: { kind: "function", name: "SMT_WATERFALL" },
+          action: { kind: "function", name: "PLSFIX_WATERFALL" },
         },
         {
           id: "Toc",
           label: "Contents sheet",
           tip: "Insert or refresh the workbook contents sheet.",
-          action: { kind: "function", name: "SMT_TOC" },
+          action: { kind: "function", name: "PLSFIX_TOC" },
         },
       ],
     },
@@ -235,17 +235,17 @@ export const WORKBOOK_HOST: HostSpec = {
 export const PRESENTATION_HOST: HostSpec = {
   name: "Presentation",
   page: "pptpane.html",
-  urlResid: "SMT.Pptpane.Url",
-  taskpaneId: "SMT.Pptpane",
+  urlResid: "PLSFIX.Pptpane.Url",
+  taskpaneId: "PLSFIX.Pptpane",
   groups: [
     {
-      id: "SMT.Group.Links",
-      label: "Model Tools Links",
+      id: "PLSFIX.Group.Links",
+      label: "Links",
       buttons: [
         {
           id: "OpenLinks",
           label: "Links",
-          tip: "Open the Model Tools linked-objects pane.",
+          tip: "Open the pls,fix linked-objects pane.",
           action: { kind: "showPane" },
         },
       ],
@@ -259,12 +259,16 @@ export const ADDIN: AddinSpec = {
   id: "FF1B34D8-DD7D-4B39-8FA9-6248CA09DB6E",
   version: `${packageVersion}.0`,
   provider: "Daniels Bendiks",
-  displayName: "Model Tools",
+  displayName: "pls,fix",
   description:
     "Fast, consistent financial modelling tools for Excel and PowerPoint.",
   supportUrl: "https://dbautomatizacijas.com",
   appDomain: "https://dbautomatizacijas.com",
-  tabLabel: "Model Tools",
-  iconResids: { 16: "SMT.Icon.16", 32: "SMT.Icon.32", 80: "SMT.Icon.80" },
+  tabLabel: "pls,fix",
+  iconResids: {
+    16: "PLSFIX.Icon.16",
+    32: "PLSFIX.Icon.32",
+    80: "PLSFIX.Icon.80",
+  },
   hosts: [WORKBOOK_HOST, PRESENTATION_HOST],
 };

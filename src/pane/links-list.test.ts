@@ -25,7 +25,7 @@ function row(
     entry: {
       id,
       kind: "range",
-      anchor: `SMT_LINK_${id.slice(0, 8)}`,
+      anchor: `PLSFIX_LINK_${id.slice(0, 8)}`,
       label: "Model!B4:F12",
       token: "token",
       createdAt: "2026-08-29T11:00:00.000Z",
@@ -64,7 +64,7 @@ describe("renderWorkbookLinks", () => {
     const rows = body.querySelectorAll("tr[data-link-id]");
     expect(rows).toHaveLength(2);
     expect(rows[0]?.textContent).toContain("Model!B4:F12");
-    expect(rows[0]?.textContent).toContain("SMT_LINK_aaaaaaaa");
+    expect(rows[0]?.textContent).toContain("PLSFIX_LINK_aaaaaaaa");
     expect(rows[1]?.textContent).toContain("Chart 1");
   });
 

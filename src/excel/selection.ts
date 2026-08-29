@@ -1,5 +1,5 @@
 // Selection formatting: presets, number formats and format-cycling (fill, font
-// color, row style, number, border). Every mutating action captures SMT Undo
+// color, row style, number, border). Every mutating action captures pls,fix Undo
 // first and enforces the selection cell cap before touching the grid.
 
 import {

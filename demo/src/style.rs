@@ -3,8 +3,8 @@
 
 use rust_xlsxwriter::{Color, Format, FormatAlign, FormatBorder};
 
-pub const CHARCOAL: Color = Color::RGB(0x28_26_23);
-pub const BRONZE: Color = Color::RGB(0xB2_7E_54);
+pub const SLATE: Color = Color::RGB(0x22_31_3F);
+pub const TEAL: Color = Color::RGB(0x1B_99_8B);
 pub const EUR_K: &str = "#,##0;(#,##0);\"-\"";
 pub const PERCENT: &str = "0.0%";
 pub const PERCENT_2: &str = "0.00%";
@@ -31,8 +31,8 @@ pub struct Styles {
 impl Styles {
     pub fn new() -> Styles {
         Styles {
-            title: Format::new().set_bold().set_font_size(TITLE_SIZE).set_font_color(CHARCOAL),
-            note: Format::new().set_italic().set_font_color(BRONZE),
+            title: Format::new().set_bold().set_font_size(TITLE_SIZE).set_font_color(SLATE),
+            note: Format::new().set_italic().set_font_color(TEAL),
             header: Format::new()
                 .set_bold()
                 .set_align(FormatAlign::Right)

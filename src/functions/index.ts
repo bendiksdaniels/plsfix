@@ -1,4 +1,4 @@
-// The Excel-facing custom functions, =SMT.ROUND and =SMT.ROUNDSUM, and the only
+// The Excel-facing custom functions, =PLSFIX.ROUND and =PLSFIX.ROUNDSUM, and the only
 // module Office loads into the custom-functions runtime (built to dist as a
 // standalone functions.js). It imports the pure allocator and nothing else: no
 // pane code, no DOM, no Office.js object model.
@@ -29,7 +29,7 @@ function rangeValues(range: number[][]): number[] {
   const cells = range.reduce((total, row) => total + row.length, 0);
   if (cells > ROUNDING_CELL_CAP) {
     throw valueError(
-      `SMT rounding groups up to ${ROUNDING_CELL_CAP} cells; this range holds ${cells}.`,
+      `pls,fix rounding groups up to ${ROUNDING_CELL_CAP} cells; this range holds ${cells}.`,
     );
   }
 
@@ -37,7 +37,9 @@ function rangeValues(range: number[][]): number[] {
   for (const row of range) {
     for (const cell of row) {
       if (typeof cell !== "number" || !Number.isFinite(cell)) {
-        throw valueError("SMT rounding needs numbers; this range holds text.");
+        throw valueError(
+          "pls,fix rounding needs numbers; this range holds text.",
+        );
       }
       values.push(cell);
     }
@@ -51,13 +53,13 @@ function requireDecimals(decimals: number): number {
     Math.abs(decimals) > ROUNDING_MAX_DECIMALS
   ) {
     throw valueError(
-      `SMT rounding takes a whole number of decimals between -${ROUNDING_MAX_DECIMALS} and ${ROUNDING_MAX_DECIMALS}.`,
+      `pls,fix rounding takes a whole number of decimals between -${ROUNDING_MAX_DECIMALS} and ${ROUNDING_MAX_DECIMALS}.`,
     );
   }
   return decimals;
 }
 
-// The range's total, rounded so it equals the sum of SMT.ROUND over the range.
+// The range's total, rounded so it equals the sum of PLSFIX.ROUND over the range.
 export function smtRoundSum(range: number[][], decimals: number): number {
   return roundedTotal(rangeValues(range), requireDecimals(decimals));
 }
@@ -71,13 +73,13 @@ export function smtRound(
   const values = rangeValues(range);
   if (!Number.isInteger(index) || index < 1 || index > values.length) {
     throw valueError(
-      `SMT.ROUND: position must be a whole number between 1 and ${values.length}.`,
+      `PLSFIX.ROUND: position must be a whole number between 1 and ${values.length}.`,
     );
   }
   return allocateRounded(values, requireDecimals(decimals))[index - 1]!;
 }
 
 // The ids match src/functions/metadata.ts; the manifest's <Namespace> makes
-// them SMT.ROUND and SMT.ROUNDSUM in the grid.
+// them PLSFIX.ROUND and PLSFIX.ROUNDSUM in the grid.
 CustomFunctions.associate("ROUND", smtRound);
 CustomFunctions.associate("ROUNDSUM", smtRoundSum);

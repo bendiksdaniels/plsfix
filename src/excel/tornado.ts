@@ -98,7 +98,7 @@ function styleTornado(chart: Excel.Chart, heading: string): void {
 }
 
 // Label, low outcome, high outcome; the helper block lands immediately right of
-// the selection, and SMT Undo captures whatever stood there first.
+// the selection, and pls,fix Undo captures whatever stood there first.
 export async function insertTornado(): Promise<string> {
   return Excel.run(async (context) => {
     const range = await selectedSingleRange(context, "tornado");

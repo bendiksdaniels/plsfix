@@ -10,7 +10,7 @@ export interface KeyStore {
   remove(key: string): Promise<void>;
 }
 
-export const WORKSPACE_STORAGE_KEY = "smt.link.workspace.v1";
+export const WORKSPACE_STORAGE_KEY = "plsfix.link.workspace.v1";
 const KEY_BYTES = 32;
 
 // The one process-wide fallback map, so two calls in a host without storage
@@ -62,9 +62,9 @@ export interface Workspace {
 // the host, and exportKey is the secret itself, shown only when a user pairs.
 export async function deriveWorkspace(secret: Uint8Array): Promise<Workspace> {
   return {
-    id: toBase64Url(await hkdf(secret, "smt-ws-id")),
-    enc: await hkdf(secret, "smt-ws-enc"),
-    auth: toBase64Url(await hkdf(secret, "smt-ws-auth")),
+    id: toBase64Url(await hkdf(secret, "plsfix-ws-id")),
+    enc: await hkdf(secret, "plsfix-ws-enc"),
+    auth: toBase64Url(await hkdf(secret, "plsfix-ws-auth")),
     exportKey: toBase64Url(secret),
   };
 }

@@ -74,7 +74,7 @@ async function seeded(): Promise<{
       workbook: "Other.xlsx",
       sheet: "Charts",
       ref: "Revenue",
-      anchor: "SMT_LINK_99999999",
+      anchor: "PLSFIX_LINK_99999999",
     },
   };
   const row = (await links.listLinks(relay))[0]!;

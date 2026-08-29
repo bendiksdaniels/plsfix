@@ -219,7 +219,7 @@ export interface BorderLine extends BorderSpec {
 export type BorderCycleState = BorderLine[];
 
 // What the host reports for one edge. Excel spells these "Continuous", "Thin"
-// and "#282623", and hands back an empty style for a range whose cells disagree.
+// and "#22313F", and hands back an empty style for a range whose cells disagree.
 export interface BorderReadout {
   style: string;
   weight: string;

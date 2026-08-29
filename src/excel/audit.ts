@@ -18,7 +18,7 @@ import { getActiveSettings, tint } from "../settings";
 const LONE_FILL = "#E8B4B4";
 
 // The overlay owns nothing it did not paint: every fill it covers is stored
-// first and written back verbatim. It stays separate from SMT Undo because the
+// first and written back verbatim. It stays separate from pls,fix Undo because the
 // overlay is a toggle the modeller turns off again, not an edit to the model.
 // The paint is saved with the file while the map dies with the runtime, so the
 // snapshot rides along in this workbook setting and startup restores it before

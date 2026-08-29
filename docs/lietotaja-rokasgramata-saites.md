@@ -1,6 +1,6 @@
 # Excel un PowerPoint saistītie objekti (v2.1)
 
-Model Tools ļauj eksportēt Excel šūnu apgabalu vai diagrammu uz PowerPoint kā saistītu attēlu. Attēlu pēc tam var atjaunināt vietā, nemainot tā pozīciju un izmēru, arī tad, kad avota dati Excel darbgrāmatā ir mainījušies. Šī rokasgrāmata apraksta eksportu, ievietošanu, atjaunināšanu, saites atslēgas iestatīšanu, drošības prasības un biežākās kļūdas.
+pls,fix ļauj eksportēt Excel šūnu apgabalu vai diagrammu uz PowerPoint kā saistītu attēlu. Attēlu pēc tam var atjaunināt vietā, nemainot tā pozīciju un izmēru, arī tad, kad avota dati Excel darbgrāmatā ir mainījušies. Šī rokasgrāmata apraksta eksportu, ievietošanu, atjaunināšanu, saites atslēgas iestatīšanu, drošības prasības un biežākās kļūdas.
 
 ## Pirms sākt
 
@@ -20,7 +20,7 @@ Izvēles rūtiņa "Highlight linked cells" ar vieglu toni iekrāso visus saistī
 
 ## Ievietošana PowerPoint
 
-PowerPoint lentē atveriet cilni "Model Tools" un nospiediet "Links": atvērsies saišu panelis. Pārslēdzieties uz cilni "Inbox", kur redzami no Excel nosūtītie, vēl neievietotie attēli.
+PowerPoint lentē atveriet cilni "pls,fix" un nospiediet "Links": atvērsies saišu panelis. Pārslēdzieties uz cilni "Inbox", kur redzami no Excel nosūtītie, vēl neievietotie attēli.
 
 Atlasiet slaidu, kurā attēls jāievieto, un pie vajadzīgā vienuma nospiediet "Insert". Attēls tiek ievietots atlasītajā slaidā un pielāgots tā izmēram.
 

@@ -130,7 +130,7 @@ async function repaint(
 
 // Tags first, picture second. Below PowerPointApi 1.8 the repaint reinserts the
 // picture as a new shape and deletes the old one, so a retag afterwards would
-// address a shape that is gone; and on 1.8 fill.setImage never writes SMT_KEY
+// address a shape that is gone; and on 1.8 fill.setImage never writes PLSFIX_KEY
 // at all, so this is the only thing that does. A repaint that fails puts the
 // old tags back, because a shape claiming to be current while showing the
 // previous source's picture is worse than a plain error.

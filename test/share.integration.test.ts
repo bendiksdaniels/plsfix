@@ -108,7 +108,7 @@ describe("prepare for sharing", () => {
   it("reports broken names without deleting one", async () => {
     helpers.addName("Revenue", "=Model!$A$1");
     helpers.addName("Costs", "=Model!#REF!");
-    helpers.addName("SMT_LINK_5f3a91c2", "=Model!#REF!");
+    helpers.addName("PLSFIX_LINK_5f3a91c2", "=Model!#REF!");
 
     const { report } = await smt.prepareForSharing();
 
@@ -116,7 +116,7 @@ describe("prepare for sharing", () => {
     expect(workbook.names.map((entry) => entry.name)).toEqual([
       "Revenue",
       "Costs",
-      "SMT_LINK_5f3a91c2",
+      "PLSFIX_LINK_5f3a91c2",
     ]);
   });
 
@@ -162,16 +162,16 @@ describe("prepare for sharing", () => {
   // overlay leaves in the file, and the tokens the link registry carries.
   it("reports the cells only this add-in can evaluate", async () => {
     helpers.seed("Model!B4", [
-      [{ value: 12, formula: "=SMT.ROUND(B3,-3)" }],
-      [{ value: 12, formula: "=_xlfn.SMT.ROUNDSUM(B1:B2,0)" }],
+      [{ value: 12, formula: "=PLSFIX.ROUND(B3,-3)" }],
+      [{ value: 12, formula: "=_xlfn.PLSFIX.ROUNDSUM(B1:B2,0)" }],
       [{ value: 12, formula: "=ROUND(B3,-3)" }],
     ]);
 
     const { report } = await smt.prepareForSharing();
 
     expect(labels(report, "addinFormula")).toEqual([
-      "Model!B4: =SMT.ROUND(B3,-3)",
-      "Model!B5: =_xlfn.SMT.ROUNDSUM(B1:B2,0)",
+      "Model!B4: =PLSFIX.ROUND(B3,-3)",
+      "Model!B5: =_xlfn.PLSFIX.ROUNDSUM(B1:B2,0)",
     ]);
   });
 
@@ -205,14 +205,14 @@ describe("prepare for sharing", () => {
 
     // What the Links tab leaves behind: the registry setting, tokens and all.
     helpers.setSetting(
-      "SMT_LINKS",
+      "PLSFIX_LINKS",
       JSON.stringify({
         v: 1,
         links: [
           {
             id: "a".repeat(32),
             kind: "range",
-            anchor: "SMT_LINK_aaaaaaaa",
+            anchor: "PLSFIX_LINK_aaaaaaaa",
             label: "Model!B4:F5",
             token: "t".repeat(43),
             createdAt: "2026-08-29T10:00:00.000Z",
@@ -226,7 +226,7 @@ describe("prepare for sharing", () => {
     const { report } = await smt.prepareForSharing();
 
     expect(labels(report, "linkTokens")).toEqual([pure.LINK_TOKENS_LABEL]);
-    expect(helpers.setting("SMT_LINKS")).not.toBe("");
+    expect(helpers.setting("PLSFIX_LINKS")).not.toBe("");
   });
 
   it("reports autocolor on edit while it is running", async () => {

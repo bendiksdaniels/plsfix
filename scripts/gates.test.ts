@@ -157,7 +157,7 @@ describe("the dev server serves what the manifest points at", () => {
   });
 
   // The manifest points Office at /functions.js from the moment the sideload
-  // starts; before these hooks, `npm start` served a 404 there and =SMT.ROUND
+  // starts; before these hooks, `npm start` served a 404 there and =PLSFIX.ROUND
   // registered against nothing.
   it("builds the functions before any command that starts the dev server", () => {
     const scripts: Record<string, string> = pkg.scripts;

@@ -1,4 +1,4 @@
-// One queue for every flow that reads the SMT_LINKS registry, changes it and
+// One queue for every flow that reads the PLSFIX_LINKS registry, changes it and
 // writes the whole thing back: export, push, remove and the auto-push window.
 // Each of those does network I/O between its read and its write - a getImage, a
 // PUT to the relay, a POST to the inbox - so two of them overlapping means the

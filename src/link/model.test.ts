@@ -19,7 +19,7 @@ const src = {
   workbook: "Model_v4.xlsx",
   sheet: "Model",
   ref: "B4:F12",
-  anchor: "SMT_LINK_0123abcd",
+  anchor: "PLSFIX_LINK_0123abcd",
 };
 const tag: LinkTag = {
   v: 1,
@@ -39,7 +39,7 @@ describe("link ids", () => {
     expect(isLinkId("abc")).toBe(false);
   });
   it("anchor names are valid Excel defined names", () => {
-    expect(anchorName("0123abcd".repeat(4))).toBe("SMT_LINK_0123abcd");
+    expect(anchorName("0123abcd".repeat(4))).toBe("PLSFIX_LINK_0123abcd");
   });
 });
 
@@ -66,7 +66,7 @@ describe("registry", () => {
         {
           id: tag.id,
           kind: "range" as const,
-          anchor: "SMT_LINK_0123abcd",
+          anchor: "PLSFIX_LINK_0123abcd",
           label: "Revenue",
           token: "t".repeat(43),
           createdAt: tag.pushedAt,

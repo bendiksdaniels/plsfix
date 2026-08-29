@@ -45,7 +45,7 @@ function row(
     entry: {
       id,
       kind: "range",
-      anchor: `SMT_LINK_${id.slice(0, 8)}`,
+      anchor: `PLSFIX_LINK_${id.slice(0, 8)}`,
       label: "Model!B4:F12",
       token: "token",
       createdAt: "2026-08-29T11:00:00.000Z",

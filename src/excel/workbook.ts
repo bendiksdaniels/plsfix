@@ -7,7 +7,7 @@ import { activeTheme, getActiveSettings } from "../settings";
 import { tocRows } from "../workbook";
 
 const TOC_SHEET = "TOC";
-const TOC_MARKER = "Model Tools - Contents";
+const TOC_MARKER = "pls,fix - Contents";
 const TOC_INDEX_WIDTH = 34;
 const TOC_NAME_WIDTH = 240;
 
@@ -163,7 +163,7 @@ export async function listBrokenNames(): Promise<string[]> {
   });
 }
 
-// Irreversible: SMT Undo restores ranges, and Office.js writes never reach
+// Irreversible: pls,fix Undo restores ranges, and Office.js writes never reach
 // Excel's own undo stack. The pane therefore asks twice before calling this.
 export async function deleteBrokenNames(): Promise<number> {
   return Excel.run(async (context) => {

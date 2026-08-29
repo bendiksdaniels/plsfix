@@ -32,7 +32,7 @@ mod tests {
         }
         // The inbox POST carries the link id in a header; the body is the item.
         if method == "POST" && path.starts_with("/api/inbox/") {
-            builder = builder.header("X-SMT-Link-Id", ID);
+            builder = builder.header("X-PLSFIX-Link-Id", ID);
         }
         builder.body(Body::from(body)).unwrap()
     }
@@ -271,7 +271,7 @@ mod limits_and_keys {
             .method("POST")
             .uri(format!("/api/inbox/{WS}"))
             .header(header::AUTHORIZATION, format!("Bearer {auth}"))
-            .header("x-smt-link-id", LINK)
+            .header("x-plsfix-link-id", LINK)
             .header(header::CONTENT_TYPE, "application/octet-stream")
             .body(Body::from(body))
             .unwrap()

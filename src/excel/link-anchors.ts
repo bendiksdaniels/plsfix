@@ -115,7 +115,7 @@ export async function readRegistry(
   // someone else's data or a newer schema, and every flow here writes the
   // whole setting back: decoding it to empty would erase every link record.
   if (registry === null && raw.trim() !== "") {
-    throw new Error("registry SMT_LINKS: unreadable, not overwriting");
+    throw new Error("registry PLSFIX_LINKS: unreadable, not overwriting");
   }
   return registry ?? emptyRegistry();
 }

@@ -31,17 +31,19 @@ describe("fake PowerPoint host", () => {
         PowerPoint.GeometricShapeType.rectangle,
         { left: 1, top: 2, width: 3, height: 4 },
       );
-      shape.tags.add("smt_link", "a");
-      shape.tags.add("SMT_LINK", "b");
+      shape.tags.add("plsfix_link", "a");
+      shape.tags.add("PLSFIX_LINK", "b");
       shape.load("id");
       await context.sync();
       const stored = presentation.findShape(shape.id).shape;
-      expect([...stored.tags.entries()]).toEqual([["SMT_LINK", "b"]]);
+      expect([...stored.tags.entries()]).toEqual([["PLSFIX_LINK", "b"]]);
       presentation.moveShape(shape.id, slides.items[1]!.id);
-      expect(presentation.slides[1]!.shapes[0]!.tags.get("SMT_LINK")).toBe("b");
+      expect(presentation.slides[1]!.shapes[0]!.tags.get("PLSFIX_LINK")).toBe(
+        "b",
+      );
       const copy = presentation.copyShape(shape.id, slides.items[0]!.id);
       expect(copy.id).not.toBe(shape.id);
-      expect(copy.tags.get("SMT_LINK")).toBe("b");
+      expect(copy.tags.get("PLSFIX_LINK")).toBe("b");
     });
   });
 

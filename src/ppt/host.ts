@@ -2,7 +2,7 @@
 // link tags, insert a linked picture, repaint one or a whole batch of them in
 // place (or reinsert on hosts below PowerPointApi 1.8), re-point one at another
 // link by rewriting its tags, break a link by dropping them, and read or set
-// which slide is active. Identity is always the SMT_LINK tag - never a shape
+// which slide is active. Identity is always the PLSFIX_LINK tag - never a shape
 // id, name or position. Every flow here is counted in round trips: one sync
 // per batch, never one per shape.
 
@@ -247,7 +247,7 @@ export async function insertLink(
     const shape = context.presentation.slides
       .getItem(slideId)
       .shapes.addGeometricShape(PowerPoint.GeometricShapeType.rectangle, box);
-    shape.name = `Model Tools link ${item.label}`;
+    shape.name = `pls,fix link ${item.label}`;
     shape.lineFormat.visible = false;
     shape.fill.setImage(payload.png);
     shape.tags.add(TAG_LINK, encodeTag(tag));

@@ -1,4 +1,4 @@
-// SMT Undo: one slot, capturing what a mutating action is about to overwrite so
+// pls,fix Undo: one slot, capturing what a mutating action is about to overwrite so
 // it can be restored on demand. Office.js writes never reach Excel's own undo
 // stack, so this is the pane's only safety net for a single last action.
 
@@ -86,7 +86,7 @@ export function lastUndoSkipped(): boolean {
 
 export async function undoLastAction(): Promise<string> {
   const slot = undoSlot;
-  if (!slot) throw new Error("There is no Model Tools action to undo yet.");
+  if (!slot) throw new Error("There is no pls,fix action to undo yet.");
 
   return Excel.run(async (context) => {
     // Sheet id rather than name, so a rename between action and undo is fine.

@@ -81,7 +81,7 @@ export async function selectedSingleRange(
   return context.workbook.getSelectedRange();
 }
 
-// A block written beside the selection has to be free first: SMT Undo is a
+// A block written beside the selection has to be free first: pls,fix Undo is a
 // single slot the modeller has to know to reach for, so a base-case column or a
 // comment standing there is not something to overwrite and report afterwards.
 export async function requireEmptyBlock(

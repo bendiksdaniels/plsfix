@@ -1,4 +1,4 @@
-// The SMT_LINKS registry under two flows at once. Every link flow reads the
+// The PLSFIX_LINKS registry under two flows at once. Every link flow reads the
 // registry, does network I/O and writes the whole thing back, and the auto-push
 // window runs from a timer rather than from a click, so the Links tab's own
 // busy state cannot keep the two apart. The relay here holds an upload open the
@@ -146,7 +146,7 @@ describe("the link registry under two flows at once", () => {
     expect(rows.map((row) => row.entry.id)).toEqual([first.id]);
     expect(relay.links.has(second.id)).toBe(false);
     expect(workbook.names.map((name) => name.name)).not.toContain(
-      `SMT_LINK_${second.id.slice(0, 8)}`,
+      `PLSFIX_LINK_${second.id.slice(0, 8)}`,
     );
   });
 });

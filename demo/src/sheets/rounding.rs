@@ -1,5 +1,5 @@
 // Consistent rounding: a segment split whose Excel-rounded shares add up to
-// 101, the case Consistent rounding and =SMT.ROUND / =SMT.ROUNDSUM exist for.
+// 101, the case Consistent rounding and =PLSFIX.ROUND / =PLSFIX.ROUNDSUM exist for.
 // The column right of the share points stays empty: the tool writes there.
 // The custom-function formulas are shown as text to type (without the leading
 // =, which the sharing scan would otherwise count as a formula), so the file
@@ -24,11 +24,11 @@ const REVENUE_COL: u16 = 1;
 const POINTS_COL: u16 = 2;
 const LANDING_COL: u16 = 3;
 const EXCEL_COL: u16 = 4;
-const SMT_COL: u16 = 5;
+const TYPE_IT_COL: u16 = 5;
 const SEGMENT_WIDTH: f64 = 16.0;
 const VALUE_WIDTH: f64 = 15.0;
 const LANDING_WIDTH: f64 = 26.0;
-const SMT_WIDTH: f64 = 32.0;
+const TYPE_IT_WIDTH: f64 = 32.0;
 const DECIMALS: &str = "0";
 const POINTS_PER_UNIT: &str = "100";
 
@@ -43,7 +43,7 @@ const SEGMENTS: [(&str, f64); SEGMENT_COUNT as usize] = [
 pub fn build(sheet: &mut Worksheet, styles: &Styles) -> Result<Tally, XlsxError> {
     let mut pen = Pen::new(sheet);
     pen.text(TITLE_ROW, LABEL_COL, "Consistent rounding (the think-cell TCROUND idea)", &styles.title)?;
-    pen.text(NOTE_ROW, LABEL_COL, &format!("Select {} and press Consistent rounding, or type the formulas shown in column {}.", points_address(), column(SMT_COL)), &styles.note)?;
+    pen.text(NOTE_ROW, LABEL_COL, &format!("Select {} and press Consistent rounding, or type the formulas shown in column {}.", points_address(), column(TYPE_IT_COL)), &styles.note)?;
     write_header(&mut pen, styles)?;
     for (i, (segment, revenue)) in SEGMENTS.iter().enumerate() {
         let row = FIRST_SEGMENT_ROW + i as u32;
@@ -51,7 +51,7 @@ pub fn build(sheet: &mut Worksheet, styles: &Styles) -> Result<Tally, XlsxError>
         pen.number(row, REVENUE_COL, *revenue, &styles.eur)?;
         pen.formula(row, POINTS_COL, &format!("={}/{}*{POINTS_PER_UNIT}", cell(row, REVENUE_COL), cell_abs(TOTAL_ROW, REVENUE_COL)), &styles.points)?;
         pen.formula(row, EXCEL_COL, &format!("=ROUND({},{DECIMALS})", cell(row, POINTS_COL)), &styles.whole)?;
-        pen.text(row, SMT_COL, &format!("SMT.ROUND({}, {}, {DECIMALS})", points_address_abs(), i + 1), &styles.plain)?;
+        pen.text(row, TYPE_IT_COL, &format!("PLSFIX.ROUND({}, {}, {DECIMALS})", points_address_abs(), i + 1), &styles.plain)?;
     }
     write_total(&mut pen, styles)?;
     pen.text(HINT_ROW, LABEL_COL, &format!("{} shows 101 although the shares sum to 100: consistent rounding gives parts that add up.", cell(TOTAL_ROW, EXCEL_COL)), &styles.note)?;
@@ -60,7 +60,7 @@ pub fn build(sheet: &mut Worksheet, styles: &Styles) -> Result<Tally, XlsxError>
     sheet.set_column_range_width(REVENUE_COL, POINTS_COL, VALUE_WIDTH)?;
     sheet.set_column_width(LANDING_COL, LANDING_WIDTH)?;
     sheet.set_column_width(EXCEL_COL, VALUE_WIDTH)?;
-    sheet.set_column_width(SMT_COL, SMT_WIDTH)?;
+    sheet.set_column_width(TYPE_IT_COL, TYPE_IT_WIDTH)?;
     Ok(pen.tally)
 }
 
@@ -79,7 +79,7 @@ fn write_header(pen: &mut Pen, styles: &Styles) -> Result<(), XlsxError> {
     pen.text(HEADER_ROW, POINTS_COL, "Share, points", &styles.header)?;
     pen.text(HEADER_ROW, LANDING_COL, "Consistent rounding lands here", &styles.header_left)?;
     pen.text(HEADER_ROW, EXCEL_COL, "Excel ROUND", &styles.header)?;
-    pen.text(HEADER_ROW, SMT_COL, "Type these with = in front", &styles.header_left)?;
+    pen.text(HEADER_ROW, TYPE_IT_COL, "Type these with = in front", &styles.header_left)?;
     Ok(())
 }
 
@@ -89,6 +89,6 @@ fn write_total(pen: &mut Pen, styles: &Styles) -> Result<(), XlsxError> {
     for (col, format) in [(REVENUE_COL, &styles.eur_bold), (POINTS_COL, &styles.points), (EXCEL_COL, &styles.whole)] {
         pen.formula(TOTAL_ROW, col, &format!("=SUM({}:{})", cell(FIRST_SEGMENT_ROW, col), cell(last, col)), format)?;
     }
-    pen.text(TOTAL_ROW, SMT_COL, &format!("SMT.ROUNDSUM({}, {DECIMALS})", points_address_abs()), &styles.plain)?;
+    pen.text(TOTAL_ROW, TYPE_IT_COL, &format!("PLSFIX.ROUNDSUM({}, {DECIMALS})", points_address_abs()), &styles.plain)?;
     Ok(())
 }

@@ -1,6 +1,8 @@
-# Model Tools
+# pls,fix
 
-Model Tools is an Excel productivity add-in for financial modelling teams. It is a web add-in, so unlike the COM/VSTO incumbents it runs natively on Windows, Mac and Excel on the web. The first milestone covers fast, consistent workbook formatting, model auditing and common formula operations.
+Named after the email every analyst knows.
+
+pls,fix is an Excel productivity add-in for financial modelling teams. It is a web add-in, so unlike the COM/VSTO incumbents it runs natively on Windows, Mac and Excel on the web. The first milestone covers fast, consistent workbook formatting, model auditing and common formula operations.
 
 ## What works in v1.0
 
@@ -9,7 +11,7 @@ Model Tools is an Excel productivity add-in for financial modelling teams. It is
 - Whole-number, decimal, euro, and percentage number formats
 - Format cycles: press the same key again to step through number formats (general, date, currency, percent, multiple), title, result and item row styles, brand fill or font colors, borders (bottom rule, total, result line, box, grid), and row heights or column widths
 - Paintbrush: three slots that capture the active cell's number format, font, fill, alignment and border rules and paint any of them over a selection; the slots stay on the machine, so they survive closing the pane
-- Fill, paste and undo: fills sized by the neighbouring column or row, a marked copy source pasted as values, formats, exact formulas or transposed, quick CAGR, sign flip and decimal steppers, and **Undo last Model Tools action**, which puts back the formulas, number formats and colors the add-in last wrote (Office.js writes never reach Excel's own undo stack)
+- Fill, paste and undo: fills sized by the neighbouring column or row, a marked copy source pasted as values, formats, exact formulas or transposed, quick CAGR, sign flip and decimal steppers, and **Undo last pls,fix action**, which puts back the formulas, number formats and colors the add-in last wrote (Office.js writes never reach Excel's own undo stack)
 - Reversible `IFERROR(..., 0)` guard: the same action strips it again
 - Financial-model autocoloring: hardcodes blue, formulas black, cross-sheet links green
 - Autocolor v2: external-file links and numbers hardcoded inside formulas get their own palette colors, an optional on-edit toggle recolors as you type, and "Insert color key" drops the legend on the sheet
@@ -18,9 +20,9 @@ Model Tools is an Excel productivity add-in for financial modelling teams. It is
 - Charts: a native waterfall built from a two-column bridge table with branded opening, closing, up and down columns and a reconciliation of the deltas against the closing total, a one-click brand restyle of any selected chart, and a CAGR callout beside the selected series
 - Tornado chart: a driver, low and high table becomes a sensitivity bar chart ranked by swing, plotted as deltas from the base stated above the outcome columns (or their mean when none is)
 - Unpivot selection: a cross-tab block is rewritten as Row / Column / Value lines on a new sheet, blanks skipped and the source untouched
-- Consistent rounding: `=SMT.ROUND` and `=SMT.ROUNDSUM` custom functions round a row or column so the rounded numbers still add up to the rounded total (largest remainder, think-cell TCROUND style), written beside the selection by one button in the Model tools list
+- Consistent rounding: `=PLSFIX.ROUND` and `=PLSFIX.ROUNDSUM` custom functions round a row or column so the rounded numbers still add up to the rounded total (largest remainder, think-cell TCROUND style), written beside the selection by one button in the Model tools list
 - Brand tab: company palette (pickers, hex entry, or logo upload with local color extraction), font and currency settings, JSON import/export; all presets and autocolor follow the palette; persisted in the task pane and saved with the workbook, so a model keeps its brand when it is opened on another computer
-- the add-in's ribbon tab with one-click commands (autocolor, fills, IFERROR) and customizable keyboard shortcuts via the shared runtime (`public/shortcuts.json`)
+- pls,fix ribbon tab with one-click commands (autocolor, fills, IFERROR) and customizable keyboard shortcuts via the shared runtime (`public/shortcuts.json`)
 - Workbook tab: a sheet explorer that jumps to, hides and shows sheets (very hidden ones are listed but never touched), a hyperlinked contents sheet rebuilt on demand, and a scrubber that finds and deletes defined names left pointing at `#REF!`
 - Super Find: one search across every sheet (hidden ones included) over values, formula text, workbook-level defined names, sheet names and cell comments, listed in workbook order with one click to jump to the hit
 - Style scrubber: the custom cell styles no cell in the workbook wears, listed with a count and deleted on a confirmed second click; a sheet too large to scan is named and blocks the delete, so a partial answer never removes a style still in use
@@ -35,7 +37,7 @@ branded equivalent. Users can remap under Office add-in shortcut preferences.
 
 | Action | Keys |
 |---|---|
-| Open Model Tools | Ctrl+Shift+M |
+| Open pls,fix | Ctrl+Shift+M |
 | Autocolor selection | Ctrl+Shift+K |
 | Fill formula right | Ctrl+Alt+R |
 | Fill formula down | Ctrl+Alt+D |
@@ -61,7 +63,7 @@ branded equivalent. Users can remap under Office add-in shortcut preferences.
 | Toggle audit overlay | Ctrl+Shift+A |
 | Trace precedents | Ctrl+Alt+Q |
 | Trace dependents | Ctrl+Alt+W |
-| Undo last Model Tools action | Ctrl+Shift+Z |
+| Undo last pls,fix action | Ctrl+Shift+Z |
 | Mark copy source | Ctrl+Shift+C |
 | Paste values | Ctrl+Shift+V |
 | Paste formats | Ctrl+Alt+F |
@@ -137,7 +139,7 @@ leaves the desktop add-in pointed at `localhost`.
 Export a range or a chart from Excel and keep it fresh in a deck without re-pasting.
 
 - Excel, tab **Links**: *Export selection* or *Export chart* renders a picture, anchors the
-  source with a hidden defined name (`SMT_LINK_<id>`, so rows can be inserted above it) or the
+  source with a hidden defined name (`PLSFIX_LINK_<id>`, so rows can be inserted above it) or the
   chart's name, and sends the picture to the relay. *Push all* re-renders every link through
   its anchor. Generate the **link key** once under Links > Settings and paste it into
   PowerPoint once. **Auto-push on edit** (a tick box under the list) re-pushes a link
@@ -145,7 +147,7 @@ Export a range or a chart from Excel and keep it fresh in a deck without re-past
   current picture; it runs only while the pane is open and is remembered per workbook.
   **Highlight linked cells** (a second tick box) tints every linked range so you can see what
   feeds the deck, and puts the original fills back when it is switched off; charts are not tinted.
-- PowerPoint, tab **Model Tools > Links**: the **Inbox** lists exports waiting to be placed;
+- PowerPoint, tab **pls,fix > Links**: the **Inbox** lists exports waiting to be placed;
   *Insert* puts a picture on the selected slide with a tracker in the shape's tags. The
   **Links** list shows every tracked picture in the deck (slide, source, status) and
   *Update selected / slide / all* repaints them in place: position and size are kept, only

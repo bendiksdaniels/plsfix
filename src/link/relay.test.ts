@@ -303,7 +303,7 @@ describe("RelayClient", () => {
     expect(new Headers(calls[0]!.init.headers).get("content-type")).toBe(
       "application/octet-stream",
     );
-    expect(new Headers(calls[0]!.init.headers).get("x-smt-link-id")).toBe(
+    expect(new Headers(calls[0]!.init.headers).get("x-plsfix-link-id")).toBe(
       "a".repeat(32),
     );
     expect(calls[0]!.init.body).toEqual(new Uint8Array([5, 6]));

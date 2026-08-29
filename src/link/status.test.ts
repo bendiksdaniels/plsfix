@@ -37,7 +37,7 @@ describe("sourceChanged", () => {
     workbook: "Model_v4.xlsx",
     sheet: "Model",
     ref: "B4",
-    anchor: "SMT_LINK_1",
+    anchor: "PLSFIX_LINK_1",
   };
   it("flags a different workbook only", () => {
     expect(sourceChanged(src, { ...src, workbook: "model_V4.XLSX" })).toBe(

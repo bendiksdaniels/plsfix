@@ -114,7 +114,7 @@ const PANES = [
             entry: {
               id: "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
               kind: "range",
-              anchor: "SMT_LINK_a1a1a1a1",
+              anchor: "PLSFIX_LINK_a1a1a1a1",
               label: "Revenue bridge FY25-FY26, EUR '000",
               token: "tok-1",
               createdAt: "2026-08-01T09:00:00Z",
@@ -127,7 +127,7 @@ const PANES = [
             entry: {
               id: "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2",
               kind: "chart",
-              anchor: "SMT_LINK_b2b2b2b2",
+              anchor: "PLSFIX_LINK_b2b2b2b2",
               label:
                 "EBITDA margin trend, quarterly, all segments combined and restated",
               token: "tok-2",
@@ -141,7 +141,7 @@ const PANES = [
             entry: {
               id: "c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3",
               kind: "range",
-              anchor: "SMT_LINK_c3c3c3c3",
+              anchor: "PLSFIX_LINK_c3c3c3c3",
               label: "Net debt bridge",
               token: "tok-3",
               createdAt: "2026-06-01T09:00:00Z",
@@ -154,7 +154,7 @@ const PANES = [
             entry: {
               id: "d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4",
               kind: "chart",
-              anchor: "SMT_LINK_d4d4d4d4",
+              anchor: "PLSFIX_LINK_d4d4d4d4",
               label: "Segment revenue mix",
               token: "tok-4",
               createdAt: "2026-08-20T09:00:00Z",
@@ -232,7 +232,7 @@ const PANES = [
               workbook: "Q4 2026 Model - Consolidated Group View.xlsx",
               sheet: "Summary",
               ref: "B2:H14",
-              anchor: "SMT_LINK_i1",
+              anchor: "PLSFIX_LINK_i1",
             },
             createdAt: new Date(Date.now() - 3600_000).toISOString(),
           },
@@ -245,7 +245,7 @@ const PANES = [
               workbook: "Model.xlsx",
               sheet: "Charts",
               ref: "Chart 1",
-              anchor: "SMT_LINK_i2",
+              anchor: "PLSFIX_LINK_i2",
             },
             createdAt: new Date(Date.now() - 86_400_000 * 2).toISOString(),
           },

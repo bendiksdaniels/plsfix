@@ -25,7 +25,7 @@ export const src = {
   workbook: "Model_v4.xlsx",
   sheet: "Model",
   ref: "B4:F12",
-  anchor: "SMT_LINK_00000000",
+  anchor: "PLSFIX_LINK_00000000",
 };
 
 let relay: FakeRelay;

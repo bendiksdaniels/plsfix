@@ -54,7 +54,7 @@ describe("buildManifest", () => {
     )!;
     expect(workbookBlocks).toHaveLength(2);
     for (const block of workbookBlocks) {
-      expect(block.match(/<Group id="SMT\.Group\./g)).toHaveLength(5);
+      expect(block.match(/<Group id="PLSFIX\.Group\./g)).toHaveLength(5);
     }
   });
 
@@ -70,11 +70,9 @@ describe("buildManifest", () => {
         {
           name: "Presentation",
           page: "pptpane.html",
-          urlResid: "SMT.Pptpane.Url",
-          taskpaneId: "SMT.Pptpane",
-          groups: [
-            { id: "SMT.Group.Links", label: "Model Tools Links", buttons: [] },
-          ],
+          urlResid: "PLSFIX.Pptpane.Url",
+          taskpaneId: "PLSFIX.Pptpane",
+          groups: [{ id: "PLSFIX.Group.Links", label: "Links", buttons: [] }],
         },
       ],
     };
@@ -112,7 +110,7 @@ describe("buildManifest", () => {
     expect(xml).toContain('<Host Name="Presentation"/>');
     expect(xml).not.toContain('<Set Name="ExcelApi"');
     expect(xml).toContain(
-      '<bt:Url id="SMT.Pptpane.Url" DefaultValue="https://dbautomatizacijas.com/modelis/pptpane.html"/>',
+      '<bt:Url id="PLSFIX.Pptpane.Url" DefaultValue="https://dbautomatizacijas.com/modelis/pptpane.html"/>',
     );
   });
 
@@ -152,25 +150,27 @@ describe("buildManifest", () => {
         .exec(block)![0]
         .replaceAll(/\s+/g, " ");
       expect(point).toContain(
-        '<Script> <SourceLocation resid="SMT.Functions.Script.Url"/> </Script>',
+        '<Script> <SourceLocation resid="PLSFIX.Functions.Script.Url"/> </Script>',
       );
       // The page is the pane the shared runtime already serves.
       expect(point).toContain(
-        '<Page> <SourceLocation resid="SMT.Taskpane.Url"/> </Page>',
+        '<Page> <SourceLocation resid="PLSFIX.Taskpane.Url"/> </Page>',
       );
       expect(point).toContain(
-        '<Metadata> <SourceLocation resid="SMT.Functions.Metadata.Url"/> </Metadata>',
+        '<Metadata> <SourceLocation resid="PLSFIX.Functions.Metadata.Url"/> </Metadata>',
       );
-      expect(point).toContain('<Namespace resid="SMT.Functions.Namespace"/>');
+      expect(point).toContain(
+        '<Namespace resid="PLSFIX.Functions.Namespace"/>',
+      );
     }
   });
 
   it("publishes the functions script, metadata and namespace as resources", () => {
     const xml = buildManifest(prod, ADDIN);
     for (const line of [
-      '<bt:Url id="SMT.Functions.Script.Url" DefaultValue="https://dbautomatizacijas.com/modelis/functions.js"/>',
-      '<bt:Url id="SMT.Functions.Metadata.Url" DefaultValue="https://dbautomatizacijas.com/modelis/functions.json"/>',
-      '<bt:String id="SMT.Functions.Namespace" DefaultValue="SMT"/>',
+      '<bt:Url id="PLSFIX.Functions.Script.Url" DefaultValue="https://dbautomatizacijas.com/modelis/functions.js"/>',
+      '<bt:Url id="PLSFIX.Functions.Metadata.Url" DefaultValue="https://dbautomatizacijas.com/modelis/functions.json"/>',
+      '<bt:String id="PLSFIX.Functions.Namespace" DefaultValue="PLSFIX"/>',
     ]) {
       // One per <Resources> block, and there are two.
       expect(xml.split(line)).toHaveLength(3);
@@ -182,7 +182,7 @@ describe("buildManifest", () => {
     };
     const plain = buildManifest(prod, noFunctions);
     expect(plain).not.toContain("CustomFunctions");
-    expect(plain).not.toContain("SMT.Functions.Script.Url");
+    expect(plain).not.toContain("PLSFIX.Functions.Script.Url");
   });
 
   it("emits each group label resource exactly once per VersionOverrides block", () => {
@@ -217,18 +217,18 @@ describe("buildManifest", () => {
         {
           name: "Presentation",
           page: "pptpane.html",
-          urlResid: "SMT.Pptpane.Url",
-          taskpaneId: "SMT.Pptpane",
+          urlResid: "PLSFIX.Pptpane.Url",
+          taskpaneId: "PLSFIX.Pptpane",
           groups: [
             {
-              id: "SMT.Group.Links",
-              label: "Model Tools Links",
+              id: "PLSFIX.Group.Links",
+              label: "Links",
               // The obvious next edit: the same pane button on both hosts.
               buttons: [
                 {
                   id: "OpenPane",
                   label: "Links",
-                  tip: "Open the Model Tools linked-objects pane.",
+                  tip: "Open the pls,fix linked-objects pane.",
                   action: { kind: "showPane" },
                 },
               ],
@@ -238,7 +238,7 @@ describe("buildManifest", () => {
       ],
     };
     expect(() => buildManifest(prod, pptWithOpenPane)).toThrow(
-      "manifest: duplicate resource id SMT.OpenPane.Label",
+      "manifest: duplicate resource id PLSFIX.OpenPane.Label",
     );
   });
 
@@ -250,16 +250,16 @@ describe("buildManifest", () => {
         {
           name: "Presentation",
           page: "pptpane.html",
-          urlResid: "SMT.Pptpane.Url",
-          taskpaneId: "SMT.Pptpane",
+          urlResid: "PLSFIX.Pptpane.Url",
+          taskpaneId: "PLSFIX.Pptpane",
           groups: [
-            { id: "SMT.Group.Tools", label: "Model Tools", buttons: [] },
+            { id: "PLSFIX.Group.Tools", label: "Model Tools", buttons: [] },
           ],
         },
       ],
     };
     expect(() => buildManifest(prod, sharedGroup)).toThrow(
-      "manifest: duplicate resource id SMT.Group.Tools.Label",
+      "manifest: duplicate resource id PLSFIX.Group.Tools.Label",
     );
   });
 
@@ -277,7 +277,7 @@ describe("buildManifest", () => {
       "utf8",
     );
     const registered = new Set(
-      [...mainSrc.matchAll(/(SMT_[A-Z_]+):/g)].map((match) => match[1]!),
+      [...mainSrc.matchAll(/(PLSFIX_[A-Z_]+):/g)].map((match) => match[1]!),
     );
     for (const name of functionNames) {
       expect(registered.has(name)).toBe(true);
@@ -292,7 +292,7 @@ describe("buildManifest", () => {
           ...WORKBOOK_HOST,
           groups: [
             {
-              id: "SMT.Group.Tools",
+              id: "PLSFIX.Group.Tools",
               label: "Model Tools",
               buttons: [
                 {
@@ -321,7 +321,7 @@ describe("buildManifest", () => {
           ...WORKBOOK_HOST,
           groups: [
             {
-              id: "SMT.Group.Tools",
+              id: "PLSFIX.Group.Tools",
               label: "Model Tools",
               buttons: [
                 {

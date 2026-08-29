@@ -26,8 +26,8 @@ export interface WorkbookTheme {
 }
 
 export const DEFAULT_SETTINGS: BrandSettings = {
-  primary: "#282623",
-  accent: "#B27E54",
+  primary: "#22313F",
+  accent: "#1B998B",
   input: "#0057B8",
   formula: "#1F1D1B",
   link: "#17823B",

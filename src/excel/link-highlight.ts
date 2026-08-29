@@ -19,7 +19,7 @@ import { readRegistry, resolveSources } from "./link-anchors";
 import { parseAddress } from "./shared";
 import { activeTheme, tint } from "../settings";
 
-export const HIGHLIGHT_SETTING = "SMT_LINK_HIGHLIGHT";
+export const HIGHLIGHT_SETTING = "PLSFIX_LINK_HIGHLIGHT";
 
 // Light enough to read a model through, dark enough to find on a white grid.
 const HIGHLIGHT_TINT = 0.85;

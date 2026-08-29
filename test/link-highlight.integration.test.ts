@@ -19,7 +19,7 @@ import {
 
 enableStrictLoadSemantics();
 
-const SETTING = "SMT_LINK_HIGHLIGHT";
+const SETTING = "PLSFIX_LINK_HIGHLIGHT";
 
 let smt: typeof ExcelModule;
 let brand: typeof SettingsModule;

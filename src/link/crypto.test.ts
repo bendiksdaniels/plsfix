@@ -33,9 +33,9 @@ describe("base64url", () => {
 describe("hkdf", () => {
   it("is deterministic and info-separated", async () => {
     const secret = bytes(...Array(32).fill(7));
-    const a = await hkdf(secret, "smt-link-enc");
-    const b = await hkdf(secret, "smt-link-enc");
-    const c = await hkdf(secret, "smt-link-auth");
+    const a = await hkdf(secret, "plsfix-link-enc");
+    const b = await hkdf(secret, "plsfix-link-enc");
+    const c = await hkdf(secret, "plsfix-link-auth");
     expect(a).toEqual(b);
     expect(a).not.toEqual(c);
     expect(a).toHaveLength(32);
@@ -62,17 +62,17 @@ describe("hkdf", () => {
 
 describe("seal/open", () => {
   it("round-trips and binds the AAD", async () => {
-    const key = await hkdf(bytes(...Array(32).fill(1)), "smt-link-enc");
+    const key = await hkdf(bytes(...Array(32).fill(1)), "plsfix-link-enc");
     const plain = new TextEncoder().encode("hello");
     const blob = await seal(key, "link-1", plain);
     expect(blob.length).toBe(12 + plain.length + 16);
     expect(await open(key, "link-1", blob)).toEqual(plain);
     await expect(open(key, "link-2", blob)).rejects.toThrow(/decrypt/);
-    const other = await hkdf(bytes(...Array(32).fill(2)), "smt-link-enc");
+    const other = await hkdf(bytes(...Array(32).fill(2)), "plsfix-link-enc");
     await expect(open(other, "link-1", blob)).rejects.toThrow(/decrypt/);
   });
   it("uses a fresh IV per call", async () => {
-    const key = await hkdf(bytes(...Array(32).fill(1)), "smt-link-enc");
+    const key = await hkdf(bytes(...Array(32).fill(1)), "plsfix-link-enc");
     const a = await seal(key, "x", bytes(1));
     const b = await seal(key, "x", bytes(1));
     expect(a.slice(0, 12)).not.toEqual(b.slice(0, 12));

@@ -3,11 +3,12 @@
 # lockfiles and both generated manifests follow; version:check proves they agree.
 set -eu
 cd "$(dirname "$0")/.."
-npm version patch --no-git-tag-version >/dev/null
+LEVEL="${1:-patch}"
+npm version "$LEVEL" --no-git-tag-version >/dev/null
 V="$(node -p "require('./package.json').version")"
 # Only the [package] version: an unanchored sed would also rewrite the version
 # of the first dependency written as its own [dependencies.x] table.
-SMT_VERSION="$V" node -e '
+PLSFIX_VERSION="$V" node -e '
 const fs = require("node:fs");
 const file = "server/Cargo.toml";
 const lines = fs.readFileSync(file, "utf8").split("\n");
@@ -16,7 +17,7 @@ let done = false;
 for (let i = 0; i < lines.length; i += 1) {
   if (lines[i].startsWith("[")) inPackage = lines[i].trim() === "[package]";
   else if (inPackage && !done && /^version\s*=/.test(lines[i])) {
-    lines[i] = "version = \"" + process.env.SMT_VERSION + "\"";
+    lines[i] = "version = \"" + process.env.PLSFIX_VERSION + "\"";
     done = true;
   }
 }

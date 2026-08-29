@@ -17,7 +17,7 @@ import { DEFAULT_SETTINGS, serializeSettings } from "../src/settings";
 // as it does in Excel.
 enableStrictLoadSemantics();
 
-const BRAND_SETTING = "smt.brand.v1";
+const BRAND_SETTING = "plsfix.brand.v1";
 
 let helpers: FakeHelpers;
 let workbook: FakeWorkbook;

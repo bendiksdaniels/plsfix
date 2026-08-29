@@ -59,10 +59,10 @@ export interface InboxItem {
   createdAt: string;
 }
 
-export const TAG_LINK = "SMT_LINK";
-export const TAG_KEY = "SMT_KEY";
-export const REGISTRY_SETTING = "SMT_LINKS";
-export const ANCHOR_PREFIX = "SMT_LINK_";
+export const TAG_LINK = "PLSFIX_LINK";
+export const TAG_KEY = "PLSFIX_KEY";
+export const REGISTRY_SETTING = "PLSFIX_LINKS";
+export const ANCHOR_PREFIX = "PLSFIX_LINK_";
 export const TAG_VALUE_MAX = 2048;
 
 const LINK_ID_PATTERN = /^[0-9a-f]{32}$/;

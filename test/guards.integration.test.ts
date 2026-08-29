@@ -34,7 +34,7 @@ beforeEach(async () => {
 describe("broken names and link anchors", () => {
   beforeEach(() => {
     helpers.addName("Costs", "=Model!#REF!");
-    helpers.addName("SMT_LINK_5f3a91c2", "=Model!#REF!");
+    helpers.addName("PLSFIX_LINK_5f3a91c2", "=Model!#REF!");
   });
 
   it("never lists a link anchor among the broken names", async () => {
@@ -44,7 +44,7 @@ describe("broken names and link anchors", () => {
   it("never deletes a link anchor with them", async () => {
     expect(await smt.deleteBrokenNames()).toBe(1);
     expect(workbook.names.map((entry) => entry.name)).toEqual([
-      "SMT_LINK_5f3a91c2",
+      "PLSFIX_LINK_5f3a91c2",
     ]);
   });
 });

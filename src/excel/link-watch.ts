@@ -23,7 +23,7 @@ import { exclusive } from "./link-lock";
 import { pushRegistry, type PushSummary } from "./links";
 import { parseAddress, splitAreas } from "./shared";
 
-export const AUTOPUSH_SETTING = "SMT_AUTOPUSH";
+export const AUTOPUSH_SETTING = "PLSFIX_AUTOPUSH";
 export const AUTOPUSH_DELAY_MS = 3_000;
 
 const ENABLED = "1";

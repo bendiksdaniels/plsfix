@@ -103,7 +103,7 @@ describe("find in workbook", () => {
   });
 
   it("never surfaces a link anchor among the names", async () => {
-    helpers.addName("SMT_LINK_5f3a91c2", "=Model!$A$1");
+    helpers.addName("PLSFIX_LINK_5f3a91c2", "=Model!$A$1");
     helpers.addName("Anchor_note", "=Model!$A$1");
 
     expect((await smt.findInWorkbook("$A$1", LOOSE)).hits).toEqual([

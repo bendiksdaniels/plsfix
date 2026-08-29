@@ -1,10 +1,10 @@
-# AUTORESUME - Model Tools (v2.1.22 LIVE 2026-08-29)
+# AUTORESUME - pls,fix (v2.1.22 LIVE 2026-08-29)
 
 ## 29.08 evening: demo delivered, v2.1.22 LIVE, web pass done
 
 - Daniel: "launch it now and create a demo where I could play around with it"; then no desktop
   control ("I can not give you computer use", "use a virtual machine or something on the
-  server"). Delivered: `demo/` (Rust) builds `demo/out/Demo Model.xlsx` (8 sheets,
+  server"). Delivered: `demo/` (Rust) builds `demo/out/pls,fix Demo Model.xlsx` (8 sheets,
   435 cells, reconciled by `demo/tests/workbook.rs`, "Start here" checklist of 17 rows);
   `npm run demo` = build + prod manifest into both wef folders + Excel on the workbook +
   PowerPoint on a new deck. Excel and PowerPoint on the Mac were relaunched with the current
@@ -20,7 +20,7 @@
   (needs neighbouring rows), CAGR, Waterfall, Tornado, Consistent rounding (formulas written;
   values #NAME? because the web custom-functions runtime fails to start), Unpivot, Find, Scan
   broken names (Old_budget), Scan styles, Prepare for sharing, Contents sheet, Precedents /
-  Dependents, IFERROR, sign flip, x1000, number cycle, SMT Undo. Links: key generated, range
+  Dependents, IFERROR, sign flip, x1000, number cycle, pls,fix Undo. Links: key generated, range
   exported, PowerPoint paired by key, Inbox -> Insert (tagged shape), move/resize, edit + Push
   all, Update available -> Update all (rev 2, geometry kept), Revert (rev 1), Break link (tags
   gone, picture stays). Not automatable on the web: chart export (charts are canvas-drawn,
@@ -48,7 +48,7 @@ tornado chart + unpivot selection; then the whole-branch review fix wave (v2.1.2
 status, ETag parsing, inbox squatting, anchor rollback, revoke-first remove, masked key, guards),
 update-all in one sync, border + row/column size cycles, Latvian user guide
 (`docs/lietotaja-rokasgramata-saites.md`), FEATURES.md status refresh, custom-functions research
-(GO). Then: pane UX pass (0 defects at 320/360/420 px, `npm run ux:check`), `=SMT.ROUND`/`=SMT.ROUNDSUM`
+(GO). Then: pane UX pass (0 defects at 320/360/420 px, `npm run ux:check`), `=PLSFIX.ROUND`/`=PLSFIX.ROUNDSUM`
 custom functions (manifest CustomFunctions extension point, `functions.js`; needs the M365 re-upload),
 paintbrush slots, Super Find, unused-style scrubber, auto-push on edit (Links tab checkbox).
 Round D shipped: revert after Update all (`?rev=` route), highlight linked cells, batched relay fetch
@@ -76,7 +76,7 @@ Execution ledgers (git-ignored, rulings + per-task spend): `.superpowers/sdd/*/p
    shared across hosts (would make pairing automatic); team PowerPoint builds vs PowerPointApi
    1.8. Findings go to `docs/research/officejs-feasibility.md`.
 3. M365 centralized deployment: upload `manifest.prod.xml` (now two hosts, and since C8 the
-   `CustomFunctions` extension point that publishes `=SMT.ROUND` / `=SMT.ROUNDSUM`) in the
+   `CustomFunctions` extension point that publishes `=PLSFIX.ROUND` / `=PLSFIX.ROUNDSUM`) in the
    admin center (steps in `tasks/v1-plan.md`); the v1 Excel-only upload never happened, so
    this is the first upload. JS-only updates afterwards need no admin action, except that
    Office caches `functions.js` / `functions.json` separately: per Microsoft those two can

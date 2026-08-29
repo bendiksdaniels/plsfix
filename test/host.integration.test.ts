@@ -450,7 +450,7 @@ describe("style cycles", () => {
   });
 
   // Sizes are sheet state, not cell state: the first row or column of the
-  // selection carries the rung, the whole band is written, and SMT Undo can
+  // selection carries the rung, the whole band is written, and pls,fix Undo can
   // reach neither.
   describe("sizes", () => {
     it("steps the selected rows through the height ladder and wraps", async () => {
@@ -515,7 +515,7 @@ describe("style cycles", () => {
       expect(helpers.columnWidth("Model", 3)).toBe(64);
     });
 
-    it("runs outside SMT Undo, which cannot reach sheet state", async () => {
+    it("runs outside pls,fix Undo, which cannot reach sheet state", async () => {
       helpers.select("Model!A1:C1");
       await smt.applyPreset("title");
       expect(helpers.rowHeight("Model", 0)).toBe(25);
@@ -751,7 +751,7 @@ describe("audit overlay", () => {
 
 // ---------------------------------------------------------------------------
 
-describe("SMT undo", () => {
+describe("pls,fix undo", () => {
   function seedModel(): void {
     helpers.seed("Model!A1", [
       [1, 2, 3],
@@ -863,7 +863,7 @@ describe("SMT undo", () => {
 
   it("refuses to undo when there is nothing to undo", async () => {
     expect(await rejects(() => smt.undoLastAction())).toBe(
-      "There is no Model Tools action to undo yet.",
+      "There is no pls,fix action to undo yet.",
     );
   });
 
@@ -1445,7 +1445,7 @@ describe("consistent rounding", () => {
     helpers.select("Model!B2:B4");
   }
 
-  it("writes one SMT.ROUND per cell into the column beside the selection", async () => {
+  it("writes one PLSFIX.ROUND per cell into the column beside the selection", async () => {
     seedColumn();
     expect(await smt.insertConsistentRounding()).toBe(
       "Consistent rounding: 3 cells at 0 decimals",
@@ -1456,9 +1456,9 @@ describe("consistent rounding", () => {
     expect(
       ["C2", "C3", "C4"].map((at) => helpers.formula(`Model!${at}`)),
     ).toEqual([
-      "=SMT.ROUND($B$2:$B$4,1,0)",
-      "=SMT.ROUND($B$2:$B$4,2,0)",
-      "=SMT.ROUND($B$2:$B$4,3,0)",
+      "=PLSFIX.ROUND($B$2:$B$4,1,0)",
+      "=PLSFIX.ROUND($B$2:$B$4,2,0)",
+      "=PLSFIX.ROUND($B$2:$B$4,3,0)",
     ]);
     expect(helpers.value("Model!B2")).toBe(33.333);
   });
@@ -1474,9 +1474,9 @@ describe("consistent rounding", () => {
     expect(
       ["B3", "C3", "D3"].map((at) => helpers.formula(`Model!${at}`)),
     ).toEqual([
-      "=SMT.ROUND($B$2:$D$2,1,2)",
-      "=SMT.ROUND($B$2:$D$2,2,2)",
-      "=SMT.ROUND($B$2:$D$2,3,2)",
+      "=PLSFIX.ROUND($B$2:$D$2,1,2)",
+      "=PLSFIX.ROUND($B$2:$D$2,2,2)",
+      "=PLSFIX.ROUND($B$2:$D$2,3,2)",
     ]);
   });
 
@@ -1490,7 +1490,7 @@ describe("consistent rounding", () => {
     expect(await smt.insertConsistentRounding()).toBe(
       "Consistent rounding: 3 cells at 3 decimals",
     );
-    expect(helpers.formula("Model!B1")).toBe("=SMT.ROUND($A$1:$A$3,1,3)");
+    expect(helpers.formula("Model!B1")).toBe("=PLSFIX.ROUND($A$1:$A$3,1,3)");
   });
 
   it("refuses to overwrite what already stands beside the selection", async () => {
@@ -1626,7 +1626,7 @@ describe("contents sheet", () => {
 
     const toc = helpers.sheet("TOC");
     expect(toc.position).toBe(0);
-    expect(helpers.value("TOC!A1")).toBe("Model Tools - Contents");
+    expect(helpers.value("TOC!A1")).toBe("pls,fix - Contents");
 
     expect(helpers.value("TOC!A3")).toBe(1);
     expect(helpers.value("TOC!B3")).toBe("Model");
@@ -1672,7 +1672,7 @@ describe("contents sheet", () => {
     helpers.deleteSheet("Notes");
     await smt.insertToc();
 
-    expect(helpers.value("TOC!A1")).toBe("Model Tools - Contents");
+    expect(helpers.value("TOC!A1")).toBe("pls,fix - Contents");
     expect(helpers.value("TOC!B4")).toBe("Data");
     expect(helpers.value("TOC!B5")).toBe("");
     expect(helpers.cell("TOC!B5").hyperlink).toBeNull();
@@ -1911,8 +1911,8 @@ describe("autocolor on edit", () => {
     const host = globalThis as unknown as {
       Office: { actions: { associate: (id: string, fn: () => void) => void } };
     };
-    host.Office.actions.associate("SMT_PROBE", () => undefined);
-    expect(actions.has("SMT_PROBE")).toBe(true);
+    host.Office.actions.associate("PLSFIX_PROBE", () => undefined);
+    expect(actions.has("PLSFIX_PROBE")).toBe(true);
   });
 });
 

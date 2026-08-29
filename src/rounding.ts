@@ -8,7 +8,7 @@
 // of the pane's DOM or Office.js code may follow it.
 
 // Above this many cells the group stops being free to recalculate: every
-// sibling SMT.ROUND cell redoes the whole allocation, so one edit costs
+// sibling PLSFIX.ROUND cell redoes the whole allocation, so one edit costs
 // O(N^2 log N). Reconciliation blocks - the case this is written for - are
 // dozens of rows, not thousands (docs/research/custom-functions.md, Risks).
 export const ROUNDING_CELL_CAP = 1_000;
@@ -52,7 +52,7 @@ function totalUnits(values: number[], decimals: number): number {
   return roundHalfAway(shiftDecimal(total, decimals));
 }
 
-// The rounded total of the group: SMT.ROUNDSUM, and by construction the sum of
+// The rounded total of the group: PLSFIX.ROUNDSUM, and by construction the sum of
 // what allocateRounded returns for the same values.
 export function roundedTotal(values: number[], decimals: number): number {
   assertInputs(values, decimals);

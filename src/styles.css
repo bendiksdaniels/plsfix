@@ -1,14 +1,14 @@
 :root {
-  color: #282623;
-  background: #f1eee8;
+  color: #22313f;
+  background: #eef2f5;
   font-family: "Aptos", "Segoe UI", system-ui, sans-serif;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
-  --ink: #282623;
-  --muted: #857f75;
-  --paper: #fbfaf7;
-  --line: #e2ddd4;
-  --bronze: #b27e54;
+  --ink: #22313f;
+  --muted: #6b7580;
+  --paper: #fbfcfd;
+  --line: #d8e0e6;
+  --accent: #1b998b;
   --green: #2f6b4f;
   --red: #a33f32;
 }
@@ -33,7 +33,7 @@ body {
       rgba(178, 126, 84, 0.14),
       transparent 36%
     ),
-    #f1eee8;
+    #eef2f5;
 }
 
 button {
@@ -59,11 +59,14 @@ button {
   width: 42px;
   height: 42px;
   border-radius: 11px;
-  color: var(--bronze);
+  color: var(--accent);
   background: var(--ink);
+  padding-bottom: 14px;
   font:
     800 22px/1 Georgia,
     serif;
+  font-size: 40px;
+  line-height: 1;
   box-shadow: 0 7px 16px rgba(40, 38, 35, 0.22);
 }
 
@@ -208,7 +211,7 @@ h2 {
   display: grid;
   gap: 2px;
   padding-left: 8px;
-  border-left: 2px solid var(--bronze);
+  border-left: 2px solid var(--accent);
 }
 .metrics strong {
   font-size: 16px;
@@ -374,21 +377,21 @@ button:disabled {
     3px 0 #1f1d1b;
 }
 .action-icon.key {
-  color: var(--bronze);
+  color: var(--accent);
 }
 .action-icon.audit {
-  color: var(--bronze);
+  color: var(--accent);
 }
 .action-icon.undo {
-  color: var(--bronze);
+  color: var(--accent);
   font-size: 15px;
 }
 .action-icon.chart {
-  color: var(--bronze);
+  color: var(--accent);
 }
 /* Two blocks read as a rising bridge; they need to sit on one line in 28px. */
 .action-icon.bridge {
-  color: var(--bronze);
+  color: var(--accent);
   font-size: 11px;
   letter-spacing: -1px;
 }
@@ -495,9 +498,9 @@ kbd {
   font-variant-numeric: tabular-nums;
 }
 .pv-title td {
-  border-color: var(--pv-title-fill, #282623);
+  border-color: var(--pv-title-fill, #22313f);
   color: var(--pv-title-text, #ffffff);
-  background: var(--pv-title-fill, #282623);
+  background: var(--pv-title-fill, #22313f);
   font-size: 12px;
   font-weight: 700;
 }
@@ -581,7 +584,7 @@ kbd {
   text-transform: uppercase;
 }
 .hex-input:focus {
-  border-color: var(--bronze);
+  border-color: var(--accent);
   outline: 2px solid rgba(178, 126, 84, 0.35);
 }
 
@@ -596,7 +599,7 @@ kbd {
   cursor: pointer;
 }
 .upload-drop:hover {
-  border-color: var(--bronze);
+  border-color: var(--accent);
   background: rgba(178, 126, 84, 0.1);
 }
 .upload-drop strong {
@@ -678,7 +681,7 @@ kbd {
   width: 18px;
   height: 18px;
   margin: 0;
-  accent-color: var(--bronze);
+  accent-color: var(--accent);
 }
 .toggle-row strong {
   display: block;
@@ -858,7 +861,7 @@ footer span:last-child {
   background: rgba(255, 255, 255, 0.68);
 }
 .sheet-row.active {
-  border-left-color: var(--bronze);
+  border-left-color: var(--accent);
   background: #fff;
 }
 .sheet-row.locked {
@@ -901,7 +904,7 @@ footer span:last-child {
   white-space: nowrap;
 }
 .sheet-badge.off {
-  color: var(--bronze);
+  color: var(--accent);
   background: rgba(178, 126, 84, 0.14);
 }
 
@@ -929,7 +932,7 @@ footer span:last-child {
 
 .action-icon.toc,
 .action-icon.names {
-  color: var(--bronze);
+  color: var(--accent);
 }
 
 .danger {
@@ -1028,7 +1031,7 @@ footer span:last-child {
   width: 14px;
   height: 14px;
   margin: 0;
-  accent-color: var(--bronze);
+  accent-color: var(--accent);
 }
 .link-slide {
   color: var(--muted);
@@ -1061,7 +1064,7 @@ footer span:last-child {
   background: rgba(47, 107, 79, 0.12);
 }
 .badge.update {
-  color: var(--bronze);
+  color: var(--accent);
   background: rgba(178, 126, 84, 0.16);
 }
 .badge.missing,
@@ -1105,9 +1108,9 @@ footer span:last-child {
 .inbox-insert {
   min-height: 32px;
   padding: 4px 12px;
-  border: 1px solid var(--bronze);
+  border: 1px solid var(--accent);
   border-radius: 9px;
-  color: var(--bronze);
+  color: var(--accent);
   background: rgba(178, 126, 84, 0.1);
   font-size: 11px;
   font-weight: 750;
@@ -1119,7 +1122,7 @@ footer span:last-child {
 .source-chooser {
   margin-bottom: 12px;
   padding: 10px 11px;
-  border: 1px solid var(--bronze);
+  border: 1px solid var(--accent);
   border-radius: 11px;
   background: rgba(178, 126, 84, 0.07);
 }
@@ -1164,7 +1167,7 @@ footer span:last-child {
     monospace;
 }
 .key-input:focus {
-  border-color: var(--bronze);
+  border-color: var(--accent);
   outline: none;
 }
 
@@ -1189,7 +1192,7 @@ footer span:last-child {
   width: 15px;
   height: 15px;
   margin: 0;
-  accent-color: var(--bronze);
+  accent-color: var(--accent);
 }
 .wl-object strong {
   display: block;
@@ -1239,5 +1242,5 @@ footer span:last-child {
   grid-template-columns: repeat(4, 1fr);
 }
 .action-icon.links {
-  color: var(--bronze);
+  color: var(--accent);
 }

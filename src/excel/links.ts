@@ -149,7 +149,7 @@ export async function exportActiveChart(
       const src = sourceOf(workbook, anchor, resolved);
       const entry = newEntry(id, "chart", anchor, sourceLabel(src, "chart"));
       // The rename commits with the batch that asks for the picture, so a render
-      // that fails has to give the chart its own name back: an SMT_LINK_ chart no
+      // that fails has to give the chart its own name back: an PLSFIX_LINK_ chart no
       // registry entry claims is one the modeller cannot export again.
       createChartAnchor(chart, anchor);
       const release = () => createChartAnchor(chart, previousName);

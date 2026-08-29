@@ -18,7 +18,7 @@ function waiting(workbook: string, label = "Model!B4:F12"): InboxItem {
       workbook,
       sheet: "Model",
       ref: "B4:F12",
-      anchor: "SMT_LINK_aaaaaaaa",
+      anchor: "PLSFIX_LINK_aaaaaaaa",
     },
     createdAt: new Date().toISOString(),
   };
@@ -87,7 +87,7 @@ describe("renderInbox", () => {
         workbook: "Model_v4.xlsx",
         sheet: "Model",
         ref: "B4:F12",
-        anchor: "SMT_LINK_aaaaaaaa",
+        anchor: "PLSFIX_LINK_aaaaaaaa",
       },
       createdAt: new Date().toISOString(),
     };

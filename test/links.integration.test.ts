@@ -249,7 +249,7 @@ describe("a registry that cannot be read", () => {
     const garbage = '{"v":9,"links":"nope"';
     helpers.setSetting(REGISTRY_SETTING, garbage);
     await expect(links.pushLinks("all", relay)).rejects.toThrow(
-      /registry SMT_LINKS: unreadable, not overwriting/,
+      /registry PLSFIX_LINKS: unreadable, not overwriting/,
     );
     expect(helpers.setting(REGISTRY_SETTING)).toBe(garbage);
     await expect(links.listWorkbookLinks()).rejects.toThrow(/unreadable/);

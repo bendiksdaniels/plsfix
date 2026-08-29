@@ -1,9 +1,9 @@
 // The brand palette that travels with the file: the same JSON the pane keeps in
-// localStorage, held in the workbook setting "smt.brand.v1". Precedence: the
+// localStorage, held in the workbook setting "plsfix.brand.v1". Precedence: the
 // workbook setting wins over localStorage, and localStorage is only the default
 // a new workbook starts from - so a model keeps its brand on another computer.
 
-const BRAND_SETTING = "smt.brand.v1";
+const BRAND_SETTING = "plsfix.brand.v1";
 
 // Absent and blank both mean "this workbook has no palette of its own", so the
 // caller keeps the machine default rather than dropping to the shipped colors.

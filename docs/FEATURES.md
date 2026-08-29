@@ -4,11 +4,11 @@ Consolidated from: Macabacus help center (~100 features), UpSlide help center (~
 UpSlide sales-team training files (primary source), and an Office.js platform feasibility study.
 Raw inventories with per-feature source URLs live in `docs/research/`.
 
-Date: 2026-08-27. Owner add-in: Model Tools (Office.js task pane, ExcelApi >= 1.9).
+Date: 2026-08-27. Owner add-in: pls,fix (Office.js task pane, ExcelApi >= 1.9).
 
 **Status 29.08 (v2.1.1):** everything marked P1 in sections 0-7 shipped by v1.1 — shared
 runtime + ribbon + 34 shortcuts, format cycles, autocolor v2 + color key, audit overlay +
-Smart Track, SMT Undo + paste suite + fast fill + CAGR/sign/decimals, native waterfall +
+Smart Track, pls,fix Undo + paste suite + fast fill + CAGR/sign/decimals, native waterfall +
 chart formatter + CAGR label, TOC + sheet explorer + name scrubber. Section 8's core linking
 (export, registry, Inbox, Update selected/slide/all, Break, move-resilient anchors) shipped
 at v2.0; per-workbook brand palette, grouped-shape links, tornado chart, unpivot selection and
@@ -105,7 +105,7 @@ not yet built.
 | Summary statistics block (min/max/mean/median under data) | MB | Auto stats for comps | Yes | P2 |
 | Add Scenarios (toggle-driven projection cases) | MB | Scenario switch cells + duplicated rows | Yes (structured but doable) | P3 |
 | Replicate Module | MB | Duplicate an analysis block across sheets | Yes | P3 |
-| Custom functions (UDFs) e.g. =SMT.CAGR | - | Namespaced functions | Yes (CustomFunctions set; not iPad/perpetual<=2021) | P2 |
+| Custom functions (UDFs) e.g. =PLSFIX.CAGR | - | Namespaced functions | Yes (CustomFunctions set; not iPad/perpetual<=2021) | P2 |
 
 ## 6. Charts
 
@@ -180,9 +180,9 @@ suppression are out of reach; additive checks only.
 
 | Feature | Inspired by | Feasibility | Priority |
 |---|---|---|---|
-| SMT Undo: snapshot + restore last bulk action | #1 Macabacus trust complaint (undo broken) | shipped v1.1 | P1 — fold into C5 |
+| pls,fix Undo: snapshot + restore last bulk action | #1 Macabacus trust complaint (undo broken) | shipped v1.1 | P1 — fold into C5 |
 | Palette legend insert (auto color key block) | F1F9 "Keys" | shipped v1.1 | P1 — fold into C3 |
-| =SMT.ROUND consistent-rounding custom functions | think-cell TCROUND | shipped v2.1 | P2 (v1.x) |
+| =PLSFIX.ROUND consistent-rounding custom functions | think-cell TCROUND | shipped v2.1 | P2 (v1.x) |
 | Reconciliation solver (subset-sum: which cells make up a variance) | Kutools "Make Up a Number" | Yes (pure TS) | P2 (v1.x) |
 | Tornado chart builder | PowerUser | shipped v2.1 | P2 (v1.x) |
 | Unpivot selection | PowerUser + Ablebits | shipped v2.1 | P2 (v1.x) |

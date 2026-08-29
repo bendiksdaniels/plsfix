@@ -61,11 +61,11 @@ function control(spec: AddinSpec, host: HostSpec, button: ButtonSpec): string {
           `</Action>`,
         ];
   return [
-    `<Control xsi:type="Button" id="SMT.Button.${escapeXml(button.id)}">`,
-    `  <Label resid="SMT.${escapeXml(button.id)}.Label"/>`,
+    `<Control xsi:type="Button" id="PLSFIX.Button.${escapeXml(button.id)}">`,
+    `  <Label resid="PLSFIX.${escapeXml(button.id)}.Label"/>`,
     `  <Supertip>`,
-    `    <Title resid="SMT.${escapeXml(button.id)}.Label"/>`,
-    `    <Description resid="SMT.${escapeXml(button.id)}.Tip"/>`,
+    `    <Title resid="PLSFIX.${escapeXml(button.id)}.Label"/>`,
+    `    <Description resid="PLSFIX.${escapeXml(button.id)}.Tip"/>`,
     `  </Supertip>`,
     icons(spec, 2),
     ...action.map((line) => `  ${line}`),
@@ -122,9 +122,9 @@ function hostBlock(spec: AddinSpec, host: HostSpec): string {
     `  <DesktopFormFactor>`,
     `    <FunctionFile resid="${escapeXml(host.urlResid)}"/>`,
     `    <ExtensionPoint xsi:type="PrimaryCommandSurface">`,
-    `      <CustomTab id="SMT.Tab">`,
+    `      <CustomTab id="PLSFIX.Tab">`,
     ...host.groups.map((group) => pad(groupBlock(spec, host, group), 8)),
-    `        <Label resid="SMT.Tab.Label"/>`,
+    `        <Label resid="PLSFIX.Tab.Label"/>`,
     `      </CustomTab>`,
     `    </ExtensionPoint>`,
     `  </DesktopFormFactor>`,
@@ -169,13 +169,13 @@ function resources(env: ManifestEnvironment, spec: AddinSpec): string {
     ),
   ];
   const shorts = [
-    `<bt:String id="SMT.Tab.Label" DefaultValue="${escapeXml(spec.tabLabel)}"/>`,
+    `<bt:String id="PLSFIX.Tab.Label" DefaultValue="${escapeXml(spec.tabLabel)}"/>`,
     ...spec.hosts.flatMap((host) =>
       host.groups.flatMap((group) => [
         `<bt:String id="${escapeXml(group.id)}.Label" DefaultValue="${escapeXml(group.label)}"/>`,
         ...group.buttons.map(
           (b) =>
-            `<bt:String id="SMT.${escapeXml(b.id)}.Label" DefaultValue="${escapeXml(b.label)}"/>`,
+            `<bt:String id="PLSFIX.${escapeXml(b.id)}.Label" DefaultValue="${escapeXml(b.label)}"/>`,
         ),
       ]),
     ),
@@ -191,7 +191,7 @@ function resources(env: ManifestEnvironment, spec: AddinSpec): string {
     host.groups.flatMap((group) =>
       group.buttons.map(
         (b) =>
-          `<bt:String id="SMT.${escapeXml(b.id)}.Tip" DefaultValue="${escapeXml(b.tip)}"/>`,
+          `<bt:String id="PLSFIX.${escapeXml(b.id)}.Tip" DefaultValue="${escapeXml(b.tip)}"/>`,
       ),
     ),
   );

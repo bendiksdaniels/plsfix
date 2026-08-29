@@ -1,6 +1,6 @@
 // The paintbrush against the strict fake host: capture reads the active cell
 // and exactly the fields a slot carries, apply paints every cell of the
-// selection (interior borders included), SMT Undo puts the old look back, and
+// selection (interior borders included), pls,fix Undo puts the old look back, and
 // an empty slot is refused by name before Excel is touched.
 
 import { beforeEach, describe, expect, it, vi } from "vitest";

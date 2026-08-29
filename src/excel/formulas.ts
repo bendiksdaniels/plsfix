@@ -204,8 +204,8 @@ function requireNumbers(range: Excel.Range, count: number): void {
   }
 }
 
-// think-cell TCROUND in two steps: SMT.ROUND formulas land beside the numbers
-// they round, and their results add up to SMT.ROUNDSUM of the same range. The
+// think-cell TCROUND in two steps: PLSFIX.ROUND formulas land beside the numbers
+// they round, and their results add up to PLSFIX.ROUNDSUM of the same range. The
 // precision comes from what the first cell already prints, so the column beside
 // a euro or percentage block rounds the way the block reads.
 export async function insertConsistentRounding(): Promise<string> {

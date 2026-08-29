@@ -126,7 +126,7 @@ describe("shareReport", () => {
         { sheet: "Model", address: "B4", formula: "=[a.xlsx]S!A1" },
       ],
       addinFormulas: [
-        { sheet: "Model", address: "C4", formula: "=SMT.ROUND(C3,0)" },
+        { sheet: "Model", address: "C4", formula: "=PLSFIX.ROUND(C3,0)" },
       ],
       brokenNames: ["Costs"],
       skippedSheets: ["Data"],
@@ -170,16 +170,18 @@ describe("shareReport", () => {
     ]);
   });
 
-  it("reports an SMT formula by cell, the way an external link is reported", () => {
+  it("reports a PLSFIX formula by cell, the way an external link is reported", () => {
     expect(
       shareReport(
         scan({
           addinFormulas: [
-            { sheet: "Model", address: "D9", formula: "=SMT.ROUND(D8,-3)" },
+            { sheet: "Model", address: "D9", formula: "=PLSFIX.ROUND(D8,-3)" },
           ],
         }),
       ),
-    ).toEqual([{ kind: "addinFormula", label: "Model!D9: =SMT.ROUND(D8,-3)" }]);
+    ).toEqual([
+      { kind: "addinFormula", label: "Model!D9: =PLSFIX.ROUND(D8,-3)" },
+    ]);
   });
 
   it("reports link tokens as something to break, never to delete", () => {
@@ -192,15 +194,15 @@ describe("shareReport", () => {
 
 describe("isAddinFormula", () => {
   it("catches this add-in's own functions, prefixed or not", () => {
-    expect(isAddinFormula("=SMT.ROUND(B4,0)")).toBe(true);
-    expect(isAddinFormula("=_xlfn.SMT.ROUNDSUM(B4:B9,0)")).toBe(true);
-    expect(isAddinFormula("=SUM(A1)+SMT.ROUND(B4,0)")).toBe(true);
+    expect(isAddinFormula("=PLSFIX.ROUND(B4,0)")).toBe(true);
+    expect(isAddinFormula("=_xlfn.PLSFIX.ROUNDSUM(B4:B9,0)")).toBe(true);
+    expect(isAddinFormula("=SUM(A1)+PLSFIX.ROUND(B4,0)")).toBe(true);
   });
 
   it("leaves an ordinary formula and a plain value alone", () => {
     expect(isAddinFormula("=ROUND(B4,0)")).toBe(false);
     expect(isAddinFormula("=SUM(B4:B9)")).toBe(false);
-    expect(isAddinFormula("SMT.ROUND")).toBe(false);
+    expect(isAddinFormula("PLSFIX.ROUND")).toBe(false);
     expect(isAddinFormula(42)).toBe(false);
     expect(isAddinFormula(null)).toBe(false);
   });

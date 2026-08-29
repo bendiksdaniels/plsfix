@@ -259,7 +259,7 @@ export function absoluteRef(address: string): string {
   );
 }
 
-// =SMT.ROUND($A$1:$A$5,2,0): the whole group as the first argument, so Excel
+// =PLSFIX.ROUND($A$1:$A$5,2,0): the whole group as the first argument, so Excel
 // recalculates every sibling cell whenever any value in it changes, plus the
 // literal position this cell reads out of the allocation.
 export function buildRoundFormula(
@@ -267,5 +267,5 @@ export function buildRoundFormula(
   index: number,
   decimals: number,
 ): string {
-  return `=SMT.ROUND(${rangeRef},${index},${decimals})`;
+  return `=PLSFIX.ROUND(${rangeRef},${index},${decimals})`;
 }

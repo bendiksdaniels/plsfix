@@ -100,7 +100,7 @@ import { formatVersion } from "./ui/version";
 // Every describeError call and the footer read this one formatted constant.
 const APP_VERSION = formatVersion(__APP_VERSION__);
 
-const STORAGE_KEY = "smt.brand.v1";
+const STORAGE_KEY = "plsfix.brand.v1";
 const PALETTE_SLOTS = [
   "primary",
   "accent",
@@ -268,7 +268,7 @@ async function toggleAudit(): Promise<string> {
 
 // Three captured formats, kept on the machine like the brand palette: they
 // outlive the pane, and nothing about them is written into the workbook.
-const PAINT_KEY = "smt.paint.v1";
+const PAINT_KEY = "plsfix.paint.v1";
 let paintSlots: PaintSlots = emptySlots();
 
 function loadPaintSlots(): void {
@@ -455,56 +455,56 @@ function registerCommands(): void {
   if (!Office.actions?.associate) return;
 
   const commands: Record<string, () => Promise<unknown>> = {
-    SMT_AUTOCOLOR: autocolorSelection,
-    SMT_AUDIT: toggleAudit,
+    PLSFIX_AUTOCOLOR: autocolorSelection,
+    PLSFIX_AUDIT: toggleAudit,
     // With the pane closed there is nothing to read, so the keystroke jumps to
     // the first result instead.
-    SMT_TRACE_PRE: () => startTrace("precedents", true),
-    SMT_TRACE_DEP: () => startTrace("dependents", true),
-    SMT_FILLRIGHT: () => fastFillAuto("right"),
-    SMT_FILLDOWN: () => fastFillAuto("down"),
-    SMT_IFERROR: toggleIfErrorGuard,
-    SMT_SCALEUP: () => scaleSelection(1000),
-    SMT_SCALEDOWN: () => scaleSelection(0.001),
-    SMT_UNDO: undoLastAction,
-    SMT_COPYSRC: markCopySource,
-    SMT_PASTE_VALUES: () => pasteSpecial("values"),
-    SMT_PASTE_FORMATS: () => pasteSpecial("formats"),
-    SMT_PASTE_EXACT: pastePreserveFormulas,
-    SMT_PASTE_TRANSPOSE: () => pasteSpecial("transpose"),
-    SMT_CAGR: insertCagr,
-    SMT_ROUND: insertConsistentRounding,
-    SMT_SIGN: applySignFlip,
-    SMT_DEC_MORE: () => applyDecimalStep(1),
-    SMT_DEC_LESS: () => applyDecimalStep(-1),
-    SMT_CYC_GENERAL: () => applyNumberCycle("general"),
-    SMT_CYC_DATE: () => applyNumberCycle("date"),
-    SMT_CYC_CURRENCY: () => applyNumberCycle("currency"),
-    SMT_CYC_PERCENT: () => applyNumberCycle("percent"),
-    SMT_CYC_MULTIPLE: () => applyNumberCycle("multiple"),
-    SMT_CYC_TITLE: () => applyRowStyleCycle("title"),
-    SMT_CYC_RESULT: () => applyRowStyleCycle("result"),
-    SMT_CYC_ITEM: () => applyRowStyleCycle("item"),
-    SMT_CYC_FILL: applyFillCycle,
-    SMT_CYC_FONT: applyFontColorCycle,
-    SMT_CYC_BORDER: applyBorderCycle,
-    SMT_CYC_ROWH: applyRowHeightCycle,
-    SMT_CYC_COLW: applyColumnWidthCycle,
-    SMT_PAINT_CAP1: () => capturePaintSlot(1),
-    SMT_PAINT_CAP2: () => capturePaintSlot(2),
-    SMT_PAINT_CAP3: () => capturePaintSlot(3),
-    SMT_PAINT_APP1: () => applyPaintSlot(1),
-    SMT_PAINT_APP2: () => applyPaintSlot(2),
-    SMT_PAINT_APP3: () => applyPaintSlot(3),
-    SMT_WATERFALL: insertWaterfall,
-    SMT_TORNADO: insertTornado,
-    SMT_CHARTFMT: formatSelectedChart,
-    SMT_CHART_CAGR: addCagrLabel,
-    SMT_UNPIVOT: unpivotSelection,
-    SMT_TOC: insertTocSheet,
-    SMT_SHARE: prepareShare,
-    SMT_FIND: focusFind,
-    SMT_STYLES_SCAN: focusStyles,
+    PLSFIX_TRACE_PRE: () => startTrace("precedents", true),
+    PLSFIX_TRACE_DEP: () => startTrace("dependents", true),
+    PLSFIX_FILLRIGHT: () => fastFillAuto("right"),
+    PLSFIX_FILLDOWN: () => fastFillAuto("down"),
+    PLSFIX_IFERROR: toggleIfErrorGuard,
+    PLSFIX_SCALEUP: () => scaleSelection(1000),
+    PLSFIX_SCALEDOWN: () => scaleSelection(0.001),
+    PLSFIX_UNDO: undoLastAction,
+    PLSFIX_COPYSRC: markCopySource,
+    PLSFIX_PASTE_VALUES: () => pasteSpecial("values"),
+    PLSFIX_PASTE_FORMATS: () => pasteSpecial("formats"),
+    PLSFIX_PASTE_EXACT: pastePreserveFormulas,
+    PLSFIX_PASTE_TRANSPOSE: () => pasteSpecial("transpose"),
+    PLSFIX_CAGR: insertCagr,
+    PLSFIX_ROUND: insertConsistentRounding,
+    PLSFIX_SIGN: applySignFlip,
+    PLSFIX_DEC_MORE: () => applyDecimalStep(1),
+    PLSFIX_DEC_LESS: () => applyDecimalStep(-1),
+    PLSFIX_CYC_GENERAL: () => applyNumberCycle("general"),
+    PLSFIX_CYC_DATE: () => applyNumberCycle("date"),
+    PLSFIX_CYC_CURRENCY: () => applyNumberCycle("currency"),
+    PLSFIX_CYC_PERCENT: () => applyNumberCycle("percent"),
+    PLSFIX_CYC_MULTIPLE: () => applyNumberCycle("multiple"),
+    PLSFIX_CYC_TITLE: () => applyRowStyleCycle("title"),
+    PLSFIX_CYC_RESULT: () => applyRowStyleCycle("result"),
+    PLSFIX_CYC_ITEM: () => applyRowStyleCycle("item"),
+    PLSFIX_CYC_FILL: applyFillCycle,
+    PLSFIX_CYC_FONT: applyFontColorCycle,
+    PLSFIX_CYC_BORDER: applyBorderCycle,
+    PLSFIX_CYC_ROWH: applyRowHeightCycle,
+    PLSFIX_CYC_COLW: applyColumnWidthCycle,
+    PLSFIX_PAINT_CAP1: () => capturePaintSlot(1),
+    PLSFIX_PAINT_CAP2: () => capturePaintSlot(2),
+    PLSFIX_PAINT_CAP3: () => capturePaintSlot(3),
+    PLSFIX_PAINT_APP1: () => applyPaintSlot(1),
+    PLSFIX_PAINT_APP2: () => applyPaintSlot(2),
+    PLSFIX_PAINT_APP3: () => applyPaintSlot(3),
+    PLSFIX_WATERFALL: insertWaterfall,
+    PLSFIX_TORNADO: insertTornado,
+    PLSFIX_CHARTFMT: formatSelectedChart,
+    PLSFIX_CHART_CAGR: addCagrLabel,
+    PLSFIX_UNPIVOT: unpivotSelection,
+    PLSFIX_TOC: insertTocSheet,
+    PLSFIX_SHARE: prepareShare,
+    PLSFIX_FIND: focusFind,
+    PLSFIX_STYLES_SCAN: focusStyles,
   };
 
   for (const [id, run] of Object.entries(commands)) {
@@ -528,7 +528,7 @@ function registerCommands(): void {
     });
   }
 
-  Office.actions.associate("SMT_SHOWPANE", (event?: CommandEvent) => {
+  Office.actions.associate("PLSFIX_SHOWPANE", (event?: CommandEvent) => {
     void Promise.resolve(Office.addin?.showAsTaskpane())
       .catch(() => undefined)
       .finally(() => event?.completed());
@@ -749,7 +749,7 @@ function wireBrand(): void {
     hex?.addEventListener("change", () => {
       const value = normalizeHex(hex.value);
       if (!value) {
-        toast.show(`"${hex.value}" is not a hex color like #B27E54.`, "error");
+        toast.show(`"${hex.value}" is not a hex color like #1B998B.`, "error");
         renderBrand();
         return;
       }
@@ -782,7 +782,7 @@ function wireBrand(): void {
   );
 
   getElement<HTMLButtonElement>("reset-brand").addEventListener("click", () => {
-    applySettings({ ...DEFAULT_SETTINGS }, "Palette reset to house defaults");
+    applySettings({ ...DEFAULT_SETTINGS }, "Palette reset to pls,fix defaults");
     const strip = getElement<HTMLDivElement>("logo-swatches");
     strip.replaceChildren();
     strip.hidden = true;
@@ -1435,7 +1435,7 @@ const HOST_HEAD_START_MS = 4_000;
 const HOST_PROBE_EVERY_MS = 1_000;
 const HOST_GIVE_UP_MS = 30_000;
 const DEGRADED_BOOT_MESSAGE =
-  "Excel answered but never reported the add-in ready: =SMT.ROUND may need the workbook reopened.";
+  "Excel answered but never reported the add-in ready: =PLSFIX.ROUND may need the workbook reopened.";
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => window.setTimeout(resolve, ms));

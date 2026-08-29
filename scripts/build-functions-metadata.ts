@@ -1,5 +1,5 @@
 // Writes public/functions.json from src/functions/metadata.ts, the registration
-// file Office reads to publish =SMT.ROUND and =SMT.ROUNDSUM. --check: exit 1 if
+// file Office reads to publish =PLSFIX.ROUND and =PLSFIX.ROUNDSUM. --check: exit 1 if
 // the committed file differs (CI gate). Written via temp + rename so a reader
 // never sees a half-written file, the same way the manifests are.
 import { readFileSync, renameSync, writeFileSync } from "node:fs";

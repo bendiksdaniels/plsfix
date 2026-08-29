@@ -1,5 +1,5 @@
 [Unit]
-Description=Model Tools pane host (Excel add-in static assets)
+Description=pls,fix pane host (Excel and PowerPoint add-in assets, link relay)
 After=network-online.target
 [Service]
 WorkingDirectory=/opt/plsfix

@@ -32,7 +32,7 @@
     {
       "id": "ROUNDSUM",
       "name": "ROUNDSUM",
-      "description": "The group's total, rounded so it equals the sum of SMT.ROUND over the same range.",
+      "description": "The group's total, rounded so it equals the sum of PLSFIX.ROUND over the same range.",
       "result": {
         "type": "number",
         "dimensionality": "scalar"

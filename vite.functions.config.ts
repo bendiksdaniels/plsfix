@@ -3,7 +3,7 @@
 // shared runtime page as a plain script, so it cannot be an ES module and it
 // cannot share a chunk with the panes: library mode emits one self-contained
 // IIFE at a stable functions.js, which is the URL manifest/spec.ts publishes as
-// SMT.Functions.Script.Url.
+// PLSFIX.Functions.Script.Url.
 //
 // It is written into public/, beside the functions.json that declares it,
 // rather than straight into dist/. That is one file in one place serving both
@@ -24,7 +24,7 @@ export default defineConfig({
     lib: {
       entry: "src/functions/index.ts",
       formats: ["iife"],
-      name: "SMTFunctions",
+      name: "PlsfixFunctions",
       fileName: () => "functions.js",
     },
   },

@@ -1,5 +1,5 @@
 // Entry point: builds the demo workbook and saves it, by default to
-// demo/out/Demo Model.xlsx, or to the path given as the first argument.
+// demo/out/pls,fix Demo Model.xlsx, or to the path given as the first argument.
 // Prints one line per sheet with what was written, then the total.
 
 use std::path::{Path, PathBuf};
@@ -7,7 +7,7 @@ use std::path::{Path, PathBuf};
 use smt_demo::tally::Tally;
 
 const OUT_DIR: &str = "out";
-const OUT_FILE: &str = "Demo Model.xlsx";
+const OUT_FILE: &str = "pls,fix Demo Model.xlsx";
 
 fn default_path() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join(OUT_DIR).join(OUT_FILE)

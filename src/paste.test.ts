@@ -188,10 +188,10 @@ describe("absoluteRef", () => {
 describe("buildRoundFormula", () => {
   it("passes the whole group, the position and the precision", () => {
     expect(buildRoundFormula("$A$1:$A$3", 1, 0)).toBe(
-      "=SMT.ROUND($A$1:$A$3,1,0)",
+      "=PLSFIX.ROUND($A$1:$A$3,1,0)",
     );
     expect(buildRoundFormula("$B$2:$D$2", 3, 2)).toBe(
-      "=SMT.ROUND($B$2:$D$2,3,2)",
+      "=PLSFIX.ROUND($B$2:$D$2,3,2)",
     );
   });
 });

@@ -2,7 +2,7 @@
 // again steps the selected band through a fixed ladder of sizes (src/cycles.ts,
 // in points). Two deliberate differences from the other format cycles:
 //
-//   * No SMT Undo. Row heights and column widths are sheet state, not cell
+//   * No pls,fix Undo. Row heights and column widths are sheet state, not cell
 //     state, and `getCellProperties` carries neither - so `captureUndo` could
 //     not put a size back and is not called. These two actions run outside the
 //     undo net by design, which README "Known limits" states.

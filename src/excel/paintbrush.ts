@@ -1,7 +1,7 @@
 // Paintbrush, Macabacus style: three format slots that carry a cell's look
 // without the clipboard. Capture reads the active cell into a PaintSlot (plain
 // data, src/paintbrush.ts); apply paints one slot over every cell of the
-// selection in a single setCellProperties write, behind SMT Undo and the
+// selection in a single setCellProperties write, behind pls,fix Undo and the
 // selection cap. Only formatting travels - values and formulas are never read
 // and never written.
 
@@ -109,7 +109,7 @@ export async function captureSlot(index: number): Promise<PaintSlot> {
   });
 }
 
-// A slot with no fill paints the host's own unfilled cell back, exactly as SMT
+// A slot with no fill paints the host's own unfilled cell back, exactly as pls,fix
 // Undo restores one: white with pattern None.
 function fillProperties(fill: string | null): Excel.CellPropertiesFill {
   return {

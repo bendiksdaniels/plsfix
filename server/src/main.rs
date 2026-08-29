@@ -1,4 +1,4 @@
-//! Binary for the Model Tools host: environment, bind and the hourly
+//! Binary for the pls,fix host: environment, bind and the hourly
 //! sweeper. The router lives in `lib.rs`, the relay in `relay.rs`; this file
 //! only reads `MODELIS_PORT`, `MODELIS_STATIC` and `MODELIS_DATA` and starts
 //! the server, so the interesting parts stay testable without a socket.

@@ -1,5 +1,5 @@
 // Reshaping the selection. Unpivot writes its long table to a new worksheet, so
-// no cell in the model is overwritten and SMT Undo has nothing to capture.
+// no cell in the model is overwritten and pls,fix Undo has nothing to capture.
 
 import { selectedSingleRange, withinCap } from "./internal";
 import { type CellValue } from "../model";
