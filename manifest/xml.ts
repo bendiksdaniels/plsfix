@@ -2,6 +2,10 @@
 // manifest/spec.ts data into manifest text. Owns whitespace, attribute order,
 // the V1_0/V1_1 VersionOverrides duplication, and escaping every interpolated
 // value; has no I/O and no knowledge of dev vs prod beyond what it is given.
+// One thing it deliberately cannot express: the XML manifest has no per-host
+// <Requirements>, so with PowerPoint declared beside Excel the ExcelApi 1.9
+// floor is enforced at runtime in the Excel pane boot (src/main.ts) and the
+// custom functions are gated by their Workbook-only extension point instead.
 import type {
   AddinSpec,
   ButtonSpec,
@@ -237,6 +241,23 @@ function overrides(
   ].join("\n");
 }
 
+// A top-level requirement applies to every host, and an ExcelApi set would
+// hide the add-in in PowerPoint, so the block is emitted only while Excel is
+// the sole host - which, with PowerPoint declared, means no ExcelApi floor is
+// published anywhere. The floor did not go away, it moved: the Excel pane boot
+// (src/main.ts) refuses below ExcelApi 1.9, and the custom functions are gated
+// by their Workbook-only extension point.
+function requirements(spec: AddinSpec): string[] {
+  if (!spec.hosts.every((host) => host.name === "Workbook")) return [];
+  return [
+    `  <Requirements>`,
+    `    <Sets DefaultMinVersion="1.9">`,
+    `      <Set Name="ExcelApi" MinVersion="1.9"/>`,
+    `    </Sets>`,
+    `  </Requirements>`,
+  ];
+}
+
 export function buildManifest(
   env: ManifestEnvironment,
   spec: AddinSpec,
@@ -267,17 +288,7 @@ export function buildManifest(
     `  <Hosts>`,
     ...spec.hosts.map((host) => `    <Host Name="${escapeXml(host.name)}"/>`),
     `  </Hosts>`,
-    // A top-level requirement applies to every host; ExcelApi would hide the
-    // add-in in PowerPoint, so it is declared only while Excel is the sole host.
-    ...(spec.hosts.every((host) => host.name === "Workbook")
-      ? [
-          `  <Requirements>`,
-          `    <Sets DefaultMinVersion="1.9">`,
-          `      <Set Name="ExcelApi" MinVersion="1.9"/>`,
-          `    </Sets>`,
-          `  </Requirements>`,
-        ]
-      : []),
+    ...requirements(spec),
     `  <DefaultSettings>`,
     `    <SourceLocation DefaultValue="${escapeXml(env.baseUrl)}${escapeXml(primary.page)}"/>`,
     `  </DefaultSettings>`,

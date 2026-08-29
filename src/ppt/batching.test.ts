@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { planBatches, REPAINT_BUDGET_BYTES, type BatchItem } from "./batching";
+import { MAX_STATUS_ITEMS } from "../link/relay";
+import {
+  chunk,
+  planBatches,
+  REPAINT_BUDGET_BYTES,
+  type BatchItem,
+} from "./batching";
 
 function items(...bytes: number[]): BatchItem[] {
   return bytes.map((size, index) => ({ key: String(index), bytes: size }));
@@ -49,5 +55,29 @@ describe("planBatches", () => {
     expect(planBatches(items(...small), REPAINT_BUDGET_BYTES)).toHaveLength(1);
     const big = new Array<number>(3).fill(5 * 1024 * 1024);
     expect(planBatches(items(...big), REPAINT_BUDGET_BYTES)).toHaveLength(3);
+  });
+});
+
+describe("chunk", () => {
+  it("cuts a list into runs of at most size, in order", () => {
+    expect(chunk([1, 2, 3, 4, 5], 2)).toEqual([[1, 2], [3, 4], [5]]);
+  });
+
+  it("has nothing to send for an empty list", () => {
+    expect(chunk([], MAX_STATUS_ITEMS)).toEqual([]);
+  });
+
+  // The relay's ceiling exactly: 200 pairs are one request, 201 are two.
+  it("keeps a list inside the ceiling in one request", () => {
+    const deck = new Array<number>(MAX_STATUS_ITEMS).fill(1);
+    expect(chunk(deck, MAX_STATUS_ITEMS)).toHaveLength(1);
+    expect(chunk([...deck, 2], MAX_STATUS_ITEMS)).toEqual([deck, [2]]);
+  });
+
+  // A size of zero or less would slice forever; every item still has to travel.
+  it("clamps a size below one instead of looping", () => {
+    expect(chunk([1, 2], 0)).toEqual([[1], [2]]);
+    expect(chunk([1, 2], -5)).toEqual([[1], [2]]);
+    expect(chunk([1, 2, 3], 1.9)).toEqual([[1], [2], [3]]);
   });
 });

@@ -1,3 +1,8 @@
+// In-memory stand-in for the Rust relay: the same rules as server/src/store.rs
+// and server/src/relay.rs, minus TTLs and HTTP. Every TypeScript integration
+// test runs against this, so a rule that drifts from the server here is a
+// production bug the suite cannot see.
+
 import type {
   FetchQuery,
   FetchResult,
@@ -23,9 +28,28 @@ interface StoredLink extends StoredRev {
 }
 interface StoredInbox {
   ws: string;
+  id: string;
   auth: string;
   createdAt: number;
   blob: Uint8Array;
+}
+
+// server/src/relay.rs refuses a longer batch on both batch routes with
+// "400 too many items", so a client that stopped chunking fails here too
+// instead of quietly passing against a fake with no ceiling.
+const MAX_BATCH_ITEMS = 200;
+
+function refuseOversizedBatch(route: string, items: unknown[]): void {
+  if (items.length > MAX_BATCH_ITEMS)
+    throw new RelayError(
+      "server",
+      `relay POST /api/links/${route}: 400 too many items`,
+      400,
+    );
+}
+
+function inboxKey(ws: string, id: string, auth: string): string {
+  return `${ws}/${id}/${auth}`;
 }
 
 // Why a link a batch asked for carries no blob at all, in the store's order:
@@ -134,6 +158,7 @@ export class FakeRelay implements RelayApi {
     this.links.delete(id);
   }
   async status(items: StatusQuery[]): Promise<RelayStatus[]> {
+    refuseOversizedBatch("status", items);
     return items.map(({ id, auth }) => {
       const current = this.links.get(id);
       if (!current) return { id, rev: null, pushedAt: null };
@@ -147,6 +172,7 @@ export class FakeRelay implements RelayApi {
   // carries none. Once one blob does not fit, the rest of the batch is
   // deferred with it rather than sieved.
   async fetchLinks(items: FetchQuery[]): Promise<FetchResult> {
+    refuseOversizedBatch("fetch", items);
     const result: FetchResult = { items: [], omitted: [] };
     let room: number | null = FETCH_BLOB_CAP;
     for (const { id, auth, knownRev } of items) {
@@ -164,24 +190,36 @@ export class FakeRelay implements RelayApi {
     }
     return result;
   }
+  // Keyed like inbox_v2 in server/src/store.rs: (ws, id, auth_hash), never
+  // (ws, id). A foreign key that posts the same link id writes its own row
+  // beside the pane's item instead of over it, and never sees it - the whole
+  // reason that migration exists.
   async postInbox(
     ws: string,
     auth: string,
     id: string,
     blob: Uint8Array,
   ): Promise<void> {
-    this.inbox.set(`${ws}/${id}`, { ws, auth, createdAt: this.now, blob });
+    this.inbox.set(inboxKey(ws, id, auth), {
+      ws,
+      id,
+      auth,
+      createdAt: this.now,
+      blob,
+    });
   }
   async listInbox(ws: string, auth: string): Promise<InboxRow[]> {
-    return [...this.inbox.entries()]
-      .filter(([, row]) => row.ws === ws && row.auth === auth)
-      .map(([key, row]) => ({
-        id: key.slice(ws.length + 1),
+    return [...this.inbox.values()]
+      .filter((row) => row.ws === ws && row.auth === auth)
+      .map((row) => ({
+        id: row.id,
         createdAt: row.createdAt,
         blob: row.blob,
       }));
   }
-  async deleteInbox(ws: string, _auth: string, id: string): Promise<void> {
-    this.inbox.delete(`${ws}/${id}`);
+  // Only the key that wrote a row can remove it; another key's delete finds
+  // nothing, exactly as the server's WHERE auth_hash = ? does.
+  async deleteInbox(ws: string, auth: string, id: string): Promise<void> {
+    this.inbox.delete(inboxKey(ws, id, auth));
   }
 }

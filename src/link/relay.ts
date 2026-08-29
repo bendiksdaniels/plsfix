@@ -5,13 +5,15 @@
 // encryption and retry policy live above this.
 // Invariant: every failure leaves this module as a RelayError - a 200 whose
 // body is not the JSON shape the route promises is one too, never a raw parse
-// error, so the pane's toast always has a `kind` to render.
+// error, so the pane's toast always has a `kind` to render, and a refusal
+// carries the reason the relay named in its body, not just a status code.
 
 import { fromBase64Url } from "./crypto";
 import type { RelayStatus } from "./status";
 import {
   arrayOf,
   ETAG_REV,
+  isErrorBody,
   isFetchJsonBody,
   isInboxJson,
   isPutResult,
@@ -86,7 +88,9 @@ export interface FetchResult {
 }
 
 // The relay's per-batch limits, so a caller can chunk before it calls: more
-// items than this is a 400, and blobs past the cap come back "deferred".
+// items than this is a 400 (the server counts both batch routes against one
+// MAX_BATCH_ITEMS), and blobs past the cap come back "deferred".
+export const MAX_STATUS_ITEMS = 200;
 export const MAX_FETCH_ITEMS = 200;
 export const FETCH_BLOB_CAP = 4 * 1024 * 1024;
 
@@ -178,9 +182,13 @@ export class RelayClient implements RelayApi {
       );
     }
     if (expect.includes(response.status)) return response;
+    // The refusal names itself in the body; a body that is empty, not JSON or
+    // not that shape simply adds nothing, because the status is still an answer.
+    const body: unknown = await response.json().catch(() => null);
+    const named = isErrorBody(body) ? ` ${body.error}` : "";
     throw new RelayError(
       statusKind(response.status),
-      `relay ${method} ${url.pathname}: ${response.status}`,
+      `relay ${method} ${url.pathname}: ${response.status}${named}`,
       response.status,
     );
   }

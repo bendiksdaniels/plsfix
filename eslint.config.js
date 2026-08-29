@@ -3,6 +3,9 @@ export default tseslint.config(
   {
     ignores: [
       "**/dist/**",
+      // Build output, not source: the custom-functions IIFE the functions:js
+      // pass writes beside the functions.json that declares it.
+      "public/functions.js",
       "**/node_modules/**",
       "server/**",
       "docs/**",

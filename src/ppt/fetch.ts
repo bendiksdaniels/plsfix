@@ -28,6 +28,7 @@ import {
   type OmittedReason,
   type RelayApi,
 } from "../link/relay";
+import { chunk } from "./batching";
 import type { FoundLink, RefreshRequest } from "./host";
 import type { LinkRow } from "./links";
 
@@ -105,28 +106,26 @@ async function groupRows(
   return [...groups.values()];
 }
 
-// One request per 200 groups, and never two groups of the same link id in one
+// One request per 200 groups - the same count-chunking the status poll does,
+// from the same helper - and never two groups of the same link id in one
 // request: the answer names items by id alone, so a second key on a shared id
 // waits for its own GET instead of reading the first one's blob.
-function chunk(groups: Group[]): { batches: Group[][]; deferred: Group[] } {
-  const batches: Group[][] = [];
+function chunkGroups(groups: Group[]): {
+  batches: Group[][];
+  deferred: Group[];
+} {
+  const asked: Group[] = [];
   const deferred: Group[] = [];
   const claimed = new Set<string>();
-  let batch: Group[] = [];
   for (const group of groups) {
     if (claimed.has(group.id)) {
       deferred.push(group);
       continue;
     }
     claimed.add(group.id);
-    batch.push(group);
-    if (batch.length === MAX_FETCH_ITEMS) {
-      batches.push(batch);
-      batch = [];
-    }
+    asked.push(group);
   }
-  if (batch.length > 0) batches.push(batch);
-  return { batches, deferred };
+  return { batches: chunk(asked, MAX_FETCH_ITEMS), deferred };
 }
 
 function query(group: Group): FetchQuery {
@@ -232,7 +231,7 @@ export async function fetchUpdates(
   relay: RelayApi,
 ): Promise<FetchOutcome> {
   const outcome = emptyOutcome();
-  const { batches, deferred } = chunk(await groupRows(rows, outcome));
+  const { batches, deferred } = chunkGroups(await groupRows(rows, outcome));
   for (const batch of batches)
     await fetchBatch(batch, relay, outcome, deferred);
   for (const group of deferred) {

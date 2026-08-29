@@ -61,6 +61,40 @@ describe("insert from inbox", () => {
     expect(await links.listInbox(ws, relay)).toHaveLength(0);
   });
 
+  // The reason server/src/store.rs keys inbox_v2 on (ws, id, auth_hash) and no
+  // longer on (ws, id): a foreign key that announces the same link id gets its
+  // own row rather than the pane's slot. On the old key it destroyed the item
+  // the deck was waiting for, and the pane could not tell it had ever existed.
+  it("keeps a foreign key's announcement of the same link out of ours", async () => {
+    const ws = await createWorkspace(memoryStore());
+    const item = await seedLink(fakePng(10, 10));
+    await relay.postInbox(
+      ws.id,
+      ws.auth,
+      item.id,
+      await seal(ws.enc, ws.id, encodeInboxItem(item)),
+    );
+    // Same workspace, same link id, another writer's key - a re-keyed workbook
+    // exporting the link it already exported once.
+    const foreign = "F".repeat(43);
+    await relay.postInbox(
+      ws.id,
+      foreign,
+      item.id,
+      await seal(ws.enc, ws.id, encodeInboxItem(item)),
+    );
+
+    expect(relay.inbox.size).toBe(2);
+    expect((await links.listInbox(ws, relay)).map((row) => row.id)).toEqual([
+      item.id,
+    ]);
+    expect(await relay.listInbox(ws.id, foreign)).toHaveLength(1);
+    // And ours is still the one the deck consumes and clears.
+    await links.insertFromInbox(item, ws, relay);
+    expect(await links.listInbox(ws, relay)).toHaveLength(0);
+    expect(await relay.listInbox(ws.id, foreign)).toHaveLength(1);
+  });
+
   it("skips an inbox blob sealed with another workspace key, and an empty deck summarizes to nothing", async () => {
     const ws = await createWorkspace(memoryStore());
     const other = await createWorkspace(memoryStore());

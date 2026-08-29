@@ -13,7 +13,7 @@
   <ProviderName>Daniels Bendiks</ProviderName>
   <DefaultLocale>en-US</DefaultLocale>
   <DisplayName DefaultValue="Model Tools"/>
-  <Description DefaultValue="Fast, consistent financial modelling tools for Excel."/>
+  <Description DefaultValue="Fast, consistent financial modelling tools for Excel and PowerPoint."/>
   <IconUrl DefaultValue="https://dbautomatizacijas.com/modelis/assets/icon-32.png"/>
   <SupportUrl DefaultValue="https://dbautomatizacijas.com"/>
   <AppDomains>

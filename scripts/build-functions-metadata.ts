@@ -25,7 +25,10 @@ if (current === expected) {
   );
   process.exit(1);
 } else {
-  const tmp = new URL(`../${file}.tmp`, import.meta.url);
+  // Outside public/: a crash between write and rename would otherwise leave a
+  // stray .tmp that git ignores but `vite build` copies into dist/, where the
+  // host would then serve it.
+  const tmp = new URL("../.functions.json.tmp", import.meta.url);
   writeFileSync(tmp, expected);
   renameSync(tmp, path);
   process.stdout.write(`wrote ${file}\n`);
