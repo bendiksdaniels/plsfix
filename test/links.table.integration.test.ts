@@ -115,7 +115,8 @@ describe("exportSelectionAsTable", () => {
         { t: "Revenue", b: true },
         { t: "1000", f: "#EEEEEE", a: "r" },
       ],
-      [{ t: "Costs" }, { t: "-400", i: true, c: "#FF0000", z: 9 }],
+      // A number under General alignment says "right" itself.
+      [{ t: "Costs" }, { t: "-400", i: true, c: "#FF0000", z: 9, a: "r" }],
     ]);
 
     const inbox = await relay.listInbox(ws.id, ws.auth);

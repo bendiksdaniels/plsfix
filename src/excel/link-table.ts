@@ -48,7 +48,7 @@ export async function renderTable(
   if (overTableCap(rows, cols)) throw new Error(TABLE_TOO_BIG);
 
   const properties = range.getCellProperties(WANTED);
-  range.load("text");
+  range.load("text,values");
   const columns = Array.from({ length: cols }, (_unused, index) => {
     const column = range.getColumn(index);
     column.load("format/columnWidth");
@@ -57,8 +57,11 @@ export async function renderTable(
   await context.sync();
 
   const text = range.text;
+  const values = range.values;
   const cells = properties.value.map((row, r) =>
-    row.map((cell, c) => toCell(text[r]?.[c] ?? "", cell)),
+    row.map((cell, c) =>
+      toCell(text[r]?.[c] ?? "", cell, typeof values[r]?.[c] === "number"),
+    ),
   );
   const widths = columns.map((one) => one.format.columnWidth);
   return { rows, cols, cells, widths };
@@ -66,7 +69,13 @@ export async function renderTable(
 
 // Every key but the text is omitted unless the cell says something Excel's
 // default does not, which is what keeps a plain grid small.
-function toCell(text: string, properties: Excel.CellProperties): TableCell {
+// A number under Excel's "General" alignment sits on the right; PowerPoint
+// has no such rule, so the cell says so itself.
+function toCell(
+  text: string,
+  properties: Excel.CellProperties,
+  numeric: boolean,
+): TableCell {
   const format = properties.format;
   const font = format?.font;
   const cell: TableCell = { t: text };
@@ -82,5 +91,6 @@ function toCell(text: string, properties: Excel.CellProperties): TableCell {
   if (fill !== undefined && fill !== NO_FILL && fill !== "") cell.f = fill;
   const alignment = ALIGNMENT[String(format?.horizontalAlignment)];
   if (alignment !== undefined) cell.a = alignment;
+  else if (numeric) cell.a = "r";
   return cell;
 }
