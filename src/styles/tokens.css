@@ -1,0 +1,112 @@
+/* The pane's design tokens and the two resets every other sheet leans on.
+   Owns the palette, the type scale, the spacing rhythm and the one control
+   height; nothing here draws a component. Invariant: the [hidden] reset stays
+   the first rule in the first imported sheet - author display rules (.view,
+   .swatch-strip) would otherwise beat the UA rule the tab switcher relies on. */
+
+[hidden] {
+  display: none !important;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+:root {
+  color: #14213d;
+  background: #eef2f5;
+  font-family: "Aptos", "Segoe UI", system-ui, sans-serif;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+
+  /* Brand: navy and mint, unchanged. --accent stays the mint that fills, rules
+     and marks are drawn in; --accent-ink is the same hue darkened until it
+     reads as text on a light surface (mint on white is 2.2:1). */
+  --ink: #14213d;
+  --accent: #2ec4b6;
+  --accent-ink: #11695f;
+  --muted: #5a636e;
+  --paper: #fbfcfd;
+  --line: #d8e0e6;
+  --green: #2f6b4f;
+  --red: #a33f32;
+  --surface: rgba(255, 255, 255, 0.72);
+  --surface-hover: #fff;
+  --surface-sunken: #e9eef3;
+
+  /* Type scale: micro (uppercase labels, badges, table meta), body (controls,
+     descriptions, cells), title (row headings), lead (h2), display (h1). */
+  --fs-micro: 11px;
+  --fs-body: 12px;
+  --fs-title: 13px;
+  --fs-lead: 15px;
+  --fs-display: 18px;
+
+  /* Rhythm: items inside one group, blocks inside a section, section to
+     section. Nothing in the panes may invent a fourth vertical gap. */
+  --gap-tight: 8px;
+  --gap-block: 10px;
+  --gap-section: 24px;
+
+  /* One height for every text control and icon button, one tick size for
+     every checkbox, one radius per role. */
+  --control-h: 34px;
+  --tick: 16px;
+  /* Icon glyphs are drawn, not read: they keep their own size, and the
+     autocolor dot's text-shadow offsets are tuned to it. */
+  --icon-glyph: 16px;
+  /* Three radii: a control, a list row or panel, and a container that pads
+     controls (the tab bar, the drop zone). */
+  --radius-control: 9px;
+  --radius-row: 11px;
+  --radius-card: 13px;
+  --radius-pill: 999px;
+
+  --mono:
+    ui-monospace, SFMono-Regular, Menlo, "Cascadia Mono", Consolas, monospace;
+}
+
+body {
+  margin: 0;
+  min-width: 290px;
+  min-height: 100vh;
+  background:
+    radial-gradient(
+      circle at top right,
+      rgba(46, 196, 182, 0.14),
+      transparent 36%
+    ),
+    #eef2f5;
+}
+
+h1,
+h2 {
+  margin: 0;
+  color: var(--ink);
+}
+h1 {
+  font:
+    600 var(--fs-display) / 1.15 Georgia,
+    serif;
+}
+h2 {
+  font-size: var(--fs-lead);
+  font-weight: 750;
+  line-height: 1.2;
+}
+
+.eyebrow,
+.kicker {
+  margin: 0 0 2px;
+  color: var(--muted);
+  font-size: var(--fs-micro);
+  font-weight: 800;
+  letter-spacing: 0.13em;
+}
+
+.hint {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--fs-body);
+  line-height: 1.4;
+}

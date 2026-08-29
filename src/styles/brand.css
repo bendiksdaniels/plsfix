@@ -1,0 +1,168 @@
+/* The Brand tab: the live workbook preview, the palette rows, the colours read
+   out of a logo and the workbook output defaults. Owns the --pv-* custom
+   properties src/main.ts writes the user's palette into; nothing else reads
+   them, and nothing here may widen the pane. */
+
+.preview-table {
+  width: 100%;
+  max-width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+  background: #fff;
+  font-size: var(--fs-body);
+}
+.preview-table td {
+  overflow: hidden;
+  padding: 5px 8px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  border: 1px solid #dfe5ea;
+}
+.preview-table td:nth-child(2),
+.preview-table td:nth-child(3) {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.pv-title td {
+  border-color: var(--pv-title-fill, #14213d);
+  color: var(--pv-title-text, #ffffff);
+  background: var(--pv-title-fill, #14213d);
+  font-size: var(--fs-title);
+  font-weight: 700;
+}
+.pv-header td {
+  border-bottom: 1px solid var(--pv-header-border, #b5b2ae);
+  background: var(--pv-header-fill, #e9edf0);
+  font-weight: 700;
+}
+.pv-input {
+  color: var(--pv-input, #0057b8);
+}
+.pv-formula {
+  color: var(--pv-formula, #1f1d1b);
+}
+.pv-link {
+  color: var(--pv-link, #17823b);
+}
+.pv-external {
+  color: var(--pv-external, #c00000);
+}
+.pv-partial {
+  color: var(--pv-partial, #7a3e9d);
+}
+.pv-result td {
+  border-top: 3px double var(--pv-result-border, #86603f);
+  background: var(--pv-result-fill, #eaf0f4);
+  font-weight: 700;
+}
+
+.palette-list {
+  display: grid;
+  gap: var(--gap-tight);
+}
+.palette-row {
+  display: grid;
+  grid-template-columns: 46px 1fr 84px;
+  gap: 10px;
+  align-items: center;
+  padding: 9px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-row);
+  background: var(--surface);
+}
+.swatch-input {
+  width: 46px;
+  height: var(--control-h);
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: none;
+  cursor: pointer;
+}
+.swatch-input::-webkit-color-swatch-wrapper {
+  padding: 2px;
+}
+.swatch-input::-webkit-color-swatch {
+  border: none;
+  border-radius: 6px;
+}
+.palette-meta {
+  min-width: 0;
+}
+.palette-meta strong {
+  display: block;
+  font-size: var(--fs-title);
+  line-height: 1.25;
+}
+.palette-meta small {
+  color: var(--muted);
+  font-size: var(--fs-body);
+}
+
+.upload-drop {
+  display: grid;
+  place-items: center;
+  padding: 16px 12px;
+  border: 1.5px dashed var(--line);
+  border-radius: var(--radius-card);
+  background: rgba(46, 196, 182, 0.06);
+  text-align: center;
+  cursor: pointer;
+}
+.upload-drop:hover {
+  border-color: var(--accent);
+  background: rgba(46, 196, 182, 0.1);
+}
+.upload-drop strong {
+  display: block;
+  font-size: var(--fs-title);
+}
+.upload-drop small {
+  color: var(--muted);
+  font-size: var(--fs-body);
+}
+
+.swatch-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--gap-tight);
+}
+.logo-swatch {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  box-shadow: 0 1px 4px rgba(20, 33, 61, 0.3);
+  cursor: pointer;
+  transition: transform 0.15s;
+}
+.logo-swatch:hover {
+  transform: scale(1.12);
+}
+
+/* Font / Language / Currency: as many columns as fit, so the pane never has to
+   carry the widest option label (the Latvian number sample) across the grid. */
+.settings-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: var(--gap-tight);
+}
+.settings-grid label {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  color: var(--muted);
+  font-size: var(--fs-micro);
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* The narrowest dock Office gives a pane: the hex field gives a few pixels
+   back to the colour name. */
+@media (max-width: 330px) {
+  .palette-row {
+    grid-template-columns: 40px 1fr 74px;
+  }
+}
