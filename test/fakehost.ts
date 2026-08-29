@@ -404,6 +404,20 @@ export interface FakeStyle {
   builtIn: boolean;
 }
 
+export interface FakeCommentReply {
+  content: string;
+  author: string;
+}
+
+// A comment belongs to one cell and carries its thread with it; the address is
+// sheet-qualified because workbook.comments spans every sheet.
+export interface FakeComment {
+  address: string;
+  content: string;
+  author: string;
+  replies: FakeCommentReply[];
+}
+
 export interface TraceArea {
   address: string;
   cellCount: number;
@@ -420,6 +434,7 @@ export class FakeWorkbook {
   // Excel ships a style table with every workbook; the built-ins in it cannot
   // be deleted, which is what the scrubber has to leave alone.
   styles: FakeStyle[] = [{ name: NORMAL_STYLE, builtIn: true }];
+  comments: FakeComment[] = [];
   charts: FakeChart[] = [];
   shapes: FakeShape[] = [];
   selection: { sheetId: string; rect: Rect } = {
@@ -573,6 +588,7 @@ const SHAPES: Record<string, Shape> = {
       settings: "settings",
       names: "names",
       styles: "styles",
+      comments: "comments",
     },
     returns: {
       getSelectedRange: "range",
@@ -748,6 +764,17 @@ const SHAPES: Record<string, Shape> = {
   },
   styles: { scalars: ["items"], items: "style", returns: { getItem: "style" } },
   style: { scalars: ["name", "builtIn"] },
+  comments: { scalars: ["items"], items: "comment" },
+  comment: {
+    scalars: ["id", "content", "authorName", "authorEmail", "resolved"],
+    children: { replies: "commentReplies" },
+    returns: { getLocation: "range" },
+  },
+  commentReplies: { scalars: ["items"], items: "commentReply" },
+  commentReply: {
+    scalars: ["id", "content", "authorName", "authorEmail"],
+    returns: { getLocation: "range" },
+  },
 };
 
 interface LoadState {
@@ -2460,6 +2487,90 @@ class NamedItemProxy {
 }
 
 // ---------------------------------------------------------------------------
+// Comments
+// ---------------------------------------------------------------------------
+
+// Where a comment hangs: office.js hands back the one cell it is anchored to,
+// never the range that was selected when it was written.
+function commentCell(
+  runtime: FakeRuntime,
+  ctx: FakeContext,
+  address: string,
+): RangeProxy {
+  const { sheet, rect } = resolve(runtime.workbook, address);
+  return new RangeProxy(runtime, ctx, sheet, {
+    row: rect.row,
+    col: rect.col,
+    rowCount: 1,
+    colCount: 1,
+  });
+}
+
+class CommentReplyProxy {
+  constructor(
+    private runtime: FakeRuntime,
+    private ctx: FakeContext,
+    private record: FakeCommentReply,
+    private address: string,
+  ) {}
+
+  load(): this {
+    return this;
+  }
+
+  get content(): string {
+    return this.record.content;
+  }
+
+  get authorName(): string {
+    return this.record.author;
+  }
+
+  getLocation(): RangeProxy {
+    return commentCell(this.runtime, this.ctx, this.address);
+  }
+}
+
+class CommentProxy {
+  constructor(
+    private runtime: FakeRuntime,
+    private ctx: FakeContext,
+    private record: FakeComment,
+  ) {}
+
+  load(): this {
+    return this;
+  }
+
+  get content(): string {
+    return this.record.content;
+  }
+
+  get authorName(): string {
+    return this.record.author;
+  }
+
+  // The thread is a collection of its own: office.js offers no load option for
+  // it on the comment collection, so an add-in loads it one level down, through
+  // the comment that owns it. Every reply sits on that comment's cell.
+  get replies(): { load: () => void; items: CommentReplyProxy[] } {
+    const { runtime, ctx, record } = this;
+    return {
+      load: () => undefined,
+      get items(): CommentReplyProxy[] {
+        return record.replies.map(
+          (reply) => new CommentReplyProxy(runtime, ctx, reply, record.address),
+        );
+      },
+    };
+  }
+
+  getLocation(): RangeProxy {
+    return commentCell(this.runtime, this.ctx, this.record.address);
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Style
 // ---------------------------------------------------------------------------
 
@@ -2870,6 +2981,20 @@ class WorkbookProxy {
     };
   }
 
+  // Every comment in the workbook, sheet by sheet, the way office.js serves
+  // them: the cell each one hangs on comes from getLocation(), not from here.
+  get comments() {
+    const runtime = this.runtime;
+    const ctx = this.ctx;
+    const list = runtime.workbook.comments;
+    return {
+      load: () => undefined,
+      get items(): CommentProxy[] {
+        return list.map((record) => new CommentProxy(runtime, ctx, record));
+      },
+    };
+  }
+
   get styles() {
     const runtime = this.runtime;
     const list = runtime.workbook.styles;
@@ -2944,6 +3069,14 @@ export interface FakeHelpers {
   addSheet(name: string): FakeSheet;
   deleteSheet(name: string): void;
   addName(name: string, formula: string): void;
+  // A comment on one cell, plus its thread; a reply keeps the comment's author
+  // unless it names its own.
+  addComment(
+    address: string,
+    content: string,
+    author: string,
+    replies?: { content: string; author?: string }[],
+  ): void;
   setNameFormula(name: string, formula: string): void;
   breakName(name: string): void;
   select(address: string): void;
@@ -3097,6 +3230,17 @@ export function installFakeHost(options: FakeHostOptions = {}): {
     deleteSheet: (name) => workbook.deleteSheet(name),
     addName(name, formula) {
       workbook.names.push({ name, formula, visible: true });
+    },
+    addComment(address, content, author, replies = []) {
+      workbook.comments.push({
+        address,
+        content,
+        author,
+        replies: replies.map((reply) => ({
+          content: reply.content,
+          author: reply.author ?? author,
+        })),
+      });
     },
     // Excel rewrites a name's formula on its own when rows move under it; this
     // is how a test replays that without an insert-rows API.

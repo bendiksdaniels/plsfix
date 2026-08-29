@@ -2,9 +2,12 @@ import { describe, expect, it } from "vitest";
 import {
   cellAddress,
   cellText,
+  COMMENT_ROW,
+  COMMENT_TEXT_LIMIT,
   FIND_HIT_CAP,
   includesQuery,
   matchCells,
+  matchComments,
   rankHits,
   type FindGrid,
 } from "./find";
@@ -140,6 +143,87 @@ describe("rankHits", () => {
     const ranked = rankHits(hits);
     expect(ranked).toHaveLength(FIND_HIT_CAP);
     expect(ranked[0]?.row).toBe(1);
+  });
+});
+
+describe("matchComments", () => {
+  const thread = (content: string, author = "Anna Ozola") => ({
+    sheet: "Model",
+    address: "B2",
+    content,
+    author,
+  });
+
+  it("matches the content in any casing and says where it sat", () => {
+    const comments = [thread("Ignore"), thread("Check the WACC here")];
+    expect(matchComments(comments, "wacc", LOOSE)).toEqual([
+      { order: 1, text: "Check the WACC here" },
+    ]);
+  });
+
+  it("matches the author as well as what they wrote", () => {
+    expect(matchComments([thread("Looks fine")], "ozola", LOOSE)).toEqual([
+      { order: 0, text: "Looks fine" },
+    ]);
+  });
+
+  it("respects match case on both content and author", () => {
+    const options = { matchCase: true, inFormulas: false };
+    expect(matchComments([thread("Revenue")], "revenue", options)).toEqual([]);
+    expect(matchComments([thread("Revenue")], "Revenue", options)).toHaveLength(
+      1,
+    );
+    expect(matchComments([thread("x")], "Anna", options)).toHaveLength(1);
+  });
+
+  it("shows the opening of a long thread, not the whole of it", () => {
+    const long = "note ".repeat(60);
+    const [hit] = matchComments([thread(long)], "note", LOOSE);
+    expect(hit?.text).toHaveLength(COMMENT_TEXT_LIMIT);
+    expect(hit?.text).toBe(long.slice(0, COMMENT_TEXT_LIMIT));
+  });
+
+  it("never matches on an empty query", () => {
+    expect(matchComments([thread("anything")], "", LOOSE)).toEqual([]);
+  });
+
+  it("stops at the cap however many comments match", () => {
+    const comments = Array.from({ length: FIND_HIT_CAP + 40 }, () =>
+      thread("hit"),
+    );
+    expect(matchComments(comments, "hit", LOOSE)).toHaveLength(FIND_HIT_CAP);
+  });
+});
+
+describe("rankHits over comments", () => {
+  it("lists a sheet's comments after its cells, before the next sheet", () => {
+    const hits = [
+      { sheetIndex: 1, row: 0, col: 0 },
+      { sheetIndex: 0, row: COMMENT_ROW, col: 1 },
+      { sheetIndex: 0, row: COMMENT_ROW, col: 0 },
+      { sheetIndex: 0, row: 900, col: 0 },
+    ];
+    expect(rankHits(hits)).toEqual([
+      { sheetIndex: 0, row: 900, col: 0 },
+      { sheetIndex: 0, row: COMMENT_ROW, col: 0 },
+      { sheetIndex: 0, row: COMMENT_ROW, col: 1 },
+      { sheetIndex: 1, row: 0, col: 0 },
+    ]);
+  });
+
+  it("spends one cap on cells and comments together", () => {
+    const cells = Array.from({ length: FIND_HIT_CAP }, (_unused, row) => ({
+      sheetIndex: 0,
+      row,
+      col: 0,
+    }));
+    const ranked = rankHits([
+      ...cells,
+      { sheetIndex: 0, row: COMMENT_ROW, col: 0 },
+    ]);
+
+    expect(ranked).toHaveLength(FIND_HIT_CAP);
+    expect(ranked.some((hit) => hit.row === COMMENT_ROW)).toBe(false);
   });
 });
 
