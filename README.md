@@ -22,6 +22,7 @@ Model Tools is an Excel productivity add-in for financial modelling teams. It is
 - Brand tab: company palette (pickers, hex entry, or logo upload with local color extraction), font and currency settings, JSON import/export; all presets and autocolor follow the palette; persisted in the task pane and saved with the workbook, so a model keeps its brand when it is opened on another computer
 - the add-in's ribbon tab with one-click commands (autocolor, fills, IFERROR) and customizable keyboard shortcuts via the shared runtime (`public/shortcuts.json`)
 - Workbook tab: a sheet explorer that jumps to, hides and shows sheets (very hidden ones are listed but never touched), a hyperlinked contents sheet rebuilt on demand, and a scrubber that finds and deletes defined names left pointing at `#REF!`
+- Super Find: one search across every sheet (hidden ones included) over values, formula text, defined names and sheet names, listed in workbook order with one click to jump to the hit
 
 ## Keyboard shortcuts
 
@@ -72,6 +73,7 @@ branded equivalent. Users can remap under Office add-in shortcut preferences.
 | Brand-format chart | Ctrl+Alt+G |
 | CAGR label | Ctrl+Alt+K |
 | Insert contents sheet | Ctrl+Alt+O |
+| Find in workbook | Ctrl+Shift+Alt+F |
 
 ## Known limits
 
