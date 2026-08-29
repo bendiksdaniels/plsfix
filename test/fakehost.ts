@@ -233,6 +233,9 @@ export class FakeSheet {
   rowHeights = new Map<number, number>();
   columnWidths = new Map<number, number>();
   showGridlines = true;
+  // The merged blocks of the sheet. Only the top-left cell of one holds a
+  // value, and Excel refuses a value write that covers part of a block.
+  merges: Rect[] = [];
   // Stands in for a recalculation: the last value seen for a formula text, so a
   // formula written back over a clobbered cell shows its result again. Kept off
   // the cell record, which is what tests deep-compare.
@@ -247,6 +250,10 @@ export class FakeSheet {
 
   key(row: number, col: number): string {
     return `${row},${col}`;
+  }
+
+  mergedAt(row: number, col: number): Rect | null {
+    return this.merges.find((rect) => inside(rect, row, col)) ?? null;
   }
 
   // Reads never materialize a cell; only writes do.
@@ -1443,12 +1450,50 @@ class RangeProxy {
     }
   }
 
+  // Excel writes a value into the top-left cell of a merged block and nowhere
+  // else in it, and refuses the write outright when the range covers only part
+  // of one. Formatting is not restricted, so only the value setters ask.
+  private eachWritable(
+    write: (cell: FakeCell, r: number, c: number) => void,
+  ): void {
+    const { row, col, rowCount, colCount } = this.rect;
+    for (const merged of this.sheet.merges) {
+      const overlapping =
+        merged.row < row + rowCount &&
+        row < merged.row + merged.rowCount &&
+        merged.col < col + colCount &&
+        col < merged.col + merged.colCount;
+      const covered =
+        merged.row >= row &&
+        merged.row + merged.rowCount <= row + rowCount &&
+        merged.col >= col &&
+        merged.col + merged.colCount <= col + colCount;
+      if (overlapping && !covered) {
+        // Queued, the way office.js reports it: the batch is rejected on the
+        // next sync and none of its writes reach the sheet.
+        this.ctx.queueError(
+          hostError(
+            ErrorCodes.invalidOperation,
+            "Cannot change part of a merged cell.",
+          ),
+        );
+        return;
+      }
+    }
+
+    this.each((cell, r, c) => {
+      const merged = this.sheet.mergedAt(row + r, col + c);
+      if (merged && (merged.row !== row + r || merged.col !== col + c)) return;
+      write(cell, r, c);
+    });
+  }
+
   get values(): CellValue[][] {
     return this.map((cell) => cell.value);
   }
 
   set values(grid: CellValue[][]) {
-    this.each((cell, r, c) => {
+    this.eachWritable((cell, r, c) => {
       const entry = grid[r]?.[c];
       if (entry === undefined) return;
       cell.value = entry;
@@ -1471,7 +1516,7 @@ class RangeProxy {
   // No formula engine: a formula write stores the text and the last result seen
   // for it stands in for a recalculation; a literal write sets both, as Excel does.
   set formulas(grid: CellValue[][]) {
-    this.each((cell, r, c) => {
+    this.eachWritable((cell, r, c) => {
       const entry = grid[r]?.[c];
       if (entry === undefined) return;
       cell.formula = entry;
@@ -3280,6 +3325,9 @@ export interface FakeHelpers {
   setActiveCell(address: string): void;
   seed(address: string, grid: SeedEntry[][]): void;
   setNumberFormat(address: string, format: string): void;
+  // A merged block: only its top-left cell takes a value, and a value write
+  // that covers part of it is refused the way Excel refuses one.
+  merge(address: string): void;
   setFill(address: string, fill: Partial<FakeFill>): void;
   setAlignment(address: string, horizontal: string): void;
   setFont(address: string, font: Partial<FakeFont>): void;
@@ -3504,6 +3552,10 @@ export function installFakeHost(options: FakeHostOptions = {}): {
             runtime.format(format);
         }
       }
+    },
+    merge(address) {
+      const { sheet, rect } = resolve(workbook, address);
+      sheet.merges.push(rect);
     },
     setFill(address, fill) {
       const { sheet, rect } = resolve(workbook, address);

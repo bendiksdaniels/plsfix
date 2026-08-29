@@ -10,6 +10,7 @@ import {
   selectedSingleRange,
   SHEET_COLUMNS,
   SHEET_ROWS,
+  syncWrite,
 } from "./internal";
 import { parseAddress } from "./shared";
 import { captureUndo, captureUndoAreas } from "./undo";
@@ -49,7 +50,7 @@ async function editAreas(
       if (property === "formulas") area.formulas = next;
       else area.numberFormat = next;
     }
-    await context.sync();
+    await syncWrite(context, what);
   });
 }
 

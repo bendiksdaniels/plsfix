@@ -270,6 +270,27 @@ export function styleChartShell(
   chart.legend.format.font.color = theme.formulaFont;
 }
 
+// Runs the queued batch of writes. Excel refuses a value write that covers only
+// part of a merged cell, and answers with a bare host string of its own; the
+// stage and the way out go back in, and every other failure travels untouched.
+export async function syncWrite(
+  context: Excel.RequestContext,
+  stage: string,
+): Promise<void> {
+  try {
+    await context.sync();
+  } catch (error) {
+    if (
+      (error as { code?: string }).code === Excel.ErrorCodes.invalidOperation
+    ) {
+      throw new Error(
+        `${stage}: Excel refused this write. Select whole merged cells, not part of one.`,
+      );
+    }
+    throw error;
+  }
+}
+
 // Runs the queued batch; a rejection carrying the given error code is
 // swallowed and reported as false, anything else is rethrown.
 export async function syncTolerating(

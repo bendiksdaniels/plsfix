@@ -4,7 +4,7 @@
 // as one job. The format cycles live next door in format-cycles.ts.
 
 import { cappedAreas, selectedAreas } from "./areas";
-import { numberFormat, SELECTION_CELL_CAP } from "./internal";
+import { numberFormat, SELECTION_CELL_CAP, syncWrite } from "./internal";
 import {
   type NumberFormatName,
   type PresetName,
@@ -127,6 +127,6 @@ export async function applyNumberFormat(name: NumberFormatName): Promise<void> {
         format,
       );
     }
-    await context.sync();
+    await syncWrite(context, "Number formatting");
   });
 }
