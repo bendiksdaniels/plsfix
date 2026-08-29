@@ -1,4 +1,4 @@
-# AUTORESUME - pls,fix (v2.2.6 LIVE 2026-08-29)
+# AUTORESUME - pls,fix (v2.3.0 LIVE 2026-08-29)
 
 ## 29.08 late: charts, placement, picker, native tables in flight (v2.2.6)
 
@@ -17,7 +17,11 @@
   (ui-audit-report.md). Merge order: tables, UI audit (expect taskpane.html/styles.css
   conflicts with tables), manual; gate, bump, deploy after each; backlog agents (Links list
   refresh on sheet edits, chart list label for linked charts, web undo error) only after that.
-- In flight: opus implementer in a worktree building native PowerPoint tables from
+- MERGED 29.08 night: native tables (branch worktree-agent-a3e01031c747aceb7, 7 commits, merge
+  feade84) + numeric right-alignment; v2.3.0 deployed. `src/ppt/tables.ts`, `src/ppt/placement.ts`,
+  `src/ppt/picture.ts`, `src/excel/link-table.ts`, fake `test/fakeppt/tables.ts`. Open: real-host
+  proof that getTable() works in the batch that added the table (fallback: one sync).
+- (was) In flight: opus implementer in a worktree building native PowerPoint tables from
   `docs/superpowers/specs/2026-08-29-native-tables-design.md` (kind `table`, addTable on
   PowerPointApi 1.8, in-place refresh, re-create on size change, free-space placement for
   pictures too); report at scratchpad/native-tables-report.md; merge = review diff, gate, bump.
