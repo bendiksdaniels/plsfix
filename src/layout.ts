@@ -81,8 +81,8 @@ function descend(start: Box, occupied: readonly Box[], gap: number): Box {
 }
 
 /**
- * The first free spot reading left to right, top to bottom, on a grid of
- * `step`; an object too big for any spot shrinks a tenth at a time down to
+ * Centred when nothing else is there; otherwise the first free spot reading
+ * left to right, top to bottom, on a grid of `step`; an object too big for any spot shrinks a tenth at a time down to
  * `minScale`; past that it is centred and flagged as overlapping.
  */
 export function placeInFreeSpace(
@@ -94,17 +94,29 @@ export function placeInFreeSpace(
   minScale = 0.4,
   step = 8,
 ): Placement {
+  if (occupied.length === 0) {
+    return {
+      box: rounded(centred(size, canvas)),
+      scale: 1,
+      overlapping: false,
+    };
+  }
   for (let scale = 1; scale >= minScale - 1e-9; scale = round1(scale - 0.1)) {
     const scaled = { width: size.width * scale, height: size.height * scale };
     const box = scanGrid(scaled, occupied, canvas, margin, gap, step);
     if (box) return { box: rounded(box), scale, overlapping: false };
   }
-  const centred = {
+  return { box: rounded(centred(size, canvas)), scale: 1, overlapping: true };
+}
+
+// Alone on the canvas an object is centred, as a slide reads best; the
+// top-left scan is for company.
+function centred(size: Size, canvas: Canvas): Box {
+  return {
     ...size,
     left: (canvas.width - size.width) / 2,
     top: (canvas.height - size.height) / 2,
   };
-  return { box: rounded(centred), scale: 1, overlapping: true };
 }
 
 function scanGrid(

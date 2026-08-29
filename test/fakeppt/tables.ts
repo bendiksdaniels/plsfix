@@ -20,6 +20,8 @@ export interface FakeTableCell {
 }
 
 export interface FakeTable {
+  /** What addTable was asked for per column, null where it was left to PowerPoint. */
+  columnWidths: (number | null)[];
   rowCount: number;
   columnCount: number;
   cells: FakeTableCell[][];
@@ -40,7 +42,12 @@ export function newFakeTable(
       horizontalAlignment: null,
     })),
   );
-  return { rowCount, columnCount, cells };
+  return {
+    columnWidths: [],
+    rowCount,
+    columnCount,
+    cells,
+  };
 }
 
 function fail(message: string, code: string): Error {

@@ -118,8 +118,9 @@ describe("links inside a group", () => {
       width: found.width,
       height: found.height,
     }).toEqual({
-      left: 36,
-      top: 36,
+      // Alone on the slide the picture is centred, where fitToSlide puts it.
+      left: fitted.left,
+      top: fitted.top,
       width: fitted.width,
       height: fitted.height,
     });

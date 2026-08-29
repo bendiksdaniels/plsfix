@@ -67,8 +67,8 @@ describe("insert from inbox", () => {
       width: shape.width,
       height: shape.height,
     }).toEqual({
-      left: 36,
-      top: 36,
+      left: 180,
+      top: 120,
       width: fitted.width,
       height: fitted.height,
     });
@@ -142,7 +142,8 @@ describe("insert from inbox", () => {
       await seal(ws.enc, ws.id, encodeInboxItem(item)),
     );
     await links.insertFromInbox(item, ws, relay);
-    expect(slide.shapes[1]!.top).toBe(36);
+    // Alone with an empty placeholder the picture is centred, not top-left.
+    expect(slide.shapes[1]!.top).toBe(120);
 
     slide.shapes[0]!.hasText = true;
     const second = await seedLink(fakePng(800, 400));

@@ -36,9 +36,9 @@ describe("placeBeside", () => {
 describe("placeInFreeSpace", () => {
   const slide = { width: 960, height: 540 };
 
-  it("starts at the top-left margin of an empty slide", () => {
+  it("centres the only object on an empty slide", () => {
     expect(placeInFreeSpace(size, [], slide, 36, 12)).toEqual({
-      box: { left: 36, top: 36, width: 300, height: 200 },
+      box: { left: 330, top: 170, width: 300, height: 200 },
       scale: 1,
       overlapping: false,
     });

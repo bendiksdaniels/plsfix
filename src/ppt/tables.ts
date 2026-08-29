@@ -122,10 +122,23 @@ function addTable(
   const shape = shapes.addTable(payload.rows, payload.cols, {
     ...box,
     values: payload.cells.map((row) => row.map((cell) => cell.t)),
+    columns: columnWidths(payload, box.width).map((width) => ({
+      columnWidth: width,
+    })),
   });
   shape.name = `pls,fix table ${label}`;
   writeCells(shape.getTable(), payload, false);
   return shape;
+}
+
+// The source columns' widths, scaled together so they add up to the table's
+// width: PowerPoint would otherwise divide the width evenly and wrap the
+// label column into five lines.
+export function columnWidths(payload: TablePayload, width: number): number[] {
+  const total = payload.widths.reduce((sum, one) => sum + one, 0);
+  if (total <= 0) return payload.widths.map(() => width / payload.cols);
+  const scale = width / total;
+  return payload.widths.map((one) => Math.round(one * scale * 100) / 100);
 }
 
 // Text is written on a repaint only: an insert carries it in `values`, so a

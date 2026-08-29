@@ -129,16 +129,22 @@ class ShapeCollectionProxy extends Handle {
   addTable(
     rowCount: number,
     columnCount: number,
-    options: BoxOptions & { values?: string[][] } = {},
+    options: BoxOptions & {
+      values?: string[][];
+      columns?: { columnWidth?: number }[];
+    } = {},
   ): ShapeProxy {
     const slide = this.slide();
-    const { values, ...box } = options;
+    const { values, columns, ...box } = options;
     const shape = this.deck.addShape(slide, {
       name: `Table ${String(slide.shapes.length + 1)}`,
       type: "Table",
       ...box,
     });
     shape.table = newFakeTable(rowCount, columnCount, values);
+    shape.table.columnWidths = (columns ?? []).map(
+      (column) => column.columnWidth ?? null,
+    );
     return new ShapeProxy(this.deck, shape.id);
   }
 

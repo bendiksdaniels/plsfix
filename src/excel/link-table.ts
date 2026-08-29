@@ -6,8 +6,7 @@
 
 import { overTableCap, TABLE_TOO_BIG, type TableCell } from "../link/model";
 
-// Excel's defaults. A cell wearing these adds nothing to the payload.
-const DEFAULT_FONT_SIZE = 11;
+// Excel's defaults. A cell wearing these adds nothing but its size to the payload.
 const DEFAULT_FONT_COLOR = "#000000";
 // An unfilled cell reads back as white, and a white fill on a white sheet is
 // the same picture: both travel as no fill at all.
@@ -84,9 +83,9 @@ function toCell(
   if (font?.color !== undefined && font.color !== DEFAULT_FONT_COLOR) {
     cell.c = font.color;
   }
-  if (font?.size !== undefined && font.size !== DEFAULT_FONT_SIZE) {
-    cell.z = font.size;
-  }
+  // The size always travels: a deck's table style defaults to 18 pt, a
+  // model's cells to 11, and a table twice the size of its source is no copy.
+  if (font?.size !== undefined) cell.z = font.size;
   const fill = format?.fill?.color;
   if (fill !== undefined && fill !== NO_FILL && fill !== "") cell.f = fill;
   const alignment = ALIGNMENT[String(format?.horizontalAlignment)];

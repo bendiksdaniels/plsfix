@@ -112,11 +112,14 @@ describe("exportSelectionAsTable", () => {
     // Text as Excel displays it, and only what differs from the defaults.
     expect(payload.cells).toEqual([
       [
-        { t: "Revenue", b: true },
-        { t: "1000", f: "#EEEEEE", a: "r" },
+        { t: "Revenue", b: true, z: 11 },
+        { t: "1000", f: "#EEEEEE", a: "r", z: 11 },
       ],
       // A number under General alignment says "right" itself.
-      [{ t: "Costs" }, { t: "-400", i: true, c: "#FF0000", z: 9, a: "r" }],
+      [
+        { t: "Costs", z: 11 },
+        { t: "-400", i: true, c: "#FF0000", z: 9, a: "r" },
+      ],
     ]);
 
     const inbox = await relay.listInbox(ws.id, ws.auth);

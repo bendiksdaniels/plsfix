@@ -89,8 +89,8 @@ describe("insert a table link", () => {
     // The columns' own widths, and a row's worth of height per row, at the
     // first free spot on an empty slide.
     expect(box(inserted)).toEqual({
-      left: 36,
-      top: 36,
+      left: 410,
+      top: 252,
       width: 140,
       height: 36,
     });
