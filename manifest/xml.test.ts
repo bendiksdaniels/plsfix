@@ -89,6 +89,23 @@ describe("buildManifest", () => {
     expect(multi).toContain(`<bt:Set Name="SharedRuntime"`);
   });
 
+  // The XML manifest has no per-host <Requirements>, so declaring PowerPoint
+  // costs the add-in its published ExcelApi floor - and the whole export path
+  // rests on Range.getImage (ExcelApi 1.9). The floor did not disappear, it
+  // moved: the Excel pane boot refuses below it. If that check ever leaves
+  // src/main.ts, an old Excel silently installs and fails at the Office.js
+  // call instead, so the ruling is pinned here rather than in a comment alone.
+  it("keeps the ExcelApi 1.9 floor as a runtime check in the Excel pane boot", () => {
+    expect(buildManifest(prod, ADDIN)).not.toContain("ExcelApi");
+    const mainSrc = readFileSync(
+      new URL("../src/main.ts", import.meta.url),
+      "utf8",
+    );
+    expect(mainSrc).toContain(
+      'Office.context.requirements.isSetSupported("ExcelApi", "1.9")',
+    );
+  });
+
   it("declares the Presentation host in both blocks and drops the top-level ExcelApi requirement", () => {
     const xml = buildManifest(prod, ADDIN);
     expect(xml.match(/<Host xsi:type="Presentation">/g)).toHaveLength(2);

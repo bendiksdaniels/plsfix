@@ -260,7 +260,8 @@ export const ADDIN: AddinSpec = {
   version: `${packageVersion}.0`,
   provider: "Daniels Bendiks",
   displayName: "Model Tools",
-  description: "Fast, consistent financial modelling tools for Excel.",
+  description:
+    "Fast, consistent financial modelling tools for Excel and PowerPoint.",
   supportUrl: "https://dbautomatizacijas.com",
   appDomain: "https://dbautomatizacijas.com",
   tabLabel: "Model Tools",

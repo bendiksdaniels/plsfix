@@ -25,13 +25,13 @@ render, shapes inside groups, Entra SSO pairing.
 | Geometry, name (writable), delete, parent slide | `Shape.left/top/width/height/name`, `delete()`, `getParentSlideOrNullObject()` | 1.4 / 1.3 / 1.5 |
 | Z-order | `Shape.zOrderPosition`, `setZOrder()` | 1.8 |
 | Selection | `Presentation.getSelectedSlides()`, `setSelectedSlides(ids)`, `Slide.setSelectedShapes(ids)` | 1.5 |
-| Range picture | `Excel.Range.getImage()` -> base64 PNG | ExcelApi 1.9 (already the manifest floor) |
+| Range picture | `Excel.Range.getImage()` -> base64 PNG | ExcelApi 1.9 (a runtime floor, not a manifest one - see the two-hosts row) |
 | Chart picture | `Excel.Chart.getImage(w,h,"Fit")` | ExcelApi 1.2 |
 | Range anchor that follows edits | hidden workbook-scoped defined name (`NamedItemCollection.add`, `NamedItem.visible=false`, `getRangeOrNullObject`) | ExcelApi 1.4 / 1.1 |
 | Chart anchor | `Chart.name` (writable) resolved across all worksheets | ExcelApi 1.1 |
 | Excel-side registry | `workbook.settings` (already used by the audit overlay) | ExcelApi 1.4 |
 | File name | `Office.context.document.getFilePropertiesAsync()` -> `url` ("" until saved) | Common API |
-| One add-in, two hosts | `<Hosts>` with `Workbook` + `Presentation`, per-host `VersionOverrides`; SharedRuntime 1.1 in PowerPoint (Win 2102, Mac 16.46) | manifest |
+| One add-in, two hosts | `<Hosts>` with `Workbook` + `Presentation`, per-host `VersionOverrides`; SharedRuntime 1.1 in PowerPoint (Win 2102, Mac 16.46). The XML manifest cannot scope `<Requirements>` per host - a top-level ExcelApi set would hide the add-in in PowerPoint - so the ExcelApi 1.9 floor is enforced at runtime in the Excel pane boot (`src/main.ts`), and the custom functions are gated by their Workbook-only extension point rather than by a requirement set. | manifest |
 
 Unverified (spike, section 10): tags surviving cut/paste across slides and copy into another
 deck; `Range.getImage` orientation and pixel density on Mac; whether `OfficeRuntime.storage`
@@ -93,7 +93,9 @@ Anchors: range -> defined name `SMT_LINK_<id8>` (hidden, workbook scope); chart 
 | `PUT /api/links/{id}` | Bearer authKey | create on first PUT (stores sha256), else must match (403); body <= 4 MB (413); rev += 1; keeps last 2 revs; TTL 7 d from last PUT |
 | `GET /api/links/{id}` | Bearer | latest blob, `ETag: "<rev>"`, honours `If-None-Match` (304); 404 when unknown/expired |
 | `DELETE /api/links/{id}` | Bearer | removes all revs |
-| `POST /api/links/status` | per item `{id, auth}` | `[{id, rev, pushedAt}]`, unknown -> `rev: null`, wrong auth -> `rev: null, error: "auth"`; max 200 items |
+| `GET /api/links/{id}?rev=<n>` | Bearer | one named revision (the revert path), never a 304; 404 once retention or the TTL has dropped it |
+| `POST /api/links/status` | per item `{id, auth}` | `[{id, rev, pushedAt}]`, unknown -> `rev: null`, wrong auth -> `rev: null, error: "auth"`; max 200 items, so a bigger deck polls in several requests |
+| `POST /api/links/fetch` | per item `{id, auth, knownRev?}` | `{items: [{id, rev, blob}], omitted: [{id, reason}]}`; max 200 items and 4 MiB of blobs per answer, the overflow named `deferred` and fetched one GET each |
 | `POST /api/inbox/{ws}` | Bearer wsAuth | body = sealed InboxItem <= 64 KB; TTL 24 h |
 | `GET /api/inbox/{ws}` | Bearer wsAuth | `[{id, createdAt, blob}]` newest first |
 | `DELETE /api/inbox/{ws}/{id}` | Bearer wsAuth | remove one |
