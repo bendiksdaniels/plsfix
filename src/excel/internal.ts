@@ -29,6 +29,11 @@ export function numberFormat(name: NumberFormatName): string {
 
 export const SELECTION_CELL_CAP = 5_000;
 export const EDIT_CELL_CAP = 500;
+// What one workbook-wide scan may read in total. The per-sheet cap alone does
+// not bound a request: thirty sheets just under it queue a hundred and fifty
+// thousand cells into a single sync, which a real model reaches easily and the
+// host answers with a bare RequestPayloadSizeLimitExceeded.
+export const SCAN_CELL_CAP = SELECTION_CELL_CAP * 4;
 const NO_FILL = "none";
 export const BASE_WHITE = "#FFFFFF";
 
@@ -154,26 +159,31 @@ export interface ScannedSheet {
 }
 
 // Which sheets a workbook-wide scan can read: an empty sheet has nothing in it,
-// and a sheet whose used range runs past the cap would overflow the request
-// payload, so it is named as skipped instead of quietly left out. The ranges
-// come in with isNullObject, cellCount, rowIndex and columnIndex already
-// synced; the caller loads the grids it needs - values, formulas or both -
-// before the next sync.
+// a sheet whose used range runs past the per-sheet cap would overflow the
+// request payload on its own, and the sheets after the running total passes the
+// scan cap would overflow it between them. All three are named as skipped
+// rather than quietly left out - the callers render that list, and the style
+// scrubber refuses to delete while it is not empty. The ranges come in with
+// isNullObject, cellCount, rowIndex and columnIndex already synced; the caller
+// loads the grids it needs - values, formulas or both - before the next sync.
 export function pickScannableSheets(
   items: Excel.Worksheet[],
   ranges: Excel.Range[],
   cap: number,
+  totalCap = SCAN_CELL_CAP,
 ): { scanned: ScannedSheet[]; skippedSheets: string[] } {
   const scanned: ScannedSheet[] = [];
   const skippedSheets: string[] = [];
+  let total = 0;
 
   ranges.forEach((range, index) => {
     const name = items[index]?.name ?? "";
     if (range.isNullObject) return;
-    if (range.cellCount > cap) {
+    if (range.cellCount > cap || total + range.cellCount > totalCap) {
       skippedSheets.push(name);
       return;
     }
+    total += range.cellCount;
     scanned.push({ index, name, range });
   });
 
