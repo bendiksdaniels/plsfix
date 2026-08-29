@@ -66,7 +66,7 @@ each item. Stop when Daniel intervenes or the list is empty.
 - [x] D2 Highlight linked cells in Excel (M3): Links tab toggle that paints a subtle brand-tinted fill on
       every anchored range and restores the original fills on toggle-off (snapshot like the audit overlay);
       chart anchors get a one-line hint instead.
-- [ ] D3 Batched relay fetch: `POST /api/links/fetch` with `[{id, auth, knownRev}]` returning the blobs
+- [x] D3 Batched relay fetch: `POST /api/links/fetch` with `[{id, auth, knownRev}]` returning the blobs
       that changed (base64url) in one response (4 MiB total cap, 413 above); client + PowerPoint update
       path use it; per-row fallback to GET stays.
 - [ ] D4 Super Find phase 4: comments (`worksheet.comments`, ExcelApi 1.10, gated) with a "comment" hit kind.
