@@ -19,8 +19,9 @@
   refresh on sheet edits, chart list label for linked charts, web undo error) only after that.
 - MERGED 29.08 night: native tables (branch worktree-agent-a3e01031c747aceb7, 7 commits, merge
   feade84) + numeric right-alignment; v2.3.0 deployed. `src/ppt/tables.ts`, `src/ppt/placement.ts`,
-  `src/ppt/picture.ts`, `src/excel/link-table.ts`, fake `test/fakeppt/tables.ts`. Open: real-host
-  proof that getTable() works in the batch that added the table (fallback: one sync).
+  `src/ppt/picture.ts`, `src/excel/link-table.ts`, fake `test/fakeppt/tables.ts`. Proven on PowerPoint for
+  the web 29.08: insert as a native 8x7 table in free space, in-place update (rev 4, geometry
+  kept), rebuild as 9x7 at the same corner after a row was inserted into the source (rev 5).
 - (was) In flight: opus implementer in a worktree building native PowerPoint tables from
   `docs/superpowers/specs/2026-08-29-native-tables-design.md` (kind `table`, addTable on
   PowerPointApi 1.8, in-place refresh, re-create on size change, free-space placement for
