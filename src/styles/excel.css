@@ -25,7 +25,7 @@
 .metrics {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 7px;
+  gap: var(--gap-tight);
 }
 .metrics div {
   display: grid;
@@ -56,9 +56,9 @@
   align-items: center;
   gap: var(--gap-tight);
   min-width: 0;
-  padding: 8px;
+  padding: 8px 10px;
   border: 1px solid var(--line);
-  border-radius: 10px;
+  border-radius: var(--radius-row);
   color: var(--ink);
   background: var(--surface);
   font-size: var(--fs-body);
@@ -100,7 +100,7 @@
   gap: 1px;
   overflow: hidden;
   border: 1px solid var(--line);
-  border-radius: 10px;
+  border-radius: var(--radius-row);
   background: var(--line);
 }
 .number-strip button,
@@ -113,6 +113,12 @@
   font-size: var(--fs-body);
   font-weight: 650;
   cursor: pointer;
+}
+/* The strip clips to its rounded corners, so a ring drawn outside a button
+   would be cut off; these draw theirs just inside instead. */
+.number-strip button:focus-visible,
+.scale-row button:focus-visible {
+  outline-offset: -3px;
 }
 .cycle-strip,
 .paste-strip {
@@ -136,7 +142,7 @@
   gap: var(--gap-tight);
   padding: 10px;
   border: 1px solid var(--line);
-  border-radius: 11px;
+  border-radius: var(--radius-row);
   background: var(--surface);
 }
 .trace-head {
@@ -157,7 +163,7 @@
 /* Workbook view: sheet explorer, contents sheet, name scrubber. */
 .sheet-list {
   display: grid;
-  gap: 6px;
+  gap: var(--gap-tight);
 }
 .sheet-row {
   display: grid;
@@ -304,7 +310,7 @@
 .wl-key {
   display: block;
   overflow-wrap: anywhere;
-  padding: 8px 10px;
+  padding: 9px 10px;
   border: 1px solid var(--line);
   border-radius: var(--radius-control);
   color: var(--ink);

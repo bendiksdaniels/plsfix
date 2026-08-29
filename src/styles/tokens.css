@@ -52,8 +52,11 @@
      every checkbox, one radius per role. */
   --control-h: 34px;
   --tick: 16px;
+  /* Three radii: a control, a list row or panel, and a container that pads
+     controls (the tab bar, the drop zone). */
   --radius-control: 9px;
-  --radius-card: 12px;
+  --radius-row: 11px;
+  --radius-card: 13px;
   --radius-pill: 999px;
 
   --mono:

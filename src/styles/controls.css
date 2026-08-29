@@ -59,7 +59,7 @@ button:disabled {
 
 .action-list {
   display: grid;
-  gap: 7px;
+  gap: var(--gap-tight);
 }
 .action-list > button {
   display: grid;
@@ -71,7 +71,7 @@ button:disabled {
   width: 100%;
   padding: 9px 10px;
   border: 1px solid var(--line);
-  border-radius: 11px;
+  border-radius: var(--radius-row);
   color: var(--ink);
   background: var(--surface);
   text-align: left;
@@ -145,7 +145,7 @@ kbd {
   align-items: start;
   padding: 9px 10px;
   border: 1px solid var(--line);
-  border-radius: 11px;
+  border-radius: var(--radius-row);
   background: var(--surface);
   cursor: pointer;
 }
@@ -256,7 +256,7 @@ select,
 .chip-strip {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: var(--gap-tight);
 }
 .chip {
   max-width: 100%;

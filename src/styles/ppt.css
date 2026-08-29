@@ -55,6 +55,11 @@
   width: 24px;
   padding-left: 0;
 }
+/* The cells clip so names ellipsise; the tick's cell must not, or the focus
+   ring around the checkbox would be cut off with them. */
+.link-select {
+  overflow: visible;
+}
 .link-table th:nth-child(2) {
   width: 42px;
 }
@@ -153,9 +158,9 @@
   grid-template-columns: 1fr auto;
   gap: 10px;
   align-items: center;
-  padding: 8px 8px 8px 11px;
+  padding: 9px 10px;
   border: 1px solid var(--line);
-  border-radius: 11px;
+  border-radius: var(--radius-row);
   background: var(--surface);
 }
 .inbox-text {
@@ -194,8 +199,8 @@
 .source-chooser {
   display: grid;
   gap: var(--gap-tight);
-  padding: 10px 11px;
+  padding: 10px;
   border: 1px solid var(--accent);
-  border-radius: 11px;
+  border-radius: var(--radius-row);
   background: rgba(46, 196, 182, 0.07);
 }

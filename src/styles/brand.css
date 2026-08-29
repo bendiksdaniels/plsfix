@@ -65,9 +65,9 @@
   grid-template-columns: 46px 1fr 84px;
   gap: 10px;
   align-items: center;
-  padding: 8px;
+  padding: 9px 10px;
   border: 1px solid var(--line);
-  border-radius: 11px;
+  border-radius: var(--radius-row);
   background: var(--surface);
 }
 .swatch-input {
