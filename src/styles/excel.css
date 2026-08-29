@@ -1,0 +1,325 @@
+/* The Excel pane's Tools, Workbook and Links tabs: the selection card, the
+   format grid, the cycle strips, the trace panel, the sheet explorer and the
+   tracked-link table. The Brand tab is brand.css; anything both panes share is
+   controls.css. */
+
+.selection-card {
+  padding: 16px;
+  border: 1px solid rgba(20, 33, 61, 0.1);
+  border-radius: 16px;
+  background: var(--paper);
+  box-shadow: 0 10px 28px rgba(20, 33, 61, 0.08);
+}
+
+.selection-address {
+  overflow: hidden;
+  padding: 8px 10px;
+  border-radius: 8px;
+  color: #4a5568;
+  background: var(--surface-sunken);
+  font: 600 var(--fs-body) / 1.2 var(--mono);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.metrics {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 7px;
+}
+.metrics div {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  padding-left: 8px;
+  border-left: 2px solid var(--accent);
+}
+.metrics strong {
+  font-size: var(--fs-lead);
+  line-height: 1;
+}
+.metrics span {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: var(--fs-micro);
+  text-overflow: ellipsis;
+}
+
+.tool-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--gap-tight);
+}
+.tool {
+  display: flex;
+  min-height: 42px;
+  align-items: center;
+  gap: var(--gap-tight);
+  min-width: 0;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  color: var(--ink);
+  background: var(--surface);
+  font-size: var(--fs-body);
+  font-weight: 700;
+  cursor: pointer;
+}
+.tool i {
+  width: 5px;
+  height: 22px;
+  flex: none;
+  border-radius: 4px;
+  background: #8a95a3;
+}
+.style-title i {
+  background: var(--ink);
+}
+.style-header i {
+  background: #8a95a3;
+}
+.style-input i {
+  background: #0057b8;
+}
+.style-formula i {
+  background: #1f1d1b;
+}
+.style-result i {
+  background: var(--green);
+}
+.style-clear i {
+  background: linear-gradient(#cbd5dd 45%, transparent 45%);
+}
+
+/* Segmented strips. The 1px grid gap over a line-coloured background draws
+   every rule, in any wrap, without a nth-child rule per column count. */
+.number-strip,
+.scale-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--line);
+}
+.number-strip button,
+.scale-row button {
+  min-height: var(--control-h);
+  padding: 5px 3px;
+  border: 0;
+  color: #4a5568;
+  background: #f7fafb;
+  font-size: var(--fs-body);
+  font-weight: 650;
+  cursor: pointer;
+}
+.cycle-strip,
+.paste-strip {
+  grid-template-columns: repeat(5, 1fr);
+}
+/* The style cycles carry one button more than the number-format strip. */
+.cycle-strip.style-strip {
+  grid-template-columns: repeat(6, 1fr);
+}
+/* The size cycles are two wide labels, so they take half the strip each. */
+.cycle-strip.size-strip,
+.trace-strip {
+  grid-template-columns: repeat(2, 1fr);
+}
+.scale-row {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.trace-panel {
+  display: grid;
+  gap: var(--gap-tight);
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  background: var(--surface);
+}
+.trace-head {
+  display: flex;
+  align-items: center;
+  gap: var(--gap-tight);
+}
+.trace-origin {
+  overflow: hidden;
+  flex: 1;
+  min-width: 0;
+  color: #4a5568;
+  font: 600 var(--fs-body) / 1.2 var(--mono);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Workbook view: sheet explorer, contents sheet, name scrubber. */
+.sheet-list {
+  display: grid;
+  gap: 6px;
+}
+.sheet-row {
+  display: grid;
+  grid-template-columns: 1fr auto var(--control-h);
+  gap: var(--gap-tight);
+  align-items: center;
+  min-width: 0;
+  padding: 4px 5px 4px 10px;
+  border: 1px solid var(--line);
+  border-left: 3px solid transparent;
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+}
+.sheet-row.active {
+  border-left-color: var(--accent);
+  background: #fff;
+}
+.sheet-row.locked {
+  opacity: 0.55;
+}
+.sheet-name {
+  display: block;
+  overflow: hidden;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  color: var(--ink);
+  background: none;
+  font-size: var(--fs-title);
+  font-weight: 700;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+/* The global button hover would repaint the bare name as a button. */
+.sheet-name:hover:not(:disabled) {
+  background: none;
+  text-decoration: underline;
+}
+.sheet-name.muted {
+  color: var(--muted);
+  cursor: default;
+}
+.sheet-badge {
+  padding: 2px 7px;
+  border-radius: var(--radius-pill);
+  color: var(--muted);
+  background: var(--surface-sunken);
+  font-size: var(--fs-micro);
+  font-weight: 750;
+  white-space: nowrap;
+}
+.sheet-badge.off {
+  color: var(--accent-ink);
+  background: rgba(46, 196, 182, 0.16);
+}
+.eye {
+  width: var(--control-h);
+  height: var(--control-h);
+  flex: none;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  color: var(--muted);
+  background: #fff;
+  font-size: var(--fs-micro);
+  line-height: 1;
+  cursor: pointer;
+}
+.eye:hover:not(:disabled) {
+  color: var(--ink);
+  border-color: #8a95a3;
+}
+.eye-slot {
+  display: block;
+  height: var(--control-h);
+}
+
+/* Links tab: one row per tracked link, plus the pairing key block. The fixed
+   layout is what makes the object name truncate instead of wrapping the row
+   into three lines at 320px. */
+.wl-table {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+}
+.wl-table td {
+  padding: 6px 4px;
+  border-bottom: 1px solid var(--line);
+  vertical-align: top;
+}
+.wl-table tr:last-child td {
+  border-bottom: 0;
+}
+.wl-pick {
+  width: 24px;
+  padding-left: 0;
+}
+.wl-pick input {
+  width: var(--tick);
+  height: var(--tick);
+  margin: 1px 0 0;
+  accent-color: var(--accent);
+}
+.wl-object strong,
+.wl-object small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.wl-object strong {
+  font-size: var(--fs-title);
+  line-height: 1.25;
+}
+.wl-object small {
+  margin-top: 1px;
+  color: var(--muted);
+  font-size: var(--fs-micro);
+}
+.wl-badge {
+  display: inline-block;
+  margin-top: 4px;
+  padding: 1px 6px;
+  border-radius: var(--radius-pill);
+  color: var(--red);
+  background: rgba(163, 63, 50, 0.1);
+  font-size: var(--fs-micro);
+  font-weight: 750;
+}
+/* Wide enough for the longest stamp ("Pushed 88 days ago") at every width, so
+   the ages read as one column and only the object name truncates. */
+.wl-pushed {
+  width: 116px;
+  color: var(--muted);
+  font-size: var(--fs-micro);
+  text-align: right;
+}
+.wl-empty {
+  color: var(--muted);
+  font-size: var(--fs-body);
+}
+.wl-key {
+  display: block;
+  overflow-wrap: anywhere;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+  color: var(--ink);
+  background: var(--surface);
+  font-family: var(--mono);
+  font-size: var(--fs-body);
+}
+.wl-keys {
+  grid-template-columns: repeat(4, 1fr);
+}
+
+/* The narrowest dock Office gives a pane: the format grid drops to two
+   columns rather than squeezing six labels across three. */
+@media (max-width: 330px) {
+  .tool-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}

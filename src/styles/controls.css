@@ -1,0 +1,274 @@
+/* Every control both panes share: the button state machine, icon buttons,
+   the action list, ticked rows, paired button rows, fields and chips. Owns
+   the four interaction states (hover, active, focus, disabled) - a component
+   sheet may restyle a control's rest state but never invents its own states. */
+
+button {
+  font: inherit;
+  transition:
+    border-color 0.15s,
+    background 0.15s,
+    color 0.15s;
+}
+button:hover:not(:disabled) {
+  border-color: #8a95a3;
+  background: var(--surface-hover);
+}
+button:active:not(:disabled) {
+  background: var(--surface-sunken);
+}
+button:focus-visible,
+select:focus-visible,
+input:focus-visible,
+.upload-drop:focus-within {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+/* Quiet, not invisible: a disabled control keeps its shape and drops to the
+   muted ink rather than fading the whole button out. */
+button:disabled {
+  color: var(--muted);
+  background: rgba(255, 255, 255, 0.4);
+  cursor: not-allowed;
+}
+
+.icon-button {
+  width: var(--control-h);
+  height: var(--control-h);
+  flex: none;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+  color: var(--ink);
+  background: #fff;
+  font-size: var(--fs-lead);
+  cursor: pointer;
+  transition:
+    border-color 0.15s,
+    background 0.15s,
+    transform 0.15s;
+}
+.icon-button:hover:not(:disabled) {
+  border-color: var(--ink);
+  transform: rotate(20deg);
+}
+/* The refresh icon spins on hover; a back arrow must not. */
+.icon-button.back:hover:not(:disabled) {
+  transform: none;
+}
+
+.action-list {
+  display: grid;
+  gap: 7px;
+}
+.action-list > button {
+  display: grid;
+  grid-template-columns: 28px 1fr auto;
+  gap: 9px;
+  /* The icon and the shortcut label the title, so they sit on its line, not
+     in the middle of a description that may run to three lines. */
+  align-items: start;
+  width: 100%;
+  padding: 9px 10px;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  color: var(--ink);
+  background: var(--surface);
+  text-align: left;
+  cursor: pointer;
+}
+.action-list > button > span {
+  min-width: 0;
+}
+.action-list strong,
+.action-list small {
+  display: block;
+}
+.action-list strong {
+  font-size: var(--fs-title);
+  line-height: 1.25;
+}
+.action-list small {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: var(--fs-body);
+  line-height: 1.35;
+}
+.action-icon {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  color: var(--ink);
+  background: #e6edf2;
+  font-size: var(--fs-lead);
+  font-weight: 800;
+}
+.action-icon.colors {
+  color: #0057b8;
+  text-shadow:
+    6px 0 #17823b,
+    3px 0 #1f1d1b;
+}
+.action-icon.audit,
+.action-icon.chart,
+.action-icon.key,
+.action-icon.links,
+.action-icon.names,
+.action-icon.toc,
+.action-icon.undo {
+  color: var(--accent-ink);
+}
+/* Two blocks read as a rising bridge; they need to sit on one line in 28px. */
+.action-icon.bridge {
+  color: var(--accent-ink);
+  font-size: var(--fs-micro);
+  letter-spacing: -1px;
+}
+
+kbd {
+  padding: 3px 6px;
+  border: 1px solid var(--line);
+  border-bottom-width: 2px;
+  border-radius: 5px;
+  color: var(--muted);
+  background: #f7f9fb;
+  font: 700 var(--fs-micro) var(--mono);
+  white-space: nowrap;
+}
+
+.toggle-row {
+  display: grid;
+  grid-template-columns: var(--tick) 1fr;
+  gap: 10px;
+  align-items: start;
+  padding: 9px 10px;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  background: var(--surface);
+  cursor: pointer;
+}
+.toggle-row input {
+  width: var(--tick);
+  height: var(--tick);
+  margin: 1px 0 0;
+  accent-color: var(--accent);
+}
+.toggle-row strong {
+  display: block;
+  font-size: var(--fs-title);
+  line-height: 1.25;
+}
+.toggle-row small {
+  display: block;
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: var(--fs-body);
+  line-height: 1.35;
+}
+
+.io-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--gap-tight);
+}
+.io-row button,
+.io-import {
+  display: grid;
+  place-items: center;
+  min-height: var(--control-h);
+  padding: 4px 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+  color: var(--ink);
+  background: var(--surface);
+  font-size: var(--fs-body);
+  font-weight: 700;
+  text-align: center;
+  cursor: pointer;
+}
+.io-import:hover {
+  border-color: #8a95a3;
+  background: var(--surface-hover);
+}
+
+.danger {
+  display: block;
+  width: 100%;
+  min-height: var(--control-h);
+  border: 1px solid var(--red);
+  border-radius: var(--radius-control);
+  color: var(--red);
+  background: rgba(163, 63, 50, 0.07);
+  font-size: var(--fs-body);
+  font-weight: 750;
+  cursor: pointer;
+}
+.danger:hover:not(:disabled) {
+  border-color: var(--red);
+  background: rgba(163, 63, 50, 0.14);
+}
+/* Second click within five seconds: the button says so and looks it. */
+.danger.armed,
+.danger.armed:hover:not(:disabled) {
+  color: #fff;
+  background: var(--red);
+}
+
+/* Fields: one height, one border, one focus ring for every select and text
+   input in either pane. */
+select,
+.key-input,
+.hex-input {
+  width: 100%;
+  min-width: 0;
+  min-height: var(--control-h);
+  padding: 4px 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+  color: var(--ink);
+  background: #fff;
+  font:
+    600 var(--fs-body) "Aptos",
+    "Segoe UI",
+    system-ui,
+    sans-serif;
+}
+.key-input {
+  font: 600 var(--fs-body) / 1.2 var(--mono);
+}
+.hex-input {
+  font: 600 var(--fs-body) var(--mono);
+  text-transform: uppercase;
+}
+.key-label {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  color: var(--muted);
+  font-size: var(--fs-micro);
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.chip-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.chip {
+  max-width: 100%;
+  overflow: hidden;
+  min-height: var(--control-h);
+  padding: 4px 9px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-pill);
+  color: var(--ink);
+  background: #fff;
+  font: 650 var(--fs-body) var(--mono);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}

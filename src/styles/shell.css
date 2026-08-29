@@ -1,0 +1,247 @@
+/* The frame both panes share: the masthead and its comma mark, the status
+   pill, the tab strip, the section rhythm inside a view, the footer and the
+   toast. Owns every vertical gap between sections; a component sheet may set
+   gaps inside itself but never around itself. */
+
+.app-shell {
+  display: grid;
+  gap: var(--gap-section);
+  padding: 22px 18px 18px;
+}
+
+.masthead {
+  display: grid;
+  grid-template-columns: 42px 1fr auto;
+  gap: 12px;
+  align-items: center;
+}
+
+/* The comma's ink sits on the baseline, so centring the em box would leave the
+   glyph in the bottom quarter of the square. Georgia at 40px carries a 37px
+   ascent and a 9px descent, so a 14px line box puts the baseline - and with it
+   the comma's ink centre - on the square's own centre: 0 + (14 - 46) / 2 + 37
+   = 21 = 42 / 2. */
+.brand-mark {
+  display: block;
+  width: 42px;
+  height: 42px;
+  border-radius: 11px;
+  color: var(--accent);
+  background: var(--ink);
+  font:
+    800 40px/14px Georgia,
+    serif;
+  text-align: center;
+  box-shadow: 0 7px 16px rgba(20, 33, 61, 0.22);
+}
+
+.connection {
+  display: inline-flex;
+  align-items: center;
+  align-self: center;
+  justify-self: end;
+  min-height: 22px;
+  padding: 4px 10px;
+  border-radius: var(--radius-pill);
+  color: var(--muted);
+  background: var(--surface);
+  font-size: var(--fs-micro);
+  font-weight: 700;
+  white-space: nowrap;
+}
+.connection.waiting {
+  color: var(--muted);
+  background: var(--surface-sunken);
+}
+.connection.ready {
+  color: var(--green);
+  background: #e7f3eb;
+}
+.connection.error {
+  color: var(--red);
+  background: #f8e9e6;
+}
+
+.tab-bar {
+  display: grid;
+  /* Equal columns for however many tabs the bar holds - but each track keeps
+     its min-content floor, so a long label (Workbook) takes what it needs from
+     the others instead of being clipped. */
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+  background: rgba(255, 255, 255, 0.6);
+}
+.tab {
+  min-height: var(--control-h);
+  padding: 0 6px;
+  border: 0;
+  border-radius: var(--radius-control);
+  color: var(--muted);
+  background: transparent;
+  font-size: var(--fs-body);
+  font-weight: 750;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+}
+.tab:hover:not(.active) {
+  color: var(--ink);
+  background: rgba(20, 33, 61, 0.05);
+}
+.tab.active,
+/* button:hover (0,2,1) outranks .tab.active (0,2,0); keep the active tab dark. */
+.tab.active:hover {
+  color: var(--paper);
+  background: var(--ink);
+}
+
+.view {
+  display: grid;
+  gap: var(--gap-section);
+  align-content: start;
+}
+/* One rhythm inside every section, so no block has to carry a margin of its
+   own: nothing in a view may set a vertical margin. */
+.view > section {
+  display: grid;
+  gap: var(--gap-block);
+  align-content: start;
+}
+/* Nothing in a view may widen the pane: a section wider than the pane would
+   drag the tab strip past the edge with it. */
+.view,
+.view > section {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.section-heading {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: var(--gap-tight);
+  min-width: 0;
+}
+.section-heading.compact {
+  align-items: center;
+}
+.section-heading > div {
+  min-width: 0;
+}
+
+footer {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--muted);
+  font-size: var(--fs-micro);
+}
+footer span:last-child {
+  margin-left: auto;
+}
+.privacy-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--green);
+}
+
+.toast {
+  position: fixed;
+  right: 14px;
+  bottom: 14px;
+  left: 14px;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: var(--radius-control);
+  color: white;
+  background: var(--green);
+  box-shadow: 0 12px 30px rgba(20, 33, 61, 0.25);
+  font-size: var(--fs-body);
+  font-weight: 700;
+  line-height: 1.35;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(10px);
+  transition:
+    opacity 0.18s,
+    transform 0.18s;
+}
+.toast-text {
+  flex: 1;
+}
+.toast.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+.toast.error {
+  background: var(--red);
+}
+.toast-copy {
+  flex: none;
+  min-height: var(--control-h);
+  padding: 5px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  border-radius: 7px;
+  color: inherit;
+  background: rgba(255, 255, 255, 0.14);
+  font-size: var(--fs-body);
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+}
+/* Scoped to the button, not the whole .toast.visible bar: the fixed toast
+   spans the pane width and can sit over real controls (e.g. "Delete broken
+   names" above the footer) - only the copy button should intercept clicks
+   while a toast is showing; the rest of the bar stays click-through. */
+.toast.visible .toast-copy {
+  pointer-events: auto;
+}
+.toast-copy:hover:not(:disabled) {
+  border-color: rgba(255, 255, 255, 0.8);
+  background: rgba(255, 255, 255, 0.26);
+}
+
+@media (max-width: 330px) {
+  .app-shell {
+    padding-right: 12px;
+    padding-left: 12px;
+  }
+}
+
+/* The connection badge is the only place either pane says the host was
+   rejected, so a dock too narrow to fit it beside the eyebrow/title moves it
+   under them rather than hiding it. At the 11px floor both fixed strings
+   ("PowerPoint required", "Excel connected", ...) need more of the row than
+   at 320px alone: eyebrow or h1 (whichever is longer for that pane) wraps
+   to two lines up to 399px wide and only clears at 400px, so this threshold
+   - wider than, and independent of, the 330px grid-density breakpoint above
+   - is set from that measurement plus a small margin, not guessed. It stays a
+   pill on its own row: justify-self keeps it from stretching into a banner. */
+@media (max-width: 405px) {
+  .masthead {
+    grid-template-columns: 42px 1fr;
+    row-gap: 8px;
+  }
+  .connection {
+    grid-column: 1 / -1;
+    justify-self: start;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  button,
+  .toast {
+    transition: none;
+  }
+  .icon-button:hover,
+  .logo-swatch:hover {
+    transform: none;
+  }
+}
