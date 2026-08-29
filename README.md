@@ -8,6 +8,7 @@ Model Tools is an Excel productivity add-in for financial modelling teams. It is
 - Five financial-model formatting presets
 - Whole-number, decimal, euro, and percentage number formats
 - Format cycles: press the same key again to step through number formats (general, date, currency, percent, multiple), title, result and item row styles, brand fill or font colors, borders (bottom rule, total, result line, box, grid), and row heights or column widths
+- Paintbrush: three slots that capture the active cell's number format, font, fill, alignment and border rules and paint any of them over a selection; the slots stay on the machine, so they survive closing the pane
 - Fill, paste and undo: fills sized by the neighbouring column or row, a marked copy source pasted as values, formats, exact formulas or transposed, quick CAGR, sign flip and decimal steppers, and **Undo last Model Tools action**, which puts back the formulas, number formats and colors the add-in last wrote (Office.js writes never reach Excel's own undo stack)
 - Reversible `IFERROR(..., 0)` guard: the same action strips it again
 - Financial-model autocoloring: hardcodes blue, formulas black, cross-sheet links green
@@ -50,6 +51,9 @@ branded equivalent. Users can remap under Office add-in shortcut preferences.
 | Cycle borders | Ctrl+Shift+7 |
 | Cycle row height | Ctrl+Shift+Y |
 | Cycle column width | Ctrl+Shift+X |
+| Apply paintbrush slot 1 | Ctrl+Shift+D |
+| Apply paintbrush slot 2 | Ctrl+Shift+N |
+| Apply paintbrush slot 3 | Ctrl+Shift+O |
 | Toggle audit overlay | Ctrl+Shift+A |
 | Trace precedents | Ctrl+Alt+Q |
 | Trace dependents | Ctrl+Alt+W |
