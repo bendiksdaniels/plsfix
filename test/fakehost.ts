@@ -212,6 +212,14 @@ export function defaultCell(): FakeCell {
 
 const DEFAULT_CELL_JSON = JSON.stringify(defaultCell());
 
+// Excel writes a boolean out in capitals and an empty cell as nothing at all.
+function displayText(value: CellValue): string {
+  if (value === "" || value === null || value === undefined) return "";
+  return typeof value === "boolean"
+    ? String(value).toUpperCase()
+    : String(value);
+}
+
 function clone<T>(value: T): T {
   return value === undefined ? value : (JSON.parse(JSON.stringify(value)) as T);
 }
@@ -652,6 +660,7 @@ const SHAPES: Record<string, Shape> = {
       "formulas",
       "formulasR1C1",
       "numberFormat",
+      "text",
       "isNullObject",
     ],
     children: { worksheet: "worksheet", format: "rangeFormat" },
@@ -1384,6 +1393,13 @@ class RangeProxy {
       cell.formula = entry;
       cell.formulaR1C1 = null;
     });
+  }
+
+  // What Excel shows in the cell. There is no number-format engine here, so a
+  // value reads back the way the General format would render it - which is
+  // what every test seeds anyway.
+  get text(): string[][] {
+    return this.map((cell) => displayText(cell.value));
   }
 
   get formulas(): CellValue[][] {
@@ -3161,6 +3177,7 @@ export interface FakeHelpers {
   seed(address: string, grid: SeedEntry[][]): void;
   setNumberFormat(address: string, format: string): void;
   setFill(address: string, fill: Partial<FakeFill>): void;
+  setAlignment(address: string, horizontal: string): void;
   setFont(address: string, font: Partial<FakeFont>): void;
   addStyle(name: string, builtIn?: boolean): void;
   setStyle(address: string, name: string): void;
@@ -3397,6 +3414,15 @@ export function installFakeHost(options: FakeHostOptions = {}): {
       for (let r = 0; r < rect.rowCount; r += 1) {
         for (let c = 0; c < rect.colCount; c += 1) {
           Object.assign(sheet.edit(rect.row + r, rect.col + c).font, font);
+        }
+      }
+    },
+    setAlignment(address, horizontal) {
+      const { sheet, rect } = resolve(workbook, address);
+      for (let r = 0; r < rect.rowCount; r += 1) {
+        for (let c = 0; c < rect.colCount; c += 1) {
+          sheet.edit(rect.row + r, rect.col + c).horizontalAlignment =
+            horizontal;
         }
       }
     },

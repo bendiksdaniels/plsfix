@@ -1,13 +1,16 @@
 // The Excel side of tracked links, one function per pane action: export a
-// selection or the active chart, push every anchored source again, list what
-// this workbook owns, jump back to a source and remove a link. The anchor - not
-// the address it was created at - is what every later flow resolves through.
+// selection as a picture or as a table, export the active chart, push every
+// anchored source again, list what this workbook owns, jump back to a source
+// and remove a link. The anchor - not the address it was created at - is what
+// every later flow resolves through.
 
 import { randomBytes } from "../link/crypto";
 import {
   anchorName,
   newLinkId,
+  overTableCap,
   sourceLabel,
+  TABLE_TOO_BIG,
   type RegistryEntry,
 } from "../link/model";
 import type { RelayApi } from "../link/relay";
@@ -57,29 +60,52 @@ export interface PushSummary {
   failures: string[];
 }
 
-// Every flow that rewrites the registry runs through the shared link queue: the
-// read, the upload and the write-back are one critical section, or a push that
-// began earlier puts its own copy of the registry back over this new link.
+// The selected range as a linked picture.
 export async function exportSelection(
   ws: Workspace,
   relay: RelayApi,
 ): Promise<ExportResult> {
+  return exportRange(ws, relay, "range");
+}
+
+// The same range as an editable PowerPoint table: same anchor, same registry
+// entry, same inbox note - only the render differs.
+export async function exportSelectionAsTable(
+  ws: Workspace,
+  relay: RelayApi,
+): Promise<ExportResult> {
+  return exportRange(ws, relay, "table");
+}
+
+// Every flow that rewrites the registry runs through the shared link queue: the
+// read, the upload and the write-back are one critical section, or a push that
+// began earlier puts its own copy of the registry back over this new link.
+async function exportRange(
+  ws: Workspace,
+  relay: RelayApi,
+  kind: "range" | "table",
+): Promise<ExportResult> {
   requireImageApi();
   const workbook = await workbookName();
-  return exclusive("export", () =>
+  return exclusive(kind === "table" ? "export table" : "export", () =>
     Excel.run(async (context) => {
       const registry = await readRegistry(context);
       const range = await selectedSingleRange(context, "export");
-      range.load("address,cellCount,worksheet/name");
+      range.load("address,cellCount,rowCount,columnCount,worksheet/name");
       await context.sync();
       if (range.cellCount > SELECTION_CELL_CAP) {
         throw new Error(
           `Export supports up to ${SELECTION_CELL_CAP.toLocaleString()} selected cells at once.`,
         );
       }
+      // Both caps are checked before anything is anchored, so a selection too
+      // big to send leaves the workbook exactly as it was.
+      if (kind === "table" && overTableCap(range.rowCount, range.columnCount)) {
+        throw new Error(TABLE_TOO_BIG);
+      }
 
       const resolved: ResolvedSource = {
-        kind: "range",
+        kind,
         sheet: range.worksheet.name,
         ref: parseAddress(range.address).address,
         range,
@@ -87,16 +113,21 @@ export async function exportSelection(
       const id = newLinkId(randomBytes);
       const anchor = anchorName(id);
       const src = sourceOf(workbook, anchor, resolved);
-      const entry = newEntry(id, "range", anchor, sourceLabel(src, "range"));
-      // Anchor and picture in one batch, before any network call: a selection
+      const entry = newEntry(id, kind, anchor, sourceLabel(src, kind));
+      // Anchor and render in one batch, before any network call: a selection
       // that changes during the upload cannot make the two describe different
       // objects. The render owns the anchor from here on, so a picture that
       // never arrives takes the name with it.
       const named = createRangeAnchor(context, range, anchor);
       const release = () => named.delete();
-      const png = await renderAnchored(context, resolved, entry.label, release);
+      const render = await renderAnchored(
+        context,
+        resolved,
+        entry.label,
+        release,
+      );
 
-      const link: NewLink = { entry, src, png, registry, release };
+      const link: NewLink = { entry, src, render, registry, release };
       await publish(context, link, ws, relay);
       return { id, label: entry.label };
     }),
@@ -197,9 +228,14 @@ export async function exportActiveChart(
       // registry entry claims is one the modeller cannot export again.
       createChartAnchor(chart, anchor);
       const release = () => createChartAnchor(chart, previousName);
-      const png = await renderAnchored(context, resolved, entry.label, release);
+      const render = await renderAnchored(
+        context,
+        resolved,
+        entry.label,
+        release,
+      );
 
-      const link: NewLink = { entry, src, png, registry, release };
+      const link: NewLink = { entry, src, render, registry, release };
       await publish(context, link, ws, relay);
       return { id, label: entry.label };
     }),
@@ -275,9 +311,9 @@ async function pushOne(
   summary: PushSummary,
 ): Promise<void> {
   try {
-    const png = await renderSource(context, resolved);
+    const render = await renderSource(context, resolved);
     const src = sourceOf(workbook, entry.anchor, resolved);
-    entry.rev = await pushPayload(entry, src, png, relay);
+    entry.rev = await pushPayload(entry, src, render, relay);
     entry.lastPushedAt = new Date().toISOString();
     summary.pushed += 1;
   } catch (error) {
@@ -296,9 +332,9 @@ async function requireVisibleSheet(
   label: string,
 ): Promise<void> {
   const sheet =
-    resolved.kind === "range"
-      ? resolved.range.worksheet
-      : resolved.chart.worksheet;
+    resolved.kind === "chart"
+      ? resolved.chart.worksheet
+      : resolved.range.worksheet;
   sheet.load("name,visibility");
   await context.sync();
   if (sheet.visibility !== Excel.SheetVisibility.visible) {
@@ -315,13 +351,13 @@ export async function goToSource(id: string): Promise<void> {
       throw new Error(`go to source ${entry.label}: source missing`);
     }
     await requireVisibleSheet(context, resolved, entry.label);
-    if (resolved.kind === "range") {
+    if (resolved.kind === "chart") {
+      resolved.chart.worksheet.activate();
+      resolved.chart.activate();
+    } else {
       // Excel refuses to select on a sheet that is not the active one.
       resolved.range.worksheet.activate();
       resolved.range.select();
-    } else {
-      resolved.chart.worksheet.activate();
-      resolved.chart.activate();
     }
     await context.sync();
   });

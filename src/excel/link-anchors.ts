@@ -1,7 +1,8 @@
 // The registry kept in a document setting, and the anchor that keeps pointing
 // at a source after rows move under it: a hidden name, or a chart's own name.
 // Owns registry read/write, workbookName, anchor create/resolve/delete and
-// render. The relay round trip that ships a render lives in link-record.ts.
+// render - a picture, or the cell grid link-table.ts reads. The relay round
+// trip that ships a render lives in link-record.ts.
 
 import { deriveLinkKeys, newToken } from "../link/crypto";
 import {
@@ -17,6 +18,7 @@ import {
 } from "../link/model";
 import { isRelayError, type RelayApi } from "../link/relay";
 import { hostSupports } from "./internal";
+import { renderTable, type TableRender } from "./link-table";
 import { parseAddress } from "./shared";
 
 const CHART_LABEL_SEPARATOR = ": ";
@@ -24,8 +26,11 @@ const CHART_LABEL_SEPARATOR = ": ";
 // picture sharp on a high-density screen.
 const CHART_PIXEL_SCALE = 2;
 
+// A table's source is a range and its anchor a hidden name, exactly like a
+// range link's: only the render tells the two apart, so everything else here
+// asks whether a source is a chart rather than whether it is a range.
 export interface ResolvedRange {
-  kind: "range";
+  kind: "range" | "table";
   sheet: string;
   ref: string;
   range: Excel.Range;
@@ -41,6 +46,11 @@ export interface ResolvedChart {
 }
 
 export type ResolvedSource = ResolvedRange | ResolvedChart;
+
+// What a source renders to: the base64 picture a range or a chart gives, or
+// the cell grid a table link carries instead.
+export type Render =
+  { kind: "picture"; png: string } | ({ kind: "table" } & TableRender);
 
 // Every failure says which flow it came from and which link; the token is never
 // part of a label or a message.
@@ -205,7 +215,7 @@ function queueTargets(
   sheets: Excel.WorksheetCollection | null,
 ): void {
   for (const one of resolving) {
-    if (one.entry.kind === "range") {
+    if (one.entry.kind !== "chart") {
       if (!one.named || one.named.isNullObject) continue;
       one.range = one.named.getRangeOrNullObject();
       one.range.load("isNullObject,address,worksheet/name");
@@ -217,11 +227,11 @@ function queueTargets(
 }
 
 function assemble(one: Resolving): ResolvedSource | null {
-  if (one.entry.kind === "range") {
+  if (one.entry.kind !== "chart") {
     const { range } = one;
     if (!range || range.isNullObject) return null;
     return {
-      kind: "range",
+      kind: one.entry.kind,
       sheet: range.worksheet.name,
       ref: parseAddress(range.address).address,
       range,
@@ -254,9 +264,9 @@ export async function resolveSources(
   const resolving: Resolving[] = entries.map((entry) => ({
     entry,
     named:
-      entry.kind === "range"
-        ? context.workbook.names.getItemOrNullObject(entry.anchor)
-        : null,
+      entry.kind === "chart"
+        ? null
+        : context.workbook.names.getItemOrNullObject(entry.anchor),
     range: null,
     candidates: [],
     chart: null,
@@ -298,7 +308,7 @@ export async function renderAnchored(
   resolved: ResolvedSource,
   label: string,
   release: () => void,
-): Promise<string> {
+): Promise<Render> {
   try {
     return await renderSource(context, resolved);
   } catch (error) {
@@ -324,17 +334,20 @@ async function undoAnchor(
 export async function renderSource(
   context: Excel.RequestContext,
   resolved: ResolvedSource,
-): Promise<string> {
+): Promise<Render> {
+  if (resolved.kind === "table") {
+    return { kind: "table", ...(await renderTable(context, resolved.range)) };
+  }
   const image =
-    resolved.kind === "range"
-      ? resolved.range.getImage()
-      : resolved.chart.getImage(
+    resolved.kind === "chart"
+      ? resolved.chart.getImage(
           Math.round(resolved.width * CHART_PIXEL_SCALE),
           Math.round(resolved.height * CHART_PIXEL_SCALE),
           Excel.ImageFittingMode.fit,
-        );
+        )
+      : resolved.range.getImage();
   await context.sync();
-  return image.value;
+  return { kind: "picture", png: image.value };
 }
 
 // Removing a link puts the workbook back: the hidden name goes, and a chart
@@ -343,7 +356,7 @@ export async function releaseAnchor(
   context: Excel.RequestContext,
   entry: RegistryEntry,
 ): Promise<void> {
-  if (entry.kind === "range") {
+  if (entry.kind !== "chart") {
     const named = context.workbook.names.getItemOrNullObject(entry.anchor);
     named.load("isNullObject");
     await context.sync();

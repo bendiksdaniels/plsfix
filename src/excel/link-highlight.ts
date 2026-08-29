@@ -54,11 +54,12 @@ async function anchoredRanges(
 ): Promise<Excel.Range[]> {
   const registry = await readRegistry(context);
   // Charts are filtered out before resolving, so a workbook whose links are all
-  // charts costs no round trip at all.
-  const entries = registry.links.filter((entry) => entry.kind === "range");
+  // charts costs no round trip at all. A table link anchors a range like any
+  // other, and is tinted like one.
+  const entries = registry.links.filter((entry) => entry.kind !== "chart");
   const resolved = await resolveSources(context, entries);
   return resolved.flatMap((source) =>
-    source?.kind === "range" ? [source.range] : [],
+    source && source.kind !== "chart" ? [source.range] : [],
   );
 }
 
