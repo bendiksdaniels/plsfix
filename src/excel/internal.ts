@@ -218,19 +218,30 @@ const CHART_TITLE_SIZE = 12;
 
 // The brand shell every chart gets: our font everywhere, a bold primary title,
 // no gridlines, no chart-area frame, legend under the plot.
+// The chart surface: the font every label inherits and the corner style.
+// Excel for the web does not implement either on its chartex charts (the
+// waterfall), and a batch carrying them is rejected whole with
+// UnsupportedOperation, so insertWaterfall applies the surface in a batch of
+// its own through syncTolerating and keeps the chart when that batch fails.
+export function styleChartSurface(chart: Excel.Chart): void {
+  const settings = getActiveSettings();
+  chart.format.font.name = settings.font;
+  chart.format.font.size = CHART_TEXT_SIZE;
+  chart.format.font.color = activeTheme().formulaFont;
+  chart.format.roundedCorners = false;
+}
+
 export function styleChartShell(
   chart: Excel.Chart,
   title: string | null,
   withAxes: boolean,
+  surface = true,
 ): void {
   const settings = getActiveSettings();
   const theme = activeTheme();
 
-  chart.format.font.name = settings.font;
-  chart.format.font.size = CHART_TEXT_SIZE;
-  chart.format.font.color = theme.formulaFont;
+  if (surface) styleChartSurface(chart);
   chart.format.border.lineStyle = Excel.ChartLineStyle.none;
-  chart.format.roundedCorners = false;
 
   if (title !== null) chart.title.text = title;
   chart.title.format.font.name = settings.font;
@@ -252,6 +263,21 @@ export function styleChartShell(
   chart.legend.format.font.name = settings.font;
   chart.legend.format.font.size = CHART_TEXT_SIZE;
   chart.legend.format.font.color = theme.formulaFont;
+}
+
+// Runs the queued batch; a rejection carrying the given error code is
+// swallowed and reported as false, anything else is rethrown.
+export async function syncTolerating(
+  context: Excel.RequestContext,
+  code: string,
+): Promise<boolean> {
+  try {
+    await context.sync();
+    return true;
+  } catch (error) {
+    if ((error as { code?: string }).code === code) return false;
+    throw error;
+  }
 }
 
 export function formatChartAmount(value: number): string {

@@ -1,8 +1,9 @@
 // Consistent rounding: a segment split whose Excel-rounded shares add up to
 // 101, the case Consistent rounding and =SMT.ROUND / =SMT.ROUNDSUM exist for.
 // The column right of the share points stays empty: the tool writes there.
-// The custom-function formulas are shown as text to type, so the file opens
-// clean on a machine without the add-in.
+// The custom-function formulas are shown as text to type (without the leading
+// =, which the sharing scan would otherwise count as a formula), so the file
+// opens clean on a machine without the add-in.
 
 use rust_xlsxwriter::{Worksheet, XlsxError};
 
@@ -50,7 +51,7 @@ pub fn build(sheet: &mut Worksheet, styles: &Styles) -> Result<Tally, XlsxError>
         pen.number(row, REVENUE_COL, *revenue, &styles.eur)?;
         pen.formula(row, POINTS_COL, &format!("={}/{}*{POINTS_PER_UNIT}", cell(row, REVENUE_COL), cell_abs(TOTAL_ROW, REVENUE_COL)), &styles.points)?;
         pen.formula(row, EXCEL_COL, &format!("=ROUND({},{DECIMALS})", cell(row, POINTS_COL)), &styles.whole)?;
-        pen.text(row, SMT_COL, &format!("=SMT.ROUND({}, {}, {DECIMALS})", points_address_abs(), i + 1), &styles.plain)?;
+        pen.text(row, SMT_COL, &format!("SMT.ROUND({}, {}, {DECIMALS})", points_address_abs(), i + 1), &styles.plain)?;
     }
     write_total(&mut pen, styles)?;
     pen.text(HINT_ROW, LABEL_COL, &format!("{} shows 101 although the shares sum to 100: consistent rounding gives parts that add up.", cell(TOTAL_ROW, EXCEL_COL)), &styles.note)?;
@@ -78,7 +79,7 @@ fn write_header(pen: &mut Pen, styles: &Styles) -> Result<(), XlsxError> {
     pen.text(HEADER_ROW, POINTS_COL, "Share, points", &styles.header)?;
     pen.text(HEADER_ROW, LANDING_COL, "Consistent rounding lands here", &styles.header_left)?;
     pen.text(HEADER_ROW, EXCEL_COL, "Excel ROUND", &styles.header)?;
-    pen.text(HEADER_ROW, SMT_COL, "SMT.ROUND (type it)", &styles.header_left)?;
+    pen.text(HEADER_ROW, SMT_COL, "Type these with = in front", &styles.header_left)?;
     Ok(())
 }
 
@@ -88,6 +89,6 @@ fn write_total(pen: &mut Pen, styles: &Styles) -> Result<(), XlsxError> {
     for (col, format) in [(REVENUE_COL, &styles.eur_bold), (POINTS_COL, &styles.points), (EXCEL_COL, &styles.whole)] {
         pen.formula(TOTAL_ROW, col, &format!("=SUM({}:{})", cell(FIRST_SEGMENT_ROW, col), cell(last, col)), format)?;
     }
-    pen.text(TOTAL_ROW, SMT_COL, &format!("=SMT.ROUNDSUM({}, {DECIMALS})", points_address_abs()), &styles.plain)?;
+    pen.text(TOTAL_ROW, SMT_COL, &format!("SMT.ROUNDSUM({}, {DECIMALS})", points_address_abs()), &styles.plain)?;
     Ok(())
 }

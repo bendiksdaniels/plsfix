@@ -58,3 +58,23 @@ Rules now in the ledgers: fixes under ~10 lines with an unambiguous spec are app
 controller and covered by the named tests; doc/script-only tasks and pure-logic tasks whose
 tests were fully specified in the plan get a controller review, opus reviews go to adapters,
 crypto and the server. One review pass per task; scoped re-reviews only when a gate fails.
+
+## 2026-08-29: Office on the web is the verification rig when the desktop is off limits
+
+No desktop control (Daniel will not grant computer-use). What worked: a scratch Google Chrome
+with `--remote-debugging-port` driven by `playwright-core` over CDP, Office for the web with
+the add-in registered through the document URL (`wdaddindevserverport`, `wdaddinmanifestfile`,
+`wdaddinmanifestguid`) from a local HTTPS+CORS manifest server on the office-addin-dev-certs;
+Chrome needs `--ignore-certificate-errors-spki-list=<cert spki>` and the local-network-access
+check off, the unified Apps store has no "Upload My Add-in" any more, and pre-existing
+cross-origin frames report an empty `url()` on a fresh CDP connection (match frames by
+`location.href`). Every pane action is then verifiable through `Excel.run` from inside the
+pane frame instead of screenshots.
+
+Three things the web pass found that tests and the desktop had not: `Office.onReady` never
+settles when the custom-functions runtime fails to initialise (pane stuck on "Connecting",
+ribbon commands dead: `src/host-ready.ts` now probes the host after a head start); Excel for
+the web rejects `chart.format.font` and `roundedCorners` on chartex charts (the waterfall
+applies its surface in a tolerated batch of its own); and "Fill formula right" sizes by the
+neighbouring rows, so a demo row with blank neighbours cannot be filled. Deleting rows inside
+an exported range shrinks its hidden name; only removing the whole block gives "source missing".

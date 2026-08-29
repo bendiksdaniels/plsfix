@@ -1,6 +1,7 @@
 // The P&L: DemoCo's 2024A actuals and a 2025E-2029E forecast driven from the
 // Assumptions sheet, written from one line table with column and row
-// placeholders. Two errors are planted on purpose (a hardcode inside a formula,
+// placeholders. The per-month line sits between two filled rows on purpose:
+// Fill formula right sizes its fill by the neighbouring rows. Two errors are planted on purpose (a hardcode inside a formula,
 // a typed number in a formula row) for Autocolor and the audit overlay to find.
 
 use rust_xlsxwriter::{Format, Worksheet, XlsxError};
@@ -58,8 +59,8 @@ const LINES: [Line; 17] = [
     Line { row: TAX, label: "Income tax", unit: "EUR k", actual: Actual::Formula("=-MAX(0,{c}{ebt})*0.2"), forecast: Some("=-MAX(0,{c}{ebt})*Assumptions!{a}{atax}"), percent: false, bold: false },
     Line { row: NET_INCOME, label: "Net income", unit: "EUR k", actual: Actual::Same, forecast: Some("={c}{ebt}+{c}{tax}"), percent: false, bold: true },
     Line { row: NET_MARGIN, label: "  net margin", unit: "%", actual: Actual::Same, forecast: Some("={c}{ni}/{c}{rev}"), percent: true, bold: false },
+    Line { row: PER_MONTH, label: "Revenue per month (select the row, press Fill formula right)", unit: "EUR k", actual: Actual::Formula("={c}{rev}/12"), forecast: None, percent: false, bold: false },
     Line { row: CHECK, label: "Check: EBITDA + D&A - EBIT (must be 0)", unit: "EUR k", actual: Actual::Same, forecast: Some("={c}{ebitda}+{c}{da}-{c}{ebit}"), percent: false, bold: false },
-    Line { row: PER_MONTH, label: "Revenue per month (select the row, press Fill Right)", unit: "EUR k", actual: Actual::Formula("={c}{rev}/12"), forecast: None, percent: false, bold: false },
 ];
 
 #[derive(Clone, Copy)]

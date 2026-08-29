@@ -39,8 +39,8 @@ pub mod pnl {
     pub const TAX: u32 = 15;
     pub const NET_INCOME: u32 = 16;
     pub const NET_MARGIN: u32 = 17;
+    pub const PER_MONTH: u32 = 18;
     pub const CHECK: u32 = 19;
-    pub const PER_MONTH: u32 = 21;
 }
 
 /// Column of P&L year `i` (0 = 2024A).

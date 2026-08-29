@@ -543,6 +543,8 @@ export interface FakeHostOptions {
   isSetSupported?: (set: string, version: string) => boolean;
   maxCells?: number;
   strictLoad?: boolean;
+  /** Excel for the web: chart font and corners rejected on chartex charts. */
+  chartSurfaceUnsupported?: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -1240,12 +1242,14 @@ class FakeRuntime {
   rewriteCurrencyFormats: boolean;
   maxCells: number;
   strict: StrictLoads | null;
+  chartSurfaceUnsupported: boolean;
 
   constructor(
     public workbook: FakeWorkbook,
     options: FakeHostOptions,
   ) {
     this.rewriteCurrencyFormats = options.rewriteCurrencyFormats ?? false;
+    this.chartSurfaceUnsupported = options.chartSurfaceUnsupported ?? false;
     this.maxCells = options.maxCells ?? 250_000;
     this.supported = options.isSetSupported ?? (() => true);
     const strict = options.strictLoad ?? strictByDefault;
@@ -2141,6 +2145,14 @@ class BorderProxy {
 // Charts and shapes
 // ---------------------------------------------------------------------------
 
+function refusingChartFont(refuse: () => void): ChartFontProxy {
+  const font = new ChartFontProxy({});
+  for (const key of ["name", "size", "bold", "color"]) {
+    Object.defineProperty(font, key, { set: refuse });
+  }
+  return font;
+}
+
 class ChartFontProxy {
   constructor(private target: Partial<FakeFont>) {}
   set name(value: string) {
@@ -2256,17 +2268,32 @@ class ChartProxy {
     if (sheet) workbook.activeSheetId = sheet.id;
   }
 
+  // With chartSurfaceUnsupported the font and the corners are refused the way
+  // Excel for the web refuses them on chartex charts: queued, and rejecting
+  // the sync that carries them with UnsupportedOperation.
   get format() {
     const record = this.record;
+    const refuse = this.runtime.chartSurfaceUnsupported
+      ? () =>
+          this.ctx.queueError(
+            hostError(
+              ErrorCodes.unsupportedOperation,
+              "This operation is not implemented.",
+            ),
+          )
+      : null;
     return {
-      font: new ChartFontProxy(record.font),
+      font: refuse
+        ? refusingChartFont(refuse)
+        : new ChartFontProxy(record.font),
       border: {
         set lineStyle(value: string) {
           record.borderLineStyle = value;
         },
       },
       set roundedCorners(value: boolean) {
-        record.roundedCorners = value;
+        if (refuse) refuse();
+        else record.roundedCorners = value;
       },
     };
   }

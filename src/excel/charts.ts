@@ -2,7 +2,13 @@
 // the floating CAGR label shape. The brand shell they share lives in
 // internal.ts, next to the other helpers src/excel/tornado.ts also needs.
 
-import { formatChartAmount, hostSupports, styleChartShell } from "./internal";
+import {
+  formatChartAmount,
+  hostSupports,
+  styleChartShell,
+  styleChartSurface,
+  syncTolerating,
+} from "./internal";
 import { bridgeSeries, cagr, formatCagrLabel } from "../chartmath";
 import { type CellValue } from "../model";
 import { getActiveSettings, tint } from "../settings";
@@ -87,13 +93,18 @@ export async function insertWaterfall(): Promise<string> {
       range,
       Excel.ChartSeriesBy.auto,
     );
-    styleChartShell(chart, heading, true);
+    styleChartShell(chart, heading, true, false);
     chart.legend.visible = false;
     chart.dataLabels.showValue = true;
 
     const series = chart.series.getItemAt(0);
     series.showConnectorLines = true;
     await context.sync();
+
+    // Excel for the web refuses the surface on chartex charts. It is cosmetic,
+    // so the waterfall keeps the host's default font there instead of failing.
+    styleChartSurface(chart);
+    await syncTolerating(context, Excel.ErrorCodes.unsupportedOperation);
 
     // Office.js has no "set as total" flag for waterfall points, so the opening
     // and closing columns are branded by position instead of by that flag.

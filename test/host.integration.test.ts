@@ -1121,6 +1121,25 @@ describe("charts", () => {
     helpers.select("Model!A2:B5");
   }
 
+  it("keeps the waterfall when the host refuses the chart surface", async () => {
+    // Excel for the web: font and corners are UnsupportedOperation on chartex
+    // charts. The batch that carries them fails on its own; the chart, its
+    // title, axes and branded points still land.
+    await boot({ chartSurfaceUnsupported: true });
+    seedBridge(90);
+    expect(await smt.insertWaterfall()).toBe(
+      "Waterfall added: 4 points, ties at 90",
+    );
+    const chart = workbook.charts[0];
+    expect(chart).toMatchObject({
+      chartType: "Waterfall",
+      title: "EBITDA bridge",
+    });
+    expect(chart?.font).toEqual({});
+    expect(chart?.roundedCorners).toBeUndefined();
+    expect(chart?.axes.value.fontName).toBe(palette.font);
+  });
+
   it("adds a native waterfall and reports a clean reconciliation", async () => {
     seedBridge(90);
     expect(await smt.insertWaterfall()).toBe(

@@ -1,18 +1,25 @@
 # AUTORESUME - Model Tools (v2.1.20 LIVE 2026-08-29)
 
-## 29.08 evening: demo on the Mac (uncommitted), web pass pending
+## 29.08 evening: demo delivered, v2.1.21 LIVE, web pass in progress
 
-- Daniel: "launch it now and create a demo where I could play around with it". Done on the Mac:
-  `demo/` (Rust, rust_xlsxwriter) builds `demo/out/Demo Model.xlsx` (8 sheets, 435 cells,
-  reconciled by `demo/tests/workbook.rs`); `npm run demo` = build + prod manifest into both wef
-  folders + open Excel on the workbook + PowerPoint on a new deck. `npm run check` green with
-  `test:demo` added. Excel had the OLD 1.0.0.0 manifest until now; both wef files are v2.1.20.
-  Nothing committed yet (Daniel commits on request): `git status` shows demo/, scripts/demo-open.sh,
-  package.json, .gitignore, CLAUDE.md.
-- No desktop control: Daniel will not grant computer-use (macOS perms), so the ribbon on his Mac is
-  unverified by me; the "Start here" sheet is his checklist. Verification route instead: Office for
-  the web in a CDP Chrome (`scratchpad/driver/drive.mjs`, port 9222, scratch profile) with the
-  manifest sideloaded by upload; blocked on Daniel signing in to Microsoft in that window.
+- Daniel: "launch it now and create a demo where I could play around with it", then "I can not
+  give you computer use", "use a virtual machine or something on the server". Delivered:
+  `demo/` (Rust) builds `demo/out/Demo Model.xlsx` (8 sheets, 435 cells, reconciled by
+  `demo/tests/workbook.rs`, "Start here" checklist); `npm run demo` = build + prod manifest into
+  both wef folders + Excel on the workbook + PowerPoint on a new deck. Committed 2cd27b1.
+- Web verification route (no desktop control): scratch Chrome with `--remote-debugging-port=9222`
+  driven by `scratchpad/driver/drive.mjs` (playwright-core over CDP, helpers.mjs); Office on the
+  web sideload = document URL + `wdaddindevserverport=3001&wdaddinmanifestfile=manifest.prod.xml
+  &wdaddinmanifestguid=<id>` with `serve-manifest.mjs` (HTTPS + CORS on the dev certs) and Chrome
+  flags `--ignore-certificate-errors-spki-list=<spki>` + LocalNetworkAccessChecks disabled; the
+  unified Apps store has no Upload My Add-in any more. Daniel signed in (NDUS account) himself.
+- Found and fixed on the web: `Office.onReady` never settled in the Excel pane (custom-functions
+  runtime init fails with RichApi "session expired"), pane stuck on "Connecting", ribbon dead.
+  `src/host-ready.ts` (4 tests): onReady gets a 4 s head start, then a host that answers a real
+  Excel.run probe boots the pane degraded with a toast. Commit 4c8c762, v2.1.21 deployed and
+  verified ("Excel connected" on Excel for the web). PowerPoint for the web pane works as is.
+- Not pushed. Next: finish the web checklist (tools, links Excel -> PowerPoint pairing/insert/
+  update), then record results here; Daniel's desktop pass stays his.
 
 ## State
 
