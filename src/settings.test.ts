@@ -70,12 +70,12 @@ describe("autocolor defaults", () => {
 
 describe("number formats", () => {
   it("builds a currency format around the symbol", () => {
-    expect(currencyNumberFormat("€")).toBe("€ #,##0;[Red](€ #,##0);-");
-    expect(currencyNumberFormat("$")).toBe("$ #,##0;[Red]($ #,##0);-");
+    expect(currencyNumberFormat("€", "en")).toBe("€ #,##0;[Red](€ #,##0);-");
+    expect(currencyNumberFormat("$", "en")).toBe("$ #,##0;[Red]($ #,##0);-");
   });
 
   it("drops the symbol when none is configured", () => {
-    expect(currencyNumberFormat("")).toBe("#,##0;[Red](#,##0);-");
+    expect(currencyNumberFormat("", "en")).toBe("#,##0;[Red](#,##0);-");
   });
 });
 
@@ -154,5 +154,16 @@ describe("logo color extraction", () => {
     );
 
     expect(extractPaletteFromPixels(data, 2)).toEqual(["#B27E54", "#282623"]);
+  });
+});
+
+describe("language", () => {
+  it("defaults to Latvian, keeps a known language and refuses an unknown one", () => {
+    expect(DEFAULT_SETTINGS.language).toBe("lv");
+    expect(parsePalette(JSON.stringify({ language: "ru" }))?.language).toBe(
+      "ru",
+    );
+    expect(parsePalette(JSON.stringify({ language: "de" }))).toBeNull();
+    expect(parsePalette("{}")?.language).toBe("lv");
   });
 });

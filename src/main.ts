@@ -1,4 +1,13 @@
 import "./styles.css";
+import {
+  currencyFormat,
+  formatAmount,
+  isLanguage,
+  LANGUAGES,
+  numberStyle,
+  separatorSample,
+  separatorsMatch,
+} from "./numbers";
 import { hostReady } from "./host-ready";
 import type { NumberCycleFamily, RowStyleKind } from "./cycles";
 import {
@@ -65,6 +74,8 @@ import {
   type TraceArea,
   type TraceDirection,
   type TraceResult,
+  readSeparators,
+  type ExcelSeparators,
 } from "./excel";
 import { FIND_HIT_CAP } from "./find";
 import { RelayClient, relayBaseUrl } from "./link/relay";
@@ -101,6 +112,8 @@ import { formatVersion } from "./ui/version";
 const APP_VERSION = formatVersion(__APP_VERSION__);
 
 const STORAGE_KEY = "plsfix.brand.v1";
+// Excel's own separators, read once the host is there; null until then or below ExcelApi 1.11.
+let excelSeparators: ExcelSeparators | null = null;
 const PALETTE_SLOTS = [
   "primary",
   "accent",
@@ -612,11 +625,16 @@ function renderBrand(): void {
   }
 
   getElement<HTMLSelectElement>("setting-font").value = settings.font;
+  getElement<HTMLSelectElement>("setting-language").value = settings.language;
   getElement<HTMLSelectElement>("setting-currency").value = settings.currency;
   getElement<HTMLInputElement>("setting-autocolor-edit").checked =
     settings.autocolorOnEdit;
-  getElement("currency-format-button").textContent =
-    `${settings.currency ? `${settings.currency} ` : ""}1,234`;
+  getElement("currency-format-button").textContent = currencyFormat(
+    settings.currency,
+    settings.language,
+    formatAmount(1234, settings.language),
+  );
+  renderSeparatorsNote(settings);
 
   const preview = getElement<HTMLTableElement>("brand-preview");
   preview.style.fontFamily = `"${settings.font}", "Segoe UI", sans-serif`;
@@ -631,6 +649,29 @@ function renderBrand(): void {
   preview.style.setProperty("--pv-link", theme.linkFont);
   preview.style.setProperty("--pv-external", theme.externalFont);
   preview.style.setProperty("--pv-partial", theme.partialFont);
+}
+
+// Format codes stay #,##0: what they show is Excel's own separator setting, so
+// the note says what Excel shows and, when that is not the house style, where
+// to change it.
+function renderSeparatorsNote(settings: BrandSettings): void {
+  const note = getElement<HTMLParagraphElement>("separators-note");
+  if (excelSeparators === null) {
+    note.hidden = true;
+    return;
+  }
+  const { decimal, thousands } = excelSeparators;
+  const shown = separatorSample(decimal, thousands);
+  if (separatorsMatch(decimal, thousands, settings.language)) {
+    note.textContent = `Excel shows ${shown}, the house style.`;
+  } else {
+    const style = numberStyle(settings.language);
+    const language =
+      LANGUAGES.find((option) => option.code === settings.language)?.label ??
+      settings.language;
+    note.textContent = `Excel shows ${shown}; the ${language} style is ${separatorSample(style.decimal, style.grouping)}. Separators are an Excel setting: Excel > Preferences > Edit on Mac, File > Options > Advanced on Windows, thousands "${style.grouping}" and decimal ".".`;
+  }
+  note.hidden = false;
 }
 
 // Excel is only there when the pane runs inside the host; the toast reports the rest.
@@ -767,6 +808,13 @@ function wireBrand(): void {
     "change",
     (event) => {
       updateSetting({ currency: (event.target as HTMLSelectElement).value });
+    },
+  );
+  getElement<HTMLSelectElement>("setting-language").addEventListener(
+    "change",
+    (event) => {
+      const value = (event.target as HTMLSelectElement).value;
+      if (isLanguage(value)) updateSetting({ language: value });
     },
   );
 
@@ -1342,6 +1390,12 @@ async function boot(host: Office.HostType, degraded: boolean): Promise<void> {
   connectionStatus.className = "connection ready";
   excelReady = true;
   if (degraded) toast.show(DEGRADED_BOOT_MESSAGE);
+  void readSeparators()
+    .then((found) => {
+      excelSeparators = found;
+      renderSeparatorsNote(getActiveSettings());
+    })
+    .catch(() => undefined);
 
   registerCommands();
   syncAutocolorOnEdit();

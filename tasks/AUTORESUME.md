@@ -1,4 +1,17 @@
-# AUTORESUME - pls,fix (v2.2.2 LIVE 2026-08-29)
+# AUTORESUME - pls,fix (v2.2.3 LIVE 2026-08-29)
+
+## 29.08 late: house number styles per language (v2.2.3)
+
+- Daniel: "take the number styles from the house design for all 3 languages and we always use '.'
+  as comma for numbers" -> scope pls,fix (Excel), "." is the decimal everywhere. No written spec
+  exists (DESIGN-SYSTEM.md is typography); the house style came from teaser2mail `fmt.rs money`:
+  `15 000 000 EUR` (LV, RU), `EUR 15 000 000` (EN). Daniel chose comma grouping for EN.
+- Built: `src/numbers.ts` (pure: grouping space/comma, decimal point, currency after/before,
+  `formatAmount` for every number the pane writes as text), `language` in BrandSettings (default
+  `lv`), currency cycles/buttons place the symbol per language, `src/excel/separators.ts` reads
+  Excel's own separators (ExcelApi 1.11) and the Brand tab says what Excel shows and where to
+  change it (separators are an Excel setting, format codes cannot force them). Fake host gained
+  `application` + `separators` option and a trailing-symbol currency rewrite.
 
 ## 29.08 night: rebrand to pls,fix (v2.2.0)
 

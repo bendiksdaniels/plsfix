@@ -32,7 +32,10 @@ describe("number format cycles", () => {
     expect(cycles.general[1]).toBe("#,##0.0;[Red](#,##0.0);-");
     expect(cycles.percent[0]).toBe("0.0%;[Red](0.0%);-");
     expect(cycles.currency[0]).toBe(
-      currencyNumberFormat(DEFAULT_SETTINGS.currency),
+      currencyNumberFormat(
+        DEFAULT_SETTINGS.currency,
+        DEFAULT_SETTINGS.language,
+      ),
     );
   });
 
@@ -44,15 +47,35 @@ describe("number format cycles", () => {
     ]);
   });
 
+  it("puts the symbol after the amount in Latvian and Russian", () => {
+    const lv = buildNumberCycles({ ...DEFAULT_SETTINGS, language: "lv" });
+    expect(lv.currency).toEqual([
+      "#,##0 €;[Red](#,##0 €);-",
+      "#,##0.0 €;[Red](#,##0.0 €);-",
+      "#,##0, €;[Red](#,##0, €);-",
+    ]);
+    expect(
+      buildNumberCycles({ ...DEFAULT_SETTINGS, language: "ru" }).currency,
+    ).toEqual(lv.currency);
+  });
+
   it("follows the configured currency symbol", () => {
-    const dollar = buildNumberCycles({ ...DEFAULT_SETTINGS, currency: "$" });
+    const dollar = buildNumberCycles({
+      ...DEFAULT_SETTINGS,
+      language: "en",
+      currency: "$",
+    });
     expect(dollar.currency).toEqual([
       "$ #,##0;[Red]($ #,##0);-",
       "$ #,##0.0;[Red]($ #,##0.0);-",
       "$ #,##0,;[Red]($ #,##0,);-",
     ]);
 
-    const bare = buildNumberCycles({ ...DEFAULT_SETTINGS, currency: "" });
+    const bare = buildNumberCycles({
+      ...DEFAULT_SETTINGS,
+      language: "en",
+      currency: "",
+    });
     expect(bare.currency[0]).toBe("#,##0;[Red](#,##0);-");
     expect(bare.currency[2]).toBe("#,##0,;[Red](#,##0,);-");
   });
@@ -102,7 +125,7 @@ describe("cycle stepping", () => {
 
   it("keeps cycling when Excel rewrote the applied currency format", () => {
     const currency = buildNumberCycles(DEFAULT_SETTINGS).currency;
-    const rewritten = "[$€-x-euro2] #,##0;[Red]([$€-x-euro2] #,##0);-";
+    const rewritten = "#,##0 [$€-x-euro2];[Red](#,##0 [$€-x-euro2]);-";
     expect(nextInCycle(rewritten, currency)).toBe(currency[1]);
   });
 });

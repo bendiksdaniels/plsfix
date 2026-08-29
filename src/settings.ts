@@ -1,3 +1,5 @@
+import { currencyFormat, isLanguage, type Language } from "./numbers";
+
 export interface BrandSettings {
   primary: string;
   accent: string;
@@ -7,6 +9,8 @@ export interface BrandSettings {
   external: string;
   partial: string;
   font: string;
+  /** House number style: grouping in text, currency placement. */
+  language: Language;
   currency: string;
   autocolorOnEdit: boolean;
 }
@@ -34,6 +38,7 @@ export const DEFAULT_SETTINGS: BrandSettings = {
   external: "#C00000",
   partial: "#7A3E9D",
   font: "Aptos",
+  language: "lv",
   currency: "€",
   autocolorOnEdit: false,
 };
@@ -110,9 +115,12 @@ export function deriveTheme(settings: BrandSettings): WorkbookTheme {
   };
 }
 
-export function currencyNumberFormat(symbol: string): string {
-  if (!symbol) return "#,##0;[Red](#,##0);-";
-  return `${symbol} #,##0;[Red](${symbol} #,##0);-`;
+export function currencyNumberFormat(
+  symbol: string,
+  language: Language,
+): string {
+  const body = currencyFormat(symbol, language, "#,##0");
+  return `${body};[Red](${body});-`;
 }
 
 export function serializeSettings(settings: BrandSettings): string {
@@ -143,6 +151,11 @@ export function parsePalette(json: string): BrandSettings | null {
   if (source.font !== undefined) {
     if (typeof source.font !== "string" || !source.font.trim()) return null;
     settings.font = source.font.trim();
+  }
+
+  if (source.language !== undefined) {
+    if (!isLanguage(source.language)) return null;
+    settings.language = source.language;
   }
 
   if (source.currency !== undefined) {

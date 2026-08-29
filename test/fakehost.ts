@@ -528,9 +528,10 @@ export function hostError(code: string, message: string): Error {
 }
 
 // Excel rewrites a bare currency symbol into a locale-tagged code on read-back.
+// Excel tags a bare symbol wherever it stands: before the digits or after them.
 function rewriteCurrency(format: string): string {
   return format.replace(
-    /(\[[^\]]*\])|([€$£¥₹])(?= )/g,
+    /(\[[^\]]*\])|([€$£¥₹])(?=[ ;)]|$)/g,
     (_match, bracketed: string | undefined, symbol: string | undefined) =>
       bracketed ?? `[$${symbol}-x-fake]`,
   );
@@ -545,6 +546,8 @@ export interface FakeHostOptions {
   strictLoad?: boolean;
   /** Excel for the web: chart font and corners rejected on chartex charts. */
   chartSurfaceUnsupported?: boolean;
+  /** Excel's application-level number separators (ExcelApi 1.11). */
+  separators?: { decimal: string; thousands: string };
 }
 
 // ---------------------------------------------------------------------------
@@ -1243,6 +1246,7 @@ class FakeRuntime {
   maxCells: number;
   strict: StrictLoads | null;
   chartSurfaceUnsupported: boolean;
+  separators: { decimal: string; thousands: string };
 
   constructor(
     public workbook: FakeWorkbook,
@@ -1250,6 +1254,7 @@ class FakeRuntime {
   ) {
     this.rewriteCurrencyFormats = options.rewriteCurrencyFormats ?? false;
     this.chartSurfaceUnsupported = options.chartSurfaceUnsupported ?? false;
+    this.separators = options.separators ?? { decimal: ".", thousands: "," };
     this.maxCells = options.maxCells ?? 250_000;
     this.supported = options.isSetSupported ?? (() => true);
     const strict = options.strictLoad ?? strictByDefault;
@@ -3045,13 +3050,33 @@ class WorkbookProxy {
   }
 }
 
+// Excel.Application: the separators the host is set to, read-only here as in
+// Office.js (ExcelApi 1.11).
+class ApplicationProxy {
+  constructor(private runtime: FakeRuntime) {}
+
+  load(): this {
+    return this;
+  }
+
+  get decimalSeparator(): string {
+    return this.runtime.separators.decimal;
+  }
+
+  get thousandsSeparator(): string {
+    return this.runtime.separators.thousands;
+  }
+}
+
 class FakeContext {
   workbook: WorkbookProxy;
+  application: ApplicationProxy;
   private pending: PendingEvent[] = [];
   private error: Error | null = null;
 
   constructor(private runtime: FakeRuntime) {
     this.workbook = new WorkbookProxy(runtime, this);
+    this.application = new ApplicationProxy(runtime);
   }
 
   queueEvent(event: PendingEvent): void {

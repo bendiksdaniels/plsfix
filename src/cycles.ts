@@ -4,6 +4,7 @@ import {
   currencyNumberFormat,
   deriveTheme,
 } from "./settings";
+import { currencyFormat } from "./numbers";
 
 export type NumberCycleFamily =
   "general" | "currency" | "percent" | "multiple" | "date";
@@ -38,20 +39,16 @@ function financial(body: string): string {
   return `${body};[Red](${body});-`;
 }
 
-function withSymbol(symbol: string, digits: string): string {
-  return symbol ? `${symbol} ${digits}` : digits;
-}
-
 export function buildNumberCycles(settings: BrandSettings): NumberCycles {
-  const { currency } = settings;
+  const { currency, language } = settings;
 
   return {
     general: [financial("#,##0"), financial("#,##0.0"), financial("#,##0.00")],
     // Trailing comma divides the displayed value by a thousand.
     currency: [
-      currencyNumberFormat(currency),
-      financial(withSymbol(currency, "#,##0.0")),
-      financial(withSymbol(currency, "#,##0,")),
+      currencyNumberFormat(currency, language),
+      financial(currencyFormat(currency, language, "#,##0.0")),
+      financial(currencyFormat(currency, language, "#,##0,")),
     ],
     percent: [financial("0.0%"), financial("0%"), financial("0.00%")],
     // "x" is quoted so Excel keeps it as a literal rather than a format code.

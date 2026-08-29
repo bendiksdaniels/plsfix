@@ -11,6 +11,7 @@ import {
   currencyNumberFormat,
   getActiveSettings,
 } from "../settings";
+import { formatAmount } from "../numbers";
 import { brokenNames } from "../workbook";
 import { type NumberFormatName } from "./shared";
 
@@ -22,7 +23,8 @@ const staticNumberFormats = {
 
 export function numberFormat(name: NumberFormatName): string {
   if (name === "currency") {
-    return currencyNumberFormat(getActiveSettings().currency);
+    const { currency, language } = getActiveSettings();
+    return currencyNumberFormat(currency, language);
   }
   return staticNumberFormats[name];
 }
@@ -280,6 +282,7 @@ export async function syncTolerating(
   }
 }
 
+// Amounts in toasts and labels follow the house style of the pane language.
 export function formatChartAmount(value: number): string {
-  return value.toLocaleString(undefined, { maximumFractionDigits: 1 });
+  return formatAmount(value, getActiveSettings().language);
 }

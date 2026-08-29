@@ -231,7 +231,7 @@ describe("number formats", () => {
     await smt.applyNumberFormat("percent");
     expect(helpers.numberFormat("Model!A1")).toBe("0.0%;[Red](0.0%);-");
     await smt.applyNumberFormat("currency");
-    expect(helpers.numberFormat("Model!A1")).toBe("€ #,##0;[Red](€ #,##0);-");
+    expect(helpers.numberFormat("Model!A1")).toBe("#,##0 €;[Red](#,##0 €);-");
   });
 
   it("steps the general family three presses and wraps", async () => {
@@ -2085,5 +2085,25 @@ describe("strict load semantics", () => {
       await expect(context.sync()).rejects.toThrow();
       expect(await throws(() => range.address)).toContain("is not available");
     });
+  });
+});
+
+// ---------------------------------------------------------------------------
+
+describe("separators", () => {
+  it("reads the decimal and thousands separators Excel is set to", async () => {
+    await boot({ separators: { decimal: ",", thousands: " " } });
+    expect(await smt.readSeparators()).toEqual({
+      decimal: ",",
+      thousands: " ",
+    });
+  });
+
+  it("is null on a host below ExcelApi 1.11", async () => {
+    await boot({
+      isSetSupported: (set, version) =>
+        !(set === "ExcelApi" && version === "1.11"),
+    });
+    expect(await smt.readSeparators()).toBeNull();
   });
 });
