@@ -40,7 +40,8 @@
     "ux:check": "node scripts/ux-check.mjs",
     "demo": "sh scripts/demo-open.sh",
     "demo:build": "cargo run --quiet --manifest-path demo/Cargo.toml",
-    "test:demo": "cargo test --manifest-path demo/Cargo.toml"
+    "test:demo": "cargo test --manifest-path demo/Cargo.toml",
+    "manual": "cargo run --quiet --manifest-path manual/Cargo.toml"
   },
   "dependencies": {
     "office-js": "0.1.0"
