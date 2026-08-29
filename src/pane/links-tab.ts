@@ -9,8 +9,6 @@ import {
   listWorkbookLinks,
   pushLinks,
   removeLink,
-  restoreAutoPush,
-  setAutoPush,
   type PushSummary,
   type WorkbookLinkRow,
 } from "../excel";
@@ -26,6 +24,13 @@ import { copyText } from "../ui/clipboard";
 import type { Guard } from "../ui/guard";
 import type { Toast } from "../ui/toast";
 import { messageRow, renderWorkbookLinks } from "./links-list";
+import {
+  restoreToggles,
+  setTogglesBusy,
+  toggleAutoPush,
+  toggleHighlight,
+  type Toggles,
+} from "./links-toggles";
 
 export { renderWorkbookLinks };
 
@@ -49,7 +54,8 @@ export interface LinksTabDeps {
 interface Tab {
   deps: LinksTabDeps;
   list: HTMLTableSectionElement;
-  autopush: HTMLInputElement;
+  // The two tick boxes and what they need, in the shape links-toggles.ts takes.
+  toggles: Toggles;
   keyDisplay: HTMLElement;
   reveal: HTMLButtonElement;
   generate: HTMLButtonElement;
@@ -66,10 +72,23 @@ interface Tab {
 export function installLinksTab(deps: LinksTabDeps): {
   refresh(): Promise<void>;
 } {
-  const tab: Tab = {
+  const tab = newTab(deps);
+  wireBoxes(tab);
+  wireActions(tab);
+  void boot(tab);
+  return { refresh: () => refresh(tab) };
+}
+
+function newTab(deps: LinksTabDeps): Tab {
+  return {
     deps,
     list: element(deps.root, "workbook-links"),
-    autopush: element(deps.root, "links-autopush"),
+    toggles: {
+      autopush: element(deps.root, "links-autopush"),
+      highlight: element(deps.root, "links-highlight"),
+      relay: deps.relay,
+      toast: deps.toast,
+    },
     keyDisplay: element(deps.root, "workspace-key-display"),
     reveal: element(deps.root, "reveal-key"),
     generate: element(deps.root, "generate-key"),
@@ -80,18 +99,27 @@ export function installLinksTab(deps: LinksTabDeps): {
     keyError: null,
     revealed: false,
   };
+}
 
-  // Local and instant: showing the key touches neither Office nor the store,
-  // so it stays out of the guard and out of the busy state.
+// The tick boxes report through the guard like every button; "Reveal" is local
+// and instant - it touches neither Office nor the store - so it stays out of
+// the guard and out of the busy state.
+function wireBoxes(tab: Tab): void {
   tab.reveal.addEventListener("click", () => {
     tab.revealed = !tab.revealed;
     renderKey(tab);
   });
 
-  tab.autopush.addEventListener("change", () => {
-    void guarded(tab, "links-autopush", () => toggleAutoPush(tab));
+  tab.toggles.autopush.addEventListener("change", () => {
+    void guarded(tab, "links-autopush", () => toggleAutoPush(tab.toggles));
   });
 
+  tab.toggles.highlight.addEventListener("change", () => {
+    void guarded(tab, "links-highlight", () => toggleHighlight(tab.toggles));
+  });
+}
+
+function wireActions(tab: Tab): void {
   wire(tab, "export-selection", () => exportRange(tab));
   wire(tab, "export-chart", () => exportChart(tab));
   wire(tab, "go-to-source", () => jumpToSource(tab));
@@ -105,12 +133,9 @@ export function installLinksTab(deps: LinksTabDeps): {
   // Links are added and sources deleted without the pane hearing about it, so
   // the list is read again whenever the tab comes into view - and a key read
   // that failed gets another go before "Generate" is offered back.
-  element(deps.root, "tab-links").addEventListener("click", () => {
+  element(tab.deps.root, "tab-links").addEventListener("click", () => {
     void reload(tab);
   });
-
-  void boot(tab);
-  return { refresh: () => refresh(tab) };
 }
 
 // ---------------------------------------------------------------------------
@@ -120,27 +145,9 @@ export function installLinksTab(deps: LinksTabDeps): {
 async function boot(tab: Tab): Promise<void> {
   await loadKey(tab);
   await refresh(tab);
-  await restoreWatch(tab);
-}
-
-// Re-arming reads a workbook setting, which a pane that cannot reach Excel yet
-// has no way to do: the box then simply stays clear, and ticking it reports
-// through the guard like every other action. The refresh above tells the same
-// story in the table.
-async function restoreWatch(tab: Tab): Promise<void> {
-  try {
-    tab.autopush.checked = await restoreAutoPush(tab.deps.relay, notify(tab));
-  } catch {
-    tab.autopush.checked = false;
-  }
-}
-
-// Auto-push runs on an edit, not on a click, so its own messages go straight to
-// the toast rather than through the guard.
-function notify(tab: Tab): (message: string) => void {
-  return (message) => {
-    tab.deps.toast.show(message);
-  };
+  // Both boxes are told by the workbook, never by what they last showed. The
+  // refresh above tells the same story in the table.
+  await restoreToggles(tab.toggles);
 }
 
 async function reload(tab: Tab): Promise<void> {
@@ -267,21 +274,6 @@ async function removeSelected(tab: Tab): Promise<string> {
   return `Removed ${ids.length} ${ids.length === 1 ? "link" : "links"}`;
 }
 
-// The box has to show what the workbook is really doing: a toggle that fails
-// puts it back before the guard reports why.
-async function toggleAutoPush(tab: Tab): Promise<string> {
-  const on = tab.autopush.checked;
-  try {
-    await setAutoPush(on, tab.deps.relay, notify(tab));
-  } catch (error) {
-    tab.autopush.checked = !on;
-    throw error;
-  }
-  return on
-    ? "Auto-push on: linked pictures follow your edits."
-    : "Auto-push off.";
-}
-
 async function generateKey(tab: Tab): Promise<string> {
   tab.workspace = await createWorkspace(tab.deps.keyStore);
   tab.keyError = null;
@@ -358,7 +350,7 @@ async function guarded(
 
 function setBusy(tab: Tab, busy: boolean): void {
   for (const button of tab.buttons) button.disabled = busy;
-  tab.autopush.disabled = busy;
+  setTogglesBusy(tab.toggles, busy);
   // Busy owns every button while it runs; the key panel owns "Generate" again
   // the moment it lets go.
   if (!busy) applyKeyState(tab);

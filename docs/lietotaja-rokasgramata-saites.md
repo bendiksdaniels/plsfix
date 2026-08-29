@@ -16,6 +16,8 @@ Excel cilnē "Links" atlasiet šūnu apgabalu vai diagrammu, ko vēlaties nosūt
 
 Excel izveido avotam slēptu nosaukumu, kas seko tam arī tad, kad virs apgabala tiek ievietotas rindas vai lapa tiek pārdēvēta. Attēls tiek nosūtīts uz releju un PowerPoint pusē parādās kā gaidošs vienums.
 
+Izvēles rūtiņa "Highlight linked cells" ar vieglu toni iekrāso visus saistītos šūnu apgabalus un, izslēdzot to, atjauno sākotnējo noformējumu, savukārt diagrammas netiek iekrāsotas.
+
 ## Ievietošana PowerPoint
 
 PowerPoint lentē atveriet cilni "Model Tools" un nospiediet "Links": atvērsies saišu panelis. Pārslēdzieties uz cilni "Inbox", kur redzami no Excel nosūtītie, vēl neievietotie attēli.

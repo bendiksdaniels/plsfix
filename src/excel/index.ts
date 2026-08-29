@@ -19,4 +19,5 @@ export * from "./styles";
 export * from "./share";
 export * from "./links";
 export * from "./link-watch";
+export * from "./link-highlight";
 export * from "./brand-store";
