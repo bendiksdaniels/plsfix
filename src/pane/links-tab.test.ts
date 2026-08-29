@@ -25,6 +25,8 @@ import { installLinksTab } from "./links-tab";
 // The adapter needs a real Excel host, so the tab is wired against mocks; the
 // markup under test is taskpane.html itself, which keeps ids from drifting.
 vi.mock("../excel", () => ({
+  listActiveSheetCharts: vi.fn(async () => []),
+  watchActiveSheet: vi.fn(),
   exportActiveChart: vi.fn(),
   exportSelection: vi.fn(),
   goToSource: vi.fn(),

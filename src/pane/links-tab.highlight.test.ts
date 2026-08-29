@@ -18,6 +18,8 @@ import type { Toast, ToastKind } from "../ui/toast";
 import { installLinksTab } from "./links-tab";
 
 vi.mock("../excel", () => ({
+  listActiveSheetCharts: vi.fn(async () => []),
+  watchActiveSheet: vi.fn(),
   exportActiveChart: vi.fn(),
   exportSelection: vi.fn(),
   goToSource: vi.fn(),
