@@ -1,4 +1,4 @@
-# AUTORESUME - pls,fix (v2.3.0 LIVE 2026-08-29)
+# AUTORESUME - pls,fix (v2.3.2 LIVE 2026-08-29)
 
 ## 29.08 late: charts, placement, picker, native tables in flight (v2.2.6)
 
@@ -17,6 +17,12 @@
   (ui-audit-report.md). Merge order: tables, UI audit (expect taskpane.html/styles.css
   conflicts with tables), manual; gate, bump, deploy after each; backlog agents (Links list
   refresh on sheet edits, chart list label for linked charts, web undo error) only after that.
+- MERGED 29.08 night: the UI audit (branch worktree-agent-a28952346a7af3847: 20 defect classes
+  fixed, styles split under src/styles/, `npm run ux:check` gates 4 widths x both panes x 5
+  states) and the Latvian manual (branch worktree-agent-a8d20f80ecaad887b: `manual/` crate,
+  `npm run manual`, `manual/out/pls,fix rokasgrāmata.docx`, screenshots retaken on v2.3.2 from a
+  fresh demo upload). Table column widths must be whole points on PowerPoint for the web
+  (v2.3.2); a lone object is centred on its slide; the font size always travels.
 - MERGED 29.08 night: native tables (branch worktree-agent-a3e01031c747aceb7, 7 commits, merge
   feade84) + numeric right-alignment; v2.3.0 deployed. `src/ppt/tables.ts`, `src/ppt/placement.ts`,
   `src/ppt/picture.ts`, `src/excel/link-table.ts`, fake `test/fakeppt/tables.ts`. Proven on PowerPoint for
