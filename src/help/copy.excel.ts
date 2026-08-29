@@ -132,6 +132,24 @@ const tools: HelpCopy = {
         "Writes the selected series' growth rate at the top right of the selection.",
     },
   },
+  "templates-heading": {
+    about:
+      "Ready calculation blocks written at the active cell: blue inputs, black formulas, your brand styles; Undo takes them back.",
+    buttons: {
+      "template-debt-schedule":
+        "Writes an annuity debt schedule: principal, rate and term in, payment, interest and balance per period out.",
+      "template-dcf":
+        "Writes a DCF block: five free cash flows, WACC and terminal growth in, discount factors, terminal value and enterprise value out.",
+      "template-npv-irr":
+        "Writes an NPV / IRR block: an outlay and eight cash flows in, NPV at your rate, IRR and payback out.",
+      "template-working-capital":
+        "Writes working-capital days: revenue, COGS and balances in, DSO, DIO, DPO and the cash conversion cycle out.",
+      "template-sensitivity":
+        "Writes a two-way sensitivity grid: a base value and two drivers with steps in, a 5 by 5 grid of outcomes out.",
+      "template-ebitda-bridge":
+        "Writes an EBITDA bridge table shaped for the Waterfall button: opening, five steps, closing and a check row.",
+    },
+  },
 };
 
 const brand: HelpCopy = {

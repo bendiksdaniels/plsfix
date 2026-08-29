@@ -111,9 +111,9 @@ describe("installHelp", () => {
 
   it("leaves a section the copy does not cover alone", () => {
     document.body.innerHTML = `
-      <section aria-labelledby="templates-heading">
-        <div class="section-heading"><div><h2 id="templates-heading">Templates</h2></div></div>
-        <button data-action="apply-template" type="button">Apply</button>
+      <section aria-labelledby="nowhere-heading">
+        <div class="section-heading"><div><h2 id="nowhere-heading">Nowhere</h2></div></div>
+        <button data-action="apply-nowhere" type="button">Apply</button>
       </section>`;
     installHelp(document);
     expect(toggles()).toHaveLength(0);
