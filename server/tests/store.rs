@@ -100,6 +100,44 @@ mod tests {
     }
 
     #[test]
+    fn a_named_revision_is_served_until_retention_drops_it() {
+        // What "Revert last update" asks for: the rev below the head, byte for
+        // byte, for as long as the two-revision rule keeps it.
+        let store = Store::in_memory().unwrap();
+        store.put_link(ID, &hash(1), b"a", 100).unwrap();
+        store.put_link(ID, &hash(1), b"b", 101).unwrap();
+        assert!(matches!(
+            store.get_link_rev(ID, &hash(1), 1, 102).unwrap(),
+            Get::Found(found) if found.rev == 1 && found.blob.as_slice() == b"a".as_slice()
+        ));
+        // Ownership is the link's, not the row's: a foreign key is refused
+        // whether or not the revision it names is still there.
+        assert!(matches!(
+            store.get_link_rev(ID, &hash(2), 1, 102).unwrap(),
+            Get::Forbidden
+        ));
+        assert!(matches!(
+            store.get_link_rev(ID, &hash(2), 9, 102).unwrap(),
+            Get::Forbidden
+        ));
+        // A third push drops rev 1; a rev that never existed reads the same.
+        store.put_link(ID, &hash(1), b"c", 103).unwrap();
+        assert!(matches!(
+            store.get_link_rev(ID, &hash(1), 1, 104).unwrap(),
+            Get::Missing
+        ));
+        assert!(matches!(
+            store.get_link_rev(ID, &hash(1), 9, 104).unwrap(),
+            Get::Missing
+        ));
+        // And the whole link dies with its TTL, revision by revision.
+        assert!(matches!(
+            store.get_link_rev(ID, &hash(1), 2, 103 + LINK_TTL + 1).unwrap(),
+            Get::Missing
+        ));
+    }
+
+    #[test]
     fn inbox_lists_only_matching_auth_and_expires_after_a_day() {
         let store = Store::in_memory().unwrap();
         store.post_inbox("WS", &hash(1), ID, b"x", 0).unwrap();

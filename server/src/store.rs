@@ -93,8 +93,18 @@ struct Head {
     auth: Vec<u8>,
 }
 
+/// "No such row" is an outcome here, not a failure: every lookup below asks
+/// for a row that may legitimately be gone.
+fn optional<T>(result: rusqlite::Result<T>) -> rusqlite::Result<Option<T>> {
+    match result {
+        Ok(value) => Ok(Some(value)),
+        Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
+        Err(other) => Err(other),
+    }
+}
+
 fn head(conn: &Connection, id: &str, now: i64) -> rusqlite::Result<Option<Head>> {
-    conn.query_row(
+    optional(conn.query_row(
         "SELECT rev, pushed_at, auth_hash FROM links WHERE id = ?1 AND expires_at > ?2 ORDER BY rev DESC LIMIT 1",
         params![id, now],
         |row| {
@@ -104,12 +114,7 @@ fn head(conn: &Connection, id: &str, now: i64) -> rusqlite::Result<Option<Head>>
                 auth: row.get(2)?,
             })
         },
-    )
-    .map(Some)
-    .or_else(|error| match error {
-        rusqlite::Error::QueryReturnedNoRows => Ok(None),
-        other => Err(other),
-    })
+    ))
 }
 
 /// Expiry is enforced on read and on write, so an unswept row is still dead.
@@ -217,6 +222,38 @@ impl Store {
             pushed_at: head.pushed_at,
             blob,
         }))
+    }
+
+    /// One revision by name, for the owner only: what "Revert last update"
+    /// asks for. Ownership is the link's, not the row's, so a foreign key is
+    /// refused whether or not the revision it names is still held; a rev the
+    /// two-revision rule has dropped, or one that never existed, is missing.
+    pub fn get_link_rev(
+        &self,
+        id: &str,
+        auth_hash: &[u8; 32],
+        rev: i64,
+        now: i64,
+    ) -> rusqlite::Result<Get> {
+        let conn = self.conn();
+        let Some(head) = head(&conn, id, now)? else {
+            return Ok(Get::Missing);
+        };
+        if head.auth != auth_hash.as_slice() {
+            return Ok(Get::Forbidden);
+        }
+        let found = optional(conn.query_row(
+            "SELECT pushed_at, blob FROM links WHERE id = ?1 AND rev = ?2 AND expires_at > ?3",
+            params![id, rev, now],
+            |row| {
+                Ok(Found {
+                    rev,
+                    pushed_at: row.get(0)?,
+                    blob: row.get(1)?,
+                })
+            },
+        ))?;
+        Ok(found.map_or(Get::Missing, Get::Found))
     }
 
     /// Removes every revision of a link.
