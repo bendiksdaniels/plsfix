@@ -52,8 +52,13 @@ export function pruneSelection(rows: LinkRow[], selected: Set<string>): void {
   for (const key of selected) if (!live.has(key)) selected.delete(key);
 }
 
-export function requireSelection(rows: LinkRow[]): LinkRow[] {
-  if (rows.length === 0) throw new Error("Tick a link in the list first.");
+// The message is the button's, not this function's: "Tick a link in the list
+// first." reads wrong under a button that acts on several rows at once.
+export function requireSelection(
+  rows: LinkRow[],
+  message = "Tick a link in the list first.",
+): LinkRow[] {
+  if (rows.length === 0) throw new Error(message);
   return rows;
 }
 

@@ -36,6 +36,7 @@ import {
   updateLinks,
   type LinkRow,
 } from "./links";
+import { revertLinks, summarizeRevert } from "./revert";
 import { renderInbox, renderLinkRows } from "./views";
 
 const APP_VERSION = formatVersion(__APP_VERSION__);
@@ -195,6 +196,22 @@ async function updateSlide(): Promise<string> {
   return updateRows(subset);
 }
 
+// PowerPoint cannot undo what the pane wrote, and the relay keeps only the
+// revision before the current one, so this goes back exactly one step - on the
+// ticked rows, because a whole-deck revert is not something to reach by
+// accident.
+async function revertSelected(): Promise<string> {
+  const subset = requireSelection(
+    selectedRows(rows, selected),
+    "Tick the rows to revert",
+  );
+  const summary = await revertLinks(subset, relay);
+  stagedDetails =
+    summary.failures.length > 0 ? summary.failures.join("\n") : undefined;
+  await refreshQuietly();
+  return summarizeRevert(summary);
+}
+
 async function breakSelected(): Promise<string> {
   const subset = requireSelection(selectedRows(rows, selected));
   try {
@@ -299,6 +316,7 @@ const BUTTON_ACTIONS: Record<string, () => Promise<string>> = {
     updateRows(requireSelection(selectedRows(rows, selected))),
   "update-slide": updateSlide,
   "update-all": () => updateRows(rows),
+  "revert-selected": revertSelected,
   "break-selected": breakSelected,
   "go-to-slide": goToSelectedSlide,
   "refresh-inbox": refreshInbox,
