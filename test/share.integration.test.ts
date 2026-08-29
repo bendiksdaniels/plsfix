@@ -135,6 +135,100 @@ describe("prepare for sharing", () => {
     ]);
   });
 
+  it("stops at the scan cap and names the sheets it did not read", async () => {
+    await boot(["Model", "Data", "Notes"]);
+    for (const sheet of ["Model", "Data", "Notes"]) {
+      helpers.seed(`${sheet}!A1`, [
+        ["a", "b"],
+        [{ value: 1, formula: "=[Budget.xlsx]S!$A$1" }, "d"],
+      ]);
+    }
+
+    const { report } = await smt.prepareForSharing({
+      maxCells: 4,
+      maxTotalCells: 8,
+    });
+
+    // The link on the sheet that was not read is missing from the report, and
+    // the report says so rather than reading as "nothing there".
+    expect(labels(report, "skippedSheet")).toEqual(["Notes"]);
+    expect(labels(report, "externalLink")).toEqual([
+      "Model!A2: =[Budget.xlsx]S!$A$1",
+      "Data!A2: =[Budget.xlsx]S!$A$1",
+    ]);
+  });
+
+  // The three this release introduced: the add-in's own functions, the paint an
+  // overlay leaves in the file, and the tokens the link registry carries.
+  it("reports the cells only this add-in can evaluate", async () => {
+    helpers.seed("Model!B4", [
+      [{ value: 12, formula: "=SMT.ROUND(B3,-3)" }],
+      [{ value: 12, formula: "=_xlfn.SMT.ROUNDSUM(B1:B2,0)" }],
+      [{ value: 12, formula: "=ROUND(B3,-3)" }],
+    ]);
+
+    const { report } = await smt.prepareForSharing();
+
+    expect(labels(report, "addinFormula")).toEqual([
+      "Model!B4: =SMT.ROUND(B3,-3)",
+      "Model!B5: =_xlfn.SMT.ROUNDSUM(B1:B2,0)",
+    ]);
+  });
+
+  it("reports an overlay still painted over the model", async () => {
+    const formula = { formula: "=R[1]C", r1c1: "=R[1]C", value: 1 };
+    helpers.seed("Model!A1", [
+      [formula, formula],
+      [formula, formula],
+    ]);
+    helpers.select("Model!A1:B2");
+    expect(await smt.toggleAuditOverlay()).toBe(true);
+
+    const { report } = await smt.prepareForSharing();
+
+    expect(labels(report, "overlayPainted")).toEqual([
+      "The audit overlay is still painted over cells; the reader has no add-in to clear it",
+    ]);
+
+    // The pass left the workbook on A1, so the overlay is toggled off from the
+    // block it painted, and the next report has nothing to say about it.
+    helpers.select("Model!A1:B2");
+    expect(await smt.toggleAuditOverlay()).toBe(false);
+    const off = await smt.prepareForSharing();
+    expect(labels(off.report, "overlayPainted")).toEqual([]);
+  });
+
+  it("reports the link registry as tokens to break, and deletes nothing", async () => {
+    const pure = await import("../src/share");
+    const clean = await smt.prepareForSharing();
+    expect(labels(clean.report, "linkTokens")).toEqual([]);
+
+    // What the Links tab leaves behind: the registry setting, tokens and all.
+    helpers.setSetting(
+      "SMT_LINKS",
+      JSON.stringify({
+        v: 1,
+        links: [
+          {
+            id: "a".repeat(32),
+            kind: "range",
+            anchor: "SMT_LINK_aaaaaaaa",
+            label: "Model!B4:F5",
+            token: "t".repeat(43),
+            createdAt: "2026-08-29T10:00:00.000Z",
+            lastPushedAt: null,
+            rev: 1,
+          },
+        ],
+      }),
+    );
+
+    const { report } = await smt.prepareForSharing();
+
+    expect(labels(report, "linkTokens")).toEqual([pure.LINK_TOKENS_LABEL]);
+    expect(helpers.setting("SMT_LINKS")).not.toBe("");
+  });
+
   it("reports autocolor on edit while it is running", async () => {
     const clean = await smt.prepareForSharing();
     expect(labels(clean.report, "autocolorOnEdit")).toEqual([]);

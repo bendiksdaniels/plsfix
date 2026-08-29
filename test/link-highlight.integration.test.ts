@@ -200,6 +200,113 @@ describe("toggleLinkHighlight", () => {
   });
 });
 
+// The mirror of the refusal above. Without it the pair is reachable, both
+// snapshots are saved in the file, and the two boot restores write over each
+// other on the next open.
+describe("toggleAuditOverlay against the highlight", () => {
+  it("refuses while the highlight owns the fills, and paints nothing", async () => {
+    await seedLinks();
+    expect(await smt.toggleLinkHighlight()).toBe(true);
+    const painted = helpers.cellMap("Model");
+
+    helpers.select("Model!B4:D5");
+    expect(await rejects(() => smt.toggleAuditOverlay())).toBe(
+      "audit overlay: turn the linked-cell highlight off first",
+    );
+    expect(helpers.cellMap("Model")).toEqual(painted);
+    expect(helpers.setting("smtAuditOverlay")).toBeNull();
+
+    // The highlight is still the sole owner, so its toggle-off is still exact.
+    expect(await smt.toggleLinkHighlight()).toBe(false);
+    expect(helpers.fill("Model!B4").pattern).toBe("None");
+  });
+
+  it("never lets both snapshots be saved in one file", async () => {
+    await seedLinks();
+    helpers.select("Model!B4:D5");
+    expect(await smt.toggleAuditOverlay()).toBe(true);
+    await rejects(() => smt.toggleLinkHighlight());
+    expect(helpers.setting(SETTING)).toBeNull();
+
+    expect(await smt.toggleAuditOverlay()).toBe(false);
+    expect(await smt.toggleLinkHighlight()).toBe(true);
+    await rejects(() => smt.toggleAuditOverlay());
+    expect(helpers.setting("smtAuditOverlay")).toBe("");
+  });
+});
+
+// A file written before the refusal was symmetric can still hold both
+// snapshots: the highlight painted, the pane was reloaded, and the overlay then
+// striped the same cells and snapshotted the tint as if it were the modeller's.
+// src/main.ts restores the overlay first and the highlight second, and never
+// side by side, because the two orders do not land in the same place.
+async function paintBothOverlays(): Promise<Record<string, unknown>> {
+  await seedLinks();
+  const cell = { formula: "=R[1]C", r1c1: "=R[1]C", value: 1 };
+  helpers.seed("Model!B4", [
+    [cell, cell, cell],
+    [cell, cell, cell],
+  ]);
+  helpers.setFill("Model!B4", { color: "#EEDDCC", pattern: "Solid" });
+  const before = helpers.cellMap("Model");
+
+  await smt.toggleLinkHighlight();
+  // The pane restarts: the maps die, the two settings stay in the file, and an
+  // older build's overlay is free to paint over the tint it finds.
+  await boot(workbook);
+  helpers.select("Model!B4:D5");
+  await smt.toggleAuditOverlay();
+  expect(helpers.setting(SETTING)).not.toBe("");
+  expect(helpers.setting("smtAuditOverlay")).not.toBe("");
+  return before;
+}
+
+// The handover checklist has to see the tint: the modeller ticks the box, runs
+// Prepare for sharing, and sends a file with brand-coloured blocks over half
+// the grid that the reader has no add-in to take off.
+describe("prepare for sharing, with the highlight on", () => {
+  it("reports the highlight and the link tokens the workbook carries", async () => {
+    await seedLinks();
+    const clean = await smt.prepareForSharing();
+    expect(clean.report.filter((one) => one.kind === "overlayPainted")).toEqual(
+      [],
+    );
+    expect(clean.report.some((one) => one.kind === "linkTokens")).toBe(true);
+
+    await smt.toggleLinkHighlight();
+    const { report } = await smt.prepareForSharing();
+
+    expect(
+      report
+        .filter((one) => one.kind === "overlayPainted")
+        .map((one) => one.label),
+    ).toEqual([
+      "The linked-cell highlight is still painted over cells; the reader has no add-in to clear it",
+    ]);
+  });
+});
+
+describe("the boot restores, in order", () => {
+  it("gives the modeller's own fills back: overlay first, then highlight", async () => {
+    const before = await paintBothOverlays();
+
+    await reopen();
+    expect(await smt.restorePersistedOverlay()).toBe(true);
+    expect(await smt.restoreLinkHighlight()).toBe(true);
+    expect(helpers.cellMap("Model")).toEqual(before);
+  });
+
+  it("leaves our own tint on the model when the two land the other way round", async () => {
+    const before = await paintBothOverlays();
+
+    await reopen();
+    expect(await smt.restoreLinkHighlight()).toBe(true);
+    expect(await smt.restorePersistedOverlay()).toBe(true);
+    expect(helpers.fill("Model!B4").color).toBe(tinted);
+    expect(helpers.cellMap("Model")).not.toEqual(before);
+  });
+});
+
 describe("restoreLinkHighlight", () => {
   it("puts last session's fills back when the file is reopened", async () => {
     await seedLinks();

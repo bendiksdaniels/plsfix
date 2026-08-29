@@ -6,17 +6,16 @@
 //
 // Order rule: the highlight and the audit overlay both own the fills they paint
 // and both remember what was under them, so only one may be on at a time. The
-// highlight refuses to paint while the overlay is on; turn the highlight off
-// before toggling the audit overlay, or the overlay would snapshot this tint as
-// the modeller's own formatting and hand it back as such.
+// refusal runs both ways - each store asks fill-store.ts whether the other one
+// is holding fills - because a one-way guard leaves the pair reachable, and two
+// snapshots saved in one file restore over each other on the next open.
 //
 // Charts are never highlighted: a chart anchor is the chart's own name, not a
 // range, so there are no cells under it to tint.
 
-import { auditOverlayOn } from "./audit";
 import { FillStore, fillGrid, requestFills } from "./fill-store";
 import { applyFillKey, SELECTION_CELL_CAP } from "./internal";
-import { readRegistry, resolveSource } from "./link-anchors";
+import { readRegistry, resolveSources } from "./link-anchors";
 import { parseAddress } from "./shared";
 import { activeTheme, tint } from "../settings";
 
@@ -25,7 +24,13 @@ export const HIGHLIGHT_SETTING = "SMT_LINK_HIGHLIGHT";
 // Light enough to read a model through, dark enough to find on a white grid.
 const HIGHLIGHT_TINT = 0.85;
 
-const highlight = new FillStore(HIGHLIGHT_SETTING);
+const highlight = new FillStore(HIGHLIGHT_SETTING, "the linked-cell highlight");
+
+// Read by the audit overlay before it paints, the mirror of auditOverlayOn, and
+// by Prepare for sharing: a tint left on travels with the file.
+export function linkHighlightOn(): boolean {
+  return highlight.painted;
+}
 
 interface Anchored {
   range: Excel.Range;
@@ -48,14 +53,13 @@ async function anchoredRanges(
   context: Excel.RequestContext,
 ): Promise<Excel.Range[]> {
   const registry = await readRegistry(context);
-  const ranges: Excel.Range[] = [];
-  for (const entry of registry.links) {
-    if (entry.kind !== "range") continue;
-    const resolved = await resolveSource(context, entry);
-    if (resolved === null || resolved.kind !== "range") continue;
-    ranges.push(resolved.range);
-  }
-  return ranges;
+  // Charts are filtered out before resolving, so a workbook whose links are all
+  // charts costs no round trip at all.
+  const entries = registry.links.filter((entry) => entry.kind === "range");
+  const resolved = await resolveSources(context, entries);
+  return resolved.flatMap((source) =>
+    source?.kind === "range" ? [source.range] : [],
+  );
 }
 
 // Sheet id rather than name, so a rename between paint and restore is fine, and
@@ -100,9 +104,7 @@ async function paint(
 
 // Returns the state the toggle left behind: true when the workbook is painted.
 export async function toggleLinkHighlight(): Promise<boolean> {
-  if (auditOverlayOn()) {
-    throw new Error("highlight: turn the audit overlay off first");
-  }
+  highlight.requireSoleOwner("highlight");
   return Excel.run(async (context) => {
     if (await highlight.restore(context)) return false;
 
