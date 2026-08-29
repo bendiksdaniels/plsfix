@@ -1,25 +1,39 @@
-# AUTORESUME - Model Tools (v2.1.20 LIVE 2026-08-29)
+# AUTORESUME - Model Tools (v2.1.22 LIVE 2026-08-29)
 
-## 29.08 evening: demo delivered, v2.1.21 LIVE, web pass in progress
+## 29.08 evening: demo delivered, v2.1.22 LIVE, web pass done
 
-- Daniel: "launch it now and create a demo where I could play around with it", then "I can not
-  give you computer use", "use a virtual machine or something on the server". Delivered:
-  `demo/` (Rust) builds `demo/out/Demo Model.xlsx` (8 sheets, 435 cells, reconciled by
-  `demo/tests/workbook.rs`, "Start here" checklist); `npm run demo` = build + prod manifest into
-  both wef folders + Excel on the workbook + PowerPoint on a new deck. Committed 2cd27b1.
-- Web verification route (no desktop control): scratch Chrome with `--remote-debugging-port=9222`
-  driven by `scratchpad/driver/drive.mjs` (playwright-core over CDP, helpers.mjs); Office on the
-  web sideload = document URL + `wdaddindevserverport=3001&wdaddinmanifestfile=manifest.prod.xml
-  &wdaddinmanifestguid=<id>` with `serve-manifest.mjs` (HTTPS + CORS on the dev certs) and Chrome
-  flags `--ignore-certificate-errors-spki-list=<spki>` + LocalNetworkAccessChecks disabled; the
-  unified Apps store has no Upload My Add-in any more. Daniel signed in (NDUS account) himself.
-- Found and fixed on the web: `Office.onReady` never settled in the Excel pane (custom-functions
-  runtime init fails with RichApi "session expired"), pane stuck on "Connecting", ribbon dead.
-  `src/host-ready.ts` (4 tests): onReady gets a 4 s head start, then a host that answers a real
-  Excel.run probe boots the pane degraded with a toast. Commit 4c8c762, v2.1.21 deployed and
-  verified ("Excel connected" on Excel for the web). PowerPoint for the web pane works as is.
-- Not pushed. Next: finish the web checklist (tools, links Excel -> PowerPoint pairing/insert/
-  update), then record results here; Daniel's desktop pass stays his.
+- Daniel: "launch it now and create a demo where I could play around with it"; then no desktop
+  control ("I can not give you computer use", "use a virtual machine or something on the
+  server"). Delivered: `demo/` (Rust) builds `demo/out/Demo Model.xlsx` (8 sheets,
+  435 cells, reconciled by `demo/tests/workbook.rs`, "Start here" checklist of 17 rows);
+  `npm run demo` = build + prod manifest into both wef folders + Excel on the workbook +
+  PowerPoint on a new deck. Excel and PowerPoint on the Mac were relaunched with the current
+  manifest (the Excel wef file had been the old 1.0.0.0 one). Desktop pass itself = Daniel.
+- Web verification rig (see tasks/lessons.md 29.08): scratch Chrome on port 9222 driven by
+  `scratchpad/driver/drive.mjs` (playwright-core over CDP), Office on the web with the add-in
+  registered via `wdaddindevserverport=3001&wdaddinmanifestfile=manifest.prod.xml&
+  wdaddinmanifestguid=<id>` from `serve-manifest.mjs` (HTTPS + CORS on the dev certs). Daniel
+  signed in with his NDUS account himself. Both hosts show the add-in's tab; both panes load from
+  production.
+- Verified on Office for the web (Excel): selection inspector (160 cells / 91 formulas),
+  Autocolor (links green, inputs blue, F9 partial), Audit overlay on/off, Fill formula right
+  (needs neighbouring rows), CAGR, Waterfall, Tornado, Consistent rounding (formulas written;
+  values #NAME? because the web custom-functions runtime fails to start), Unpivot, Find, Scan
+  broken names (Old_budget), Scan styles, Prepare for sharing, Contents sheet, Precedents /
+  Dependents, IFERROR, sign flip, x1000, number cycle, SMT Undo. Links: key generated, range
+  exported, PowerPoint paired by key, Inbox -> Insert (tagged shape), move/resize, edit + Push
+  all, Update available -> Update all (rev 2, geometry kept), Revert (rev 1), Break link (tags
+  gone, picture stays). Not automatable on the web: chart export (charts are canvas-drawn,
+  `activate()` does not select on the web), custom function values.
+- Two fixes found by the web pass, both live: v2.1.21 `src/host-ready.ts` (Office.onReady never
+  settles when the custom-functions runtime fails to initialise; the pane now boots off a host
+  probe after a 4 s head start, degraded toast); v2.1.22 waterfall applies its chart surface
+  (font, corners) in a tolerated batch because Excel for the web rejects both on chartex
+  charts. Demo fixes: per-month row between filled rows, SMT hints without "=", source-missing
+  row asks for the whole block (deleting rows inside the block only shrinks the anchor).
+- Commits 2cd27b1, 4c8c762, d0e903e, 90fba5e (v2.1.22). Not pushed. Backlog candidates from the
+  pass: Excel Links list does not re-render on sheet changes (status only refreshes on push);
+  chart export on the web needs a UI click.
 
 ## State
 
