@@ -35,6 +35,8 @@ Ja Excel cilnē "Links" ir ieslēgta izvēles rūtiņa "Auto-push on edit", main
 
 Pozīcija un platums saglabājas nemainīgi. Augstums mainās tikai tad, kad attēla proporcijas Excel pusē ir mainījušās. Ja attēls ir ievietots grupā, atjaunināšana to tomēr atrod un atjauno.
 
+Lai attēlu saistītu ar citu eksportu, piemēram, ar to pašu tabulu no jaunākas darbgrāmatas, atzīmējiet vienu rindu, nospiediet "Change source" un izvēlieties kādu no cilnē "Inbox" gaidošajiem eksportiem; attēla slaids, pozīcija un izmērs paliek nemainīgi.
+
 ## Saites atslēga
 
 Saite starp Excel un PowerPoint darbojas tikai tad, kad abām pusēm ir viena un tā pati atslēga.
@@ -62,4 +64,4 @@ Relejs glabā eksportētos attēlus tikai šifrētā veidā un ne ilgāk kā 7 d
 
 - Ctrl+Z neatceļ pievienojumprogrammas veiktās izmaiņas, tāpēc pēc "Update all" atzīmētās rindas var atgriezt uz iepriekšējo versiju ar pogu "Revert last update", taču relejs glabā tikai vienu iepriekšējo versiju, tāpēc tālāk atpakaļ atgriezties nav iespējams.
 - PowerPoint tabulas vēl netiek atbalstītas: saitē var būt tikai attēls.
-- Darbgrāmatas versiju maiņa (piemēram, cita faila nosaukums vai atrašanās vieta) vēl nav pieejama.
+- Darbgrāmatas versiju maiņa notiek tikai caur cilni "Inbox": vispirms jaunā darbgrāmata jāeksportē no Excel, un tikai pēc tam saiti var pārvirzīt uz to.

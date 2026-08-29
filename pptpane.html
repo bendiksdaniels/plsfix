@@ -117,6 +117,29 @@
             >
               Go to slide
             </button>
+            <button
+              id="change-source"
+              type="button"
+              title="Point the ticked link at another export waiting in the Inbox"
+              disabled
+            >
+              Change source
+            </button>
+          </div>
+
+          <div id="change-source-chooser" class="source-chooser" hidden>
+            <label class="key-label" for="change-source-list">
+              Point this link at
+              <select id="change-source-list"></select>
+            </label>
+            <div class="io-row">
+              <button id="change-source-confirm" type="button">Confirm</button>
+              <button id="change-source-cancel" type="button">Cancel</button>
+            </div>
+            <p class="hint">
+              The picture keeps its slide, position and size. The export it
+              points at now stays in Excel, unchanged.
+            </p>
           </div>
 
           <table class="link-table">

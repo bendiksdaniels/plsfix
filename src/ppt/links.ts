@@ -35,7 +35,12 @@ import type { FoundLink, RefreshRequest } from "./host";
 // PowerPointApi 1.8 does anyway.
 export type PptHost = Pick<
   typeof realHost,
-  "scanLinks" | "insertLink" | "refreshLink" | "breakLink" | "goToSlide"
+  | "scanLinks"
+  | "insertLink"
+  | "refreshLink"
+  | "retagLink"
+  | "breakLink"
+  | "goToSlide"
 > & { refreshLinks?: typeof realHost.refreshLinks };
 
 export interface LinkRow {

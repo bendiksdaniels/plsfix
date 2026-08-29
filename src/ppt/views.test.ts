@@ -1,6 +1,28 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from "vitest";
-import { renderInbox, renderLinkRows, statusLabel } from "./views";
+import type { InboxItem } from "../link/model";
+import {
+  renderCandidates,
+  renderInbox,
+  renderLinkRows,
+  statusLabel,
+} from "./views";
+
+function waiting(workbook: string, label = "Model!B4:F12"): InboxItem {
+  return {
+    id: workbook,
+    token: "t",
+    kind: "range",
+    label,
+    src: {
+      workbook,
+      sheet: "Model",
+      ref: "B4:F12",
+      anchor: "SMT_LINK_aaaaaaaa",
+    },
+    createdAt: new Date().toISOString(),
+  };
+}
 
 describe("renderLinkRows", () => {
   it("renders one row per link with a checkbox and a status badge", () => {
@@ -74,6 +96,31 @@ describe("renderInbox", () => {
     expect(onInsert).toHaveBeenCalledWith(item);
     renderInbox(list, [], onInsert);
     expect(list.textContent).toContain("Nothing waiting");
+  });
+});
+
+describe("renderCandidates", () => {
+  it("lists each export by label, workbook and age, in the order given", () => {
+    const select = document.createElement("select");
+
+    renderCandidates(select, [waiting("Model_v5.xlsx"), waiting("Old.xlsx")]);
+
+    const options = [...select.options];
+    expect(options.map((option) => option.value)).toEqual([
+      "Model_v5.xlsx",
+      "Old.xlsx",
+    ]);
+    expect(options[0]!.textContent).toBe(
+      "Model!B4:F12 · Model_v5.xlsx · just now",
+    );
+    expect(options[0]!.title).toBe(options[0]!.textContent);
+  });
+
+  it("clears stale options on re-render", () => {
+    const select = document.createElement("select");
+    renderCandidates(select, [waiting("Model_v5.xlsx")]);
+    renderCandidates(select, []);
+    expect(select.options).toHaveLength(0);
   });
 });
 

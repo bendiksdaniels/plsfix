@@ -1114,6 +1114,33 @@ footer span:last-child {
   cursor: pointer;
 }
 
+/* "Change source": the inline picker under the link toolbar. Its own card, so
+   it reads as a question about the ticked row rather than as more toolbar. */
+.source-chooser {
+  margin-bottom: 12px;
+  padding: 10px 11px;
+  border: 1px solid var(--bronze);
+  border-radius: 11px;
+  background: rgba(178, 126, 84, 0.07);
+}
+.source-chooser select {
+  width: 100%;
+  min-height: 34px;
+  padding: 4px 8px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  color: var(--ink);
+  background: #fff;
+  font:
+    600 11px "Aptos",
+    "Segoe UI",
+    system-ui,
+    sans-serif;
+}
+.source-chooser .io-row {
+  margin-top: 8px;
+}
+
 .key-label {
   display: grid;
   gap: 4px;
