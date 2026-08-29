@@ -57,3 +57,21 @@ each item. Stop when Daniel intervenes or the list is empty.
       Daniel's; deltas listed for sign-off).
 - [x] Auto-push on edit (spec v2.1 flag; done v2.1.10).
 - Milestone after every 3 merged items: deploy + tag + AUTORESUME refresh.
+
+## Next round (D, after v2.1.13; two agents at a time)
+
+- [ ] D1 Revert after Update all: server already keeps 2 revs; add `GET /api/links/{id}?rev=<n>` (auth as
+      today), client `getLinkRev`, PowerPoint "Revert last update" for the selected rows (repaint the
+      previous rev, tag rev rewritten), refuse when no previous rev; tests on both sides.
+- [ ] D2 Highlight linked cells in Excel (M3): Links tab toggle that paints a subtle brand-tinted fill on
+      every anchored range and restores the original fills on toggle-off (snapshot like the audit overlay);
+      chart anchors get a one-line hint instead.
+- [ ] D3 Batched relay fetch: `POST /api/links/fetch` with `[{id, auth, knownRev}]` returning the blobs
+      that changed (base64url) in one response (4 MiB total cap, 413 above); client + PowerPoint update
+      path use it; per-row fallback to GET stays.
+- [ ] D4 Super Find phase 4: comments (`worksheet.comments`, ExcelApi 1.10, gated) with a "comment" hit kind.
+- [ ] D5 Byte-budgeted update batches (flush a repaint batch at 8 MiB of payload).
+- [ ] D6 Second whole-branch review (since v2.1.2) -> one fix wave -> deploy.
+- [ ] D7 Change source / workbook version resolution (M3): PowerPoint "Change source" that re-keys a
+      link to a newer export of the same anchor label from the inbox; design note first, then build.
+- Milestone after every 3 merged items: deploy + tag + AUTORESUME refresh.
