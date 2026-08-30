@@ -94,6 +94,11 @@ function addPrimitive(
       return addLabel(shapes, primitive, spec.font, at);
     case "line": {
       const shape = shapes.addLine(PowerPoint.ConnectorType.straight, at);
+      // The host reads a zero width or height in the add as "not given" and
+      // draws the line sloped over its 72 pt default (PowerPoint for the web,
+      // 30.08); written after the add, a zero side sticks.
+      shape.width = at.width;
+      shape.height = at.height;
       shape.lineFormat.color = primitive.color;
       shape.lineFormat.weight = primitive.weight;
       return shape;

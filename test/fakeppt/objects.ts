@@ -22,6 +22,9 @@ import {
 import { FakeClientResult, Loadable } from "./strict";
 import { newFakeTable, TableProxy } from "./tables";
 
+// The side PowerPoint gives a line whose width or height was left at zero.
+const LINE_DEFAULT_SIDE = 72;
+
 // PowerPoint reads a shape group through the group shape, so anything else
 // answers the same GeneralException the real host does.
 function notAGroup(shapeId: string): Error {
@@ -137,11 +140,17 @@ class ShapeCollectionProxy extends Handle {
   }
 
   // addLine: the connector type is the line's geometry, the box its ends.
+  // addLine: the connector type is the line's geometry, the box its ends. The
+  // host reads a zero width or height as "not given" and uses its default,
+  // which is how a baseline asked for at height 0 comes out sloped (measured
+  // on PowerPoint for the web, 30.08); a later `shape.height = 0` sticks.
   addLine(connectorType = "Straight", options: BoxOptions = {}): ShapeProxy {
     return this.add("Line", {
       type: "Line",
       geometry: connectorType,
       ...options,
+      width: options.width || LINE_DEFAULT_SIDE,
+      height: options.height || LINE_DEFAULT_SIDE,
     });
   }
 

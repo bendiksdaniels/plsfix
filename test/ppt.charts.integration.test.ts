@@ -169,6 +169,17 @@ describe("insert a chart link", () => {
     ).toHaveLength(0);
   });
 
+  it("draws the baseline flat: a zero-height line keeps its zero height", async () => {
+    await insert();
+    const baseline = children().find(
+      (shape) => shape.name === `${GROUP_NAME}: baseline`,
+    )!;
+    // The host reads a zero side as "not given" and draws the line sloped over
+    // its 72 pt default, so the adapter writes both sides after the add.
+    expect(baseline.height).toBe(0);
+    expect(baseline.width).toBeGreaterThan(100);
+  });
+
   it("names every shape after the part of the chart it draws", async () => {
     await insert();
     const names = children().map((shape) => shape.name);
