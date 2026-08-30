@@ -8,8 +8,10 @@ import { installGlobals, removeGlobals } from "./office";
 
 export type {
   FakePptShape,
+  FakeShapeFont,
   FakeShapeGroup,
   FakeShapeInit,
+  FakeShapeMargins,
   FakeSlide,
   ShapeSite,
 } from "./model";
@@ -42,6 +44,9 @@ export interface FakePptHelpers {
   selectSlide(id: string): void;
   clearSelection(): void;
   setSupported(check: (set: string, version: string) => boolean): void;
+  // Office.context.platform, "Mac" until a test asks for another host: the web
+  // is the one that draws fewer shapes before it gives up.
+  setPlatform(platform: string): void;
   storage(): Map<string, string>;
   // Round trips to the host since this fake was installed: what a batching
   // change is measured in, counted from zero per installFakePpt.

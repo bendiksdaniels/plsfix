@@ -6,10 +6,35 @@
 
 import type { FakeTable } from "./tables";
 
+// The insets a text frame keeps, null wherever the add-in left PowerPoint's own.
+export interface FakeShapeMargins {
+  left: number | null;
+  right: number | null;
+  top: number | null;
+  bottom: number | null;
+}
+
+export interface FakeShapeFont {
+  name?: string;
+  size?: number;
+  color?: string;
+  bold?: boolean;
+}
+
 export interface FakePptShape {
   id: string;
   name: string;
-  type: "GeometricShape" | "Image" | "Table" | "Group" | "Placeholder";
+  type:
+    | "GeometricShape"
+    | "Image"
+    | "Table"
+    | "Group"
+    | "Placeholder"
+    | "TextBox"
+    | "Line";
+  // The geometry the shape was drawn with, "Rectangle" or "Pie"; a line keeps
+  // its connector type here, and a shape with neither keeps null.
+  geometry: string | null;
   left: number;
   top: number;
   width: number;
@@ -17,11 +42,28 @@ export interface FakePptShape {
   zOrder: number;
   tags: Map<string, string>;
   fillImage: string | null;
+  fillColor: string | null;
+  fillCleared: boolean;
   lineVisible: boolean;
+  lineColor: string | null;
+  lineWeight: number | null;
+  // A pie's [start, end] in degrees; empty on a geometry with no adjustment.
+  adjustments: number[];
   setImageCalls: number;
   // PowerPoint.TextFrame.hasText: false on an empty layout placeholder, which
   // is the one shape a new object is allowed to be placed over.
   hasText: boolean;
+  text: string | null;
+  font: FakeShapeFont;
+  // The paragraph's horizontal alignment; the frame's own settings sit beside.
+  alignment: string | null;
+  verticalAlignment: string | null;
+  autoSize: string | null;
+  wordWrap: boolean | null;
+  margins: FakeShapeMargins;
+  // False until the sync after the add: PowerPoint hands out a shape's
+  // adjustments only once the host has heard of the shape.
+  synced: boolean;
   // The shapes a group holds; null on everything that is not a group.
   group: FakeShapeGroup | null;
   // The grid a shape of type Table holds; null on everything else.
@@ -41,12 +83,56 @@ export interface FakeSlide {
 export interface FakeShapeInit {
   name?: string;
   type?: FakePptShape["type"];
+  geometry?: string;
   left?: number;
   top?: number;
   width?: number;
   height?: number;
   fillImage?: string;
   hasText?: boolean;
+  text?: string;
+}
+
+// PowerPoint gives every geometry a fixed number of adjustment points. The
+// fake draws pies alone, whose two are the start and the end angle; the
+// defaults are the quarter PowerPoint itself starts a pie with.
+const ADJUSTMENTS: Readonly<Record<string, readonly number[]>> = {
+  Pie: [0, -90],
+};
+
+function adjustmentsFor(geometry: string | null): number[] {
+  return [...(ADJUSTMENTS[geometry ?? ""] ?? [])];
+}
+
+// A fresh shape carries no format of its own: what the add-in writes is what
+// the deck records, so a property nobody set reads as null.
+function blankFormat(): Pick<
+  FakePptShape,
+  | "fillColor"
+  | "fillCleared"
+  | "lineColor"
+  | "lineWeight"
+  | "text"
+  | "font"
+  | "alignment"
+  | "verticalAlignment"
+  | "autoSize"
+  | "wordWrap"
+  | "margins"
+> {
+  return {
+    fillColor: null,
+    fillCleared: false,
+    lineColor: null,
+    lineWeight: null,
+    text: null,
+    font: {},
+    alignment: null,
+    verticalAlignment: null,
+    autoSize: null,
+    wordWrap: null,
+    margins: { left: null, right: null, top: null, bottom: null },
+  };
 }
 
 export interface ShapeSite {
@@ -97,10 +183,13 @@ export class FakePresentation {
 
   addShape(slide: FakeSlide, init: FakeShapeInit = {}): FakePptShape {
     this.shapeSeq += 1;
+    const geometry = init.geometry ?? null;
     const shape: FakePptShape = {
+      ...blankFormat(),
       id: `shape-${this.shapeSeq}`,
       name: init.name ?? `Shape ${this.shapeSeq}`,
       type: init.type ?? "GeometricShape",
+      geometry,
       left: init.left ?? 0,
       top: init.top ?? 0,
       width: init.width ?? 0,
@@ -109,10 +198,13 @@ export class FakePresentation {
       tags: new Map(),
       fillImage: init.fillImage ?? null,
       lineVisible: true,
+      adjustments: adjustmentsFor(geometry),
       setImageCalls: 0,
-      hasText: init.hasText ?? false,
+      hasText: init.hasText ?? (init.text ?? "").length > 0,
+      synced: false,
       group: null,
       table: null,
+      text: init.text ?? null,
     };
     slide.shapes.push(shape);
     renumber(slide.shapes);
@@ -122,6 +214,7 @@ export class FakePresentation {
   // What Ctrl+G does: the shapes leave the slide - or the group they were in -
   // and live inside a new group shape sized to hold them.
   groupShapes(shapeIds: string[], slideId: string): FakePptShape {
+    if (shapeIds.length === 0) throw invalidArgument("a group needs a shape");
     const slide = this.findSlideOrThrow(slideId);
     const sites = shapeIds.map((id) => this.findShape(id));
     const box = bounds(sites.map((site) => site.shape));
@@ -134,22 +227,39 @@ export class FakePresentation {
     this.shapeSeq += 1;
     const seq = this.shapeSeq;
     const group: FakePptShape = {
+      ...blankFormat(),
       id: `shape-${seq}`,
       name: `Group ${seq}`,
       type: "Group",
+      geometry: null,
       ...box,
       zOrder: slide.shapes.length,
       tags: new Map(),
       fillImage: null,
       lineVisible: true,
+      adjustments: [],
       setImageCalls: 0,
       hasText: false,
+      synced: false,
       table: null,
       group: { id: `group-${seq}`, shapes: children },
     };
     slide.shapes.push(group);
     renumber(slide.shapes);
     return group;
+  }
+
+  // What a context.sync() does to a batch of adds: every shape the deck holds
+  // has been round-tripped once, which is when PowerPoint starts handing out
+  // its adjustments. Called by the runtime, never by a proxy.
+  markSynced(): void {
+    const walk = (shapes: FakePptShape[]): void => {
+      for (const shape of shapes) {
+        shape.synced = true;
+        if (shape.group) walk(shape.group.shapes);
+      }
+    };
+    for (const slide of this.slides) walk(slide.shapes);
   }
 
   // Cut and paste onto another slide: same shape, same tags, same id.
@@ -204,6 +314,9 @@ export class FakePresentation {
       ...shape,
       id: `shape-${seq}`,
       tags: new Map(shape.tags),
+      adjustments: [...shape.adjustments],
+      font: { ...shape.font },
+      margins: { ...shape.margins },
       table: shape.table
         ? (JSON.parse(JSON.stringify(shape.table)) as FakeTable)
         : null,
@@ -238,6 +351,13 @@ export class FakePresentation {
 export function gone(what: string, id: string): Error {
   const error = new Error(`ItemNotFound: no ${what} "${id}"`);
   return Object.assign(error, { code: "ItemNotFound" });
+}
+
+// The argument PowerPoint refuses outright: an empty group, an adjustment
+// index the geometry does not have.
+export function invalidArgument(why: string): Error {
+  const error = new Error(`InvalidArgument: ${why}`);
+  return Object.assign(error, { code: "InvalidArgument" });
 }
 
 // Depth-first through the groups: the site names the array holding the shape,

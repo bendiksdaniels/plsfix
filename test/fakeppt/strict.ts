@@ -30,6 +30,7 @@ const KINDS: Record<string, Descriptor> = {
     items: "slide",
     returns: {
       getItem: "slide",
+      getItemAt: "slide",
       getItemOrNullObject: "slide",
       getCount: "clientResult",
     },
@@ -44,6 +45,9 @@ const KINDS: Record<string, Descriptor> = {
       getItem: "shape",
       getItemOrNullObject: "shape",
       addGeometricShape: "shape",
+      addTextBox: "shape",
+      addLine: "shape",
+      addGroup: "shape",
       addTable: "shape",
       getCount: "clientResult",
     },
@@ -66,6 +70,7 @@ const KINDS: Record<string, Descriptor> = {
       tags: "tags",
       group: "group",
       textFrame: "textFrame",
+      adjustments: "adjustments",
     },
     returns: { getParentSlideOrNullObject: "slide", getTable: "table" },
   },
@@ -81,8 +86,29 @@ const KINDS: Record<string, Descriptor> = {
     },
   },
   fill: {},
-  lineFormat: { scalars: ["visible"] },
-  textFrame: { scalars: ["hasText"] },
+  lineFormat: { scalars: ["visible", "color", "weight"] },
+  // The geometry's own handles: a pie's start and end angle, read back one at
+  // a time through a ClientResult.
+  adjustments: { scalars: ["count"], returns: { get: "clientResult" } },
+  textFrame: {
+    scalars: [
+      "hasText",
+      "autoSizeSetting",
+      "wordWrap",
+      "verticalAlignment",
+      "leftMargin",
+      "rightMargin",
+      "topMargin",
+      "bottomMargin",
+    ],
+    children: { textRange: "textRange" },
+  },
+  textRange: {
+    scalars: ["text"],
+    children: { font: "textFont", paragraphFormat: "paragraphFormat" },
+  },
+  textFont: { scalars: ["name", "size", "color", "bold"] },
+  paragraphFormat: { scalars: ["horizontalAlignment"] },
   // A native table and one of its cells: the counts are read to decide whether
   // a repaint fits, everything else is written.
   table: {

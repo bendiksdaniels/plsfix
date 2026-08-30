@@ -22,6 +22,9 @@ class FakeRuntime {
   storage: Map<string, string>;
   insertions: SelectionInsert[] = [];
   nextInsertFailure: string | null = null;
+  // Office.context.platform: the desktop until a test says otherwise, because
+  // the web is the host with the tighter shape budget.
+  platform = "Mac";
   // Every context.sync() this host served: one round trip to PowerPoint, and
   // the only cost a deck's size is allowed to multiply.
   syncs = 0;
@@ -48,8 +51,10 @@ class FakeContext extends Loadable {
 
   // A no-op flush: reads come from the deck, so only load state moves here.
   // Counted, because a batch that syncs per shape is the performance bug.
+  // Every shape added in the batch is now one the host has heard of.
   sync(): Promise<void> {
     this.runtime.syncs += 1;
+    this.runtime.presentation.markSynced();
     this.runtime.strict?.commit();
     return Promise.resolve();
   }
@@ -143,6 +148,9 @@ function documentApi(runtime: FakeRuntime): Record<string, unknown> {
 function officeGlobal(runtime: FakeRuntime): Record<string, unknown> {
   return {
     context: {
+      get platform(): string {
+        return runtime.platform;
+      },
       requirements: {
         isSetSupported: (set: string, version: string) =>
           runtime.supported(set, version),
@@ -150,6 +158,15 @@ function officeGlobal(runtime: FakeRuntime): Record<string, unknown> {
       document: documentApi(runtime),
     },
     HostType: { Excel: "Excel", Word: "Word", PowerPoint: "PowerPoint" },
+    // office.js gives these string values, whatever the .d.ts enum looks like.
+    PlatformType: {
+      PC: "PC",
+      OfficeOnline: "OfficeOnline",
+      Mac: "Mac",
+      iOS: "iOS",
+      Android: "Android",
+      Universal: "Universal",
+    },
     CoercionType: { Text: "text", Image: "image", SlideRange: "slideRange" },
     AsyncResultStatus: { Succeeded: "succeeded", Failed: "failed" },
     // Office.onReady both calls back and resolves with the host it found.
@@ -171,12 +188,18 @@ function powerPointGlobal(runtime: FakeRuntime): Record<string, unknown> {
       const handed = runtime.strict?.root(context, "context") ?? context;
       return Promise.resolve().then(() => callback(handed));
     },
-    GeometricShapeType: { rectangle: "Rectangle", ellipse: "Ellipse" },
+    GeometricShapeType: {
+      rectangle: "Rectangle",
+      ellipse: "Ellipse",
+      pie: "Pie",
+    },
+    ConnectorType: { straight: "Straight", elbow: "Elbow", curve: "Curve" },
     ShapeType: {
       unsupported: "Unsupported",
       image: "Image",
       geometricShape: "GeometricShape",
       group: "Group",
+      line: "Line",
       table: "Table",
     },
   };
@@ -210,6 +233,9 @@ function makeHelpers(runtime: FakeRuntime): FakePptHelpers {
     },
     setSupported(check) {
       runtime.supported = check;
+    },
+    setPlatform(platform) {
+      runtime.platform = platform;
     },
     storage: () => runtime.storage,
     syncCount: () => runtime.syncs,

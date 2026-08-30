@@ -1,13 +1,21 @@
-// The office.js objects the fake PowerPoint host hands out: slides, shapes,
-// their fills, lines, text frames and tags, over the deck in model.ts. Owns
+// The office.js objects the fake PowerPoint host hands out: slides, the shape
+// collections and the adds that fill them, shapes, groups and tags, over the
+// deck in model.ts (the formats hanging off a shape live in format.ts). Owns
 // nothing itself. Invariant: every object addresses its item by id and reads
 // the deck on each access, so it sees a move or a delete happen under it.
 
+import {
+  AdjustmentsProxy,
+  ShapeFillProxy,
+  ShapeLineProxy,
+  TextFrameProxy,
+} from "./format";
 import {
   gone,
   type FakePptShape,
   type FakePresentation,
   type FakeShapeGroup,
+  type FakeShapeInit,
   type FakeSlide,
   type ShapeSite,
 } from "./model";
@@ -68,6 +76,11 @@ export class SlideCollectionProxy extends Loadable {
   getItem(id: string): SlideProxy {
     return new SlideProxy(this.deck, id);
   }
+  // By position in the deck, resolved to the slide's id there and then, which
+  // is what a later delete or reorder makes the object see.
+  getItemAt(index: number): SlideProxy {
+    return new SlideProxy(this.deck, this.list()[index]?.id ?? "");
+  }
   getItemOrNullObject(id: string): SlideProxy {
     return new SlideProxy(this.deck, id, true);
   }
@@ -114,14 +127,29 @@ class ShapeCollectionProxy extends Handle {
   }
 
   addGeometricShape(geometry: string, options: BoxOptions = {}): ShapeProxy {
-    const slide = this.slide();
-    const shape = this.deck.addShape(slide, {
-      // PowerPoint names a new shape after its geometry, "Rectangle 3".
-      name: `${geometry} ${String(slide.shapes.length + 1)}`,
-      type: "GeometricShape",
+    return this.add(geometry, { type: "GeometricShape", geometry, ...options });
+  }
+
+  // PowerPoint.ShapeCollection.addTextBox: the box arrives with its text in
+  // it, sized by the caller, with PowerPoint's own insets and font.
+  addTextBox(text: string, options: BoxOptions = {}): ShapeProxy {
+    return this.add("TextBox", { type: "TextBox", text, ...options });
+  }
+
+  // addLine: the connector type is the line's geometry, the box its ends.
+  addLine(connectorType = "Straight", options: BoxOptions = {}): ShapeProxy {
+    return this.add("Line", {
+      type: "Line",
+      geometry: connectorType,
       ...options,
     });
-    return new ShapeProxy(this.deck, shape.id);
+  }
+
+  // addGroup: the members leave the slide's top level for the new group, whose
+  // box is the one they occupy together. An empty list is refused.
+  addGroup(shapeIds: string[]): ShapeProxy {
+    const group = this.deck.groupShapes(shapeIds, this.slide().id);
+    return new ShapeProxy(this.deck, group.id);
   }
 
   // PowerPoint.ShapeCollection.addTable (PowerPointApi 1.8): the grid arrives
@@ -145,6 +173,17 @@ class ShapeCollectionProxy extends Handle {
     shape.table.columnWidths = (columns ?? []).map(
       (column) => column.columnWidth ?? null,
     );
+    return new ShapeProxy(this.deck, shape.id);
+  }
+
+  // PowerPoint names a new shape after its kind and its place in the stack,
+  // "Rectangle 3", whatever the add was.
+  private add(label: string, init: FakeShapeInit): ShapeProxy {
+    const slide = this.slide();
+    const shape = this.deck.addShape(slide, {
+      name: `${label} ${String(slide.shapes.length + 1)}`,
+      ...init,
+    });
     return new ShapeProxy(this.deck, shape.id);
   }
 
@@ -215,8 +254,11 @@ class ShapeProxy extends ShapeBound {
   get lineFormat(): ShapeLineProxy {
     return new ShapeLineProxy(this.deck, this.handleId);
   }
-  get textFrame(): ShapeTextFrameProxy {
-    return new ShapeTextFrameProxy(this.deck, this.handleId);
+  get textFrame(): TextFrameProxy {
+    return new TextFrameProxy(this.deck, this.handleId);
+  }
+  get adjustments(): AdjustmentsProxy {
+    return new AdjustmentsProxy(this.deck, this.handleId);
   }
   get tags(): TagCollectionProxy {
     return new TagCollectionProxy(this.deck, this.handleId);
@@ -263,31 +305,6 @@ class GroupShapeCollectionProxy extends ShapeBound {
 
   private children(): FakePptShape[] {
     return groupOf(this.deck, this.handleId).shapes;
-  }
-}
-
-class ShapeFillProxy extends ShapeBound {
-  setImage(base64EncodedImage: string): void {
-    const shape = this.model();
-    shape.fillImage = base64EncodedImage;
-    shape.setImageCalls += 1;
-  }
-}
-
-// Only what placement reads: whether the shape holds any text, which is how
-// an empty layout placeholder is told from an object somebody put there.
-class ShapeTextFrameProxy extends ShapeBound {
-  get hasText(): boolean {
-    return this.model().hasText;
-  }
-}
-
-class ShapeLineProxy extends ShapeBound {
-  get visible(): boolean {
-    return this.model().lineVisible;
-  }
-  set visible(value: boolean) {
-    this.model().lineVisible = value;
   }
 }
 
