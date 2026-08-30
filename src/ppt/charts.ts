@@ -1,0 +1,228 @@
+// Chart links on a slide: what a payload's chart data would cost to draw,
+// whether this host can afford it, the insert that lands it as a tagged group
+// of native shapes, the repaint that rebuilds it where the user left it, and
+// the fall back to a picture when the source stopped being drawable.
+// Invariant: a link drawn as a group refreshes as a group, and only as one.
+
+import { chartSize, layoutChart, type Primitive } from "../chart-shapes";
+import type { Box, Size } from "../layout";
+import type { ChartData } from "../link/chart-model";
+import {
+  encodeTag,
+  sourceLabel,
+  TAG_KEY,
+  TAG_LINK,
+  type InboxItem,
+  type LinkTag,
+  type Payload,
+  type PicturePayload,
+} from "../link/model";
+import { base64ToBytes, pngSize } from "../link/png";
+import { drawGroup } from "./chart-draw";
+import type { FoundLink, InsertResult } from "./host";
+import { CONTENT_WIDTH, placeOnSlide, selectedSlideId } from "./placement";
+import { hasPowerPointApi, isGrouped } from "./shapes";
+
+export { SHAPES_PER_SYNC } from "./chart-draw";
+
+// Shape groups, text boxes and the formats a chart wears arrived in
+// PowerPointApi 1.8; a pie's start and end angle need 1.10.
+const CHART_API = "1.8";
+const PIE_API = "1.10";
+export const CHARTS_NEED_1_8 =
+  "as a picture: shape charts need PowerPoint 2504/16.96 or newer";
+export const PIES_NEED_1_10 =
+  "as a picture: pie shapes need PowerPoint 2601/16.105 or newer";
+
+// How many shapes a host draws before the cost of an add outgrows the value
+// of drawing at all: on the web an add slows down with every shape already on
+// the slide, and a batch of fifty never came back (spike, 30.08).
+export const SHAPE_BUDGET_WEB = 30;
+export const SHAPE_BUDGET_DESKTOP = 200;
+
+// A picture's pixels are 96 to the inch and a slide's points are 72.
+const PNG_TO_POINTS = 0.75;
+
+export function shapeBudget(): number {
+  return Office.context?.platform === Office.PlatformType.OfficeOnline
+    ? SHAPE_BUDGET_WEB
+    : SHAPE_BUDGET_DESKTOP;
+}
+
+export function overBudgetNote(count: number, budget: number): string {
+  return `as a picture: ${String(count)} shapes is over this host's budget of ${String(budget)}`;
+}
+
+// What a chart payload would become on a slide: the data, the size the picture
+// beside it says the chart is, and the primitives that fill a box that size.
+export interface ChartPlan {
+  data: ChartData;
+  size: Size;
+  primitives: Primitive[];
+}
+
+// Null for every payload with no chart data at all: a table, a plain range,
+// and a chart type Excel could not describe, which are pictures and stay so.
+export function chartPlan(payload: Payload): ChartPlan | null {
+  if (payload.kind !== "picture" || payload.chart === undefined) return null;
+  const data = payload.chart;
+  const size = chartSize(
+    {
+      width: payload.width * PNG_TO_POINTS,
+      height: payload.height * PNG_TO_POINTS,
+    },
+    CONTENT_WIDTH,
+  );
+  return {
+    data,
+    size,
+    primitives: layoutChart(data, { left: 0, top: 0, ...size }),
+  };
+}
+
+// Null means draw it. Anything else is the sentence the pane shows beside the
+// picture it inserted instead, and every one of them names the picture first.
+export function declineReason(plan: ChartPlan): string | null {
+  if (!hasPowerPointApi(CHART_API)) return CHARTS_NEED_1_8;
+  if (plan.data.kind === "pie" && !hasPowerPointApi(PIE_API)) {
+    return PIES_NEED_1_10;
+  }
+  const budget = shapeBudget();
+  const count = plan.primitives.length;
+  return count > budget ? overBudgetNote(count, budget) : null;
+}
+
+// The layout at the box the group actually gets: the plan's own primitives
+// when the placement kept its size, laid out again when the slide had to
+// shrink it or the user left the group at another width.
+function primitivesAt(plan: ChartPlan, box: Box): Primitive[] {
+  if (box.width === plan.size.width && box.height === plan.size.height) {
+    return plan.primitives;
+  }
+  return layoutChart(plan.data, {
+    left: 0,
+    top: 0,
+    width: box.width,
+    height: box.height,
+  });
+}
+
+// The box a rebuild draws into: the corner and width the user chose, and the
+// only geometry a refresh decides for itself - the height the chart's own
+// aspect asks for at that width.
+function boxAtFound(found: FoundLink, size: Size): Box {
+  return {
+    left: found.left,
+    top: found.top,
+    width: found.width,
+    height: Math.round(found.width * (size.height / size.width)),
+  };
+}
+
+function refreshStage(found: FoundLink): string {
+  return `refresh ${sourceLabel(found.tag.src, found.tag.kind)}`;
+}
+
+// Reinserting a group would drop it on the slide, not back into the group the
+// user built, so a chart inside one is left alone and the row says why.
+function requireUngrouped(found: FoundLink, stage: string): void {
+  if (isGrouped(found)) {
+    throw new Error(`${stage}: ungroup the chart before it can update`);
+  }
+}
+
+export async function insertChart(
+  stage: string,
+  item: InboxItem,
+  plan: ChartPlan,
+  tag: LinkTag,
+): Promise<InsertResult> {
+  return PowerPoint.run(async (context) => {
+    const slideId = await selectedSlideId(context, stage);
+    const placed = await placeOnSlide(context, slideId, plan.size);
+    const shapes = context.presentation.slides.getItem(slideId).shapes;
+    const shapeId = await drawGroup(context, shapes, {
+      primitives: primitivesAt(plan, placed.box),
+      box: placed.box,
+      font: plan.data.font,
+      name: `pls,fix chart ${item.label}`,
+      tag,
+      token: item.token,
+    });
+    return { slideId, shapeId, overlapping: placed.overlapping };
+  });
+}
+
+// The chart drawn again where it sits. The new group is built first and the
+// old one deleted in the same sync afterwards, the order tables.ts recreates
+// in: a host that refuses the add never gets as far as taking the old group -
+// and both its tags - down.
+export async function refreshChart(
+  found: FoundLink,
+  plan: ChartPlan,
+  tag: LinkTag,
+): Promise<void> {
+  const stage = refreshStage(found);
+  requireUngrouped(found, stage);
+  const box = boxAtFound(found, plan.size);
+  const label = sourceLabel(found.tag.src, found.tag.kind);
+  await PowerPoint.run(async (context) => {
+    const shapes = context.presentation.slides.getItem(found.slideId).shapes;
+    const old = shapes.getItem(found.shapeId);
+    await drawGroup(context, shapes, {
+      primitives: primitivesAt(plan, box),
+      box,
+      font: plan.data.font,
+      name: `pls,fix chart ${label}`,
+      tag,
+      token: found.token,
+      before: () => {
+        old.delete();
+      },
+    });
+  });
+}
+
+// The modeller turned the source into a chart type no slide can draw, or this
+// host lost the API that drew it: the picture goes where the group was, in one
+// sync, with the add queued before the delete for the same reason as above.
+export async function replaceGroupWithPicture(
+  found: FoundLink,
+  payload: PicturePayload,
+  tag: LinkTag,
+): Promise<void> {
+  const stage = refreshStage(found);
+  requireUngrouped(found, stage);
+  const box = boxAtFound(found, pngSize(base64ToBytes(payload.png)));
+  const label = sourceLabel(found.tag.src, found.tag.kind);
+  await PowerPoint.run(async (context) => {
+    const shapes = context.presentation.slides.getItem(found.slideId).shapes;
+    const old = shapes.getItem(found.shapeId);
+    const shape = shapes.addGeometricShape(
+      PowerPoint.GeometricShapeType.rectangle,
+      box,
+    );
+    shape.name = `pls,fix link ${label}`;
+    shape.lineFormat.visible = false;
+    shape.fill.setImage(payload.png);
+    shape.tags.add(TAG_LINK, encodeTag(tag));
+    shape.tags.add(TAG_KEY, found.token);
+    old.delete();
+    await context.sync();
+  });
+}
+
+// What "Update all" does to a link the deck holds as a group: draw the chart
+// again when this host still can, and put the picture there when it cannot.
+export async function refreshChartGroup(
+  found: FoundLink,
+  payload: PicturePayload,
+  tag: LinkTag,
+): Promise<void> {
+  const plan = chartPlan(payload);
+  if (plan !== null && declineReason(plan) === null) {
+    await refreshChart(found, plan, tag);
+    return;
+  }
+  await replaceGroupWithPicture(found, payload, tag);
+}

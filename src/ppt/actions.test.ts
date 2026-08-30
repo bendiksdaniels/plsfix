@@ -36,6 +36,7 @@ function row(
         pushedAt: "2026-08-28T10:00:00.000Z",
       },
       token: "t",
+      type: "GeometricShape",
       left: 10,
       top: 10,
       width: 400,

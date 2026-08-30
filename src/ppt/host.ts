@@ -1,12 +1,12 @@
 // The PowerPoint Office.js code every link flow goes through: scan the deck
-// for shapes carrying the link tags, insert a linked picture (tables.ts does
-// the table), repaint one or a whole batch of them in place (or reinsert on
-// hosts below PowerPointApi 1.8), re-point one at another link by rewriting
-// its tags, break a link by dropping them, and read or set which slide is
-// active. Identity is always the PLSFIX_LINK tag - never a shape id, name or
-// position. Every flow here is counted in round trips: one sync per batch,
-// never one per shape.
+// for shapes carrying the link tags, insert a linked picture (tables.ts the
+// table, charts.ts the chart group), repaint one or a whole batch in place
+// (or reinsert below PowerPointApi 1.8), re-point one at another link, break
+// one by dropping its tags, and read or set the active slide. Identity is
+// always the PLSFIX_LINK tag - never a shape id, name or position; every flow
+// is counted in round trips: one sync per batch, never one per shape.
 
+import type { Size } from "../layout";
 import {
   decodeTag,
   encodeTag,
@@ -20,6 +20,12 @@ import {
 } from "../link/model";
 import { base64ToBytes, pngSize } from "../link/png";
 import { aspectChanged, fitToSlide } from "../link/status";
+import {
+  chartPlan,
+  declineReason,
+  insertChart,
+  refreshChartGroup,
+} from "./charts";
 import { insertPictureBySelection } from "./picture";
 import {
   placeOnSlide,
@@ -29,6 +35,7 @@ import {
 import {
   expandGroups,
   GROUP_API,
+  GROUP_TYPE,
   hasPowerPointApi,
   isGrouped,
   shapeAt,
@@ -42,13 +49,11 @@ export interface FoundLink extends ShapePath {
   slideIndex: number;
   tag: LinkTag;
   token: string;
+  // What the deck holds this link as: "Group" is a native chart, anything
+  // else the picture. What it was inserted as it stays, so a refresh reads it.
+  type: string;
   left: number;
   top: number;
-  width: number;
-  height: number;
-}
-
-interface Size {
   width: number;
   height: number;
 }
@@ -116,6 +121,7 @@ function toFoundLink(entry: TaggedShape): FoundLink | null {
     groupPath: entry.groupPath.length > 0 ? entry.groupPath : undefined,
     tag,
     token,
+    type: shape.type,
     left: shape.left,
     top: shape.top,
     width: shape.width,
@@ -167,6 +173,8 @@ export interface InsertResult {
   // True when the slide had no room left and the object sits over what is
   // already there: the pane says so with OVERLAP_NOTE.
   overlapping: boolean;
+  // Why a chart arrived as a picture; the pane says it after the overlap note.
+  note?: string;
 }
 
 // What the pane shows when an insert had to cover something.
@@ -183,6 +191,12 @@ export async function insertLink(
   if (payload.kind === "table") {
     return insertTable(stage, item, payload, tag);
   }
+  // A chart this host can draw lands as shapes; the rest take the picture.
+  const plan = chartPlan(payload);
+  const note = plan === null ? undefined : (declineReason(plan) ?? undefined);
+  if (plan !== null && note === undefined) {
+    return insertChart(stage, item, plan, tag);
+  }
   const size = pngSize(base64ToBytes(payload.png));
   const fitted = fitToSlide(size.width, size.height);
   if (!supportsInPlaceRefresh()) {
@@ -198,17 +212,14 @@ export async function insertLink(
       box,
     );
     await writeTags(slideId, shapeId, tag, item.token);
-    return { slideId, shapeId, overlapping };
+    return { slideId, shapeId, overlapping, note };
   }
   return PowerPoint.run(async (context) => {
     const slideId = await selectedSlideId(context, stage);
-    const placed = await placeOnSlide(context, slideId, fitted);
+    const { box, overlapping } = await placeOnSlide(context, slideId, fitted);
     const shape = context.presentation.slides
       .getItem(slideId)
-      .shapes.addGeometricShape(
-        PowerPoint.GeometricShapeType.rectangle,
-        placed.box,
-      );
+      .shapes.addGeometricShape(PowerPoint.GeometricShapeType.rectangle, box);
     shape.name = `pls,fix link ${item.label}`;
     shape.lineFormat.visible = false;
     shape.fill.setImage(payload.png);
@@ -216,7 +227,7 @@ export async function insertLink(
     shape.tags.add(TAG_KEY, item.token);
     shape.load("id");
     await context.sync();
-    return { slideId, shapeId: shape.id, overlapping: placed.overlapping };
+    return { slideId, shapeId: shape.id, overlapping, note };
   });
 }
 
@@ -239,8 +250,9 @@ interface PictureRequest extends RefreshRequest {
   payload: PicturePayload;
 }
 
+// A chart group repaints shape by shape, so it leaves the batch like a table.
 function isPicture(entry: RefreshRequest): entry is PictureRequest {
-  return entry.payload.kind === "picture";
+  return entry.payload.kind === "picture" && entry.found.type !== GROUP_TYPE;
 }
 
 // One link repainted: the batch of one on a host with fill.setImage, and the
@@ -252,6 +264,10 @@ export async function refreshLink(
 ): Promise<void> {
   if (payload.kind === "table") {
     await refreshTable(found, payload, tagFor(found.tag, payload, rev));
+    return;
+  }
+  if (found.type === GROUP_TYPE) {
+    await refreshChartGroup(found, payload, tagFor(found.tag, payload, rev));
     return;
   }
   if (supportsInPlaceRefresh()) {
