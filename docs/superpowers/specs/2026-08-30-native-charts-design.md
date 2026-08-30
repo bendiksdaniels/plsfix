@@ -90,9 +90,13 @@ Mirrors `link-table.ts`. Given the resolved chart of a link:
    `overlap`); `Waterfall` -> `waterfall`; `Pie`, `PieExploded`, `3DPie`, `3DPieExploded` ->
    `pie`; anything else -> no `chart`.
 
-`renderSource` in `src/excel/link-anchors.ts` attaches the result to the picture render: one
-extra sync per chart link, none for range or table links. The chart on the sheet is never
-written to; export stays read-only apart from the anchor it already creates.
+`renderSource` in `src/excel/link-anchors.ts` attaches the result to the picture render. The
+picture is queued first and the head reads ride its sync, so a chart the slide cannot draw
+costs what a chart link costs today; a drawable chart pays one more sync for the dimensions
+and one more for the source cells' text (measured: 5 syncs for a Line chart, 7 for a column
+chart with a source range). A clustered column whose series overlap fully, a blank cell among
+the values, or a title past the cap all mean "no chart data": the picture alone. The chart on
+the sheet is never written to; export stays read-only apart from the anchor it already creates.
 
 ## Pure layout (`src/chart-shapes.ts`, core: typed in, typed out, no I/O)
 
