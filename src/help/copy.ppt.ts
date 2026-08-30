@@ -31,7 +31,7 @@ export const PPT_HELP: HelpCopy = {
   },
   "inbox-heading": {
     about:
-      "Exports pushed from Excel that are not in this deck yet. Items expire 24 hours after the push.",
+      "Exports from Excel not yet in this deck; they expire after 24 hours. A chart lands as editable shapes, else a picture.",
     buttons: {
       "refresh-inbox":
         "Asks the relay for the exports waiting under your link key.",

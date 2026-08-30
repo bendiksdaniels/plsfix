@@ -26,12 +26,14 @@ fn how_it_works() -> Section {
         "Kā saite darbojas",
         vec![
             Block::Para(
-                r#"pls,fix ļauj eksportēt Excel šūnu apgabalu vai diagrammu uz PowerPoint kā saistītu attēlu. Attēlu pēc tam var atjaunināt vietā, nemainot tā pozīciju un izmēru, arī tad, kad avota dati Excel darbgrāmatā ir mainījušies."#,
+                r#"pls,fix ļauj eksportēt Excel šūnu apgabalu vai diagrammu uz PowerPoint kā saistītu attēlu, tabulu vai diagrammu. Objektu pēc tam var atjaunināt vietā, nemainot tā pozīciju un izmēru, arī tad, kad avota dati Excel darbgrāmatā ir mainījušies."#,
             ),
             Block::Para(
                 r#"Excel puse ieraksta avotam slēptu nosaukumu, tāpēc saite seko līdzi arī tad, kad virs apgabala tiek ievietotas rindas vai lapa tiek pārdēvēta. Attēls tiek nosūtīts uz releju, no kurienes to paņem PowerPoint puse."#,
             ),
-            Block::Para(r#"Šajā versijā saitē var būt tikai attēls."#),
+            Block::Para(
+                r#"Saitē var būt attēls, tabula vai diagramma. Diagramma slaidā nonāk kā rediģējamu figūru grupa ar zīmola krāsām un tikai vērtību etiķetēm (stabiņu, joslu, tilta un sektoru diagrammas). Ja PowerPoint to nevar uzzīmēt vai diagramma ir par lielu (vairāk nekā 40 punkti, 3 sērijas vai 12 sektori), tā tiek ievietota kā attēls, un panelis to pasaka."#,
+            ),
         ],
     )
 }
@@ -132,7 +134,7 @@ fn insert() -> Section {
             Block::Steps(&[
                 "Atlasiet slaidu, kurā attēls jāievieto.",
                 r#"Pie vajadzīgā vienuma nospiediet "Insert"."#,
-                "Attēls tiek ievietots atlasītajā slaidā un pielāgots tā izmēram. Pēc tam to var pārvietot un mainīt tā izmēru.",
+                "Objekts (attēls, tabula vai diagramma) tiek ievietots atlasītajā slaidā brīvā vietā un pielāgots tā izmēram. Pēc tam to var pārvietot un mainīt tā izmēru.",
             ]),
             Block::Para(
                 r#"Vienumi cilnē "Inbox" ir derīgi 24 stundas pēc nosūtīšanas. Ja saraksts ir tukšs un panelī redzams "Not paired", vispirms ielīmējiet saites atslēgu cilnē "Settings"."#,

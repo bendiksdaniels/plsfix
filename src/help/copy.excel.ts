@@ -237,7 +237,7 @@ const links: HelpCopy = {
       "export-selection":
         "Sends the selected range as a linked picture. The selection must be one unbroken block.",
       "export-chart":
-        "Sends the selected chart as a linked picture. With none selected, the sheet's only chart is taken.",
+        "Sends the selected chart: editable shapes on newer PowerPoint, a picture elsewhere. With none selected, the sheet's only chart is taken.",
       "export-table":
         "Sends the selected range as a table that stays editable in PowerPoint.",
     },
