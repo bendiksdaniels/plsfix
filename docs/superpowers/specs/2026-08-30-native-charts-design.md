@@ -223,7 +223,12 @@ are read), so a tagged group is found as a top-level link with an empty `groupPa
    `worksheet.getRange` refuses a sheet-qualified address, so the sheet is split off with
    `parseAddress` first. `series.overlap` reads 100 on the tornado and 0 on a plain column
    chart. The demo's charts enumerate with type, size, title and series names in one pass.
-7. Rig lessons (also in `tasks/lessons.md`): `PowerPoint.run` hangs while the tab is in the
+7. Proven end to end on PowerPoint for the web with v2.4.0 (30.08 late): the demo's pie
+   arrives as a tagged group of 21 shapes in 18 s and the column chart as a group of 20 in
+   24 s, the line chart as the picture; after a source change and "Update all" both groups
+   are rebuilt at the same corner and size (54 s for three chart links). The web host reports
+   a text box's `type` as `"TextBox"` (absent from the typings) and a line's as `"Line"`.
+8. Rig lessons (also in `tasks/lessons.md`): `PowerPoint.run` hangs while the tab is in the
    background; a batch that never returns jams every later write until the page is reloaded
    (reads still answer, which misleads); the reload keeps the `wdaddin` parameters and
    re-registers without the dialog; Office Online can answer a navigation with "services

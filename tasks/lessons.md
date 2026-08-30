@@ -110,3 +110,14 @@ per-host shape budget. Pie adjustments are degrees clockwise from 3 o'clock, nor
 (-180, 180], addressable only after the shape's first sync. Spike scripts:
 `spike-*.js` in this session's scratchpad; findings in
 `docs/superpowers/specs/2026-08-30-native-charts-design.md`.
+
+## 2026-08-30 late: a web proof must keep the pane's host tab in front until the pane is idle
+
+The first native-chart proof "failed": the pie's 21 shapes were on the slide, ungrouped and
+untagged, the pane stuck busy. The adapter was fine (a faithful replay of its writes grouped
+21 shapes in 13 s); the script had brought the Excel tab to the front three seconds after
+clicking Insert, and a `PowerPoint.run` in a background tab never returns. Rules for the rig:
+wait for the pane's own busy flag (`#tab-inbox` disabled) plus a toast change, never a fixed
+delay; switch tabs only while the pane is idle; a pane stuck busy is reset by reloading its
+frame (`location.reload()` inside the pane), not the deck. Measured on the web: a 21-shape pie
+18 s, a 20-shape column chart 24 s, "Update all" over three chart links 54 s.

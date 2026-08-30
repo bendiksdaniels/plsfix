@@ -1,8 +1,16 @@
-# AUTORESUME - pls,fix (v2.3.6 LIVE 2026-08-30)
+# AUTORESUME - pls,fix (v2.4.1 LIVE 2026-08-30)
 
 ## 30.08 late: v2.3.6 (values-only chart labels, Templates on top), WP3 native charts next
 
-- WP3 in flight (30.08 late): spec `docs/superpowers/specs/2026-08-30-native-charts-design.md` (spike findings
+- WP3 SHIPPED 30.08 late as v2.4.0 + v2.4.1 (LIVE): chart links land as tagged groups of native
+  shapes on PowerPointApi 1.8 hosts (pies need 1.10), value labels only, brand colours, rebuilt at
+  the same corner on update; picture fallback below the API or over the shape budget (web 30,
+  desktop 200, `src/ppt/charts.ts`). Proven on PowerPoint for the web with the demo (pie 18 s,
+  column 24 s, Update all 54 s, line chart stays a picture); v2.4.1 fixed sloped baselines (addLine
+  treats a zero side as unset). Open: Daniel's desktop pass (desktop budget and text metrics),
+  cleanup of drawn shapes when a group sync fails mid-insert (today a hung web sync leaves the
+  chunks on the slide, ungrouped), stale agent worktrees under .claude/worktrees (8), the web
+  demo doc has P&L!C4 +1000 and Rounding!B4 x1.5 from the proof pushes. Earlier plan text: spec `docs/superpowers/specs/2026-08-30-native-charts-design.md` (spike findings
   inside: pie adjustments = degrees clockwise from 3 o'clock on (-180,180], groups persist with tags
   across reloads, web adds cost more as the slide fills, text boxes ~1 s each on the web, ExcelApi
   1.12/1.15 reads work on the web), plan `docs/superpowers/plans/2026-08-30-native-charts.md` (8
