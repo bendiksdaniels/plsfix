@@ -93,3 +93,20 @@ must be in (`git remote -v`, `ls package.json`) and to report BLOCKED otherwise,
 exit 194 while `tsc` still ran. Rule for every dispatch brief: never touch the main checkout's
 `node_modules` (worktrees get their own `npm install`); the controller checks
 `test -d node_modules && ! test -L node_modules` before running the gates after a merge.
+
+## 2026-08-30: Office on the web hangs, jams and heals in ways the tests cannot show
+
+Native-chart spike on PowerPoint for the web (CDP rig, `scratchpad/driver`): `PowerPoint.run`
+never returns while the PowerPoint tab is in the background (`page.bringToFront()` first,
+always); a batch that never returns (a 48-shape insert, a `slides.add()`) jams every later
+WRITE while trivial reads keep answering, which looks like "the selection API is broken" -
+the fix is a page reload (the `wdaddin*` parameters stay in the URL and the add-in
+re-registers without the dialog; reopen the pane through the ribbon: tab "pls,fix", button
+"Links"); Office Online can answer one navigation with "services aren't available right now"
+and the next with the deck. Cost model on the web: an add costs more the more shapes the slide
+already holds (12 rectangles 1.7 s on a clean slide, 24 in 15 s at 45 shapes), a text box
+about 1 s whatever its property count, so shape-built charts need syncs of ~12 shapes and a
+per-host shape budget. Pie adjustments are degrees clockwise from 3 o'clock, normalised to
+(-180, 180], addressable only after the shape's first sync. Spike scripts:
+`spike-*.js` in this session's scratchpad; findings in
+`docs/superpowers/specs/2026-08-30-native-charts-design.md`.

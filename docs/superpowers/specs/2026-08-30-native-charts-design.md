@@ -140,13 +140,16 @@ passthrough (labels appear verbatim), caps and skips.
 ## Slide side (`src/ppt/charts.ts`, mirrors `tables.ts`)
 
 - `insertChart(stage, item, payload, tag)`: `placeOnSlide(chartSize(...))` (free space, the
-  existing rule), then for each primitive one `addGeometricShape(rectangle | pie)` +
-  `fill.setSolidColor` + `lineFormat.visible = false` (+ `adjustments.set` for a wedge),
-  `addTextBox` with `autoSizeSetting = AutoSizeNone`, `wordWrap = false`, zero margins,
-  vertical middle, the font, size, colour and alignment, `fill.clear()`, no line, or
-  `addLine("Straight", box)` with colour and weight; then `shapes.addGroup(created)`, the
-  group named `pls,fix chart <label>` and carrying BOTH tags (children carry none); one
-  sync. The group's box is what `scanLinks` reports as the link's geometry.
+  existing rule), then the primitives in syncs of `SHAPES_PER_SYNC`: a `rect` is
+  `addGeometricShape(rectangle)` + `fill.setSolidColor` + `lineFormat.visible = false`; a
+  `wedge` is `addGeometricShape(pie)` with the same fill and, in the following sync,
+  `adjustments.set(0, start)` and `set(1, end)` (an `ellipse` for a 100 % slice); a `text` is
+  `addTextBox(text, box)` with `textRange.font.name/size/color` and
+  `paragraphFormat.horizontalAlignment` and nothing else (default insets, the box sized for
+  them); a `line` is `addLine("Straight", box)` with `lineFormat.color/weight`. The last sync
+  calls `shapes.addGroup(ids)`, names the group `pls,fix chart <label>` and adds BOTH tags to
+  it (children carry none). The group's box is what `scanLinks` reports as the link's
+  geometry. Over `SHAPE_BUDGET` for the host, the picture route is taken instead.
 - `refreshChart(found, payload, tag)`: `isGrouped(found)` (the user grouped our group with
   something) -> "ungroup the chart before it can update", exactly like a table. Otherwise the
   new group is drawn at the found corner and width, the height following the chart's aspect,
@@ -184,22 +187,52 @@ are read), so a tagged group is found as a top-level link with an empty `groupPa
   chart refuses, no 1.10 -> a pie is a picture, a chart-to-line change -> picture at the
   corner), `ppt.perf`: one sync per chart insert and one per repaint.
 
-## Spike (before the plan): what only a real host can answer
+## Spike findings (PowerPoint and Excel for the web, 30.08, CDP rig)
 
-Run on PowerPoint for the web through the CDP rig (lessons 2026-08-29) and on Daniel's
-desktop pass; the findings are appended to this section and the plan is written after them.
+1. `Pie` adjustments: `count` 2, index 0 = start angle, index 1 = end angle, **degrees,
+   clockwise, zero at 3 o'clock**, normalised on write to (-180, 180] (200 -> -160, 269.9 ->
+   -90.1, 360 -> 0). Defaults `[0, -90]`. `[-90, 0]` fills the top-right quarter, so a slice
+   from 12 o'clock is `[-90 + a, -90 + a + span]` with both values normalised. A full sweep
+   `[0, 360]` collapses to `[0, 0]`: a single 100 % slice is drawn as an `Ellipse`. The
+   adjustments object is addressable only after the shape has been synced once (before that:
+   "InvalidParam passed to GetItem(id)"), so wedges are added in one sync and shaped in the next.
+2. `addGroup(ids)` of 12 rectangles: 0.7 s; the group takes a name and both tags; its box is
+   the union (320,356,254,74); `scanLinks`-style reads see it as a top-level `Group` with the
+   tags and 12 children; it survives a 15 s wait, a page reload and re-registration; `delete()`
+   on the group removes the children (3 -> 2 shapes). `addGroup([])` throws InvalidArgument.
+3. Text boxes render 9 pt on one line (thumbnail check; exact metrics on Daniel's desktop
+   pass). Cost on the web is per shape, barely per property: 12 boxes with 9 property writes
+   15 s, with 4 writes 9 s, with 1 write 5.4 s. Rectangles: 12 in 1.7 s on a clean slide.
+4. Throughput on the web: the cost of an add grows with the number of shapes already on the
+   slide (12 rectangles 2.8 s at ~20 shapes, 24 rectangles 14.8 s at ~45, 24 in three syncs of
+   8 took 21 s at ~65) and a 48-shape batch never returned in 120 s. Consequences, all in the
+   design below: a per-host shape budget, syncs of at most `SHAPES_PER_SYNC` = 12 shapes, and
+   the fewest text writes that give the brand look (font name, size, colour, alignment; default
+   insets, so a label box is 18 pt high and 7 pt wider than its text; no fill or line writes).
+5. `isSetSupported("PowerPointApi", "1.4" | "1.8" | "1.9" | "1.10")` all true on the web;
+   `Office.context.platform` tells the web (`OfficeOnline`) from the desktop.
+6. Excel for the web: ExcelApi 1.8, 1.9, 1.12, 1.15 and 1.19 all true. `getDimensionValues`
+   gives categories as strings and values as numbers (`["2024A", ...]`, `[12400, 13392, ...]`);
+   `getDimensionDataSourceString("Values")` gives `'P&L'!$C$4:$H$4` with type `LocalRange`, and
+   `worksheet.getRange` refuses a sheet-qualified address, so the sheet is split off with
+   `parseAddress` first. `series.overlap` reads 100 on the tornado and 0 on a plain column
+   chart. The demo's charts enumerate with type, size, title and series names in one pass.
+7. Rig lessons (also in `tasks/lessons.md`): `PowerPoint.run` hangs while the tab is in the
+   background; a batch that never returns jams every later write until the page is reloaded
+   (reads still answer, which misleads); the reload keeps the `wdaddin` parameters and
+   re-registers without the dialog; Office Online can answer a navigation with "services
+   aren't available right now" and be fine a minute later.
 
-1. `Pie` adjustments: which index is the start and which the end, the unit (degrees,
-   60000ths of a degree, or a 0-1 fraction), the direction and the zero (3 o'clock in OOXML).
-2. `addGroup` of ~60 shapes: tags on the group are read back by `scanLinks`; `delete()` on
-   the group removes the members; the group's left/top/width/height are the union.
-3. A 9 pt text box with autosize off and zero margins renders one line, no wrap, no clip.
-4. Time to insert a 12-point, 2-series column chart (about 60 shapes) in one sync: must be
-   under 2 seconds on the web.
-5. `isSetSupported("PowerPointApi", "1.10")` is true on the web and on 16.107.
+## Host budget and batching (from the spike)
 
-A failed item narrows scope (a pie stays a picture; a slower insert lowers the caps) rather
-than being worked around.
+- `SHAPES_PER_SYNC` = 12: shapes are added in syncs of at most twelve, wedges shaped in the
+  sync after their add, then one sync groups the ids, names and tags the group.
+- `SHAPE_BUDGET` per host: `OfficeOnline` 30 shapes, everything else 200. A chart whose
+  primitive count exceeds the budget is inserted as the picture, and the row says why
+  ("as a picture: 62 shapes is over this host's budget of 30"). Both constants live in
+  `src/ppt/charts.ts`; Daniel's desktop pass calibrates the desktop figure.
+- A refresh redraws under the same rules; the old group is deleted in the grouping sync.
+- The perf suite counts syncs: `ceil(shapes / 12) + wedges ? 1 : 0 + 1` per insert.
 
 ## Docs and copy
 
