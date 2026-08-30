@@ -4,6 +4,7 @@
 // can import them - the barrel never re-exports this module, so nothing here is
 // part of the pane's public surface.
 
+import { type LabelPosition } from "../chart-labels";
 import { ANCHOR_PREFIX } from "../link/model";
 import { type CellValue } from "../model";
 import {
@@ -281,6 +282,26 @@ export function styleChartShell(
   chart.legend.format.font.name = settings.font;
   chart.legend.format.font.size = CHART_TEXT_SIZE;
   chart.legend.format.font.color = theme.formulaFont;
+}
+
+// The label rule every chart follows: the value and nothing else - no category
+// or series name, no percentage, no legend key, no bubble size - in the house
+// font, placed where chart-labels.ts says; a null position leaves the host's.
+export function styleChartLabels(
+  labels: Excel.ChartDataLabels,
+  position: LabelPosition | null,
+): void {
+  const settings = getActiveSettings();
+  labels.showValue = true;
+  labels.showCategoryName = false;
+  labels.showSeriesName = false;
+  labels.showPercentage = false;
+  labels.showLegendKey = false;
+  labels.showBubbleSize = false;
+  if (position !== null) labels.position = position;
+  labels.format.font.name = settings.font;
+  labels.format.font.size = CHART_TEXT_SIZE;
+  labels.format.font.color = activeTheme().formulaFont;
 }
 
 // Runs the queued batch; a rejection carrying the given error code is

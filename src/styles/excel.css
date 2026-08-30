@@ -50,6 +50,18 @@
   grid-template-columns: repeat(3, 1fr);
   gap: var(--gap-tight);
 }
+/* Templates: six blocks in two columns, icon and name only; the description
+   lives in the button's title and in the section's "?" card. A name that does
+   not fit beside its icon wraps instead of clipping. */
+.template-grid {
+  grid-template-columns: repeat(2, 1fr);
+}
+.template-grid > .tool {
+  text-align: left;
+}
+.template-grid > .tool > span:last-child {
+  min-width: 0;
+}
 .tool {
   display: flex;
   min-height: 42px;

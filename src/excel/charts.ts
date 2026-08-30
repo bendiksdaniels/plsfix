@@ -7,10 +7,12 @@ import {
   formatChartAmount,
   hostSupports,
   selectedSingleRange,
+  styleChartLabels,
   styleChartShell,
   styleChartSurface,
   syncTolerating,
 } from "./internal";
+import { labelPosition, leaderLines } from "../chart-labels";
 import { bridgeSeries, cagr, formatCagrLabel, seriesSpan } from "../chartmath";
 import { type CellValue } from "../model";
 import { getActiveSettings, tint } from "../settings";
@@ -142,7 +144,10 @@ export async function insertWaterfall(): Promise<string> {
 
     // Excel for the web refuses the surface on chartex charts. It is cosmetic,
     // so the waterfall keeps the host's default font there instead of failing.
+    // The label rule rides in the same batch: a waterfall's own default is the
+    // value alone, so losing the batch loses nothing that shows.
     styleChartSurface(chart);
+    styleChartLabels(chart.dataLabels, null);
     await syncTolerating(context, Excel.ErrorCodes.unsupportedOperation);
 
     // Office.js has no "set as total" flag for waterfall points, so the opening
@@ -190,19 +195,23 @@ export async function formatSelectedChart(): Promise<void> {
     chart.series.load("count");
     await context.sync();
 
-    styleChartShell(
-      chart,
-      null,
-      !AXIS_FREE_CHARTS.includes(String(chart.chartType)),
-    );
+    const type = String(chart.chartType);
+    const axisFree = AXIS_FREE_CHARTS.includes(type);
+    styleChartShell(chart, null, !axisFree);
+    styleChartLabels(chart.dataLabels, labelPosition(type));
+    // A pie's labels sit outside the slices, tied back by leader lines (1.8).
+    if (leaderLines(type) && hostSupports("1.8")) {
+      chart.dataLabels.showLeaderLines = true;
+    }
 
     const colors = chartSeriesColors();
     for (let index = 0; index < chart.series.count; index += 1) {
       const color = colors[index % colors.length]!;
       chart.series.getItemAt(index).format.fill.setSolidColor(color);
     }
-    // One series is already named by the title; its legend is only noise.
-    chart.legend.visible = chart.series.count > 1;
+    // The labels carry no names, so an axis-free chart keeps its legend for the
+    // categories; a lone series elsewhere is already named by the title.
+    chart.legend.visible = chart.series.count > 1 || axisFree;
 
     await context.sync();
   });

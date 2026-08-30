@@ -10,6 +10,7 @@ import {
   requireEmptyBlock,
   selectedSingleRange,
   SHEET_COLUMNS,
+  styleChartLabels,
   styleChartShell,
 } from "./internal";
 import { captureUndo } from "./undo";
@@ -51,6 +52,22 @@ function readDrivers(grid: CellValue[][]): TornadoDriver[] {
   });
 }
 
+// The helper block's deltas share the outcomes' unit, so they wear the format
+// of the first driver's low cell; a headed selection has one row above it.
+function outcomeFormat(formats: string[][], driverCount: number): string {
+  const firstDriverRow = formats.length - driverCount;
+  return formats[firstDriverRow]?.[1] ?? "General";
+}
+
+// The block's header row and label column stay plain; the two delta columns
+// carry the outcomes' format, which the chart's labels read off them.
+function blockFormats(format: string, driverCount: number): string[][] {
+  return [
+    TORNADO_HEADERS.map(() => "General"),
+    ...Array.from({ length: driverCount }, () => ["General", format, format]),
+  ];
+}
+
 interface TornadoHeader {
   heading: string;
   base: number | null;
@@ -86,6 +103,7 @@ async function readTornadoHeader(
 
 function styleTornado(chart: Excel.Chart, heading: string): void {
   styleChartShell(chart, heading, true);
+  styleChartLabels(chart.dataLabels, "OutsideEnd");
   // A bar chart plots the first category at the bottom; reversing the order
   // puts the widest swing on top, which is the shape a tornado is read by.
   if (hostSupports("1.7")) chart.axes.categoryAxis.reversePlotOrder = true;
@@ -108,7 +126,7 @@ export async function insertTornado(): Promise<string> {
   return Excel.run(async (context) => {
     const range = await selectedSingleRange(context, "tornado");
     const sheet = range.worksheet;
-    range.load("rowCount,columnCount,rowIndex,columnIndex,values");
+    range.load("rowCount,columnCount,rowIndex,columnIndex,values,numberFormat");
     await context.sync();
 
     if (range.columnCount !== TORNADO_COLUMNS || range.rowCount < 2) {
@@ -125,6 +143,10 @@ export async function insertTornado(): Promise<string> {
     }
 
     const drivers = readDrivers(range.values as CellValue[][]);
+    const format = outcomeFormat(
+      range.numberFormat as string[][],
+      drivers.length,
+    );
     const { heading, base } = await readTornadoHeader(context, sheet, range);
     const series = tornadoSeries(drivers, base);
 
@@ -148,6 +170,7 @@ export async function insertTornado(): Promise<string> {
         series.high[index] ?? 0,
       ]),
     ];
+    block.numberFormat = blockFormats(format, series.labels.length);
     await context.sync();
 
     const chart = sheet.charts.add(

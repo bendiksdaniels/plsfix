@@ -1159,7 +1159,18 @@ describe("charts", () => {
       color: palette.primary,
     });
     expect(chart?.legend.visible).toBe(false);
-    expect(chart?.dataLabels.showValue).toBe(true);
+    // Just the values: every other label part is switched off, in the same
+    // tolerated batch as the surface, and a waterfall takes no position.
+    expect(chart?.dataLabels).toMatchObject({
+      showValue: true,
+      showCategoryName: false,
+      showSeriesName: false,
+      showPercentage: false,
+      showLegendKey: false,
+      showBubbleSize: false,
+    });
+    expect(chart?.dataLabels.position).toBeUndefined();
+    expect(chart?.dataLabels.font.name).toBe(palette.font);
     expect(chart?.axes.category.majorGridlines).toBe(false);
     expect(chart?.series[0]?.showConnectorLines).toBe(true);
     // Totals branded by position, a fall in the external colour.
@@ -1231,9 +1242,23 @@ describe("charts", () => {
       palette.primary,
       brand.tint(palette.primary, 0.55),
     ]);
+    // Labels carry the values only, outside the end of a clustered column.
+    expect(chart.dataLabels).toMatchObject({
+      showValue: true,
+      showCategoryName: false,
+      showSeriesName: false,
+      showPercentage: false,
+      showLegendKey: false,
+      showBubbleSize: false,
+      position: "OutsideEnd",
+    });
+    expect(chart.dataLabels.font).toMatchObject({
+      name: palette.font,
+      size: 9,
+    });
   });
 
-  it("leaves the axes of an axis-free chart alone and hides a lone legend", async () => {
+  it("keeps a pie's legend for its categories and labels the values outside", async () => {
     seedBridge(90);
     await smt.insertWaterfall();
     const chart = workbook.charts[0];
@@ -1245,7 +1270,38 @@ describe("charts", () => {
     await smt.formatSelectedChart();
 
     expect(chart.axes.category).toEqual({});
+    // The labels no longer name the slices, so the legend has to.
+    expect(chart.legend.visible).toBe(true);
+    expect(chart.dataLabels).toMatchObject({
+      showValue: true,
+      showPercentage: false,
+      showCategoryName: false,
+      position: "OutsideEnd",
+      showLeaderLines: true,
+    });
+  });
+
+  it("hides the legend of a lone series and places labels by chart type", async () => {
+    seedBridge(90);
+    await smt.insertWaterfall();
+    const chart = workbook.charts[0];
+    if (!chart) throw new Error("no chart");
+    chart.chartType = "Line";
+    chart.seriesCount = 1;
+
+    await smt.formatSelectedChart();
     expect(chart.legend.visible).toBe(false);
+    expect(chart.dataLabels.position).toBe("Top");
+
+    chart.chartType = "ColumnStacked";
+    await smt.formatSelectedChart();
+    expect(chart.dataLabels.position).toBe("Center");
+
+    // Excel offers a doughnut no label position; the restyle sets none.
+    chart.chartType = "Doughnut";
+    chart.dataLabels.position = undefined;
+    await smt.formatSelectedChart();
+    expect(chart.dataLabels.position).toBeUndefined();
   });
 
   it("refuses to restyle on a host without the chart API", async () => {

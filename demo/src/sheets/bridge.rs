@@ -2,7 +2,10 @@
 // Waterfall button wants: labels left, values right, totals first and last),
 // plus two ready charts for the chart tools and for "Export chart".
 
-use rust_xlsxwriter::{Chart, ChartLine, ChartSolidFill, ChartType, Worksheet, XlsxError};
+use rust_xlsxwriter::{
+    Chart, ChartDataLabel, ChartDataLabelPosition, ChartLine, ChartSolidFill, ChartType,
+    Worksheet, XlsxError,
+};
 
 use crate::layout::{
     cell, last_year_col, pnl::*, pnl_ref, year_col, FIRST_YEAR_COL, HEADER_ROW, LABEL_COL,
@@ -102,7 +105,12 @@ fn revenue_chart() -> Chart {
         .set_categories((PNL_SHEET, HEADER_ROW, FIRST_YEAR_COL, HEADER_ROW, last_year_col()))
         .set_values((PNL_SHEET, REVENUE, FIRST_YEAR_COL, REVENUE, last_year_col()))
         .set_format(ChartSolidFill::new().set_color(TEAL))
-        .set_gap(BAR_GAP);
+        .set_gap(BAR_GAP)
+        .set_data_label(
+            ChartDataLabel::new()
+                .show_value()
+                .set_position(ChartDataLabelPosition::OutsideEnd),
+        );
     chart.y_axis().set_num_format(EUR_K);
     chart.set_width(CHART_WIDTH).set_height(CHART_HEIGHT);
     chart
@@ -117,7 +125,12 @@ fn margin_chart() -> Chart {
         .add_series()
         .set_categories((PNL_SHEET, HEADER_ROW, FIRST_YEAR_COL, HEADER_ROW, last_year_col()))
         .set_values((PNL_SHEET, EBITDA_MARGIN, FIRST_YEAR_COL, EBITDA_MARGIN, last_year_col()))
-        .set_format(ChartLine::new().set_color(NAVY).set_width(LINE_WIDTH));
+        .set_format(ChartLine::new().set_color(NAVY).set_width(LINE_WIDTH))
+        .set_data_label(
+            ChartDataLabel::new()
+                .show_value()
+                .set_position(ChartDataLabelPosition::Above),
+        );
     chart.y_axis().set_num_format("0%");
     chart.set_width(CHART_WIDTH).set_height(CHART_HEIGHT);
     chart

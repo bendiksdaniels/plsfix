@@ -412,6 +412,20 @@ export interface FakeAxis {
   reversePlotOrder?: boolean;
 }
 
+// What Excel.ChartDataLabels records: the six "show" parts, the position, the
+// leader lines of a pie and the font the labels are set in.
+export interface FakeDataLabels {
+  showValue?: boolean;
+  showCategoryName?: boolean;
+  showSeriesName?: boolean;
+  showPercentage?: boolean;
+  showLegendKey?: boolean;
+  showBubbleSize?: boolean;
+  showLeaderLines?: boolean;
+  position?: string;
+  font: Partial<FakeFont>;
+}
+
 export interface FakeSeries {
   showConnectorLines?: boolean;
   fillColor?: string;
@@ -442,7 +456,7 @@ export interface FakeChart {
     font: Partial<FakeFont>;
   };
   axes: { category: FakeAxis; value: FakeAxis };
-  dataLabels: { showValue?: boolean };
+  dataLabels: FakeDataLabels;
   seriesCount: number;
   series: FakeSeries[];
 }
@@ -470,7 +484,7 @@ export function newChart(
     font: {},
     legend: { font: {} },
     axes: { category: {}, value: {} },
-    dataLabels: {},
+    dataLabels: { font: {} },
     seriesCount: 0,
     series: [],
     ...over,
@@ -843,7 +857,19 @@ const SHAPES: Record<string, Shape> = {
     scalars: ["position", "overlay", "visible"],
     children: { format: "chartFormat" },
   },
-  chartDataLabels: { scalars: ["showValue"] },
+  chartDataLabels: {
+    scalars: [
+      "showValue",
+      "showCategoryName",
+      "showSeriesName",
+      "showPercentage",
+      "showLegendKey",
+      "showBubbleSize",
+      "showLeaderLines",
+      "position",
+    ],
+    children: { format: "chartFormat" },
+  },
   chartSeries: {
     scalars: ["count"],
     returns: { getItemAt: "chartSeriesItem" },
@@ -2352,6 +2378,39 @@ class ChartFontProxy {
   }
 }
 
+// Excel.ChartDataLabels: every part flag, the position, the pie's leader lines
+// and the label font, each write landing on the chart record.
+class ChartDataLabelsProxy {
+  constructor(private target: FakeDataLabels) {}
+  set showValue(value: boolean) {
+    this.target.showValue = value;
+  }
+  set showCategoryName(value: boolean) {
+    this.target.showCategoryName = value;
+  }
+  set showSeriesName(value: boolean) {
+    this.target.showSeriesName = value;
+  }
+  set showPercentage(value: boolean) {
+    this.target.showPercentage = value;
+  }
+  set showLegendKey(value: boolean) {
+    this.target.showLegendKey = value;
+  }
+  set showBubbleSize(value: boolean) {
+    this.target.showBubbleSize = value;
+  }
+  set showLeaderLines(value: boolean) {
+    this.target.showLeaderLines = value;
+  }
+  set position(value: string) {
+    this.target.position = value;
+  }
+  get format() {
+    return { font: new ChartFontProxy(this.target.font) };
+  }
+}
+
 class ChartAxisProxy {
   constructor(private axis: FakeAxis) {}
   get format() {
@@ -2533,12 +2592,7 @@ class ChartProxy {
   }
 
   get dataLabels() {
-    const record = this.record;
-    return {
-      set showValue(value: boolean) {
-        record.dataLabels.showValue = value;
-      },
-    };
+    return new ChartDataLabelsProxy(this.record.dataLabels);
   }
 
   get series() {

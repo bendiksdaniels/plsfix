@@ -55,6 +55,34 @@ describe("a driver block anywhere on the sheet", () => {
     );
     expect(helpers.value("Model!D1")).toBe("Driver");
     expect(workbook.charts[0]?.title).toBe("Sensitivity");
+    // Just the values, at the end of each bar.
+    expect(workbook.charts[0]?.dataLabels).toMatchObject({
+      showValue: true,
+      showCategoryName: false,
+      showSeriesName: false,
+      showPercentage: false,
+      showLegendKey: false,
+      position: "OutsideEnd",
+    });
+  });
+
+  it("labels the bars in the number format the outcomes wear", async () => {
+    helpers.seed("Model!A1", [
+      ["Driver", "Low", "High"],
+      ["Volume", 0.09, 0.115],
+      ["Price", 0.06, 0.14],
+    ]);
+    helpers.setNumberFormat("Model!B2:C3", "0.0%");
+    helpers.select("Model!A1:C3");
+
+    await smt.insertTornado();
+
+    // The deltas share the outcomes' unit, so the helper block wears their
+    // format and the labels the chart reads off it follow; the header stays.
+    expect(helpers.numberFormat("Model!E2")).toBe("0.0%");
+    expect(helpers.numberFormat("Model!F3")).toBe("0.0%");
+    expect(helpers.numberFormat("Model!E1")).toBe("General");
+    expect(helpers.numberFormat("Model!D2")).toBe("General");
   });
 
   it("reads a header-free table halfway down the sheet", async () => {

@@ -6,7 +6,8 @@
 // opens clean on a machine without the add-in.
 
 use rust_xlsxwriter::{
-    Chart, ChartDataLabel, ChartPoint, ChartSolidFill, ChartType, Worksheet, XlsxError,
+    Chart, ChartDataLabel, ChartDataLabelPosition, ChartPoint, ChartSolidFill, ChartType,
+    Worksheet, XlsxError,
 };
 
 use crate::layout::{cell, cell_abs, column, LABEL_COL, TITLE_ROW};
@@ -117,7 +118,11 @@ fn segment_pie() -> Chart {
         .set_categories((NAME, FIRST_SEGMENT_ROW, SEGMENT_COL, last, SEGMENT_COL))
         .set_values((NAME, FIRST_SEGMENT_ROW, REVENUE_COL, last, REVENUE_COL))
         .set_points(&points)
-        .set_data_label(ChartDataLabel::new().show_percentage());
+        .set_data_label(
+            ChartDataLabel::new()
+                .show_value()
+                .set_position(ChartDataLabelPosition::OutsideEnd),
+        );
     chart.set_width(PIE_WIDTH).set_height(PIE_HEIGHT);
     chart
 }

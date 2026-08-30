@@ -32,7 +32,7 @@ fn overview() -> Section {
         "Kas atrodas cilnē",
         vec![
             Block::Para(
-                r#"Cilne "Tools" ir paneļa darba daļa. Tā ir sadalīta blokos: atlases pārskats, noformējums, formātu cikli, modeļa rīki, pārbaude un diagrammas."#,
+                r#"Cilne "Tools" ir paneļa darba daļa. Tā ir sadalīta blokos: atlases pārskats, veidnes, noformējums, formātu cikli, modeļa rīki, pārbaude un diagrammas."#,
             ),
             Block::Image {
                 file: "excel-tools.png",

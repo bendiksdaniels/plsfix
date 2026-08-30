@@ -93,3 +93,18 @@ fn names_and_charts_are_defined() {
     let pie = entry(&mut archive, "xl/charts/chart3.xml");
     assert!(pie.contains("<c:pieChart>") && pie.contains("Rounding!$B$4:$B$8"), "pie: {pie}");
 }
+
+// Every chart in the demo labels its points with the value and nothing else,
+// the same rule the add-in applies to the charts it builds and restyles.
+#[test]
+fn every_chart_labels_the_values_only() {
+    let (mut archive, _) = archive();
+    for index in 1..=3 {
+        let chart = entry(&mut archive, &format!("xl/charts/chart{index}.xml"));
+        assert!(chart.contains("<c:showVal val=\"1\"/>"), "chart {index} shows values: {chart}");
+        for part in ["showPercent", "showCatName", "showSerName", "showLegendKey"] {
+            let on = format!("<c:{part} val=\"1\"/>");
+            assert!(!chart.contains(&on), "chart {index} shows {part}: {chart}");
+        }
+    }
+}

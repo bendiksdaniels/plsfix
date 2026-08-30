@@ -1,5 +1,5 @@
-// Chapter 5: the "Templates" section at the end of the Tools tab, one section
-// per ready block. Owns what each template writes and how big its block is; the
+// Chapter 5: the "Templates" section at the top of the Tools tab, right under
+// the Selection inspector, one section per ready block. Owns what each template writes and how big its block is; the
 // button labels stay in English exactly as the pane shows them.
 
 use super::{Block, Chapter, Section, section};
@@ -24,7 +24,7 @@ fn overview() -> Section {
         "Kas ir veidnes",
         vec![
             Block::Para(
-                r#"Cilnes "Tools" beigās ir sadaļa "Templates". Katra poga ieraksta gatavu aprēķina bloku, kura augšējais kreisais stūris ir aktīvajā šūnā. Bloku var ierakstīt jebkurā lapā un jebkurā vietā, jo visas formulas norāda uz paša bloka šūnām."#,
+                r#"Cilnes "Tools" sākumā, tūlīt zem atlases pārskata, ir sadaļa "Templates" ar sešām pogām. Katra poga ieraksta gatavu aprēķina bloku, kura augšējais kreisais stūris ir aktīvajā šūnā. Bloku var ierakstīt jebkurā lapā un jebkurā vietā, jo visas formulas norāda uz paša bloka šūnām."#,
             ),
             Block::Para(
                 r#"Ja bloka vietā jau kaut kas atrodas, panelis to neaizstāj, bet paziņo, cik rindu un cik kolonnu brīvas vietas tam vajag."#,

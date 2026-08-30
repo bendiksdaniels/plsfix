@@ -1,4 +1,20 @@
-# AUTORESUME - pls,fix (v2.3.5 LIVE 2026-08-30)
+# AUTORESUME - pls,fix (v2.3.6 LIVE 2026-08-30)
+
+## 30.08 late: v2.3.6 (values-only chart labels, Templates on top), WP3 native charts next
+
+- Daniel: "charts always just the values", "I do not see the templates on the side bar", "try
+  moving to PP pie charts and graphs". Plan approved (budget 2.3-4.0M tokens):
+  ~/.claude/plans/velvet-munching-duckling.md. WP1 done: `src/chart-labels.ts` (label position by
+  chart type) + `styleChartLabels` in `src/excel/internal.ts`, applied by the waterfall (in the
+  tolerated surface batch), the tornado (helper block in the outcomes' number format) and Format
+  chart (a pie keeps its legend for the categories, leader lines on); demo charts `show_value()`;
+  the fake host records every label flag. WP2 done: the Templates section moved under the
+  Selection inspector as a 2x3 `tool-grid template-grid` (descriptions in the button titles and
+  the "?" card); ux:check 0 defects at 320-500; manual text updated, but
+  `manual/shots/excel-tools.png` still shows the pre-templates top: retake on the web.
+- WP3 (native PowerPoint chart groups): spec + real-host spike first. PowerPointApi 1.10
+  `adjustments` (Daniel's 16.107 has it) is the pie route; undrawable types fall back to the
+  picture link. Not started.
 
 ## 30.08: fleet 2 (Daniel: overlap still seen in Excel; intuitive, advanced, universal, templates, "?")
 

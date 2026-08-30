@@ -44,6 +44,9 @@ fn tornado() -> Section {
             Block::Para(
                 r#"Bāzes vērtība ir skaitlis virs zemāko un augstāko vērtību kolonnām. Ja tāda nav, par bāzi tiek ņemts abu kolonnu vidējais. Faktori tiek sakārtoti pēc svārstības lieluma, un starpības tiek ierakstītas palīgblokā pa labi no atlases."#,
             ),
+            Block::Para(
+                r#"Stabiņu galos ir tikai vērtības, tajā pašā skaitļu formātā, kādā atlasē ir zemākā un augstākā vērtība."#,
+            ),
         ],
     )
 }
@@ -53,7 +56,7 @@ fn chart_format() -> Section {
         "Brand-format chart un CAGR label",
         vec![
             Block::Para(
-                r#"Poga "Brand-format chart" pārnoformē atlasīto diagrammu: fonts, sēriju krāsas un leģenda nāk no jūsu paletes, palīglīnijas tiek izslēgtas. Vispirms jāatlasa diagramma, citādi panelis paziņo "Select a chart first"."#,
+                r#"Poga "Brand-format chart" pārnoformē atlasīto diagrammu: fonts, sēriju krāsas un leģenda nāk no jūsu paletes, palīglīnijas tiek izslēgtas, un datu etiķetēs paliek tikai vērtības (bez kategoriju nosaukumiem, sēriju nosaukumiem un procentiem). Sektoru diagrammai etiķetes tiek novietotas ārpus sektoriem, un kategoriju nosaukumus rāda leģenda. Vispirms jāatlasa diagramma, citādi panelis paziņo "Select a chart first"."#,
             ),
             Block::Para(
                 r#"Poga "CAGR label" pieraksta atlasītās sērijas vidējo gada pieaugumu diagrammas augšējā labajā stūrī."#,

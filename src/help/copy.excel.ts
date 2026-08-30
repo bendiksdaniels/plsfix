@@ -123,11 +123,11 @@ const tools: HelpCopy = {
       "Charts built from a selection, and a restyle for a chart you already have.",
     buttons: {
       "chart-waterfall":
-        "Builds a bridge chart from a label and value table. First and last rows are the opening and closing totals.",
+        "Builds a bridge chart from a label and value table. First and last rows are the opening and closing totals; the labels show the values only.",
       tornado:
-        "Builds a sensitivity chart from a driver, low and high table, ranked by swing.",
+        "Builds a sensitivity chart from a driver, low and high table, ranked by swing, with the values at the bar ends.",
       "chart-format":
-        "Restyles the selected chart to your palette: fonts, series colors and legend, gridlines off.",
+        "Restyles the selected chart to your palette: fonts, series colors and legend, gridlines off, labels down to the values only.",
       "chart-cagr":
         "Writes the selected series' growth rate at the top right of the selection.",
     },
