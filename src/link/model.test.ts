@@ -186,3 +186,50 @@ describe("sourceLabel", () => {
     expect(sourceLabel(src, "table")).toBe("Model!B4:F12 table");
   });
 });
+
+describe("chart data on a picture payload", () => {
+  const chart = {
+    v: 1 as const,
+    kind: "column" as const,
+    title: null,
+    categories: ["a", "b"],
+    series: [
+      {
+        name: "s",
+        values: [1, 2],
+        labels: ["1", "2"],
+        colors: ["#000000", "#000000"],
+      },
+    ],
+    font: "Arial",
+    ink: "#333333",
+    titleColor: "#14213D",
+  };
+  const picture = {
+    v: 1 as const,
+    kind: "picture" as const,
+    mime: "image/png" as const,
+    width: 2,
+    height: 1,
+    png: "AA==",
+    src,
+    pushedAt: "2026-08-30T00:00:00.000Z",
+    hash: "0".repeat(64),
+  };
+
+  it("keeps the chart data through the codec", () => {
+    const withChart = { ...picture, chart };
+    expect(decodePayload(encodePayload(withChart))).toEqual(withChart);
+  });
+
+  it("still decodes a payload without chart data", () => {
+    expect(decodePayload(encodePayload(picture))).toEqual(picture);
+  });
+
+  it("refuses a malformed chart", () => {
+    const broken = { ...picture, chart: { ...chart, kind: "line" } };
+    expect(() =>
+      decodePayload(new TextEncoder().encode(JSON.stringify(broken))),
+    ).toThrow();
+  });
+});

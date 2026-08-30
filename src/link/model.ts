@@ -3,6 +3,8 @@
 // their codecs. Every decoder validates its shape before trusting it - garbage
 // in never becomes a typed value out.
 
+import { isChartData, type ChartData } from "./chart-model";
+
 export type LinkId = string; // 32 lowercase hex chars
 export type LinkKind = "range" | "chart" | "table";
 
@@ -48,6 +50,9 @@ export interface PicturePayload {
   src: Source;
   pushedAt: string;
   hash: string;
+  // A chart link also ships what the chart shows, so a slide that can draw
+  // native shapes does; the picture stays the fallback for every other host.
+  chart?: ChartData;
 }
 
 // One cell of a table, as small as it can be said: `t` is the text Excel
@@ -199,7 +204,8 @@ function isPicturePayload(value: unknown): value is PicturePayload {
     typeof value.png === "string" &&
     isSource(value.src) &&
     typeof value.pushedAt === "string" &&
-    typeof value.hash === "string"
+    typeof value.hash === "string" &&
+    isOptional(value.chart, isChartData)
   );
 }
 

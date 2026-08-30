@@ -71,6 +71,7 @@ async function payloadOf(src: Source, render: Render): Promise<Payload> {
     src,
     pushedAt,
     hash: await sha256Hex(render.png),
+    ...(render.chart ? { chart: render.chart } : {}),
   };
 }
 

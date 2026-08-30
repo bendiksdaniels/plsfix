@@ -19,6 +19,7 @@ import {
 import { isRelayError, type RelayApi } from "../link/relay";
 import { hostSupports } from "./internal";
 import { renderTable, type TableRender } from "./link-table";
+import { type ChartData } from "../link/chart-model";
 import { parseAddress } from "./shared";
 
 const CHART_LABEL_SEPARATOR = ": ";
@@ -50,7 +51,8 @@ export type ResolvedSource = ResolvedRange | ResolvedChart;
 // What a source renders to: the base64 picture a range or a chart gives, or
 // the cell grid a table link carries instead.
 export type Render =
-  { kind: "picture"; png: string } | ({ kind: "table" } & TableRender);
+  | { kind: "picture"; png: string; chart?: ChartData }
+  | ({ kind: "table" } & TableRender);
 
 // Every failure says which flow it came from and which link; the token is never
 // part of a label or a message.
