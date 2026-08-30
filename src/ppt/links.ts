@@ -314,6 +314,16 @@ export async function listInbox(
   return items;
 }
 
+// What the pane adds to "Inserted <label>." after a host that had something to
+// say: where the object had to land, then why a chart came as a picture.
+export function insertNote(placed: InsertResult): string {
+  const parts = [
+    placed.overlapping ? realHost.OVERLAP_NOTE : null,
+    placed.note ?? null,
+  ].filter((part): part is string => part !== null);
+  return parts.length === 0 ? "" : ` ${parts.join(". ")}`;
+}
+
 export async function insertFromInbox(
   item: InboxItem,
   ws: Workspace,

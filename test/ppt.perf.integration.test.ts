@@ -9,6 +9,7 @@ import type { InboxItem, Payload } from "../src/link/model";
 import { FETCH_BLOB_CAP } from "../src/link/relay";
 import { createWorkspace } from "../src/link/workspace";
 import { REPAINT_BUDGET_BYTES } from "../src/ppt/batching";
+import { SHAPES_PER_SYNC } from "../src/ppt/charts";
 import type { FakeRelay } from "./fakerelay";
 import { fakePng } from "./fakepng";
 import {
@@ -18,7 +19,16 @@ import {
   type FakePptShape,
   type FakePresentation,
 } from "./fakeppt";
-import { bootPpt, memoryStore, pushAgain, seedLink, src } from "./ppt.support";
+import {
+  bootPpt,
+  columnChart,
+  memoryStore,
+  pushAgain,
+  pushChart,
+  seedChart,
+  seedLink,
+  src,
+} from "./ppt.support";
 import type * as LinksModule from "../src/ppt/links";
 
 enableStrictLoadSemantics();
@@ -42,6 +52,12 @@ const SCAN_SYNC_BUDGET = 4;
 // Sixty small pictures are far inside the repaint budget, so every in-place
 // repaint of this update-all travels in one batch and one sync.
 const UPDATE_SYNC_BUDGET = 1;
+// A chart is drawn shape by shape, so its insert is bounded by the shapes it
+// spends, not by the deck: the selected slide, the boxes already on it, one
+// sync per SHAPES_PER_SYNC of the layout, and one that groups and tags them.
+const CHART_POINTS = 6;
+const CHART_SHAPES = 20;
+const CHART_SYNC_BUDGET = 2 + Math.ceil(CHART_SHAPES / SHAPES_PER_SYNC) + 1; // 5
 
 let links: typeof LinksModule;
 let presentation: FakePresentation;
@@ -228,6 +244,43 @@ describe("update all on a 60-slide deck", () => {
     expect(pictures().map((shape) => shape.setImageCalls)).toEqual(
       new Array<number>(rows.length).fill(2),
     );
+  });
+
+  // A chart is the one link made of many shapes, and the web charges per
+  // shape and per round trip: what is bounded here is the syncs the drawing
+  // costs, chunked at SHAPES_PER_SYNC, never one per shape.
+  it("draws and redraws a chart in one sync per chunk plus one", async ({
+    annotate,
+  }) => {
+    const ws = await createWorkspace(memoryStore());
+    const chart = columnChart(CHART_POINTS);
+    const item = await seedChart(chart, PNG);
+
+    const insertFrom = helpers.syncCount();
+    const insertStart = performance.now();
+    await links.insertFromInbox(item, ws, relay);
+    const insertSyncs = helpers.syncCount() - insertFrom;
+    const insertMs = performance.now() - insertStart;
+
+    const group = presentation.slides[0]!.shapes[0]!;
+    expect(group.type).toBe("Group");
+    expect(group.group!.shapes).toHaveLength(CHART_SHAPES);
+
+    await pushChart(item, chart, PNG);
+    const rows = await links.listLinks(relay);
+    const repaintFrom = helpers.syncCount();
+    const repaintStart = performance.now();
+    const summary = await links.updateLinks(rows, relay);
+    const repaintSyncs = helpers.syncCount() - repaintFrom;
+
+    await annotate(
+      `${String(CHART_SHAPES)} shapes: insert ${trips(insertSyncs, insertMs)}, ` +
+        `repaint ${trips(repaintSyncs, performance.now() - repaintStart)}`,
+    );
+    expect(summary).toMatchObject({ updated: 1, failed: 0 });
+    expect(insertSyncs).toBe(CHART_SYNC_BUDGET);
+    // A repaint knows the box already, so it spends the drawing syncs alone.
+    expect(repaintSyncs).toBe(CHART_SYNC_BUDGET - 2);
   });
 
   // The batch is a speed-up, not a new failure mode: a shape the host refuses

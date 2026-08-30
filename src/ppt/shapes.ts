@@ -9,7 +9,9 @@ export const SHAPE_PROPERTIES =
 // Groups (Shape.type "Group", Shape.group, ShapeGroup.shapes) and
 // fill.setImage both arrived in PowerPointApi 1.8, so one version gates both.
 export const GROUP_API = "1.8";
-const GROUP_TYPE = "Group";
+// PowerPoint.ShapeType.group; the typings have no TextBox member, so a shape's
+// type is compared as the string the host reports.
+export const GROUP_TYPE = "Group";
 
 // A user can nest groups without limit; three levels is every real deck, and
 // the cap is what keeps a pathological one from costing a sync per level.
