@@ -12,10 +12,11 @@ import {
   styleChartSurface,
   syncTolerating,
 } from "./internal";
+import { seriesPalette, waterfallColors } from "../chart-colors";
 import { labelPosition, leaderLines } from "../chart-labels";
 import { bridgeSeries, cagr, formatCagrLabel, seriesSpan } from "../chartmath";
 import { type CellValue } from "../model";
-import { getActiveSettings, tint } from "../settings";
+import { getActiveSettings } from "../settings";
 
 const BRIDGE_POINT_CAP = 100;
 const BRIDGE_MIN_POINTS = 3;
@@ -40,18 +41,6 @@ const AXIS_FREE_CHARTS = [
   "Sunburst",
   "RegionMap",
 ];
-
-function chartSeriesColors(): string[] {
-  const { primary, accent } = getActiveSettings();
-  return [
-    accent,
-    primary,
-    tint(primary, 0.55),
-    tint(accent, 0.45),
-    tint(primary, 0.78),
-    tint(accent, 0.7),
-  ];
-}
 
 // Two adjacent columns (labels left, values right) or two adjacent rows (labels
 // on top, values under them): a bridge reads the same either way, and a
@@ -150,14 +139,10 @@ export async function insertWaterfall(): Promise<string> {
     styleChartLabels(chart.dataLabels, null);
     await syncTolerating(context, Excel.ErrorCodes.unsupportedOperation);
 
-    // Office.js has no "set as total" flag for waterfall points, so the opening
-    // and closing columns are branded by position instead of by that flag.
-    const { primary, accent, external } = getActiveSettings();
+    // Totals, rises and falls branded by position and sign (chart-colors.ts),
+    // the same rule a slide follows when it draws this bridge as shapes.
     const points = series.points;
-    values.forEach((_value, index) => {
-      const total = index === 0 || index === values.length - 1;
-      const fall = (bridge.fall[index] ?? 0) > 0;
-      const color = total ? primary : fall ? external : accent;
+    waterfallColors(values, getActiveSettings()).forEach((color, index) => {
       points.getItemAt(index).format.fill.setSolidColor(color);
     });
     await context.sync();
@@ -204,7 +189,7 @@ export async function formatSelectedChart(): Promise<void> {
       chart.dataLabels.showLeaderLines = true;
     }
 
-    const colors = chartSeriesColors();
+    const colors = seriesPalette(getActiveSettings());
     for (let index = 0; index < chart.series.count; index += 1) {
       const color = colors[index % colors.length]!;
       chart.series.getItemAt(index).format.fill.setSolidColor(color);
