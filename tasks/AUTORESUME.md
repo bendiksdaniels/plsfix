@@ -2,6 +2,16 @@
 
 ## 30.08 late: v2.3.6 (values-only chart labels, Templates on top), WP3 native charts next
 
+- WP3 in flight (30.08 late): spec `docs/superpowers/specs/2026-08-30-native-charts-design.md` (spike findings
+  inside: pie adjustments = degrees clockwise from 3 o'clock on (-180,180], groups persist with tags
+  across reloads, web adds cost more as the slide fills, text boxes ~1 s each on the web, ExcelApi
+  1.12/1.15 reads work on the web), plan `docs/superpowers/plans/2026-08-30-native-charts.md` (8
+  tasks). Done on main: Task 1 (`src/link/chart-model.ts`, `src/chart-colors.ts`, 83d4a86) and
+  Task 3 (payload `chart?`, 5ee404f). Wave 1 dispatched off 5ee404f: Task 2 pure layout (sonnet),
+  Task 4 Excel reader (opus), Task 5 fake PowerPoint (opus); then Task 6 adapter (opus), Task 7
+  docs (sonnet), Task 8 controller (gate, bump minor v2.4.0, deploy, web proof via the CDP rig).
+  Rig: scratch Chrome 9222 + manifest server 3001 still alive; spike scripts in this session's
+  scratchpad (`spike-*.js`); the PowerPoint deck is "Presentation 1" (4 slides, slide 3 empty).
 - Daniel: "charts always just the values", "I do not see the templates on the side bar", "try
   moving to PP pie charts and graphs". Plan approved (budget 2.3-4.0M tokens):
   ~/.claude/plans/velvet-munching-duckling.md. WP1 done: `src/chart-labels.ts` (label position by
