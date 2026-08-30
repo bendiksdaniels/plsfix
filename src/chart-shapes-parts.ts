@@ -221,9 +221,10 @@ function colorOf(data: ChartData, i: number): string {
     : data.series[i]!.colors[0]!;
 }
 
-// Legend rows wrapped under the plot: a swatch (a thick short line, not a
-// rect, so it never reads as a bar) plus the series name, or the category
-// name for a pie, packed by the same rule `bands` reserved space for.
+// Legend rows wrapped under the plot: a square swatch beside the series name,
+// or the category name for a pie, packed by the same rule `bands` reserved
+// space for. Swatches are rects named "legend swatch": a bar is a rect named
+// "bar", which is how a reader tells the two apart.
 export function legend(data: ChartData, band: Box): Primitive[] {
   const items = legendItems(data);
   const rows = packLegendRows(items, band.width);
@@ -232,10 +233,8 @@ export function legend(data: ChartData, band: Box): Primitive[] {
     let x = band.left;
     const top = band.top + rowIndex * LEGEND_BAND;
     row.forEach((i) => {
-      const swatch = boxAt(x, top + LEGEND_BAND / 2, SWATCH, 0);
-      out.push(
-        lineShape(swatch, colorOf(data, i), SWATCH, `legend swatch ${i}`),
-      );
+      const swatch = boxAt(x, top + (LEGEND_BAND - SWATCH) / 2, SWATCH, SWATCH);
+      out.push(rect(swatch, colorOf(data, i), `legend swatch ${i}`));
       x += SWATCH + LABEL_PAD;
       const width = textWidth(items[i]!, LABEL_SIZE);
       out.push(

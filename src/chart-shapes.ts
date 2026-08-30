@@ -20,7 +20,7 @@ import {
   segmentLabel,
   titleText,
   truncate,
-} from "./chart-shapes-pie";
+} from "./chart-shapes-parts";
 
 export interface Rect {
   kind: "rect";

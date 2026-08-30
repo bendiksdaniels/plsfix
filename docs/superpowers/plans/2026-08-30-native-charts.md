@@ -135,7 +135,7 @@ describe("normalizeAngle", () => {
 ### Task 2: Pure chart layout (`src/chart-shapes.ts`)
 
 **Files:**
-- Create: `src/chart-shapes.ts`, `src/chart-shapes.test.ts` (split the module into `src/chart-shapes.ts` (entry, bands, size, bars) and `src/chart-shapes-pie.ts` (wedges, pie legend) if it passes 400 lines)
+- Create: `src/chart-shapes.ts`, `src/chart-shapes.test.ts` (split the module into `src/chart-shapes.ts` (entry, bands, size, bars) and `src/chart-shapes-parts.ts` (the shared primitive builders, pie wedges, legend) if it passes 400 lines)
 
 **Interfaces (consumes):** `ChartData`, `ChartSeries`, `normalizeAngle` from `src/link/chart-model.ts`; `Box`, `Size` from `src/layout.ts`; `bridgeSeries` from `src/chartmath.ts`.
 

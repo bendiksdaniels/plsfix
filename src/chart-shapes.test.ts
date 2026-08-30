@@ -17,7 +17,8 @@ const base = {
   titleColor: "#14213D",
   title: "Revenue",
 };
-const rects = (p: Primitive[]) => p.filter((x): x is Rect => x.kind === "rect");
+const rects = (p: Primitive[]) =>
+  p.filter((x): x is Rect => x.kind === "rect" && x.name.startsWith("bar"));
 const texts = (p: Primitive[]) => p.filter((x): x is Text => x.kind === "text");
 const inside = (b: {
   left: number;

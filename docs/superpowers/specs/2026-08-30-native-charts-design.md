@@ -108,7 +108,7 @@ export type Primitive =
       align: "l" | "c" | "r"; name: string }
   | { kind: "line"; box: Box; color: string; weight: number; name: string };
 
-export function chartSize(data: ChartData, source: Size): Size;      // points, capped
+export function chartSize(source: Size, maxWidth: number): Size;      // points, capped, never under 200 x 120
 export function layoutChart(data: ChartData, box: Box): Primitive[];
 ```
 
@@ -116,7 +116,9 @@ Rules (all in points; text width estimated as 0.55 x size x characters):
 
 - Bands: title 18 (12 pt bold `titleColor`, left), plot, category labels 14 (column) or a
   left column of 28 % of the width (bar, tornado), legend 16 when there is more than one
-  series or the chart is a pie. Text is 9 pt `ink`, the brand font.
+  series or the chart is a pie. Text is 9 pt `ink`, the brand font, in label boxes 18 pt
+  high (the default text insets included). Legend swatches are 8 x 8 `rect` primitives
+  named `legend swatch <i>`; bars are `rect`s named `bar <series>.<category>`.
 - Value scale: from the smallest negative reach to the largest positive reach (stacked: the
   sums of each sign), zero baseline drawn as a 0.75 pt line; negatives hang below it.
 - Column: slot = plot width / categories; bar width 0.6 x slot / series (clustered, side by
