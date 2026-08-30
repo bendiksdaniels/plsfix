@@ -18,6 +18,7 @@ import {
 } from "../link/model";
 import { isRelayError, type RelayApi } from "../link/relay";
 import { hostSupports } from "./internal";
+import { readChartData } from "./link-chart";
 import { renderTable, type TableRender } from "./link-table";
 import { type ChartData } from "../link/chart-model";
 import { parseAddress } from "./shared";
@@ -340,16 +341,25 @@ export async function renderSource(
   if (resolved.kind === "table") {
     return { kind: "table", ...(await renderTable(context, resolved.range)) };
   }
-  const image =
-    resolved.kind === "chart"
-      ? resolved.chart.getImage(
-          Math.round(resolved.width * CHART_PIXEL_SCALE),
-          Math.round(resolved.height * CHART_PIXEL_SCALE),
-          Excel.ImageFittingMode.fit,
-        )
-      : resolved.range.getImage();
+  if (resolved.kind === "chart") return renderChart(context, resolved);
+  const image = resolved.range.getImage();
   await context.sync();
   return { kind: "picture", png: image.value };
+}
+
+// The picture is queued first and the reads ride the same batch: a chart the
+// slide cannot draw costs the one round trip a chart link costs today.
+async function renderChart(
+  context: Excel.RequestContext,
+  resolved: ResolvedChart,
+): Promise<Render> {
+  const image = resolved.chart.getImage(
+    Math.round(resolved.width * CHART_PIXEL_SCALE),
+    Math.round(resolved.height * CHART_PIXEL_SCALE),
+    Excel.ImageFittingMode.fit,
+  );
+  const chart = await readChartData(context, resolved.chart);
+  return { kind: "picture", png: image.value, ...(chart ? { chart } : {}) };
 }
 
 // Removing a link puts the workbook back: the hidden name goes, and a chart

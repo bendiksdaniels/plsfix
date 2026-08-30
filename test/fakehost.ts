@@ -432,6 +432,12 @@ export interface FakeSeries {
   overlap?: number;
   gapWidth?: number;
   pointColors: Record<number, string>;
+  // What getDimensionValues and getDimensionDataSourceString answer with: the
+  // category strings, the numbers, and the address the values were read from.
+  name?: string;
+  categories?: string[];
+  values?: number[];
+  valuesSource?: string;
 }
 
 export interface FakeChart {
@@ -460,6 +466,13 @@ export interface FakeChart {
   seriesCount: number;
   series: FakeSeries[];
 }
+
+// A chart as a test seeds it: every series field but the point colours a paint
+// writes into, and a seeded series list sets the count with it.
+export type FakeSeriesSeed = Omit<Partial<FakeSeries>, "pointColors">;
+export type FakeChartSeed = Omit<Partial<FakeChart>, "series"> & {
+  series?: FakeSeriesSeed[];
+};
 
 const DEFAULT_CHART_WIDTH = 480;
 const DEFAULT_CHART_HEIGHT = 288;
@@ -871,12 +884,17 @@ const SHAPES: Record<string, Shape> = {
     children: { format: "chartFormat" },
   },
   chartSeries: {
-    scalars: ["count"],
+    scalars: ["count", "items"],
+    items: "chartSeriesItem",
     returns: { getItemAt: "chartSeriesItem" },
   },
   chartSeriesItem: {
     scalars: ["name", "showConnectorLines", "overlap", "gapWidth"],
     children: { format: "chartFormat", points: "chartPoints" },
+    returns: {
+      getDimensionValues: "clientResult",
+      getDimensionDataSourceString: "clientResult",
+    },
   },
   chartPoints: { scalars: ["count"], returns: { getItemAt: "chartPoint" } },
   chartPoint: { children: { format: "chartFormat" } },
@@ -2558,9 +2576,14 @@ class ChartProxy {
     };
   }
 
+  // Excel answers for a chart with no title of its own with an empty string.
   get title() {
     const record = this.record;
     return {
+      load: () => undefined,
+      get text(): string {
+        return record.title ?? "";
+      },
       set text(value: string) {
         record.title = value;
       },
@@ -2602,47 +2625,80 @@ class ChartProxy {
       get count() {
         return record.seriesCount;
       },
+      // A chart the fake was handed a series count for but no series records
+      // still enumerates: Excel's own collection has one item per series.
+      get items() {
+        const length = Math.max(record.seriesCount, record.series.length);
+        return Array.from({ length }, (_unused, index) =>
+          seriesProxy(seriesAt(record, index)),
+        );
+      },
       getItemAt(index: number) {
-        let entry = record.series[index];
-        if (!entry) {
-          entry = { pointColors: {} };
-          record.series[index] = entry;
-        }
-        const series = entry;
+        return seriesProxy(seriesAt(record, index));
+      },
+    };
+  }
+}
+
+function seriesAt(record: FakeChart, index: number): FakeSeries {
+  let entry = record.series[index];
+  if (!entry) {
+    entry = { pointColors: {} };
+    record.series[index] = entry;
+  }
+  return entry;
+}
+
+// One series: what a brand paint writes, and what the link reader asks for -
+// the name, the overlap that marks a tornado, the two dimensions and the
+// address the values were read from.
+function seriesProxy(series: FakeSeries) {
+  return {
+    get name(): string {
+      return series.name ?? "";
+    },
+    get overlap(): number {
+      return series.overlap ?? 0;
+    },
+    set overlap(value: number) {
+      series.overlap = value;
+    },
+    set showConnectorLines(value: boolean) {
+      series.showConnectorLines = value;
+    },
+    set gapWidth(value: number) {
+      series.gapWidth = value;
+    },
+    getDimensionValues(dimension: string): { value: (string | number)[] } {
+      if (dimension === "Categories") return { value: series.categories ?? [] };
+      return { value: series.values ?? [] };
+    },
+    getDimensionDataSourceString(dimension: string): { value: string } {
+      return {
+        value: dimension === "Values" ? (series.valuesSource ?? "") : "",
+      };
+    },
+    format: {
+      fill: {
+        setSolidColor(color: string) {
+          series.fillColor = color;
+        },
+      },
+    },
+    points: {
+      getItemAt(point: number) {
         return {
-          set showConnectorLines(value: boolean) {
-            series.showConnectorLines = value;
-          },
-          set overlap(value: number) {
-            series.overlap = value;
-          },
-          set gapWidth(value: number) {
-            series.gapWidth = value;
-          },
           format: {
             fill: {
               setSolidColor(color: string) {
-                series.fillColor = color;
+                series.pointColors[point] = color;
               },
-            },
-          },
-          points: {
-            getItemAt(point: number) {
-              return {
-                format: {
-                  fill: {
-                    setSolidColor(color: string) {
-                      series.pointColors[point] = color;
-                    },
-                  },
-                },
-              };
             },
           },
         };
       },
-    };
-  }
+    },
+  };
 }
 
 class ShapeProxy {
@@ -3463,7 +3519,7 @@ export interface FakeHelpers {
   columnWidth(sheetName: string, col: number): number;
   setPrecedents(address: string, config: TraceConfig): void;
   setDependents(address: string, config: TraceConfig): void;
-  addChart(sheetName: string, chart?: Partial<FakeChart>): FakeChart;
+  addChart(sheetName: string, chart?: FakeChartSeed): FakeChart;
   moveChart(name: string, toSheet: string): void;
   setActiveChart(chart: FakeChart | null): void;
   setting(key: string): string | null;
@@ -3747,10 +3803,17 @@ export function installFakeHost(options: FakeHostOptions = {}): {
       workbook.dependents.set(address, config);
     },
     addChart(sheetName, chart = {}) {
+      const { series, ...rest } = chart;
+      const seeded = series?.map((one) => ({ pointColors: {}, ...one }));
       const record = newChart(
         sheetName,
         `Chart ${workbook.charts.length + 1}`,
-        chart,
+        {
+          ...rest,
+          ...(seeded
+            ? { series: seeded, seriesCount: rest.seriesCount ?? seeded.length }
+            : {}),
+        },
       );
       workbook.charts.push(record);
       return record;
