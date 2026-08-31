@@ -25,7 +25,7 @@ export const actionButtons = Array.from(
 export const toast = createToast(getElement("toast"));
 export const tabs = installTabs(getElement("tab-bar"));
 
-export function setBusy(busy: boolean): void {
+function setBusy(busy: boolean): void {
   for (const button of actionButtons) button.disabled = busy;
 }
 

@@ -1,6 +1,6 @@
 /* The Brand tab: the live workbook preview, the palette rows, the colours read
    out of a logo and the workbook output defaults. Owns the --pv-* custom
-   properties src/main.ts writes the user's palette into; nothing else reads
+   properties src/pane/brand-tab.ts writes the user's palette into; nothing else reads
    them, and nothing here may widen the pane. */
 
 .preview-table {

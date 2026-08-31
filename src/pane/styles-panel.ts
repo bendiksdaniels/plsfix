@@ -7,6 +7,7 @@ import { deleteUnusedStyles, listUnusedStyles, type StyleScan } from "../excel";
 import { getElement } from "../ui/dom";
 import { DELETE_CONFIRM_MS, tabs } from "./shared";
 
+// Null until the first scan: the delete acts on a list, never on a guess.
 let styleScan: StyleScan | null = null;
 let stylesArmed = false;
 let stylesTimer: number | undefined;

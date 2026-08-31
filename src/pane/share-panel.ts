@@ -7,6 +7,7 @@ import { type ShareIssue, summarizeShare } from "../share";
 import { getElement } from "../ui/dom";
 import { refreshSheets } from "./workbook-tab";
 
+// Long lists belong in the workbook, not in a pane the reader has to scroll.
 const SHARE_ROW_CAP = 20;
 const SHARE_BADGES: Record<ShareIssue["kind"], string> = {
   hiddenSheet: "Hidden",

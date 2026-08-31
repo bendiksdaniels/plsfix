@@ -35,13 +35,17 @@ export function versionProblems(
       problems.push(`${file} is not ${version}.0`);
   }
   // Both panes show the version through #app-version, and both boot files put
-  // it there from __APP_VERSION__; any of the four could hard-code it and go
-  // stale, so the gate looks at all four.
+  // it there from __APP_VERSION__ (the Excel pane through src/pane/shared.ts);
+  // any of them could hard-code it and go stale, so the gate looks at all of them.
   for (const page of ["taskpane.html", "pptpane.html"]) {
     if (HARD_CODED.test(read(page)))
       problems.push(`${page} hard-codes a version; use #app-version`);
   }
-  for (const module of ["src/main.ts", "src/ppt/main.ts"]) {
+  for (const module of [
+    "src/main.ts",
+    "src/pane/shared.ts",
+    "src/ppt/main.ts",
+  ]) {
     if (HARD_CODED_LITERAL.test(read(module)))
       problems.push(`${module} hard-codes a version; use APP_VERSION`);
   }

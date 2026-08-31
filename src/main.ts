@@ -1,3 +1,7 @@
+// Excel pane entry: the top-level render sequence, boot() in the order the
+// tabs depend on (overlay restore before the Links tab, brand adoption, then
+// the command table) and the host probe. Owns no tab state and no business
+// logic: those live in src/pane/ and src/excel/.
 import "./styles.css";
 import { readSeparators, restorePersistedOverlay } from "./excel";
 import { hostReady } from "./host-ready";
