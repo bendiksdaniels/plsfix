@@ -11,6 +11,8 @@ export default tseslint.config(
       "docs/**",
       ".claude/**",
       ".superpowers/**",
+      // Eval'd Playwright fragments for the web rig, not modules.
+      "scripts/rig/snippets/**",
     ],
   },
   ...tseslint.configs.strict,
