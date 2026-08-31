@@ -1,8 +1,9 @@
 // "Change source" against the fake host and the fake relay: which inbox items
-// a link's row offers and in what order, the re-point itself (new picture, new
-// tags, same box, inbox item consumed, the row afterwards current against the
-// NEW link), and the two refusals - more than one ticked row, and an inbox with
-// nothing in it. Strict load semantics are on.
+// a link's row offers and in what order, the text boundary no candidate may
+// cross, the re-point itself (new picture, new tags, same box, inbox item
+// consumed, the row afterwards current against the NEW link), and the two
+// refusals - more than one ticked row, and an inbox with nothing in it. Strict
+// load semantics are on.
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { TAG_KEY, TAG_LINK, type InboxItem } from "../src/link/model";
@@ -15,7 +16,14 @@ import {
   type FakePptShape,
   type FakePresentation,
 } from "./fakeppt";
-import { bootPpt, memoryStore, seedLink, src } from "./ppt.support";
+import {
+  bootPpt,
+  memoryStore,
+  seedLink,
+  seedTable,
+  seedText,
+  src,
+} from "./ppt.support";
 import type * as ChangeSourceModule from "../src/ppt/change-source";
 import type * as LinksModule from "../src/ppt/links";
 
@@ -91,6 +99,37 @@ describe("candidatesFor", () => {
       "Model_v5.xlsx",
       "Other.xlsx",
     ]);
+  });
+
+  // A tagged text box cannot take a picture's payload in place, so the picker
+  // stays on the row's side of that line either way.
+  it("offers a text link only text exports", async () => {
+    const ws = await createWorkspace(memoryStore());
+    const placed = await seedText("EUR 15.7m");
+    await links.insertFromInbox(placed, ws, relay);
+    const row = (await links.listLinks(relay))[0]!;
+    const inbox = [
+      await seedLink(NEW, "Model_v5.xlsx"),
+      await seedTable([[{ t: "Revenue" }]], [80]),
+      await seedText("EUR 16.1m"),
+    ];
+
+    expect(
+      changeSource.candidatesFor(row, inbox).map((item) => item.kind),
+    ).toEqual(["text"]);
+  });
+
+  it("hides a text export from a picture link", async () => {
+    const { row } = await seeded();
+    const inbox = [
+      await seedText("EUR 15.7m"),
+      await seedLink(NEW, "Model_v5.xlsx"),
+      await seedTable([[{ t: "Revenue" }]], [80]),
+    ];
+
+    expect(
+      changeSource.candidatesFor(row, inbox).map((item) => item.kind),
+    ).toEqual(["range", "table"]);
   });
 
   // The label can change when a table is re-exported over a moved range, so the
