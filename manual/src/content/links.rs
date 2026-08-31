@@ -137,7 +137,7 @@ fn insert() -> Section {
                 "Objekts (attēls, tabula vai diagramma) tiek ievietots atlasītajā slaidā brīvā vietā un pielāgots tā izmēram. Pēc tam to var pārvietot un mainīt tā izmēru.",
             ]),
             Block::Para(
-                r#"Vienumi cilnē "Inbox" ir derīgi 24 stundas pēc nosūtīšanas. Ja saraksts ir tukšs un panelī redzams "Not paired", vispirms ielīmējiet saites atslēgu cilnē "Settings"."#,
+                r#"Vienumi cilnē "Inbox" ir derīgi 7 dienas pēc nosūtīšanas. Ja saraksts ir tukšs un panelī redzams "Not paired", vispirms ielīmējiet saites atslēgu cilnē "Settings"."#,
             ),
             Block::Image {
                 file: "ppt-inbox.png",
@@ -203,7 +203,7 @@ fn security() -> Section {
         "Drošība",
         vec![
             Block::Para(
-                r#"Relejs glabā eksportētos attēlus tikai šifrētā veidā un ne ilgāk kā 7 dienas. Ikviens, kam ir pieejama prezentācija, šajā laikā var lejupielādēt saites jaunāko attēlu, pat ja saite prezentācijā vairs nav redzama."#,
+                r#"Relejs glabā eksportētos attēlus tikai šifrētā veidā un ne ilgāk kā 30 dienas. Ikviens, kam ir pieejama prezentācija, šajā laikā var lejupielādēt saites jaunāko attēlu, pat ja saite prezentācijā vairs nav redzama."#,
             ),
             Block::Para(
                 r#"Tāpēc pirms prezentācijas nosūtīšanas ārpus organizācijas katrai saitei PowerPoint cilnē "Links" jānospiež "Break link"."#,

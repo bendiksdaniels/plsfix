@@ -162,7 +162,7 @@ Export a range or a chart from Excel and keep it fresh in a deck without re-past
   source* points the one ticked picture at another export waiting in the Inbox - the same table
   from a newer workbook, say - keeping its slide, position and size. *Break
   link* removes the tracker and leaves the picture.
-- The relay stores only encrypted blobs for 7 days; anyone holding the deck can pull a
+- The relay stores only encrypted blobs for 30 days; anyone holding the deck can pull a
   linked picture for that long, so **break links before sending a deck outside**.
 
 ## Architecture
