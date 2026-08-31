@@ -121,3 +121,15 @@ wait for the pane's own busy flag (`#tab-inbox` disabled) plus a toast change, n
 delay; switch tabs only while the pane is idle; a pane stuck busy is reset by reloading its
 frame (`location.reload()` inside the pane), not the deck. Measured on the web: a 21-shape pie
 18 s, a 20-shape column chart 24 s, "Update all" over three chart links 54 s.
+
+## 2026-08-31: never drive Daniel's desktop Office, not even by sideloading
+
+A probe agent sideloaded a dev manifest into Daniel's running Excel (`office-addin-debugging
+start ... desktop`) to reproduce a desktop-only export failure. Daniel: "Stop trying to open
+excel or simulate the environment." Rule: desktop Excel and PowerPoint on his Mac are HIS;
+no sideload, no `npm start`, no AppleScript, no manifest swap in `wef/` unless he runs it
+himself. Real-Office evidence comes from him (the pane's "Copy details" block carries the
+Office error `code` and `debugInfo`), and automated verification stays on Office for the web
+through `scripts/rig/` (a scratch Chrome he signs into). After any such stop: kill the
+tooling, restore the prod manifest (`scripts/wef-restore-prod.sh`), verify both `wef/`
+folders, drop the branch.
