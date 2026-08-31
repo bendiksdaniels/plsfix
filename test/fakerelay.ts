@@ -10,6 +10,7 @@ import type {
   OmittedReason,
   RelayApi,
   StatusQuery,
+  TouchQuery,
 } from "../src/link/relay";
 import { FETCH_BLOB_CAP, RelayError } from "../src/link/relay";
 import type { RelayStatus } from "../src/link/status";
@@ -34,7 +35,7 @@ interface StoredInbox {
   blob: Uint8Array;
 }
 
-// server/src/relay.rs refuses a longer batch on both batch routes with
+// server/src/relay.rs refuses a longer batch on all three batch routes with
 // "400 too many items", so a client that stopped chunking fails here too
 // instead of quietly passing against a fake with no ceiling.
 const MAX_BATCH_ITEMS = 200;
@@ -166,6 +167,15 @@ export class FakeRelay implements RelayApi {
         return { id, rev: null, pushedAt: null, error: "auth" };
       return { id, rev: current.rev, pushedAt: current.pushedAt };
     });
+  }
+  // Same rule as touch_links in server/src/store.rs: a link whose newest
+  // revision this key owns keeps its TTL and is counted; an unknown, expired
+  // or foreign id is skipped in silence. The fake holds no TTL, so touching is
+  // only ever the count - which is exactly what the client reads.
+  async touchLinks(items: TouchQuery[]): Promise<number> {
+    refuseOversizedBatch("touch", items);
+    return items.filter(({ id, auth }) => this.links.get(id)?.auth === auth)
+      .length;
   }
   // Same rules as server/src/fetch.rs: the changed blobs in request order
   // while the cap allows, and every other link named with the reason it

@@ -24,6 +24,13 @@ export function isPutResult(value: unknown): value is { rev: number } {
   return isRecord(value) && typeof value.rev === "number";
 }
 
+// What the touch batch answers with: how many of the links it was handed kept
+// their TTL. A body without the count is not an answer - a caller would read a
+// missing field as "nothing was touched" and re-push the whole workbook.
+export function isTouchResult(value: unknown): value is { touched: number } {
+  return isRecord(value) && typeof value.touched === "number";
+}
+
 // Why the relay refused, in the shape every non-success body carries:
 // {"error":"too many items"}. Without it a 400 reaches the pane as a bare
 // status code, where "your batch is too long", "your id is malformed" and a
