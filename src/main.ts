@@ -37,6 +37,7 @@ import {
   isStylesArmed,
   renderStyles,
 } from "./pane/styles-panel";
+import { installToolSearch } from "./pane/tool-search";
 import { renderAuditState, traceBack } from "./pane/trace-panel";
 import {
   armDelete,
@@ -220,6 +221,9 @@ async function boot(host: Office.HostType, degraded: boolean): Promise<void> {
       }, 150);
     },
   );
+
+  // Last: the catalogue it builds needs every other tab already wired.
+  installToolSearch(document);
 
   await refreshSelection();
 }

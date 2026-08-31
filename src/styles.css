@@ -1,11 +1,13 @@
 /* The one stylesheet both panes import. Order matters: tokens first (it carries
    the [hidden] reset and every custom property), then the shared frame, then
-   the shared controls, then the two pane-specific sheets, and last the help
-   overlay, which restyles a shared control's states on its own toggle. */
+   the shared controls, then the tool search box, then the two pane-specific
+   sheets, and last the help overlay, which restyles a shared control's states
+   on its own toggle. */
 
 @import "./styles/tokens.css";
 @import "./styles/shell.css";
 @import "./styles/controls.css";
+@import "./styles/search.css";
 @import "./styles/excel.css";
 @import "./styles/brand.css";
 @import "./styles/ppt.css";

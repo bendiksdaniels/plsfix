@@ -68,6 +68,26 @@
         </button>
       </nav>
 
+      <div class="tool-search">
+        <input
+          id="tool-search"
+          type="search"
+          placeholder="Find a tool"
+          aria-label="Find a tool"
+          autocomplete="off"
+          title="Type what you want to do: waterfall, color key, undo, find"
+        />
+        <p id="tool-search-hint" class="hint" hidden>
+          Type what you want to do: waterfall, color key, undo, find
+        </p>
+        <ul
+          id="tool-search-results"
+          class="tool-search-results"
+          role="listbox"
+          hidden
+        ></ul>
+      </div>
+
       <div
         id="view-tools"
         class="view"
