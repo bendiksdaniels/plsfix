@@ -172,7 +172,9 @@ describe("insertTemplate", () => {
     await smt.insertTemplate("debt-schedule");
     expect(helpers.cellMap("Model")).not.toEqual(before);
 
-    expect(await smt.undoLastAction()).toBe("Model!C5:H24");
+    expect(await smt.undoLastAction()).toBe(
+      "Undone: Model!C5:H24. Nothing more to undo.",
+    );
     expect(helpers.cellMap("Model")).toEqual(before);
   });
 });

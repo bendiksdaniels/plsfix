@@ -1,9 +1,11 @@
-// pls,fix Undo: one slot, capturing what a mutating action is about to overwrite so
-// it can be restored on demand. Office.js writes never reach Excel's own undo
-// stack, so this is the pane's only safety net for a single last action.
+// pls,fix Undo: a five-deep stack, newest first, capturing what a mutating
+// action is about to overwrite so it can be restored on demand. Office.js
+// writes never reach Excel's own undo stack, so this is the pane's only
+// safety net for its last few actions.
 
 import { SELECTION_CELL_CAP } from "./internal";
 import { parseAddress } from "./shared";
+import { pushCapped } from "./undo-stack";
 
 // One captured rectangle. A ctrl-clicked selection is several of them, and an
 // action that writes into every area has to be able to put every area back.
@@ -15,12 +17,17 @@ interface UndoBlock {
   formats: Excel.CellProperties[][];
 }
 
-interface UndoSlot {
+interface UndoEntry {
   label: string;
   blocks: UndoBlock[];
+  cells: number;
 }
 
-let undoSlot: UndoSlot | null = null;
+export const UNDO_DEPTH = 5;
+export const UNDO_CELL_BUDGET = 25_000;
+
+// Newest first: index 0 is what "Undo" acts on next.
+let undoStack: UndoEntry[] = [];
 
 // The full settable surface, so a restore is not partial: fills, fonts,
 // borders, alignment, wrapping and indent all come back (row height cannot).
@@ -64,14 +71,15 @@ export async function captureUndoAreas(
   for (const range of ranges) range.load("address,rowCount,columnCount");
   await context.sync();
 
-  // A skipped capture must not leave an older slot behind: the pane would then
-  // offer to restore something that is not the last action.
-  undoSlot = null;
   const cells = ranges.reduce(
     (total, range) => total + range.rowCount * range.columnCount,
     0,
   );
   if (cells > SELECTION_CELL_CAP) {
+    // An uncaptured action may have touched anything, including ranges an
+    // older entry still thinks it can restore, so the whole stack goes with
+    // it rather than offering to restore something that is not safe to.
+    undoStack = [];
     undoSkipped = true;
     return;
   }
@@ -86,7 +94,7 @@ export async function captureUndoAreas(
   });
   await context.sync();
 
-  undoSlot = {
+  const entry: UndoEntry = {
     label: pending.map(({ range }) => range.address).join(", "),
     blocks: pending.map(({ range, sheet, properties }) => ({
       sheetId: sheet.id,
@@ -95,11 +103,16 @@ export async function captureUndoAreas(
       numberFormat: range.numberFormat as string[][],
       formats: properties.value,
     })),
+    cells,
   };
+  undoStack = pushCapped(undoStack, entry, {
+    maxDepth: UNDO_DEPTH,
+    maxCells: UNDO_CELL_BUDGET,
+  });
 }
 
 export function undoTarget(): string | null {
-  return undoSlot?.label ?? null;
+  return undoStack[0]?.label ?? null;
 }
 
 let undoSkipped = false;
@@ -114,23 +127,25 @@ export function lastUndoSkipped(): boolean {
 }
 
 export async function undoLastAction(): Promise<string> {
-  const slot = undoSlot;
-  if (!slot) throw new Error("There is no pls,fix action to undo yet.");
+  const top = undoStack[0];
+  if (!top) throw new Error("There is no pls,fix action to undo yet.");
 
   return Excel.run(async (context) => {
     // Sheet id rather than name, so a rename between action and undo is fine.
-    const sheets = slot.blocks.map((block) =>
+    const sheets = top.blocks.map((block) =>
       context.workbook.worksheets.getItemOrNullObject(block.sheetId),
     );
     for (const sheet of sheets) sheet.load("isNullObject");
     await context.sync();
 
     if (sheets.some((sheet) => sheet.isNullObject)) {
-      undoSlot = null;
+      // Unretryable: this entry can never restore, so it does not stay on
+      // the stack the way a merely-failed restore does (see below).
+      undoStack = undoStack.slice(1);
       throw new Error("The sheet that action ran on is gone.");
     }
 
-    slot.blocks.forEach((block, index) => {
+    top.blocks.forEach((block, index) => {
       const range = sheets[index]!.getRange(block.address);
       range.formulas = block.formulas;
       range.numberFormat = block.numberFormat;
@@ -140,8 +155,16 @@ export async function undoLastAction(): Promise<string> {
     });
     await context.sync();
 
-    // Only a restore that landed consumes the slot; a failed one stays retryable.
-    undoSlot = null;
-    return slot.label;
+    // Only a restore that landed consumes the entry; a failed one stays
+    // retryable (this line is unreached when context.sync() above throws).
+    undoStack = undoStack.slice(1);
+    return undoneMessage(top.label);
   });
+}
+
+function undoneMessage(label: string): string {
+  const remaining = undoStack.length;
+  return remaining > 0
+    ? `Undone: ${label}. ${String(remaining)} more to undo.`
+    : `Undone: ${label}. Nothing more to undo.`;
 }

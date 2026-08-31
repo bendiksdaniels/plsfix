@@ -100,9 +100,9 @@ export async function selectedSingleRange(
   return range;
 }
 
-// A block written beside the selection has to be free first: pls,fix Undo is a
-// single slot the modeller has to know to reach for, so a base-case column or a
-// comment standing there is not something to overwrite and report afterwards.
+// A block written beside the selection has to be free first: pls,fix Undo only
+// goes five actions deep, so a base-case column or a comment standing there is
+// not something to overwrite and report afterwards.
 export async function requireEmptyBlock(
   context: Excel.RequestContext,
   block: Excel.Range,
