@@ -1,8 +1,8 @@
 // The registry kept in a document setting, and the anchor that keeps pointing
 // at a source after rows move under it: a hidden name, or a chart's own name.
-// Owns registry read/write, workbookName, anchor create/resolve/delete and
-// render - a picture, or the cell grid link-table.ts reads. The relay round
-// trip that ships a render lives in link-record.ts.
+// Owns registry read/write, workbookName and anchor create/resolve/delete.
+// What a source renders to is link-render.ts, and the relay round trip that
+// ships a render is link-record.ts.
 
 import { deriveLinkKeys, newToken } from "../link/crypto";
 import {
@@ -18,15 +18,9 @@ import {
 } from "../link/model";
 import { isRelayError, type RelayApi } from "../link/relay";
 import { hostSupports } from "./internal";
-import { readChartData } from "./link-chart";
-import { renderTable, type TableRender } from "./link-table";
-import { type ChartData } from "../link/chart-model";
 import { parseAddress } from "./shared";
 
 const CHART_LABEL_SEPARATOR = ": ";
-// Charts are laid out in points; rendering at twice that keeps the slide
-// picture sharp on a high-density screen.
-const CHART_PIXEL_SCALE = 2;
 
 // A table's source is a range and its anchor a hidden name, exactly like a
 // range link's: only the render tells the two apart, so everything else here
@@ -48,12 +42,6 @@ export interface ResolvedChart {
 }
 
 export type ResolvedSource = ResolvedRange | ResolvedChart;
-
-// What a source renders to: the base64 picture a range or a chart gives, or
-// the cell grid a table link carries instead.
-export type Render =
-  | { kind: "picture"; png: string; chart?: ChartData }
-  | ({ kind: "table" } & TableRender);
 
 // Every failure says which flow it came from and which link; the token is never
 // part of a label or a message.
@@ -299,67 +287,6 @@ export async function resolveSource(
 ): Promise<ResolvedSource | null> {
   const [resolved] = await resolveSources(context, [entry]);
   return resolved ?? null;
-}
-
-// The anchor is bound in the same batch the picture is asked for, and office.js
-// batches are not transactional: the rename or the names.add executes and only
-// the getImage fails, so the workbook is already mutated when the sync rejects.
-// A failed render therefore undoes its own anchor rather than leaving one no
-// registry entry claims.
-export async function renderAnchored(
-  context: Excel.RequestContext,
-  resolved: ResolvedSource,
-  label: string,
-  release: () => void,
-): Promise<Render> {
-  try {
-    return await renderSource(context, resolved);
-  } catch (error) {
-    await undoAnchor(context, release);
-    throw staged(`export ${label}`, error);
-  }
-}
-
-// Best effort, like publish's rollback: if the workbook will not take the undo,
-// the render error the caller is about to see is the one worth reporting.
-async function undoAnchor(
-  context: Excel.RequestContext,
-  release: () => void,
-): Promise<void> {
-  try {
-    release();
-    await context.sync();
-  } catch {
-    return;
-  }
-}
-
-export async function renderSource(
-  context: Excel.RequestContext,
-  resolved: ResolvedSource,
-): Promise<Render> {
-  if (resolved.kind === "table") {
-    return { kind: "table", ...(await renderTable(context, resolved.range)) };
-  }
-  if (resolved.kind === "chart") return renderChart(context, resolved);
-  const image = resolved.range.getImage();
-  await context.sync();
-  return { kind: "picture", png: image.value };
-}
-
-// The picture is queued first and the reads ride the same batch: a chart the
-// slide cannot draw costs the one round trip a chart link costs today.
-async function renderChart(
-  context: Excel.RequestContext,
-  resolved: ResolvedChart,
-): Promise<Render> {
-  const image = resolved.chart.getImage(
-    Math.round(resolved.width * CHART_PIXEL_SCALE),
-    Math.round(resolved.height * CHART_PIXEL_SCALE),
-    Excel.ImageFittingMode.fit,
-  );
-  const chart = await readChartData(context, resolved.chart);
-  return { kind: "picture", png: image.value, ...(chart ? { chart } : {}) };
 }
 
 // Removing a link puts the workbook back: the hidden name goes, and a chart
