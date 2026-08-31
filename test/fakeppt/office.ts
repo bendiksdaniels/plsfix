@@ -16,12 +16,32 @@ interface SelectionOptions {
   imageHeight?: number;
 }
 
+// One armed context.sync() failure: which sync ordinal (1-based, across the
+// whole host) it fires on and what it rejects with. Several can be queued at
+// once, for a caller that needs more than one future sync to fail.
+interface ArmedSyncFailure {
+  at: number;
+  error: Error;
+}
+
+// The message and code a rejected sync carries when a test does not supply
+// its own, styled like the host's own "the operation could not complete".
+function syncFailure(message?: string): Error {
+  return Object.assign(
+    new Error(message ?? "PowerPoint could not complete the request."),
+    { code: "GeneralException" },
+  );
+}
+
 class FakeRuntime {
   strict: StrictLoads | null;
   supported: (set: string, version: string) => boolean;
   storage: Map<string, string>;
   insertions: SelectionInsert[] = [];
   nextInsertFailure: string | null = null;
+  // Armed by helpers.failNextSync(): consumed by the sync whose ordinal
+  // matches, in case more than one is queued for the same host.
+  syncFailures: ArmedSyncFailure[] = [];
   // Office.context.platform: the desktop until a test says otherwise, because
   // the web is the host with the tighter shape budget.
   platform = "Mac";
@@ -51,9 +71,24 @@ class FakeContext extends Loadable {
 
   // A no-op flush: reads come from the deck, so only load state moves here.
   // Counted, because a batch that syncs per shape is the performance bug.
-  // Every shape added in the batch is now one the host has heard of.
+  // Every shape added in the batch is now one the host has heard of - unless
+  // this is the sync a test armed to fail, in which case none of what it
+  // queued reached the host: the adds since the last sync come back off the
+  // deck and the requested loads stay unreadable, the way a batch that never
+  // arrived leaves nothing behind.
   sync(): Promise<void> {
     this.runtime.syncs += 1;
+    const at = this.runtime.syncs;
+    const index = this.runtime.syncFailures.findIndex(
+      (failure) => failure.at === at,
+    );
+    if (index !== -1) {
+      const [failure] = this.runtime.syncFailures.splice(index, 1);
+      this.runtime.presentation.rollbackPending();
+      this.runtime.strict?.drop();
+      return Promise.reject(failure!.error);
+    }
+    this.runtime.presentation.confirmPending();
     this.runtime.presentation.markSynced();
     this.runtime.strict?.commit();
     return Promise.resolve();
@@ -243,6 +278,12 @@ function makeHelpers(runtime: FakeRuntime): FakePptHelpers {
       message = "PowerPoint could not insert the image.",
     ) {
       runtime.nextInsertFailure = message;
+    },
+    failNextSync(error, afterSyncs = 0) {
+      runtime.syncFailures.push({
+        at: runtime.syncs + afterSyncs + 1,
+        error: error ?? syncFailure(),
+      });
     },
     insertedViaSelection: () =>
       runtime.insertions.map((insert) => ({
