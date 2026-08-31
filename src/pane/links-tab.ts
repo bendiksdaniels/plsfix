@@ -11,6 +11,8 @@ import {
   listWorkbookLinks,
   pushLinks,
   removeLink,
+  watchWorksheetEdits,
+  type ListWatchOptions,
   type PushSummary,
   type WorkbookLinkRow,
 } from "../excel";
@@ -50,6 +52,8 @@ export interface LinksTabDeps {
   relay: RelayApi;
   keyStore: KeyStore;
   root: ParentNode;
+  // Injectable for tests, like auto-push's delay and clock.
+  watch?: ListWatchOptions;
 }
 
 // One object threaded through the actions, so each stays a small function over
@@ -158,9 +162,21 @@ async function boot(tab: Tab): Promise<void> {
   await loadKey(tab);
   await refresh(tab);
   watchSheetChanges(tab);
+  watchForRefresh(tab);
   // Both boxes are told by the workbook, never by what they last showed. The
   // refresh above tells the same story in the table.
   await restoreToggles(tab.toggles);
+}
+
+// A source deleted or moved keeps reading "fine" until something re-reads
+// the registry - today only a push or reopening the tab. Registered once,
+// for good: an edit while another tab shows is not worth a refresh nobody
+// sees, so the callback checks the panel rather than re-arming per switch.
+function watchForRefresh(tab: Tab): void {
+  watchWorksheetEdits(() => {
+    if (element<HTMLElement>(tab.deps.root, "view-links").hidden) return;
+    void refresh(tab);
+  }, tab.deps.watch);
 }
 
 async function reload(tab: Tab): Promise<void> {
