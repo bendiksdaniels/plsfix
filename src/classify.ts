@@ -29,6 +29,15 @@ function stripStringLiterals(formula: string): string {
   return stripped;
 }
 
+// A constant in a comparison counts as a hardcode: the threshold is an
+// assumption that belongs in its own cell. Exported because the model check
+// asks the same question of formulas the color key has already answered
+// "crossSheet" or "external" for, and one rule must have one home.
+export function hasHardcodedNumber(formula: string): boolean {
+  const body = stripStringLiterals(formula);
+  return DIGIT.test(body.replace(WORD_TOKEN, ""));
+}
+
 export function classifyCell(formula: CellValue, value: CellValue): CellClass {
   if (!isFormula(formula)) {
     return value === null || value === "" ? "blank" : "input";
@@ -37,7 +46,5 @@ export function classifyCell(formula: CellValue, value: CellValue): CellClass {
   const body = stripStringLiterals(formula);
   if (body.includes("[")) return "external";
   if (body.includes("!")) return "crossSheet";
-  // A constant in a comparison counts as a hardcode: the threshold is an
-  // assumption that belongs in its own cell.
-  return DIGIT.test(body.replace(WORD_TOKEN, "")) ? "partial" : "formula";
+  return hasHardcodedNumber(formula) ? "partial" : "formula";
 }
