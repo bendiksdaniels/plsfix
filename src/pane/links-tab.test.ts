@@ -9,6 +9,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   exportSelection,
   exportSelectionAsTable,
+  exportSelectionAsText,
   goToSource,
   listWorkbookLinks,
   pushLinks,
@@ -32,10 +33,12 @@ vi.mock("../excel", () => ({
   exportActiveChart: vi.fn(),
   exportSelection: vi.fn(),
   exportSelectionAsTable: vi.fn(),
+  exportSelectionAsText: vi.fn(),
   goToSource: vi.fn(),
   listWorkbookLinks: vi.fn(),
   pushLinks: vi.fn(),
   removeLink: vi.fn(),
+  touchWorkbookLinks: vi.fn(async () => 0),
 }));
 
 const ID_A = "a".repeat(32);
@@ -211,6 +214,26 @@ describe("installLinksTab", () => {
     expect(exportSelectionAsTable).toHaveBeenCalledTimes(1);
     expect(exportSelection).not.toHaveBeenCalled();
     expect(h.messages).toContain("Sent to PowerPoint: Model!B4:F12 table");
+  });
+
+  // The third button on the same selection: one cell, its own adapter call.
+  it("sends the selection as text from its own button", async () => {
+    vi.mocked(exportSelectionAsText).mockResolvedValue({
+      id: ID_B,
+      label: "Model!B4 text",
+    });
+    const h = harness();
+    install(h);
+    await settle(h);
+    click("generate-key");
+    await settle(h);
+
+    click("export-text");
+    await settle(h);
+
+    expect(exportSelectionAsText).toHaveBeenCalledTimes(1);
+    expect(exportSelection).not.toHaveBeenCalled();
+    expect(h.messages).toContain("Sent to PowerPoint: Model!B4 text");
   });
 
   // The key is the secret itself, and the pane is screen-shared on deal calls:

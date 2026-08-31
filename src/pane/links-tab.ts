@@ -1,5 +1,5 @@
-// The Excel "Links" tab: export a selection - as a picture or as a table - or
-// the active chart to PowerPoint, list what this workbook owns, push (by hand
+// The Excel "Links" tab: export a selection - as a picture, as a table or as
+// one cell's text - or the active chart to PowerPoint, list what this workbook owns, push (by hand
 // or automatically after an edit), jump back to a source, remove a link and
 // hold the workspace link key.
 // Office.js only reaches here through src/excel.
@@ -7,11 +7,13 @@ import {
   exportActiveChart,
   exportSelection,
   exportSelectionAsTable,
+  exportSelectionAsText,
   goToSource,
   listWorkbookLinks,
   pushLinks,
   removeLink,
   touchWorkbookLinks,
+  type ExportKind,
   type PushSummary,
   type WorkbookLinkRow,
 } from "../excel";
@@ -132,8 +134,9 @@ function wireBoxes(tab: Tab): void {
 }
 
 function wireActions(tab: Tab): void {
-  wire(tab, "export-selection", () => exportRange(tab, false));
-  wire(tab, "export-table", () => exportRange(tab, true));
+  wire(tab, "export-selection", () => exportRange(tab, "range"));
+  wire(tab, "export-table", () => exportRange(tab, "table"));
+  wire(tab, "export-text", () => exportRange(tab, "text"));
   wire(tab, "export-chart", () => exportChart(tab));
   wire(tab, "go-to-source", () => jumpToSource(tab));
   wire(tab, "remove-link", () => removeSelected(tab));
@@ -243,9 +246,15 @@ function unreadable(error: unknown): string {
 // Actions
 // ---------------------------------------------------------------------------
 
-async function exportRange(tab: Tab, asTable: boolean): Promise<string> {
-  const send = asTable ? exportSelectionAsTable : exportSelection;
-  const result = await send(requireWorkspace(tab), tab.deps.relay);
+// Looked up when the button is pressed, not when the module loads: the three
+// adapters are one import each, and only the one asked for is touched.
+function sender(kind: ExportKind): typeof exportSelection {
+  if (kind === "table") return exportSelectionAsTable;
+  return kind === "text" ? exportSelectionAsText : exportSelection;
+}
+
+async function exportRange(tab: Tab, kind: ExportKind): Promise<string> {
+  const result = await sender(kind)(requireWorkspace(tab), tab.deps.relay);
   await refresh(tab);
   return `Sent to PowerPoint: ${result.label}`;
 }

@@ -240,6 +240,8 @@ const links: HelpCopy = {
         "Sends the selected chart: editable shapes on newer PowerPoint, a picture elsewhere. With none selected, the sheet's only chart is taken.",
       "export-table":
         "Sends the selected range as a table that stays editable in PowerPoint.",
+      "export-text":
+        "Sends one cell's text as a text box that keeps its place, size and font when it refreshes. Up to 500 characters; the slide decides the look.",
     },
   },
   "links-heading": {
