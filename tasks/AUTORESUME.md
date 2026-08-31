@@ -1,6 +1,21 @@
-# AUTORESUME - pls,fix (v2.4.3 LIVE 2026-08-31)
+# AUTORESUME - pls,fix (v2.4.8 pending, v2.4.7 LIVE 2026-08-31)
 
 ## 31.08: v2.5 slice "ready for other people" (plan ~/.claude/plans/cozy-plotting-honey.md, approved)
+
+- 31.08 afternoon, slice DONE except the bug: v2.4.4 Model check (src/model-check.ts + src/excel/
+  model-check.ts + src/pane/model-check-panel.ts), v2.4.5 text links (src/excel/link-export.ts +
+  link-render.ts + link-touch.ts, src/ppt/texts.ts; touch on Links-tab boot), v2.4.6 undo stack
+  (five deep, 25 000 cells, src/excel/undo-stack.ts), v2.4.7 defects (src/ppt/chart-cleanup.ts;
+  src/excel/link-list-watch.ts live Links list), v2.4.8 = first-run cards (src/ui/first-run.ts),
+  printable shortcut card (scripts/build-shortcuts-page.ts -> public/shortcuts.html, regenerated
+  by bump-patch.sh, `npm run shortcuts:check`), find-a-tool (src/tool-search.ts +
+  src/pane/tool-search.ts). ~1 040 vitest. Agents: ~2.6M tokens this slice (relay 245k, split
+  304k + review 160k, text links 318k, model check 264k, undo 279k, defects 410k, first-run 361k,
+  find-a-tool 345k, probe ~150k killed).
+- Daniel 31.08: "Stop trying to open excel or simulate the environment" after a probe agent
+  sideloaded a dev manifest into his Excel. Rule in tasks/lessons.md (31.08) and memory: never
+  drive his desktop Office; the wef folders were restored to the prod manifest; the probe
+  branch is deleted. The Mac export bug therefore waits for HIS "Copy details" paste.
 
 - OPEN BUG (Daniel, 31.08 ~10:00): "exporting charts and tables is not working, there is a
   generation error" on desktop Excel for Mac 16.107.322 (UA in the VPS nginx log). Evidence so
