@@ -1,4 +1,35 @@
-# AUTORESUME - pls,fix (v2.4.1 LIVE 2026-08-30)
+# AUTORESUME - pls,fix (v2.4.3 LIVE 2026-08-31)
+
+## 31.08: v2.5 slice "ready for other people" (plan ~/.claude/plans/cozy-plotting-honey.md, approved)
+
+- OPEN BUG (Daniel, 31.08 ~10:00): "exporting charts and tables is not working, there is a
+  generation error" on desktop Excel for Mac 16.107.322 (UA in the VPS nginx log). Evidence so
+  far: NO request from his Excel reached `/modelis/api` (nginx access log), so the failure is
+  inside Excel before the upload (render or anchor); relay write path proven healthy from
+  outside (PUT/GET/status/DELETE 200, 300 KB PUT 200, 5 MB 413); "generation" matches no pane
+  string, so it is probably Office.js `GeneralException`; docs give NO Mac limitation for
+  `Range.getImage`/`Chart.getImage` (office-js #235 is the upside-down Mac picture, the old
+  spike item). Waiting for Daniel's "Copy details" text (it carries `code` + `debugInfo`
+  with the failing statement, src/ui/report.ts) and whether plain "Export selection" works.
+  Desktop Mac never ran the link flow before today (old gate 1). Fallback if no paste: a
+  dev-only probe mode in the pane (query flag, runs the exports and posts the result to the
+  vite dev server) so desktop can be verified without UI control.
+- DONE 31.08: hygiene (18 retro-tags v2.1.21..v2.4.1 from package.json history; 10 stale
+  agent worktrees removed, 10 GB; `scripts/rig/` = the web verification rig recovered from
+  scratchpads, `npm run rig` / `rig:manifests`; `scripts/release.sh` = bump + commit vX.Y.Z +
+  annotated tag, refuses a dirty tree); relay hardening v2.4.2 LIVE (LINK_TTL 30 d, INBOX_TTL
+  7 d, `POST /api/links/touch` + client `touchLinks`, `MODELIS_MAX_BYTES` 1 GiB ceiling 507,
+  `INBOX_MAX_PER_WS` 500, per-client token buckets `MODELIS_RATE_WRITE_PER_MIN` 300 /
+  `MODELIS_RATE_READ_PER_MIN` 1200 keyed CF-Connecting-IP > XFF > peer, 429 + Retry-After,
+  `/version` gains `relay` counts; nginx passes CF-Connecting-IP through); `src/main.ts` split
+  into `src/pane/*` (sonnet, opus-reviewed, fixes applied) v2.4.3; text links spec
+  `docs/superpowers/specs/2026-08-31-text-links-design.md` + plan
+  `docs/superpowers/plans/2026-08-31-text-links.md` (7 tasks; Task 1 = `touchWorkbookLinks`
+  on Links-tab boot, not yet wired).
+- NEXT: (1) root-cause the Mac export bug, fix, deploy; (2) dispatch the text-links plan (opus
+  worktree, budget 700k-1.3M); (3) Model Check + undo stack + B5/B6 defects; (4) first-run
+  card, find-a-tool, shortcut card. Daniel: Cloudflare rate-limiting rule on
+  `/modelis/api/*` in the dashboard (the API token is Access-only), Windows pass, M365 upload.
 
 ## 30.08 late: v2.3.6 (values-only chart labels, Templates on top), WP3 native charts next
 
