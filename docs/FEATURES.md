@@ -68,7 +68,7 @@ not yet built.
 | Formula Audit / Formula Flow overlay | both | Striped fill = formula consistent with neighbors, solid = deviation | shipped v1.1 | P1 |
 | Uniformulas (select consistent region) | MB | Highlights the consistency region of active formula | Yes (same engine) | P2 |
 | Dependency Density heatmap | MB | Shade by dependent count | Yes* (getDependents per cell is slow at scale; cap range) | P3 |
-| Model Check (50+ automated checks) | MB | Error/structure/hidden-data/brand audit with fixes | Partial (subset: errors, hardcodes in formulas, inconsistent rows, hidden sheets; no full parity) | P2 |
+| Model Check (50+ automated checks) | MB | Error/structure/hidden-data/brand audit with fixes | shipped v2.5 (8 check kinds: formula errors, hardcodes in formulas, inconsistent formulas, volatile functions, broken names, unused styles, hidden sheets, external links) | P2 |
 
 ## 3. Paste and fill tools
 

@@ -39,6 +39,7 @@ import {
 } from "../excel";
 import type { NumberCycleFamily, RowStyleKind } from "../cycles";
 import { runFind } from "./find-panel";
+import { runCheck } from "./model-check-panel";
 import { applyPaintSlot, capturePaintSlot } from "./paint-slots";
 import { prepareShare } from "./share-panel";
 import { deleteStyles, scanStyles } from "./styles-panel";
@@ -162,6 +163,8 @@ export async function dispatch(action: string): Promise<string> {
         return deleteStyles();
       case "share-prepare":
         return prepareShare();
+      case "run-model-check":
+        return runCheck();
       default:
         throw new Error(`Unknown action: ${action}`);
     }

@@ -218,6 +218,15 @@ const workbook: HelpCopy = {
         "Puts every visible sheet back at A1, then reports what a reader would still find. Nothing is deleted.",
     },
   },
+  "model-check": {
+    about: "One read-only pass that lists what a reviewer would flag.",
+    buttons: {
+      "run-model-check":
+        "Lists formula errors, hardcodes, odd formulas, volatiles, broken names, unused styles, hidden sheets and external links.",
+      "copy-model-check":
+        "Copies the whole list as plain text, one line per finding. Available once a check has run.",
+    },
+  },
   "names-heading": {
     about:
       "Defined names left pointing at deleted cells cause errors later. This clears them out.",

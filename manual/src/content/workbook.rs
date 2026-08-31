@@ -14,6 +14,7 @@ pub fn workbook() -> Chapter {
             names(),
             styles(),
             share(),
+            model_check(),
         ],
     }
 }
@@ -132,6 +133,15 @@ fn share() -> Section {
                 r#"Neviens no šiem elementiem netiek dzēsts, un paslēptās lapas netiek aiztiktas: lēmums paliek jums. Tālummaiņu atiestatīt nav iespējams, jo Office.js šo lapas īpašību nepiedāvā."#,
             ),
         ],
+    )
+}
+
+fn model_check() -> Section {
+    section(
+        "Model check",
+        vec![Block::Para(
+            r#""Model check" vienā piegājienā uzskaita, ko pārbaudītājs modelī atzīmētu: formulu kļūdas, skaitļus formulās, no rindas atšķirīgas formulas, mainīgās funkcijas (OFFSET, INDIRECT, NOW u. c.), sabojātos nosaukumus, nelietotos stilus, slēptās lapas un ārējās saites. Klikšķis uz rindas aizved uz šūnu; "Copy report" nokopē sarakstu."#,
+        )],
     )
 }
 

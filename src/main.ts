@@ -19,6 +19,7 @@ import { registerCommands } from "./pane/commands";
 import { dispatch } from "./pane/dispatch";
 import { renderFind, runFind } from "./pane/find-panel";
 import { installLinksTab } from "./pane/links-tab";
+import { copyReport, renderModelCheck } from "./pane/model-check-panel";
 import { loadPaintSlots, renderPaintSlots } from "./pane/paint-slots";
 import {
   actionButtons,
@@ -77,6 +78,7 @@ renderNames(false);
 renderFind(null);
 renderStyles();
 renderShare(null);
+renderModelCheck();
 
 // Both overlays saved what they covered inside the workbook, and both put those
 // fills back at boot. They are restored one after the other, never side by
@@ -166,6 +168,14 @@ async function boot(host: Office.HostType, degraded: boolean): Promise<void> {
     (event) => {
       if (event.key === "Enter") void guard(runFind, "find");
     },
+  );
+
+  // Wired here rather than through the dispatch table: the copy button stays
+  // disabled until a report exists, and setBusy re-enables every [data-action]
+  // button after each run.
+  getElement<HTMLButtonElement>("copy-model-check").addEventListener(
+    "click",
+    () => void guard(copyReport, "copy-model-check"),
   );
 
   getElement<HTMLButtonElement>("delete-names").addEventListener(
