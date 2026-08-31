@@ -191,6 +191,11 @@ export async function insertLink(
   if (payload.kind === "table") {
     return insertTable(stage, item, payload, tag);
   }
+  // texts.ts owns the text box. Until it does, a text payload has no shape to
+  // become here, and a refusal beats drawing the wrong thing.
+  if (payload.kind === "text") {
+    throw new Error(`${stage}: text links are not drawn by this build`);
+  }
   // A chart this host can draw lands as shapes; the rest take the picture.
   const plan = chartPlan(payload);
   const note = plan === null ? undefined : (declineReason(plan) ?? undefined);
@@ -265,6 +270,10 @@ export async function refreshLink(
   if (payload.kind === "table") {
     await refreshTable(found, payload, tagFor(found.tag, payload, rev));
     return;
+  }
+  if (payload.kind === "text") {
+    const where = sourceLabel(found.tag.src, found.tag.kind);
+    throw new Error(`refresh ${where}: text links are not drawn by this build`);
   }
   if (found.type === GROUP_TYPE) {
     await refreshChartGroup(found, payload, tagFor(found.tag, payload, rev));

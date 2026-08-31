@@ -1,12 +1,12 @@
 // Link core: the JSON shapes carried by the Excel tag, the workbook registry,
-// the relay payload (a picture or a table) and the PowerPoint inbox item, plus
+// the relay payload (a picture, a table or a text) and the inbox item, plus
 // their codecs. Every decoder validates its shape before trusting it - garbage
 // in never becomes a typed value out.
 
 import { isChartData, type ChartData } from "./chart-model";
 
 export type LinkId = string; // 32 lowercase hex chars
-export type LinkKind = "range" | "chart" | "table";
+export type LinkKind = "range" | "chart" | "table" | "text";
 
 export interface Source {
   workbook: string;
@@ -83,7 +83,24 @@ export interface TablePayload {
   hash: string;
 }
 
-export type Payload = PicturePayload | TablePayload;
+// One cell's displayed text, nothing else: the slide decides the font. The
+// hash is over the text, so an unchanged cell is an unchanged link.
+export interface TextPayload {
+  v: 1;
+  kind: "text";
+  text: string;
+  src: Source;
+  pushedAt: string;
+  hash: string;
+}
+
+export type Payload = PicturePayload | TablePayload | TextPayload;
+
+// A cell longer than this is a paragraph: a picture or a table says it better.
+export const TEXT_MAX_CHARS = 500;
+export const TEXT_TOO_LONG =
+  `Text links carry up to ${String(TEXT_MAX_CHARS)} characters. ` +
+  `Export a longer cell as a picture.`;
 
 // A native PowerPoint table is written cell by cell, so its size is what an
 // insert costs: past this, a picture is the honest answer.
@@ -100,6 +117,8 @@ export function overTableCap(rows: number, cols: number): boolean {
 // What one repaint round trip carries: the base64 of a picture, or the JSON of
 // a table's cells - the two are the payload, everything else is a header.
 export function payloadBytes(payload: Payload): number {
+  if (payload.kind === "text")
+    return new TextEncoder().encode(payload.text).length;
   return payload.kind === "picture"
     ? payload.png.length
     : JSON.stringify(payload.cells).length;
@@ -154,8 +173,10 @@ function isSource(value: unknown): value is Source {
   );
 }
 
+const KINDS: LinkKind[] = ["range", "chart", "table", "text"];
+
 function isKind(value: unknown): value is LinkKind {
-  return value === "range" || value === "chart" || value === "table";
+  return KINDS.some((kind) => kind === value);
 }
 
 function isTag(value: unknown): value is LinkTag {
@@ -262,8 +283,22 @@ function isTablePayload(value: unknown): value is TablePayload {
   );
 }
 
+function isTextPayload(value: unknown): value is TextPayload {
+  return (
+    isRecord(value) &&
+    value.v === 1 &&
+    value.kind === "text" &&
+    typeof value.text === "string" &&
+    isSource(value.src) &&
+    typeof value.pushedAt === "string" &&
+    typeof value.hash === "string"
+  );
+}
+
 function isPayload(value: unknown): value is Payload {
-  return isPicturePayload(value) || isTablePayload(value);
+  return (
+    isPicturePayload(value) || isTablePayload(value) || isTextPayload(value)
+  );
 }
 
 function isInboxItem(value: unknown): value is InboxItem {
@@ -359,5 +394,6 @@ export function decodeInboxItem(bytes: Uint8Array): InboxItem {
 export function sourceLabel(src: Source, kind: LinkKind): string {
   if (kind === "chart") return `${src.sheet}: ${src.ref}`;
   const range = `${src.sheet}!${src.ref}`;
-  return kind === "table" ? `${range} table` : range;
+  if (kind === "table") return `${range} table`;
+  return kind === "text" ? `${range} text` : range;
 }

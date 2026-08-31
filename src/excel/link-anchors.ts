@@ -32,7 +32,7 @@ const CHART_PIXEL_SCALE = 2;
 // range link's: only the render tells the two apart, so everything else here
 // asks whether a source is a chart rather than whether it is a range.
 export interface ResolvedRange {
-  kind: "range" | "table";
+  kind: "range" | "table" | "text";
   sheet: string;
   ref: string;
   range: Excel.Range;

@@ -15,9 +15,11 @@ import {
   sourceLabel,
   TABLE_MAX_COLS,
   TABLE_MAX_ROWS,
+  TEXT_MAX_CHARS,
   type LinkTag,
   type Payload,
   type TablePayload,
+  type TextPayload,
 } from "./model";
 
 const src = {
@@ -174,6 +176,40 @@ describe("table payload", () => {
   // base64, a table the JSON of its cells.
   it("weighs a table by the JSON of its cells", () => {
     expect(payloadBytes(table)).toBe(JSON.stringify(table.cells).length);
+  });
+});
+
+describe("text payload", () => {
+  const text: TextPayload = {
+    v: 1,
+    kind: "text",
+    text: "EUR 15.7m",
+    src: { ...src, sheet: "P&L", ref: "C4" },
+    pushedAt: tag.pushedAt,
+    hash: "0".repeat(64),
+  };
+
+  it("round-trips through the codec", () => {
+    expect(decodePayload(encodePayload(text))).toEqual(text);
+  });
+
+  it("weighs its text", () => {
+    expect(payloadBytes(text)).toBe(
+      new TextEncoder().encode("EUR 15.7m").length,
+    );
+  });
+
+  it("is refused by the guard without a string text", () => {
+    const bad = new TextEncoder().encode(JSON.stringify({ ...text, text: 42 }));
+    expect(() => decodePayload(bad)).toThrow("not a link payload");
+  });
+
+  it("labels the cell and says text", () => {
+    expect(sourceLabel(text.src, "text")).toBe("P&L!C4 text");
+  });
+
+  it("caps at 500 characters", () => {
+    expect(TEXT_MAX_CHARS).toBe(500);
   });
 });
 
