@@ -192,6 +192,7 @@ suppression are out of reach; additive checks only.
 | Circularity logic detection, model risk score | OAK | Partial (heavy) | P3 |
 | ERP roll-forward, module library | Modano/bpmToolbox | Backend, different product class | P3/X |
 | Number-to-words, fuzzy dedupe, multi goal seek, currency conversion | Kutools/Ablebits/QuickCel | Yes (pure/simple) | P3 |
+| First-run card + printable shortcut card | user-gaps #4 discoverability | shipped v2.5 | - |
 
 Positioning note from user research: Macabacus and UpSlide are Windows-COM/VSTO only by their own
 docs; we are Office.js = native on Mac, web and Windows. Lead with it. Undo reliability and

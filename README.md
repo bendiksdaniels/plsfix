@@ -37,6 +37,8 @@ conflict dialog where a combination shadows a native one; the number-format cycl
 deliberately sit on the native format keys so existing muscle memory lands on the
 branded equivalent. Users can remap under Office add-in shortcut preferences.
 
+The pane's Tools tab opens a printable version of this table (Shortcut card).
+
 | Action | Keys |
 |---|---|
 | Open pls,fix | Ctrl+Shift+M |
