@@ -30,6 +30,7 @@ import { installLinksTab } from "./links-tab";
 vi.mock("../excel", () => ({
   listActiveSheetCharts: vi.fn(async () => []),
   watchActiveSheet: vi.fn(),
+  watchWorksheetEdits: vi.fn(),
   exportActiveChart: vi.fn(),
   exportSelection: vi.fn(),
   exportSelectionAsTable: vi.fn(),

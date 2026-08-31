@@ -200,6 +200,16 @@ export class StrictLoads {
     this.queued.clear();
   }
 
+  // A failed sync commits nothing: the whole batch never reached the host.
+  drop(): void {
+    for (const state of this.queued) {
+      state.pending.clear();
+      state.pendingAll.clear();
+      state.pendingResult = false;
+    }
+    this.queued.clear();
+  }
+
   // Wraps an object owning its own load state: the context, and everything a
   // method hands back.
   root<T>(value: T, kind: string): T {

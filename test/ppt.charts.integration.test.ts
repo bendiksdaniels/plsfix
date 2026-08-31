@@ -277,6 +277,36 @@ describe("insert a chart link", () => {
   });
 });
 
+describe("insert a chart link: cleanup after a failed sync", () => {
+  // The insert's own sync order, per "draws in syncs of twelve and one more
+  // for the group" above: 1 selects the slide, 2 places it, 3 draws the
+  // first chunk of twelve (COLUMN_SHAPES = 20, so this is the one drawGroup
+  // must clean up itself), 4 draws the second chunk of eight.
+  const SECOND_CHUNK_SYNC = 3;
+
+  it("deletes what an earlier sync already committed when a later one fails", async () => {
+    helpers.failNextSync(new Error("the host hung"), SECOND_CHUNK_SYNC);
+    await expect(insert()).rejects.toThrow("the host hung");
+    // The first chunk's twelve shapes were on the slide until the cleanup
+    // ran; the second chunk's eight never outlived the sync that rejected.
+    expect(shapes()).toHaveLength(0);
+  });
+
+  it("cleans nothing when the very first sync fails", async () => {
+    helpers.failNextSync(new Error("no slide yet"));
+    await expect(insert()).rejects.toThrow("no slide yet");
+    expect(shapes()).toHaveLength(0);
+  });
+
+  it("still surfaces the original error when its own cleanup fails", async () => {
+    helpers.failNextSync(new Error("the host hung"), SECOND_CHUNK_SYNC);
+    // The cleanup's own PowerPoint.run opens with a load of each recorded
+    // id, one sync after the one drawGroup itself just failed on.
+    helpers.failNextSync(new Error("cleanup hung too"), SECOND_CHUNK_SYNC + 1);
+    await expect(insert()).rejects.toThrow("the host hung");
+  });
+});
+
 describe("update a chart link", () => {
   // What the user does with a chart once it is on the slide: drags it into a
   // corner and pulls it narrower.

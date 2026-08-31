@@ -24,5 +24,6 @@ export * from "./share";
 export * from "./links";
 export * from "./link-touch";
 export * from "./link-watch";
+export * from "./link-list-watch";
 export * from "./link-highlight";
 export * from "./brand-store";

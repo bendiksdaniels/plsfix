@@ -169,6 +169,11 @@ export class FakePresentation {
   fileUrl = "https://contoso.sharepoint.com/Shared%20Documents/deck.pptx";
   private slideSeq = 0;
   private shapeSeq = 0;
+  // Shapes and groups added since the runtime's last sync call, cleared by
+  // whichever comes next: confirmed for good on a sync that lands, taken
+  // back off the deck on one that fails, since the add behind them is
+  // exactly what never reached the host either.
+  private pendingIds: string[] = [];
 
   constructor(slideCount = 1) {
     for (let index = 0; index < slideCount; index += 1) this.addSlide();
@@ -208,6 +213,7 @@ export class FakePresentation {
     };
     slide.shapes.push(shape);
     renumber(slide.shapes);
+    this.pendingIds.push(shape.id);
     return shape;
   }
 
@@ -246,6 +252,7 @@ export class FakePresentation {
     };
     slide.shapes.push(group);
     renumber(slide.shapes);
+    this.pendingIds.push(group.id);
     return group;
   }
 
@@ -260,6 +267,21 @@ export class FakePresentation {
       }
     };
     for (const slide of this.slides) walk(slide.shapes);
+  }
+
+  // A sync that lands makes its adds permanent: nothing left to undo.
+  confirmPending(): void {
+    this.pendingIds = [];
+  }
+
+  // A sync that fails never reached the host, so neither did the adds it was
+  // going to confirm: they come back off the deck the same way they went on,
+  // a group's members included, since deleting a group takes its whole
+  // subtree down.
+  rollbackPending(): void {
+    const ids = this.pendingIds;
+    this.pendingIds = [];
+    for (const id of ids) this.deleteShape(id);
   }
 
   // Cut and paste onto another slide: same shape, same tags, same id.

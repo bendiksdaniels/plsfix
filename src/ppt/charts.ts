@@ -148,6 +148,7 @@ export async function insertChart(
       name: `pls,fix chart ${item.label}`,
       tag,
       token: item.token,
+      slideId,
     });
     return { slideId, shapeId, overlapping: placed.overlapping };
   });
@@ -176,6 +177,7 @@ export async function refreshChart(
       name: `pls,fix chart ${label}`,
       tag,
       token: found.token,
+      slideId: found.slideId,
       before: () => {
         old.delete();
       },

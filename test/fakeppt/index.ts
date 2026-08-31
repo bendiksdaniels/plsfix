@@ -55,6 +55,12 @@ export interface FakePptHelpers {
   // Makes the next setSelectedDataAsync report failure, the way a host that is
   // out of memory or has the slide locked does. Consumed by that one call.
   failNextSelectionInsert(message?: string): void;
+  // Makes a future context.sync() reject, the way a hung or refused round
+  // trip does: the very next one by default, or the one after skipping
+  // `afterSyncs` more that still succeed. Calls stack, so more than one
+  // future sync can be armed to fail. Whichever sync it lands on takes back
+  // off the deck everything added since the sync before it.
+  failNextSync(error?: Error, afterSyncs?: number): void;
 }
 
 let strictByDefault = false;

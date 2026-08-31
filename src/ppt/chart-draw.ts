@@ -7,6 +7,7 @@
 import type { Primitive, Text } from "../chart-shapes";
 import type { Box } from "../layout";
 import { encodeTag, TAG_KEY, TAG_LINK, type LinkTag } from "../link/model";
+import { cleanupShapes } from "./chart-cleanup";
 
 // The web charges per shape and per round trip, and a batch of more than a
 // dozen adds stops coming back at all (spike, 30.08): twelve is what a slide
@@ -30,6 +31,9 @@ export interface GroupSpec {
   name: string;
   tag: LinkTag;
   token: string;
+  // The slide the group is drawn on, for the cleanup run a rejection sends
+  // after it, which cannot reuse the context that failed.
+  slideId: string;
   before?: () => void;
 }
 
@@ -135,29 +139,40 @@ function shapeWedges(added: Added[]): void {
 // The whole chart in ceil(primitives / SHAPES_PER_SYNC) + 1 round trips: each
 // chunk is added and its ids read back in one sync, and the last sync groups
 // them, names the group, tags it and runs whatever the caller queued there.
+//
+// A sync that rejects after the first one has already put shapes on the
+// host: PowerPoint.run does not roll those back, so this tracks every id a
+// prior sync confirmed and, on any later rejection, deletes them itself
+// (chart-cleanup.ts) before rethrowing the rejection unchanged. A rejection
+// on the very first sync has nothing recorded yet, so nothing is cleaned.
 export async function drawGroup(
   context: PowerPoint.RequestContext,
   shapes: PowerPoint.ShapeCollection,
   spec: GroupSpec,
 ): Promise<string> {
   const ids: string[] = [];
-  for (const chunk of chunks(spec.primitives, SHAPES_PER_SYNC)) {
-    const added = chunk.map((primitive): Added => {
-      const shape = addPrimitive(shapes, primitive, spec);
-      shape.name = `${spec.name}: ${primitive.name}`;
-      shape.load("id");
-      return { shape, primitive };
-    });
+  try {
+    for (const chunk of chunks(spec.primitives, SHAPES_PER_SYNC)) {
+      const added = chunk.map((primitive): Added => {
+        const shape = addPrimitive(shapes, primitive, spec);
+        shape.name = `${spec.name}: ${primitive.name}`;
+        shape.load("id");
+        return { shape, primitive };
+      });
+      await context.sync();
+      ids.push(...added.map((one) => one.shape.id));
+      shapeWedges(added);
+    }
+    const group = shapes.addGroup(ids);
+    group.name = spec.name;
+    group.tags.add(TAG_LINK, encodeTag(spec.tag));
+    group.tags.add(TAG_KEY, spec.token);
+    group.load("id");
+    spec.before?.();
     await context.sync();
-    ids.push(...added.map((one) => one.shape.id));
-    shapeWedges(added);
+    return group.id;
+  } catch (err) {
+    if (ids.length > 0) await cleanupShapes(spec.slideId, ids);
+    throw err;
   }
-  const group = shapes.addGroup(ids);
-  group.name = spec.name;
-  group.tags.add(TAG_LINK, encodeTag(spec.tag));
-  group.tags.add(TAG_KEY, spec.token);
-  group.load("id");
-  spec.before?.();
-  await context.sync();
-  return group.id;
 }
