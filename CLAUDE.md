@@ -29,7 +29,7 @@ Excel->PowerPoint links), TypeScript/Vite/Vitest, plus a Rust axum host (`server
   side-by-side shim) because typescript-eslint refuses TS 7; the real TS 7 compiler is
   `@typescript/native` and still provides `tsc`. Agent worktrees nest under `.claude/`, so lint
   ignores use `**/dist/**`-style globs plus `.claude/**` and `.superpowers/**`.
-- Versioning: package.json + server crate stay in lockstep; pane footer shows
+- Versioning: `sh scripts/release.sh [patch|minor]` after every reviewed merge (bump + commit `vX.Y.Z` + annotated tag; refuses a dirty tree); package.json + server crate stay in lockstep; pane footer shows
   vMAJOR.MINOR.PATCH with a 3-digit patch.
 
 State pins: `tasks/AUTORESUME.md` (resume here), `tasks/v1-plan.md`, `tasks/lessons.md`.
