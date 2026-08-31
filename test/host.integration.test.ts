@@ -887,6 +887,113 @@ describe("pls,fix undo", () => {
     // Documented limitation: getCellProperties carries no row height.
     expect(helpers.rowHeight("Model", 0)).toBe(25);
   });
+
+  it("stacks five actions and undoes them newest first, content and all", async () => {
+    const addresses = [
+      "Model!A5",
+      "Model!B5",
+      "Model!C5",
+      "Model!D5",
+      "Model!E5",
+    ];
+    const snapshots = [helpers.cellMap("Model")];
+    for (const address of addresses) {
+      helpers.select(address);
+      await smt.applyPreset("input");
+      snapshots.push(helpers.cellMap("Model"));
+    }
+
+    for (let i = addresses.length; i >= 1; i--) {
+      expect(smt.undoTarget()).toBe(addresses[i - 1]);
+      await smt.undoLastAction();
+      expect(helpers.cellMap("Model")).toEqual(snapshots[i - 1]);
+    }
+    expect(smt.undoTarget()).toBeNull();
+  });
+
+  it("drops the oldest entry once a sixth action is captured", async () => {
+    const addresses = [
+      "Model!A5",
+      "Model!B5",
+      "Model!C5",
+      "Model!D5",
+      "Model!E5",
+      "Model!F5",
+    ];
+    for (const address of addresses) {
+      helpers.select(address);
+      await smt.applyPreset("input");
+    }
+
+    // Only the newest five survive; A5's capture is gone for good.
+    for (const address of [...addresses].slice(1).reverse()) {
+      expect(smt.undoTarget()).toBe(address);
+      await smt.undoLastAction();
+    }
+    expect(smt.undoTarget()).toBeNull();
+    expect(await rejects(() => smt.undoLastAction())).toBe(
+      "There is no pls,fix action to undo yet.",
+    );
+  });
+
+  it("keeps the stack within the 25,000-cell budget", async () => {
+    // Six captures at the 5,000-cell per-action cap: the sixth pushes the
+    // running total past UNDO_CELL_BUDGET (25,000 = 5 x the per-action cap),
+    // so the oldest has to go the same way it would on depth alone. The
+    // budget rule is exercised on its own, independent of depth, in
+    // undo-stack.test.ts.
+    const addresses = [
+      "Model!A10:B2509",
+      "Model!D10:E2509",
+      "Model!G10:H2509",
+      "Model!J10:K2509",
+      "Model!M10:N2509",
+      "Model!P10:Q2509",
+    ];
+    for (const address of addresses) {
+      helpers.select(address);
+      await smt.applyPreset("input");
+    }
+
+    for (const address of [...addresses].slice(1).reverse()) {
+      expect(smt.undoTarget()).toBe(address);
+      await smt.undoLastAction();
+    }
+    expect(smt.undoTarget()).toBeNull();
+  });
+
+  it("keeps the snapshot when the restore fails, so a retry can succeed", async () => {
+    await smt.applyPreset("input"); // captures Model!A1:C3, seedModel's selection
+    const changed = helpers.cellMap("Model");
+
+    helpers.failNextSync();
+    await expect(smt.undoLastAction()).rejects.toThrow();
+    expect(smt.undoTarget()).toBe("Model!A1:C3");
+    expect(helpers.cellMap("Model")).toEqual(changed);
+
+    // Retried without a forced failure, the same entry now restores.
+    await smt.undoLastAction();
+    expect(smt.undoTarget()).toBeNull();
+  });
+
+  it("says how many actions are left to undo, then says there are none", async () => {
+    helpers.select("Model!A5");
+    await smt.applyPreset("input");
+    helpers.select("Model!B5");
+    await smt.applyPreset("input");
+    helpers.select("Model!C5");
+    await smt.applyPreset("input");
+
+    expect(await smt.undoLastAction()).toBe(
+      "Undone: Model!C5. 2 more to undo.",
+    );
+    expect(await smt.undoLastAction()).toBe(
+      "Undone: Model!B5. 1 more to undo.",
+    );
+    expect(await smt.undoLastAction()).toBe(
+      "Undone: Model!A5. Nothing more to undo.",
+    );
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -1994,7 +2101,9 @@ describe("resolution by sheet id", () => {
     await smt.applyPreset("header");
 
     helpers.sheet("Data").name = "Renamed";
-    expect(await smt.undoLastAction()).toBe("Data!A1:B1");
+    expect(await smt.undoLastAction()).toBe(
+      "Undone: Data!A1:B1. Nothing more to undo.",
+    );
     expect(helpers.cellMap("Renamed")).toEqual(before);
   });
 

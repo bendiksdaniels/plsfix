@@ -114,7 +114,7 @@ export async function dispatch(action: string): Promise<string> {
         await applyDecimalStep(-1);
         break;
       case "undo":
-        return `Restored ${await undoLastAction()}`;
+        return await undoLastAction();
       case "copy-source":
         return `Copy source: ${await markCopySource()}`;
       case "paste-values":

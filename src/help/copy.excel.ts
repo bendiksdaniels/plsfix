@@ -73,7 +73,7 @@ const tools: HelpCopy = {
     about:
       "The everyday edits on a selection: fill, paste, guard, color and quick maths.",
     buttons: {
-      undo: "Puts back what the last pls,fix action overwrote. Excel's own Ctrl+Z never sees add-in writes.",
+      undo: "Puts back what your last five pls,fix actions overwrote, newest first. Excel's own Ctrl+Z never sees add-in writes.",
       "fill-right":
         "Copies the first cell's formula right. One cell alone is sized by the rows beside it.",
       "fill-down":
