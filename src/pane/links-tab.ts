@@ -5,8 +5,6 @@
 // Office.js only reaches here through src/excel.
 import {
   exportActiveChart,
-  listActiveSheetCharts,
-  watchActiveSheet,
   exportSelection,
   exportSelectionAsTable,
   goToSource,
@@ -27,6 +25,7 @@ import {
 import { copyText } from "../ui/clipboard";
 import type { Guard } from "../ui/guard";
 import type { Toast } from "../ui/toast";
+import { refreshChartPick, watchSheetChanges } from "./links-charts";
 import { messageRow, renderWorkbookLinks } from "./links-list";
 import {
   restoreToggles,
@@ -203,43 +202,6 @@ async function refresh(tab: Tab): Promise<void> {
     if (on) tab.selected.add(id);
     else tab.selected.delete(id);
   });
-}
-
-// The chart list stays hidden on a sheet without charts; the first option
-// keeps "whatever is selected" as the default.
-async function refreshChartPick(tab: Tab): Promise<void> {
-  let names: string[] = [];
-  try {
-    names = await listActiveSheetCharts();
-  } catch {
-    names = [];
-  }
-  const current = Array.from(tab.chartPick.options)
-    .map((option) => option.value)
-    .filter(Boolean);
-  if (
-    current.join("\n") === names.join("\n") &&
-    tab.chartPick.options.length > 0
-  ) {
-    return;
-  }
-  const keep = tab.chartPick.value;
-  tab.chartPick.replaceChildren(
-    new Option("Selected chart", ""),
-    ...names.map((name) => new Option(name, name)),
-  );
-  tab.chartPick.value = names.includes(keep) ? keep : "";
-  tab.chartPick.hidden = names.length === 0;
-}
-
-// The chart list belongs to the active sheet: it is redrawn when the tab is
-// opened and when the modeller moves to another sheet. A host without the
-// worksheet event (ExcelApi 1.7) keeps the tab-open refresh.
-function watchSheetChanges(tab: Tab): void {
-  tab.deps.root
-    .querySelector("#tab-links")
-    ?.addEventListener("click", () => void refreshChartPick(tab));
-  watchActiveSheet(() => refreshChartPick(tab));
 }
 
 function renderKey(tab: Tab): void {
