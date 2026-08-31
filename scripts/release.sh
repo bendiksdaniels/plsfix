@@ -11,7 +11,7 @@ if [ -n "$(git status --porcelain)" ]; then
 fi
 sh scripts/bump-patch.sh "$LEVEL"
 V="$(node -p "require('./package.json').version")"
-git add package.json package-lock.json server/Cargo.toml server/Cargo.lock manifest.xml manifest.prod.xml
+git add package.json package-lock.json server/Cargo.toml server/Cargo.lock manifest.xml manifest.prod.xml public/shortcuts.html
 git commit -q -m "v$V"
 git tag -a "v$V" -m "v$V"
 echo "released v$V ($(git rev-parse --short HEAD)), tagged"

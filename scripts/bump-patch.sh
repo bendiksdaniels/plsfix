@@ -32,4 +32,6 @@ fs.writeFileSync(file, lines.join("\n"));
 npm install --package-lock-only --no-audit --no-fund >/dev/null
 cargo check --manifest-path server/Cargo.toml -q
 npm run manifest:build >/dev/null
+# The shortcut card embeds the version, so it is regenerated with the manifests.
+npm run shortcuts:build >/dev/null
 npm run version:check
