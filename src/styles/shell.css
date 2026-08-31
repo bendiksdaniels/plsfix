@@ -132,6 +132,38 @@
   min-width: 0;
 }
 
+/* The "New here?" card src/ui/first-run.ts shows or hides: the same padded,
+   bordered card help.css and excel.css build elsewhere, on the same tokens so
+   it never needs its own color or radius. Excel's version is a full section
+   with two buttons in an .io-row; PowerPoint's is a div nested in the Inbox
+   section with one lone button, styled here as a direct child. */
+.first-run {
+  display: grid;
+  gap: var(--gap-tight);
+  min-width: 0;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+  background: var(--paper);
+}
+.first-run p {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--fs-body);
+  line-height: 1.4;
+}
+.first-run > button {
+  min-height: var(--control-h);
+  padding: 4px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+  color: var(--ink);
+  background: var(--surface);
+  font-size: var(--fs-body);
+  font-weight: 700;
+  cursor: pointer;
+}
+
 footer {
   display: flex;
   align-items: center;
