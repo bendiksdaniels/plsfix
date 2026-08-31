@@ -12,6 +12,8 @@ const tools: HelpCopy = {
     buttons: {
       "refresh-selection":
         "Reads the selection again, for when the counts look stale after an edit in Excel.",
+      "shortcut-card":
+        "Opens a printable page listing every keyboard shortcut.",
     },
   },
   "format-heading": {
