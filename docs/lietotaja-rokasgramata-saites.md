@@ -50,7 +50,7 @@ Saite starp Excel un PowerPoint darbojas tikai tad, kad abām pusēm ir viena un
 
 ## Drošība
 
-Relejs glabā eksportētos attēlus tikai šifrētā veidā un ne ilgāk kā 7 dienas. Ikviens, kam ir pieejama prezentācija, šajā laikā var lejupielādēt saites jaunāko attēlu, pat ja saite prezentācijā vairs nav redzama. Tāpēc pirms prezentācijas nosūtīšanas ārpus bankas katrai saitei PowerPoint cilnē "Links" jānospiež "Break link".
+Relejs glabā eksportētos attēlus tikai šifrētā veidā un ne ilgāk kā 30 dienas. Ikviens, kam ir pieejama prezentācija, šajā laikā var lejupielādēt saites jaunāko attēlu, pat ja saite prezentācijā vairs nav redzama. Tāpēc pirms prezentācijas nosūtīšanas ārpus bankas katrai saitei PowerPoint cilnē "Links" jānospiež "Break link".
 
 ## Biežākās kļūdas
 

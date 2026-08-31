@@ -4,7 +4,7 @@
 
 use std::{path::PathBuf, sync::Arc, sync::OnceLock};
 
-use plsfix_server::{app, relay::AppState, store::Store};
+use plsfix_server::{app, relay::AppState, relay::DEFAULT_MAX_BYTES, store::Store};
 
 mod tests {
     use super::*;
@@ -22,11 +22,7 @@ mod tests {
             let dir = std::env::temp_dir().join(format!("modelis-test-{}", std::process::id()));
             let assets = dir.join("assets");
             std::fs::create_dir_all(&assets).unwrap();
-            std::fs::write(
-                dir.join("taskpane.html"),
-                "<title>pls,fix</title>",
-            )
-            .unwrap();
+            std::fs::write(dir.join("taskpane.html"), "<title>pls,fix</title>").unwrap();
             std::fs::write(dir.join("shortcuts.json"), "{\"actions\":[]}").unwrap();
             std::fs::write(assets.join("taskpane-Bfs8s79m.js"), "// bundle").unwrap();
             std::fs::write(assets.join("pptpane-abc.js"), "// bundle").unwrap();
@@ -37,9 +33,7 @@ mod tests {
     }
 
     fn test_state() -> Arc<AppState> {
-        Arc::new(AppState {
-            store: Store::in_memory().unwrap(),
-        })
+        Arc::new(AppState::new(Store::in_memory().unwrap()))
     }
 
     async fn call(path: &str) -> (StatusCode, Option<String>, String) {
@@ -68,6 +62,36 @@ mod tests {
         let (status, _, body) = call("/version").await;
         assert_eq!(status, StatusCode::OK);
         assert!(body.contains(&format!("\"version\":\"{}\"", env!("CARGO_PKG_VERSION"))));
+    }
+
+    /// The suite watches the VPS by this object: what the relay holds, and how
+    /// close it is to the ceiling it will start refusing writes at.
+    #[tokio::test]
+    async fn version_counts_what_the_relay_holds() {
+        let state = Arc::new(AppState::new(Store::in_memory().unwrap()));
+        let auth = plsfix_server::store::auth_hash("key");
+        let id = "0123456789abcdef0123456789abcdef";
+        let now = plsfix_server::relay::now();
+        state.store.put_link(id, &auth, b"12345", now).unwrap();
+        state.store.put_link(id, &auth, b"12345", now).unwrap();
+        state
+            .store
+            .post_inbox("ws", &auth, id, b"123", now)
+            .unwrap();
+
+        let response = app(test_dir(), state)
+            .oneshot(Request::get("/version").body(Body::empty()).unwrap())
+            .await
+            .unwrap();
+        let body = response.into_body().collect().await.unwrap().to_bytes();
+        let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
+        // The gateway parses this one, so it keeps its shape whatever else moves.
+        assert_eq!(json["version"], env!("CARGO_PKG_VERSION"));
+        assert_eq!(json["relay"]["links"], 1);
+        assert_eq!(json["relay"]["revisions"], 2);
+        assert_eq!(json["relay"]["inbox"], 1);
+        assert_eq!(json["relay"]["bytes"], 13);
+        assert_eq!(json["relay"]["max_bytes"], DEFAULT_MAX_BYTES);
     }
 
     #[tokio::test]

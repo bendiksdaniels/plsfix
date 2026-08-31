@@ -23,9 +23,9 @@ const MINE: &str = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"; // 43 chars
 const THEIRS: &str = "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB";
 
 fn app() -> Router {
-    routes(std::sync::Arc::new(AppState {
-        store: Store::in_memory().unwrap(),
-    }))
+    routes(std::sync::Arc::new(AppState::new(
+        Store::in_memory().unwrap(),
+    )))
 }
 
 async fn send(app: &Router, request: Request<Body>) -> Response {

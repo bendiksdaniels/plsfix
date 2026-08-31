@@ -1,14 +1,16 @@
 // Relay client: a typed fetch wrapper for the /api/links and /api/inbox
 // routes, mapping every non-success HTTP outcome (and a fetch rejection) to
 // one RelayError kind so callers branch on `.kind` instead of status codes.
-// Owns the calls; the body shapes and their guards live in wire.ts, and auth,
-// encryption and retry policy live above this.
+// Owns the calls; the error type and its status map live in relay-error.ts,
+// the body shapes and their guards in wire.ts, and auth, encryption and retry
+// policy live above this.
 // Invariant: every failure leaves this module as a RelayError - a 200 whose
 // body is not the JSON shape the route promises is one too, never a raw parse
 // error, so the pane's toast always has a `kind` to render, and a refusal
 // carries the reason the relay named in its body, not just a status code.
 
 import { fromBase64Url } from "./crypto";
+import { RelayError, statusKind } from "./relay-error";
 import type { RelayStatus } from "./status";
 import {
   arrayOf,
@@ -18,45 +20,22 @@ import {
   isInboxJson,
   isPutResult,
   isStatusRow,
+  isTouchResult,
   type OmittedReason,
 } from "./wire";
 
 export type { OmittedReason } from "./wire";
-
-export type RelayErrorKind =
-  "network" | "auth" | "missing" | "tooLarge" | "server";
-
-export class RelayError extends Error {
-  readonly kind: RelayErrorKind;
-  readonly status: number | undefined;
-
-  constructor(kind: RelayErrorKind, message: string, status?: number) {
-    super(message);
-    this.name = "RelayError";
-    this.kind = kind;
-    this.status = status;
-  }
-}
-
-// instanceof fails across module graphs - a test that resets modules, or two
-// bundles each holding their own copy - so a RelayError is recognised by its
-// name plus a kind the union knows. The record keeps the two in step: a kind
-// added to the union and not listed here stops the build.
-const RELAY_ERROR_KINDS: Record<RelayErrorKind, true> = {
-  network: true,
-  auth: true,
-  missing: true,
-  tooLarge: true,
-  server: true,
-};
-
-export function isRelayError(error: unknown): error is RelayError {
-  if (!(error instanceof Error) || error.name !== "RelayError") return false;
-  const kind: unknown = (error as { readonly kind?: unknown }).kind;
-  return typeof kind === "string" && Object.hasOwn(RELAY_ERROR_KINDS, kind);
-}
+export type { RelayErrorKind } from "./relay-error";
+export { isRelayError, RelayError } from "./relay-error";
 
 export interface StatusQuery {
+  id: string;
+  auth: string;
+}
+
+// One link a workbook still holds, for the boot-time TTL refresh. Same pair as
+// a status query, named apart because the two routes answer different things.
+export interface TouchQuery {
   id: string;
   auth: string;
 }
@@ -92,6 +71,7 @@ export interface FetchResult {
 // MAX_BATCH_ITEMS), and blobs past the cap come back "deferred".
 export const MAX_STATUS_ITEMS = 200;
 export const MAX_FETCH_ITEMS = 200;
+export const MAX_TOUCH_ITEMS = 200;
 export const FETCH_BLOB_CAP = 4 * 1024 * 1024;
 
 export interface InboxRow {
@@ -114,6 +94,7 @@ export interface RelayApi {
   ): Promise<{ rev: number; blob: Uint8Array }>;
   deleteLink(id: string, auth: string): Promise<void>;
   status(items: StatusQuery[]): Promise<RelayStatus[]>;
+  touchLinks(items: TouchQuery[]): Promise<number>;
   fetchLinks(items: FetchQuery[]): Promise<FetchResult>;
   postInbox(
     ws: string,
@@ -133,13 +114,6 @@ export function relayBaseUrl(documentUrl: string): URL {
 
 function bearer(auth: string): string {
   return `Bearer ${auth}`;
-}
-
-function statusKind(status: number): RelayErrorKind {
-  if (status === 401 || status === 403) return "auth";
-  if (status === 404) return "missing";
-  if (status === 413) return "tooLarge";
-  return "server";
 }
 
 // BodyInit requires the buffer generic pinned to ArrayBuffer; .slice() copies
@@ -315,6 +289,30 @@ export class RelayClient implements RelayApi {
       [200],
     );
     return this.json(response, "POST", path, arrayOf(isStatusRow));
+  }
+
+  // Tells the relay which links this workbook still holds, so their TTL runs
+  // from today rather than from the last push: a model nobody exported for a
+  // month keeps repainting in the decks that use it. Chunked here rather than
+  // by the caller, because the count it answers with is a sum over the whole
+  // list; a batch past the route's ceiling would be a 400.
+  async touchLinks(items: TouchQuery[]): Promise<number> {
+    const path = "links/touch";
+    let touched = 0;
+    for (let index = 0; index < items.length; index += MAX_TOUCH_ITEMS) {
+      const response = await this.request(
+        path,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(items.slice(index, index + MAX_TOUCH_ITEMS)),
+        },
+        [200],
+      );
+      const body = await this.json(response, "POST", path, isTouchResult);
+      touched += body.touched;
+    }
+    return touched;
   }
 
   // Every changed picture of a deck in one round trip. The relay leaves out

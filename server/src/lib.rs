@@ -4,13 +4,18 @@
 //! Cloudflare Access bypass on this path never exposes readable content.
 
 mod fetch;
+pub mod limits;
 pub mod relay;
+mod relay_gates;
+mod relay_inbox;
+mod relay_touch;
 pub mod store;
+mod store_inbox;
 
 use std::{path::PathBuf, sync::Arc};
 
 use axum::{
-    extract::Request,
+    extract::{Request, State},
     http::{header, HeaderValue},
     middleware::{self, Next},
     response::{Json, Redirect, Response},
@@ -21,10 +26,23 @@ use tower_http::services::ServeDir;
 
 use crate::relay::AppState;
 
-fn version() -> Json<serde_json::Value> {
+/// The gateway parses `version`, so that field never changes shape. `relay` is
+/// counted on request and is what the VPS is watched by: rows held, the links
+/// behind them and how close the store is to its ceiling. A store that cannot
+/// be counted still answers, with nulls, because `/version` is also the health
+/// check the suite polls.
+async fn version(State(state): State<Arc<AppState>>) -> Json<serde_json::Value> {
+    let counts = state.store.counts().ok();
     Json(serde_json::json!({
         "version": env!("CARGO_PKG_VERSION"),
         "source": option_env!("PLSFIX_VERSION").unwrap_or("dev"),
+        "relay": {
+            "links": counts.as_ref().map(|counts| counts.links),
+            "revisions": counts.as_ref().map(|counts| counts.revisions),
+            "inbox": counts.as_ref().map(|counts| counts.inbox),
+            "bytes": counts.as_ref().map(|counts| counts.bytes),
+            "max_bytes": state.max_bytes,
+        },
     }))
 }
 
@@ -56,8 +74,9 @@ async fn cache_control(request: Request, next: Next) -> Response {
 pub fn app(static_dir: PathBuf, state: Arc<AppState>) -> Router {
     Router::new()
         .route("/healthz", get(|| async { healthz() }))
-        .route("/version", get(|| async { version() }))
+        .route("/version", get(version))
         .route("/", get(|| async { Redirect::temporary("taskpane.html") }))
+        .with_state(state.clone())
         .merge(relay::routes(state))
         .fallback_service(ServeDir::new(static_dir))
         .layer(middleware::from_fn(cache_control))

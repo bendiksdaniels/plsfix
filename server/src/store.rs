@@ -1,6 +1,8 @@
-//! sqlite store behind the relay: sealed link revisions and workspace inbox
-//! items. Owns the schema, ownership by `sha256(authKey)`, the two-revision
-//! retention rule and TTL expiry (7 d links, 24 h inbox).
+//! sqlite store behind the relay: sealed link revisions plus the schema both
+//! tables share. Owns ownership by `sha256(authKey)`, the two-revision
+//! retention rule, TTL expiry (30 d links, 7 d inbox) and the row and byte
+//! counts the storage ceiling and `/version` are read from; the inbox rows
+//! themselves live in `store_inbox`.
 //! Invariant: blobs are opaque ciphertext - the server holds no key.
 
 use std::{path::Path, sync::Mutex, sync::MutexGuard};
@@ -8,18 +10,19 @@ use std::{path::Path, sync::Mutex, sync::MutexGuard};
 use rusqlite::{params, Connection};
 use sha2::{Digest, Sha256};
 
-/// A link lives seven days from its last push.
-pub const LINK_TTL: i64 = 7 * 24 * 3600;
-/// An inbox item lives a day - long enough to reach the deck, not to linger.
-pub const INBOX_TTL: i64 = 24 * 3600;
+/// A link lives thirty days from its last push or touch: a deck reopened
+/// after a month of holidays still repaints.
+pub const LINK_TTL: i64 = 30 * 24 * 3600;
+/// An inbox item lives a week - long enough to reach the deck, not to linger.
+pub const INBOX_TTL: i64 = 7 * 24 * 3600;
 
 // The inbox key carries the writer's hash: the server cannot tell that a
 // bearer belongs to a workspace (the two are independent HKDF branches of a
 // secret it never sees), so any key may POST to any `ws` path. With the hash
 // in the primary key a foreign writer gets its own row, which nobody else can
 // list or delete, instead of squatting the real pane's `(ws, id)` slot.
-// inbox_v2 replaces the `PRIMARY KEY (ws, id)` table; the inbox is a 24-hour
-// buffer, so the old rows are dropped rather than migrated.
+// inbox_v2 replaces the `PRIMARY KEY (ws, id)` table; the inbox is a
+// short-lived buffer, so the old rows are dropped rather than migrated.
 const SCHEMA: &str = "
 CREATE TABLE IF NOT EXISTS links (id TEXT NOT NULL, rev INTEGER NOT NULL, auth_hash BLOB NOT NULL, pushed_at INTEGER NOT NULL, expires_at INTEGER NOT NULL, blob BLOB NOT NULL, PRIMARY KEY (id, rev));
 CREATE TABLE IF NOT EXISTS inbox_v2 (ws TEXT NOT NULL, id TEXT NOT NULL, auth_hash BLOB NOT NULL, created_at INTEGER NOT NULL, expires_at INTEGER NOT NULL, blob BLOB NOT NULL, PRIMARY KEY (ws, id, auth_hash));
@@ -63,6 +66,16 @@ pub enum Delete {
     Missing,
 }
 
+/// What the store holds right now, for `/version`: distinct links, the
+/// revisions behind them, live-or-not inbox rows and the blob bytes of both.
+#[derive(Debug)]
+pub struct Counts {
+    pub links: i64,
+    pub revisions: i64,
+    pub inbox: i64,
+    pub bytes: i64,
+}
+
 /// One row of a status batch: `rev` is `None` when unknown, expired or foreign.
 #[derive(Debug)]
 pub struct StatusRow {
@@ -70,13 +83,6 @@ pub struct StatusRow {
     pub rev: Option<i64>,
     pub pushed_at: Option<i64>,
     pub auth_error: bool,
-}
-
-#[derive(Debug)]
-pub struct InboxRow {
-    pub id: String,
-    pub created_at: i64,
-    pub blob: Vec<u8>,
 }
 
 /// What the store keeps of a bearer key: never the key itself.
@@ -118,7 +124,7 @@ fn head(conn: &Connection, id: &str, now: i64) -> rusqlite::Result<Option<Head>>
 }
 
 /// Expiry is enforced on read and on write, so an unswept row is still dead.
-fn sweep_locked(conn: &Connection, now: i64) -> rusqlite::Result<usize> {
+pub(crate) fn sweep_locked(conn: &Connection, now: i64) -> rusqlite::Result<usize> {
     let links = conn.execute("DELETE FROM links WHERE expires_at <= ?1", params![now])?;
     let inbox = conn.execute("DELETE FROM inbox_v2 WHERE expires_at <= ?1", params![now])?;
     Ok(links + inbox)
@@ -156,7 +162,7 @@ impl Store {
         })
     }
 
-    fn conn(&self) -> MutexGuard<'_, Connection> {
+    pub(crate) fn conn(&self) -> MutexGuard<'_, Connection> {
         self.conn.lock().expect("store connection mutex poisoned")
     }
 
@@ -308,66 +314,64 @@ impl Store {
         Ok(rows)
     }
 
-    /// Drops a sealed item into a workspace inbox; a re-export from the same
-    /// key replaces its own row. A foreign key writes a row of its own, which
-    /// only that key can list or delete, so it can neither block nor shadow
-    /// the pane's item.
-    pub fn post_inbox(
-        &self,
-        ws: &str,
-        auth_hash: &[u8; 32],
-        id: &str,
-        blob: &[u8],
-        now: i64,
-    ) -> rusqlite::Result<()> {
+    /// Pushes the TTL of every revision of each link the caller still owns
+    /// back to a full `LINK_TTL`, and answers with how many links moved. A
+    /// link that is unknown, already expired or owned by another key is
+    /// skipped in silence: the status batch already tells a matching key that
+    /// its link exists, so this reveals nothing new to a wrong one.
+    pub fn touch_links(&self, items: &[(String, [u8; 32])], now: i64) -> rusqlite::Result<usize> {
         let conn = self.conn();
-        sweep_locked(&conn, now)?;
-        conn.execute(
-            "INSERT INTO inbox_v2 (ws, id, auth_hash, created_at, expires_at, blob) VALUES (?1, ?2, ?3, ?4, ?5, ?6)
-             ON CONFLICT (ws, id, auth_hash) DO UPDATE SET created_at = excluded.created_at, expires_at = excluded.expires_at, blob = excluded.blob",
-            params![ws, id, auth_hash.as_slice(), now, now + INBOX_TTL, blob],
-        )?;
-        Ok(())
+        let expires = now + LINK_TTL;
+        let mut touched = 0;
+        // One transaction for the whole batch: a workbook touches up to 200
+        // links on boot, and that is one commit, not two hundred.
+        let tx = conn.unchecked_transaction()?;
+        for (id, auth) in items {
+            let Some(head) = head(&tx, id, now)? else {
+                continue;
+            };
+            if head.auth != auth.as_slice() {
+                continue;
+            }
+            // Every revision, not just the head: a revert reaches the one
+            // below it, and a half-expired link would break that.
+            tx.execute(
+                "UPDATE links SET expires_at = ?2 WHERE id = ?1",
+                params![id, expires],
+            )?;
+            touched += 1;
+        }
+        tx.commit()?;
+        Ok(touched)
     }
 
-    /// Live items of a workspace, newest first; a foreign key simply sees none.
-    pub fn list_inbox(
-        &self,
-        ws: &str,
-        auth_hash: &[u8; 32],
-        now: i64,
-    ) -> rusqlite::Result<Vec<InboxRow>> {
-        let conn = self.conn();
-        let mut statement = conn.prepare(
-            "SELECT id, created_at, blob FROM inbox_v2 WHERE ws = ?1 AND auth_hash = ?2 AND expires_at > ?3 ORDER BY created_at DESC, id DESC",
-        )?;
-        let rows = statement.query_map(params![ws, auth_hash.as_slice(), now], |row| {
-            Ok(InboxRow {
-                id: row.get(0)?,
-                created_at: row.get(1)?,
-                blob: row.get(2)?,
-            })
-        })?;
-        rows.collect()
+    /// Blob bytes both tables hold together: what the storage ceiling counts.
+    /// Expired rows count until they are swept, which is why a write that
+    /// finds itself over the ceiling sweeps before it refuses.
+    pub fn total_bytes(&self) -> rusqlite::Result<i64> {
+        self.conn().query_row(
+            "SELECT (SELECT COALESCE(SUM(LENGTH(blob)), 0) FROM links)
+                  + (SELECT COALESCE(SUM(LENGTH(blob)), 0) FROM inbox_v2)",
+            [],
+            |row| row.get(0),
+        )
     }
 
-    /// Removes one inbox item once its deck has taken it. Only the key that
-    /// wrote the row can see it, so a foreign key deletes nothing and is told
-    /// the item is missing - never that someone else owns it.
-    pub fn delete_inbox(
-        &self,
-        ws: &str,
-        auth_hash: &[u8; 32],
-        id: &str,
-        now: i64,
-    ) -> rusqlite::Result<bool> {
+    /// What `/version` reports: rows held, links behind them, bytes on disk.
+    pub fn counts(&self) -> rusqlite::Result<Counts> {
         let conn = self.conn();
-        sweep_locked(&conn, now)?;
-        let removed = conn.execute(
-            "DELETE FROM inbox_v2 WHERE ws = ?1 AND id = ?2 AND auth_hash = ?3",
-            params![ws, id, auth_hash.as_slice()],
-        )?;
-        Ok(removed > 0)
+        let one =
+            |sql: &str| -> rusqlite::Result<i64> { conn.query_row(sql, [], |row| row.get(0)) };
+        let links = one("SELECT COUNT(DISTINCT id) FROM links")?;
+        let revisions = one("SELECT COUNT(*) FROM links")?;
+        let inbox = one("SELECT COUNT(*) FROM inbox_v2")?;
+        drop(conn);
+        Ok(Counts {
+            links,
+            revisions,
+            inbox,
+            bytes: self.total_bytes()?,
+        })
     }
 
     /// Deletes expired rows from both tables; runs on every write and hourly.

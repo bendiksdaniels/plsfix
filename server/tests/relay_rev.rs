@@ -19,9 +19,9 @@ const MINE: &str = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"; // 43 chars
 const THEIRS: &str = "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB";
 
 fn app() -> Router {
-    routes(std::sync::Arc::new(AppState {
-        store: Store::in_memory().unwrap(),
-    }))
+    routes(std::sync::Arc::new(AppState::new(
+        Store::in_memory().unwrap(),
+    )))
 }
 
 fn call(method: &str, path: &str, auth: &str, body: Vec<u8>) -> Request<Body> {
