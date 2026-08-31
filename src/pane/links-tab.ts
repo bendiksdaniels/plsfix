@@ -11,6 +11,7 @@ import {
   listWorkbookLinks,
   pushLinks,
   removeLink,
+  touchWorkbookLinks,
   type PushSummary,
   type WorkbookLinkRow,
 } from "../excel";
@@ -157,6 +158,13 @@ function wireActions(tab: Tab): void {
 async function boot(tab: Tab): Promise<void> {
   await loadKey(tab);
   await refresh(tab);
+  // Best effort: a failed touch changes nothing the user can see, and the next
+  // boot tries again. Never a toast on boot.
+  try {
+    await touchWorkbookLinks(tab.deps.relay);
+  } catch {
+    // The relay is out of reach; the links keep the TTL their last push gave.
+  }
   watchSheetChanges(tab);
   // Both boxes are told by the workbook, never by what they last showed. The
   // refresh above tells the same story in the table.
