@@ -17,9 +17,9 @@ mod tests {
     const AUTH: &str = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"; // 43 chars
 
     fn app() -> axum::Router {
-        routes(std::sync::Arc::new(AppState {
-            store: Store::in_memory().unwrap(),
-        }))
+        routes(std::sync::Arc::new(AppState::new(
+            Store::in_memory().unwrap(),
+        )))
     }
 
     fn req(method: &str, path: &str, auth: Option<&str>, body: Vec<u8>) -> Request<Body> {
@@ -261,9 +261,9 @@ mod limits_and_keys {
     const THEIRS: &str = "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB";
 
     fn app() -> Router {
-        routes(std::sync::Arc::new(AppState {
-            store: Store::in_memory().unwrap(),
-        }))
+        routes(std::sync::Arc::new(AppState::new(
+            Store::in_memory().unwrap(),
+        )))
     }
 
     fn post_item(auth: &str, body: Vec<u8>) -> Request<Body> {

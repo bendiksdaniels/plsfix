@@ -1,8 +1,9 @@
 //! `/api` routes for the relay: sealed link revisions (4 MiB), workspace inbox
-//! items (64 KiB) and the two bearer-less batches, status and fetch (64 KiB
-//! each; the fetch handler itself lives in `fetch`). Owns bearer extraction, id
-//! validation, the JSON error shape and the ETag/304 contract; all state lives
-//! in `store`.
+//! items (64 KiB) and the three bearer-less batches - status, fetch and touch
+//! (64 KiB each; those handlers live in `fetch` and `relay_touch`). Owns
+//! bearer extraction, id validation, the JSON error shape, the ETag/304
+//! contract and the router the write gates in `relay_gates` wrap; the inbox
+//! routes live in `relay_inbox`.
 //! Invariant: a request is answered from the bearer's hash, never its key.
 
 use std::sync::Arc;
@@ -11,34 +12,62 @@ use axum::{
     body::Bytes,
     extract::{DefaultBodyLimit, Path, Query, State},
     http::{header, HeaderMap, StatusCode},
+    middleware,
     response::{IntoResponse, Response},
     routing::{delete, get, post},
     Json, Router,
 };
-use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine as _};
 use serde::{Deserialize, Serialize};
 
-use crate::fetch;
+use crate::limits::RateLimiter;
+use crate::relay_gates::{rate_limit, room_for};
 use crate::store::{auth_hash, Delete, Found, Get, Put, StatusRow, Store};
+use crate::{fetch, relay_inbox, relay_touch};
 
 /// A sealed picture is the big payload; 4 MiB covers a full-slide render.
 const LINK_LIMIT: usize = 4 * 1024 * 1024;
 /// Inbox items carry metadata only.
 const INBOX_LIMIT: usize = 64 * 1024;
-/// The batches are the two routes with no bearer (they carry a key per item)
+/// The batches are the three routes with no bearer (they carry a key per item)
 /// and they sit behind the Access bypass, so they must not inherit the payload
 /// limit: a full 200-item batch is about 20 KiB, and anything past this is
 /// refused at the socket instead of parsed on the shared connection. The
 /// blobs a fetch batch answers with are capped separately, in `fetch`.
 const BATCH_LIMIT: usize = 64 * 1024;
-/// One poll or fetch covers a deck; a longer batch is a client bug.
+/// One poll, fetch or touch covers a deck; a longer batch is a client bug.
 pub(crate) const MAX_BATCH_ITEMS: usize = 200;
 /// The inbox POST names its link here - the body is the sealed item.
-const LINK_ID_HEADER: &str = "x-plsfix-link-id";
+pub(crate) const LINK_ID_HEADER: &str = "x-plsfix-link-id";
+/// Blob bytes the store may hold before a write is refused (MODELIS_MAX_BYTES).
+pub const DEFAULT_MAX_BYTES: i64 = 1024 * 1024 * 1024;
+/// Writes are the expensive half - a push carries a picture - so they get the
+/// smaller allowance (MODELIS_RATE_WRITE_PER_MIN).
+pub const DEFAULT_WRITE_PER_MIN: u32 = 300;
+/// Reads are polls and batches (MODELIS_RATE_READ_PER_MIN).
+pub const DEFAULT_READ_PER_MIN: u32 = 1200;
+/// Live inbox rows one workspace may hold. A deck takes its items within
+/// minutes, so a workspace this deep is a loop, not a busy week.
+pub const INBOX_MAX_PER_WS: i64 = 500;
 
-/// Everything the routes share: one store, one connection.
+/// Everything the routes share: one store, the storage ceiling and the two
+/// rate limiters. Built by `AppState::new`, so a new limit cannot be forgotten
+/// at one call site; `main` overrides the fields from the environment.
 pub struct AppState {
     pub store: Store,
+    pub max_bytes: i64,
+    pub writes: RateLimiter,
+    pub reads: RateLimiter,
+}
+
+impl AppState {
+    pub fn new(store: Store) -> AppState {
+        AppState {
+            store,
+            max_bytes: DEFAULT_MAX_BYTES,
+            writes: RateLimiter::new(DEFAULT_WRITE_PER_MIN),
+            reads: RateLimiter::new(DEFAULT_READ_PER_MIN),
+        }
+    }
 }
 
 pub(crate) type Api = State<Arc<AppState>>;
@@ -53,6 +82,8 @@ pub(crate) enum Refused {
     TooManyItems,
     Forbidden,
     Missing,
+    Full,
+    RateLimited(u64),
     Store,
 }
 
@@ -66,6 +97,8 @@ impl Refused {
             Refused::TooManyItems => (StatusCode::BAD_REQUEST, "too many items"),
             Refused::Forbidden => (StatusCode::FORBIDDEN, "another key owns this"),
             Refused::Missing => (StatusCode::NOT_FOUND, "not found"),
+            Refused::Full => (StatusCode::INSUFFICIENT_STORAGE, "storage full"),
+            Refused::RateLimited(_) => (StatusCode::TOO_MANY_REQUESTS, "too many requests"),
             Refused::Store => (StatusCode::INTERNAL_SERVER_ERROR, "store error"),
         }
     }
@@ -74,7 +107,15 @@ impl Refused {
 impl IntoResponse for Refused {
     fn into_response(self) -> Response {
         let (status, message) = self.parts();
-        (status, Json(serde_json::json!({ "error": message }))).into_response()
+        let body = Json(serde_json::json!({ "error": message }));
+        match self {
+            // The one refusal that can say when to come back: whole seconds,
+            // the header a client is allowed to obey without parsing a body.
+            Refused::RateLimited(seconds) => {
+                (status, [(header::RETRY_AFTER, seconds.to_string())], body).into_response()
+            }
+            _ => (status, body).into_response(),
+        }
     }
 }
 
@@ -97,29 +138,39 @@ pub fn routes(state: Arc<AppState>) -> Router {
     let batch = Router::new()
         .route("/status", post(status))
         .route("/fetch", post(fetch::fetch))
+        .route("/touch", post(relay_touch::touch))
         .layer(DefaultBodyLimit::max(BATCH_LIMIT));
     let inbox = Router::new()
-        .route("/:ws", get(list_inbox).post(post_inbox))
-        .route("/:ws/:id", delete(delete_inbox))
+        .route(
+            "/:ws",
+            get(relay_inbox::list_inbox).post(relay_inbox::post_inbox),
+        )
+        .route("/:ws/:id", delete(relay_inbox::delete_inbox))
         .layer(DefaultBodyLimit::max(INBOX_LIMIT));
     Router::new()
         .nest("/api/links", links.merge(batch))
         .nest("/api/inbox", inbox)
+        .layer(middleware::from_fn_with_state(state.clone(), rate_limit))
         .with_state(state)
 }
 
-fn ok_json() -> Response {
+pub(crate) fn ok_json() -> Response {
     Json(serde_json::json!({ "ok": true })).into_response()
 }
 
 /// A store failure is the one thing worth a log line: stage, id, cause.
 pub(crate) fn failed(stage: &str, id: &str, error: &rusqlite::Error) -> Refused {
-    let short: String = id.chars().take(8).collect();
-    eprintln!("store {stage} {short}: {error}");
+    eprintln!("store {stage} {}: {error}", short(id));
     Refused::Store
 }
 
-fn is_link_id(id: &str) -> bool {
+/// Ids are logged short: eight characters name a link in a log line without
+/// writing the whole handle of a deck's picture into the journal.
+pub(crate) fn short(id: &str) -> String {
+    id.chars().take(8).collect()
+}
+
+pub(crate) fn is_link_id(id: &str) -> bool {
     id.len() == 32
         && id
             .bytes()
@@ -153,7 +204,7 @@ fn link_auth(headers: &HeaderMap, id: &str) -> Result<[u8; 32], Refused> {
     Ok(auth)
 }
 
-fn workspace_auth(headers: &HeaderMap, ws: &str) -> Result<[u8; 32], Refused> {
+pub(crate) fn workspace_auth(headers: &HeaderMap, ws: &str) -> Result<[u8; 32], Refused> {
     let auth = bearer(headers)?;
     if !is_key(ws) {
         return Err(Refused::BadId);
@@ -168,6 +219,7 @@ async fn put_link(
     body: Bytes,
 ) -> Reply {
     let auth = link_auth(&headers, &id)?;
+    room_for(&state, "put_link", &id, body.len())?;
     let put = state
         .store
         .put_link(&id, &auth, &body, now())
@@ -293,72 +345,5 @@ fn status_out(row: StatusRow) -> StatusOut {
         rev: row.rev,
         pushed_at: row.pushed_at,
         error: row.auth_error.then_some("auth"),
-    }
-}
-
-#[derive(Serialize)]
-struct InboxOut {
-    id: String,
-    #[serde(rename = "createdAt")]
-    created_at: i64,
-    blob: String,
-}
-
-async fn post_inbox(
-    State(state): Api,
-    Path(ws): Path<String>,
-    headers: HeaderMap,
-    body: Bytes,
-) -> Reply {
-    let auth = workspace_auth(&headers, &ws)?;
-    let id = headers
-        .get(LINK_ID_HEADER)
-        .and_then(|value| value.to_str().ok())
-        .filter(|id| is_link_id(id))
-        .ok_or(Refused::BadId)?;
-    // No ownership check: the row is keyed by the writer's hash, so a foreign
-    // key writes beside the pane's item rather than over it, and never sees it.
-    state
-        .store
-        .post_inbox(&ws, &auth, id, &body, now())
-        .map_err(|error| failed("post_inbox", id, &error))?;
-    Ok(ok_json())
-}
-
-async fn list_inbox(State(state): Api, Path(ws): Path<String>, headers: HeaderMap) -> Reply {
-    let auth = workspace_auth(&headers, &ws)?;
-    let rows = state
-        .store
-        .list_inbox(&ws, &auth, now())
-        .map_err(|error| failed("list_inbox", &ws, &error))?;
-    let out: Vec<InboxOut> = rows
-        .into_iter()
-        .map(|row| InboxOut {
-            id: row.id,
-            created_at: row.created_at,
-            blob: URL_SAFE_NO_PAD.encode(row.blob),
-        })
-        .collect();
-    Ok(Json(out).into_response())
-}
-
-async fn delete_inbox(
-    State(state): Api,
-    Path((ws, id)): Path<(String, String)>,
-    headers: HeaderMap,
-) -> Reply {
-    let auth = workspace_auth(&headers, &ws)?;
-    if !is_link_id(&id) {
-        return Err(Refused::BadId);
-    }
-    let deleted = state
-        .store
-        .delete_inbox(&ws, &auth, &id, now())
-        .map_err(|error| failed("delete_inbox", &id, &error))?;
-    // A row this key did not write is invisible, so "not yours" is 404 here.
-    if deleted {
-        Ok(ok_json())
-    } else {
-        Err(Refused::Missing)
     }
 }

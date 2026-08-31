@@ -55,7 +55,7 @@ mod tests {
     }
 
     #[test]
-    fn links_expire_seven_days_after_the_last_put() {
+    fn links_expire_thirty_days_after_the_last_put() {
         let store = Store::in_memory().unwrap();
         store.put_link(ID, &hash(1), b"a", 0).unwrap();
         assert!(matches!(
@@ -132,13 +132,15 @@ mod tests {
         ));
         // And the whole link dies with its TTL, revision by revision.
         assert!(matches!(
-            store.get_link_rev(ID, &hash(1), 2, 103 + LINK_TTL + 1).unwrap(),
+            store
+                .get_link_rev(ID, &hash(1), 2, 103 + LINK_TTL + 1)
+                .unwrap(),
             Get::Missing
         ));
     }
 
     #[test]
-    fn inbox_lists_only_matching_auth_and_expires_after_a_day() {
+    fn inbox_lists_only_matching_auth_and_expires_after_a_week() {
         let store = Store::in_memory().unwrap();
         store.post_inbox("WS", &hash(1), ID, b"x", 0).unwrap();
         assert_eq!(store.list_inbox("WS", &hash(1), 10).unwrap().len(), 1);
