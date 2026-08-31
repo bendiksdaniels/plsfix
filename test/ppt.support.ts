@@ -1,8 +1,8 @@
 // Shared PowerPoint fake-host setup for the ppt.*.integration.test.ts suites:
-// the workspace key store, the relay-seeding helpers (seedLink, seedTable and
-// seedChart, pushAgain, pushTable and pushChart), the source-cell constant they
-// publish under, and the per-test boot (bootPpt) that installs a fresh fake
-// deck and relay.
+// the workspace key store, the relay-seeding helpers (seedLink, seedTable,
+// seedText and seedChart, pushAgain, pushTable, pushText and pushChart), the
+// source-cell constant they publish under, and the per-test boot (bootPpt)
+// that installs a fresh fake deck and relay.
 
 import { vi } from "vitest";
 import { deriveLinkKeys, newToken, seal } from "../src/link/crypto";
@@ -16,6 +16,7 @@ import {
   type PicturePayload,
   type TableCell,
   type TablePayload,
+  type TextPayload,
 } from "../src/link/model";
 import { base64ToBytes, pngSize } from "../src/link/png";
 import type { KeyStore } from "../src/link/workspace";
@@ -117,6 +118,38 @@ export async function pushTable(
     item.token,
     tablePayload(cells, widths, "1".repeat(64)),
   );
+}
+
+function textPayload(text: string, hash: string): TextPayload {
+  return {
+    v: 1,
+    kind: "text",
+    text,
+    src,
+    pushedAt: new Date().toISOString(),
+    hash,
+  };
+}
+
+// A text export waiting in the inbox: the label is the one sourceLabel gives
+// a text link, so a picture and a text of the same cell stay apart.
+export async function seedText(text: string): Promise<InboxItem> {
+  const id = newId();
+  const token = newToken();
+  const payload = textPayload(text, "0".repeat(64));
+  await publish(id, token, payload);
+  return {
+    id,
+    token,
+    kind: "text",
+    label: sourceLabel(src, "text"),
+    src: payload.src,
+    createdAt: payload.pushedAt,
+  };
+}
+
+export async function pushText(item: InboxItem, text: string): Promise<void> {
+  await publish(item.id, item.token, textPayload(text, "1".repeat(64)));
 }
 
 export async function seedLink(

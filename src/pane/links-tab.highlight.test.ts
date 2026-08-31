@@ -26,6 +26,7 @@ vi.mock("../excel", () => ({
   listWorkbookLinks: vi.fn(),
   pushLinks: vi.fn(),
   removeLink: vi.fn(),
+  touchWorkbookLinks: vi.fn(async () => 0),
   restoreAutoPush: vi.fn(),
   restoreLinkHighlight: vi.fn(),
   setAutoPush: vi.fn(),

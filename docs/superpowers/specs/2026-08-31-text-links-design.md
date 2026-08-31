@@ -45,14 +45,17 @@ the UpSlide feature analysts use most after tables.
 ## Excel (`src/excel/links.ts` + new `src/excel/link-text.ts`)
 
 - `exportSelectionAsText(ws, relay)` -> `exportRange(ws, relay, "text")`.
-- `requireExportable` for text: one cell. A merged area selects as one range
-  with `cellCount` > 1, so the rule is: `cellCount === 1`, or the range is one
-  merged area (`getMergedAreasOrNullObject`, ExcelApi 1.13; below it, one cell
-  only). Errors: "Select one cell for a text link", "The cell is empty",
-  "Text links carry up to 500 characters".
+- `requireExportable` for text, v1 as shipped: exactly one cell
+  (`cellCount === 1`). A merged area selects as one range of several cells and
+  is refused with "Select one cell for a text link (merged cells: export as a
+  picture)."; the ExcelApi 1.13 merged-area rule
+  (`getMergedAreasOrNullObject`) is a follow-up. The other two errors are "The
+  cell is empty." and "Text links carry up to 500 characters. Export a longer
+  cell as a picture.".
 - `renderText(range)`: `range.load("text")`, the value is `text[0][0]`.
 - Registry label and Links list: `sourceLabel(src, "text")` reads as
-  `Sheet!A1`; the kind column says "text".
+  `Sheet!A1 text`, not `Sheet!A1`, so a picture and a text of the same cell
+  stay apart in both lists; the kind column says "text".
 - `link-watch.ts` (auto-push) and `link-highlight.ts` need nothing new: the
   anchor is the hidden name, the tint covers the one cell.
 
@@ -104,6 +107,18 @@ the UpSlide feature analysts use most after tables.
   saite" paragraph.
 - CLAUDE.md Map: `link-text.ts`, `texts.ts`, the data-flow line, a symptom line
   ("a text link's box moved or restyled on update -> `src/ppt/texts.ts`").
+
+## Shipped with it
+
+- Boot-time TTL refresh (`src/excel/link-touch.ts`): when the Links tab boots,
+  `touchWorkbookLinks(relay)` names every link the registry still holds to the
+  already shipped `POST /api/links/touch`, each with its own auth key, so the
+  relay's 30 days run from the last pane boot rather than the last push. Best
+  effort: a failure changes nothing the user can see and never toasts.
+- `src/excel/links.ts` and `src/excel/link-anchors.ts` were both at the
+  400-line cap, so the selection exports moved to `src/excel/link-export.ts`
+  and every render to `src/excel/link-render.ts`. Pure moves; `links.ts`
+  re-exports the export flows, so no import path outside `src/excel/` changed.
 
 ## Size and risks
 

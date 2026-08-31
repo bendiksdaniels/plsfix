@@ -1,36 +1,27 @@
-// The Excel side of tracked links, one function per pane action: export a
-// selection as a picture or as a table, export the active chart, push every
-// anchored source again, list what this workbook owns, jump back to a source
-// and remove a link. The anchor - not the address it was created at - is what
-// every later flow resolves through.
+// The Excel side of tracked links, one function per pane action: export the
+// active chart, push every anchored source again, list what this workbook
+// owns, jump back to a source and remove a link. The selection exports live in
+// link-export.ts and are re-exported here. The anchor - not the address it was
+// created at - is what every later flow resolves through.
 
 import { randomBytes } from "../link/crypto";
 import {
   anchorName,
   newLinkId,
-  overTableCap,
   sourceLabel,
-  TABLE_TOO_BIG,
   type RegistryEntry,
 } from "../link/model";
 import type { RelayApi } from "../link/relay";
 import type { Workspace } from "../link/workspace";
-import {
-  SELECTION_CELL_CAP,
-  hostSupports,
-  selectedSingleRange,
-} from "./internal";
+import { hostSupports } from "./internal";
 import {
   createChartAnchor,
-  createRangeAnchor,
   entryOf,
   forget,
   newEntry,
   readRegistry,
   refuseAnchoredChart,
   releaseAnchor,
-  renderAnchored,
-  renderSource,
   requireImageApi,
   resolveSource,
   resolveSources,
@@ -39,20 +30,17 @@ import {
   writeRegistry,
   type ResolvedSource,
 } from "./link-anchors";
+import type { ExportResult } from "./link-export";
+import { renderAnchored, renderSource } from "./link-render";
 import { exclusive } from "./link-lock";
 import { publish, pushPayload, type NewLink } from "./link-record";
-import { parseAddress } from "./shared";
 
 export { workbookName };
+export * from "./link-export";
 
 export interface WorkbookLinkRow {
   entry: RegistryEntry;
   source: "ok" | "missing";
-}
-
-export interface ExportResult {
-  id: string;
-  label: string;
 }
 
 export interface PushSummary {
@@ -62,84 +50,6 @@ export interface PushSummary {
   // One "<label>: <reason>" per failed push, so the pane can say why rather
   // than only how many.
   failures: string[];
-}
-
-// The selected range as a linked picture.
-export async function exportSelection(
-  ws: Workspace,
-  relay: RelayApi,
-): Promise<ExportResult> {
-  return exportRange(ws, relay, "range");
-}
-
-// The same range as an editable PowerPoint table: same anchor, same registry
-// entry, same inbox note - only the render differs.
-export async function exportSelectionAsTable(
-  ws: Workspace,
-  relay: RelayApi,
-): Promise<ExportResult> {
-  return exportRange(ws, relay, "table");
-}
-
-// Both caps are checked before anything is anchored, so a selection too big to
-// send leaves the workbook exactly as it was.
-function requireExportable(range: Excel.Range, kind: "range" | "table"): void {
-  if (range.cellCount > SELECTION_CELL_CAP) {
-    throw new Error(
-      `Export supports up to ${SELECTION_CELL_CAP.toLocaleString()} selected cells at once.`,
-    );
-  }
-  if (kind === "table" && overTableCap(range.rowCount, range.columnCount)) {
-    throw new Error(TABLE_TOO_BIG);
-  }
-}
-
-// Every flow that rewrites the registry runs through the shared link queue: the
-// read, the upload and the write-back are one critical section, or a push that
-// began earlier puts its own copy of the registry back over this new link.
-async function exportRange(
-  ws: Workspace,
-  relay: RelayApi,
-  kind: "range" | "table",
-): Promise<ExportResult> {
-  requireImageApi();
-  const workbook = await workbookName();
-  return exclusive(kind === "table" ? "export table" : "export", () =>
-    Excel.run(async (context) => {
-      const registry = await readRegistry(context);
-      const range = await selectedSingleRange(context, "export");
-      range.load("address,cellCount,rowCount,columnCount,worksheet/name");
-      await context.sync();
-      requireExportable(range, kind);
-
-      const resolved: ResolvedSource = {
-        kind,
-        sheet: range.worksheet.name,
-        ref: parseAddress(range.address).address,
-        range,
-      };
-      const id = newLinkId(randomBytes);
-      const anchor = anchorName(id);
-      const src = sourceOf(workbook, anchor, resolved);
-      const entry = newEntry(id, kind, anchor, sourceLabel(src, kind));
-      // Anchor and render in one batch, before any network call: a selection
-      // that changes during the upload cannot make the two describe different
-      // objects. The render owns the anchor from here on, so a picture that
-      // never arrives takes the name with it.
-      const named = createRangeAnchor(context, range, anchor);
-      const release = () => named.delete();
-      const render = await renderAnchored(
-        context,
-        resolved,
-        entry.label,
-        release,
-      );
-
-      const link: NewLink = { entry, src, render, registry, release };
-      await publish(context, link, ws, relay);
-      return { id, label: entry.label };
-    }),
-  );
 }
 
 // The same guard formatSelectedChart uses: the hosted office.js always defines

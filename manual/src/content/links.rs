@@ -76,6 +76,9 @@ fn export() -> Section {
             Block::Para(
                 r#"Ja diagramma nav atlasīta, panelis paņem lapas vienīgo diagrammu. Ja lapā ir vairākas, zem pogas parādās diagrammu saraksts, no kura izvēlēties vajadzīgo."#,
             ),
+            Block::Para(
+                r#"Ar "Export as text" vienas šūnas attēlotais teksts nonāk slaidā kā atsevišķs teksta lauks. Atjaunināšana maina tikai tekstu; lauka vieta, izmērs un fonts paliek tādi, kādus tos atstājāt (līdz 500 rakstzīmēm)."#,
+            ),
             Block::Image {
                 file: "excel-links.png",
                 alt: r#"Excel cilne "Links": pogas "Export selection" un "Export active chart", diagrammu saraksts un saišu saraksts."#,

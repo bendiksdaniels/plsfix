@@ -194,6 +194,12 @@ function powerPointGlobal(runtime: FakeRuntime): Record<string, unknown> {
       pie: "Pie",
     },
     ConnectorType: { straight: "Straight", elbow: "Elbow", curve: "Curve" },
+    ShapeAutoSize: {
+      autoSizeNone: "AutoSizeNone",
+      autoSizeTextToFitShape: "AutoSizeTextToFitShape",
+      autoSizeShapeToFitText: "AutoSizeShapeToFitText",
+      autoSizeMixed: "AutoSizeMixed",
+    },
     ShapeType: {
       unsupported: "Unsupported",
       image: "Image",

@@ -87,6 +87,9 @@ export interface HeldPut {
 export class FakeRelay implements RelayApi {
   readonly links = new Map<string, StoredLink>();
   readonly inbox = new Map<string, StoredInbox>();
+  // Every item any touchLinks call carried, in order: the boot-time TTL
+  // refresh is otherwise invisible, since the fake holds no TTL to move.
+  readonly touched: TouchQuery[] = [];
   now = 1_000_000;
   private gate: PutGate | null = null;
 
@@ -174,6 +177,7 @@ export class FakeRelay implements RelayApi {
   // only ever the count - which is exactly what the client reads.
   async touchLinks(items: TouchQuery[]): Promise<number> {
     refuseOversizedBatch("touch", items);
+    this.touched.push(...items);
     return items.filter(({ id, auth }) => this.links.get(id)?.auth === auth)
       .length;
   }

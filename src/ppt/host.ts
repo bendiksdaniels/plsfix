@@ -1,10 +1,10 @@
 // The PowerPoint Office.js code every link flow goes through: scan the deck
 // for shapes carrying the link tags, insert a linked picture (tables.ts the
-// table, charts.ts the chart group), repaint one or a whole batch in place
-// (or reinsert below PowerPointApi 1.8), re-point one at another link, break
-// one by dropping its tags, and read or set the active slide. Identity is
-// always the PLSFIX_LINK tag - never a shape id, name or position; every flow
-// is counted in round trips: one sync per batch, never one per shape.
+// table, texts.ts the text box, charts.ts the group), repaint one or a batch
+// in place (or reinsert below 1.8), re-point one at another link, break one by
+// dropping its tags, and read or set the active slide. Identity is always the
+// PLSFIX_LINK tag - never a shape id, name or position; every flow is counted
+// in round trips: one sync per batch, never one per shape.
 
 import type { Size } from "../layout";
 import {
@@ -44,6 +44,7 @@ import {
   type ShapePath,
 } from "./shapes";
 import { insertTable, refreshTable } from "./tables";
+import { insertText, refreshText } from "./texts";
 
 export interface FoundLink extends ShapePath {
   slideIndex: number;
@@ -191,6 +192,9 @@ export async function insertLink(
   if (payload.kind === "table") {
     return insertTable(stage, item, payload, tag);
   }
+  if (payload.kind === "text") {
+    return insertText(stage, item, payload, tag);
+  }
   // A chart this host can draw lands as shapes; the rest take the picture.
   const plan = chartPlan(payload);
   const note = plan === null ? undefined : (declineReason(plan) ?? undefined);
@@ -264,6 +268,10 @@ export async function refreshLink(
 ): Promise<void> {
   if (payload.kind === "table") {
     await refreshTable(found, payload, tagFor(found.tag, payload, rev));
+    return;
+  }
+  if (payload.kind === "text") {
+    await refreshText(found, payload, tagFor(found.tag, payload, rev));
     return;
   }
   if (found.type === GROUP_TYPE) {

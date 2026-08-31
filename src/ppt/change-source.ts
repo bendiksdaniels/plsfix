@@ -1,6 +1,7 @@
 // "Change source": point a tracked picture at a different export - usually the
 // same table exported again from a newer workbook - keeping its slide, its
-// position and its size. The deck's tags are rewritten and the picture is
+// position and its size. A text link only ever re-points at another text
+// export, because a text box cannot take a picture's payload in place. The deck's tags are rewritten and the picture is
 // repainted through the ordinary refresh path; nothing moves in Excel, and the
 // link the shape used to hold stays on the relay untouched, so any other deck
 // still tracking it carries on. No Office.js: the host and the relay are
@@ -48,11 +49,19 @@ function rank(row: LinkRow, item: InboxItem): number {
   return 2;
 }
 
+// A text box cannot become a picture in place, nor the other way round: the
+// candidates stay on the row's side of that line. Picture and table still mix,
+// as before (kindWarning says so when they do).
+function sameFamily(row: LinkRow, item: InboxItem): boolean {
+  return (row.found.tag.kind === "text") === (item.kind === "text");
+}
+
 // Pure, and stable inside a tier: the inbox's own order (newest first) decides
 // between two equally good candidates.
 export function candidatesFor(row: LinkRow, inbox: InboxItem[]): InboxItem[] {
   return inbox
     .map((item, index) => ({ item, rank: rank(row, item), index }))
+    .filter((entry) => sameFamily(row, entry.item))
     .sort((left, right) => left.rank - right.rank || left.index - right.index)
     .map((entry) => entry.item);
 }

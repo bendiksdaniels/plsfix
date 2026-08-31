@@ -16,7 +16,8 @@ import {
 import { base64ToBytes, pngSize } from "../link/png";
 import type { RelayApi } from "../link/relay";
 import type { Workspace } from "../link/workspace";
-import { staged, writeRegistry, type Render } from "./link-anchors";
+import { staged, writeRegistry } from "./link-anchors";
+import type { Render } from "./link-render";
 
 export interface NewLink {
   entry: RegistryEntry;
@@ -42,8 +43,9 @@ export async function pushPayload(
   return (await relay.putLink(entry.id, keys.auth, blob)).rev;
 }
 
-// The hash is what tells one push from the next: the picture itself, or the
-// cells of a table - never the envelope around them, which carries the clock.
+// The hash is what tells one push from the next: the picture itself, the cells
+// of a table or the text of one cell - never the envelope around them, which
+// carries the clock.
 async function payloadOf(src: Source, render: Render): Promise<Payload> {
   const pushedAt = new Date().toISOString();
   if (render.kind === "table") {
@@ -58,6 +60,16 @@ async function payloadOf(src: Source, render: Render): Promise<Payload> {
       src,
       pushedAt,
       hash: await sha256Hex(JSON.stringify(cells)),
+    };
+  }
+  if (render.kind === "text") {
+    return {
+      v: 1,
+      kind: "text",
+      text: render.text,
+      src,
+      pushedAt,
+      hash: await sha256Hex(render.text),
     };
   }
   const size = pngSize(base64ToBytes(render.png));
