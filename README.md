@@ -28,6 +28,7 @@ pls,fix is an Excel productivity add-in for financial modelling teams. It is a w
 - Super Find: one search across every sheet (hidden ones included) over values, formula text, workbook-level defined names, sheet names and cell comments, listed in workbook order with one click to jump to the hit
 - Style scrubber: the custom cell styles no cell in the workbook wears, listed with a count and deleted on a confirmed second click; a sheet too large to scan is named and blocks the delete, so a partial answer never removes a style still in use
 - Prepare for sharing: one pass that puts every visible sheet back at A1 and leaves the workbook on the first of them, then reports what a reader would still find - hidden sheets, links to other workbooks, names left on `#REF!` and autocolor still running on every edit; nothing is deleted, hidden sheets are untouched, and zoom cannot be reset because Office.js does not expose it
+- Model check: one pass that lists formula errors, hardcodes inside formulas, inconsistent formulas, volatile functions, broken names, unused styles, hidden sheets and external links, each with a jump to the cell, and a copyable report
 
 ## Keyboard shortcuts
 

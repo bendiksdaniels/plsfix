@@ -1197,6 +1197,43 @@
           <p class="hint" id="share-hint"></p>
         </section>
 
+        <section data-help="model-check" aria-labelledby="model-check-heading">
+          <div class="section-heading">
+            <div>
+              <p class="kicker">REVIEW</p>
+              <h2 id="model-check-heading">Model check</h2>
+            </div>
+          </div>
+          <div class="action-list">
+            <button
+              id="run-model-check"
+              data-action="run-model-check"
+              type="button"
+              title="One read-only pass over the workbook: what a reviewer would flag, with a jump to the cell"
+            >
+              <span class="action-icon audit">⚑</span
+              ><span
+                ><strong>Run model check</strong
+                ><small
+                  >Errors, hardcodes, odd formulas, volatiles, names, styles,
+                  hidden sheets, external links</small
+                ></span
+              >
+            </button>
+          </div>
+          <div class="action-list find-list" id="model-check-list" hidden></div>
+          <p class="hint" id="model-check-hint"></p>
+          <div class="action-list">
+            <button id="copy-model-check" type="button" disabled>
+              <span class="action-icon names">⧉</span
+              ><span
+                ><strong>Copy report</strong
+                ><small>The whole list as plain text</small></span
+              >
+            </button>
+          </div>
+        </section>
+
         <section aria-labelledby="names-heading">
           <div class="section-heading">
             <div>

@@ -172,6 +172,19 @@
   white-space: nowrap;
 }
 
+/* Model check: the findings list wears the action-list row look, so a finding
+   reads like a Super Find hit. The kind badge sits in the row's third column,
+   where an action keeps its shortcut, and the note under the address is
+   allowed to wrap rather than push the badge off the row. */
+.find-list > button > .sheet-badge {
+  align-self: center;
+  justify-self: end;
+}
+.find-list > button > span > strong,
+.find-list > button > span > small {
+  overflow-wrap: anywhere;
+}
+
 /* Workbook view: sheet explorer, contents sheet, name scrubber. */
 .sheet-list {
   display: grid;

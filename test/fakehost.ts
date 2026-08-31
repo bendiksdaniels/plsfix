@@ -220,6 +220,38 @@ function displayText(value: CellValue): string {
     : String(value);
 }
 
+// The error texts Excel spells out in a cell whose formula did not compute.
+// There is no formula engine here, so a seeded "#REF!" IS the error: the model
+// check reads valueTypes, and this is what makes that read answer truthfully.
+const ERROR_TEXTS = new Set([
+  "#DIV/0!",
+  "#N/A",
+  "#NAME?",
+  "#NULL!",
+  "#NUM!",
+  "#REF!",
+  "#VALUE!",
+  "#SPILL!",
+  "#CALC!",
+  "#BLOCKED!",
+  "#BUSY!",
+  "#CONNECT!",
+  "#FIELD!",
+  "#GETTING_DATA",
+  "#UNKNOWN!",
+]);
+
+// Excel reports what kind of thing a cell holds beside the value itself.
+// Derived here from the value, because that is all the fake has.
+function valueTypeOf(value: CellValue): string {
+  if (value === null || value === "") return "Empty";
+  if (typeof value === "boolean") return "Boolean";
+  if (typeof value === "number") {
+    return Number.isInteger(value) ? "Integer" : "Double";
+  }
+  return ERROR_TEXTS.has(value.toUpperCase()) ? "Error" : "String";
+}
+
 function clone<T>(value: T): T {
   return value === undefined ? value : (JSON.parse(JSON.stringify(value)) as T);
 }
@@ -783,6 +815,7 @@ const SHAPES: Record<string, Shape> = {
       "width",
       "height",
       "values",
+      "valueTypes",
       "formulas",
       "formulasR1C1",
       "numberFormat",
@@ -1287,6 +1320,17 @@ const ChartSeriesBy = {
   rows: "Rows",
 } as const;
 
+const RangeValueType = {
+  unknown: "Unknown",
+  empty: "Empty",
+  string: "String",
+  integer: "Integer",
+  double: "Double",
+  boolean: "Boolean",
+  error: "Error",
+  richValue: "RichValue",
+} as const;
+
 const SheetVisibility = {
   visible: "Visible",
   hidden: "Hidden",
@@ -1632,6 +1676,12 @@ class RangeProxy {
       if (entry === undefined) return;
       cell.formulaR1C1 = entry;
     });
+  }
+
+  // What Excel calls the cell's kind: "Error" for a cell reading #REF!, and the
+  // number/text/boolean split for everything else.
+  get valueTypes(): string[][] {
+    return this.map((cell) => valueTypeOf(cell.value));
   }
 
   get numberFormat(): CellValue[][] {
@@ -3586,6 +3636,7 @@ export function installFakeHost(options: FakeHostOptions = {}): {
     RangeCopyType,
     ChartType,
     ChartSeriesBy,
+    RangeValueType,
     SheetVisibility,
     ClearApplyTo,
     ShapeTextHorizontalAlignment,
