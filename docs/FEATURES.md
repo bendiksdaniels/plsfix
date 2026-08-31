@@ -146,7 +146,7 @@ survive row/column moves (Macabacus mechanism).
 | Link registry + refresh one object | both | Stable link IDs, update in place preserving position/size | shipped v2.0 | P1 (M2) |
 | Link Manager pane (by slide / by source, batch update, filters) | both | Central link control | shipped v2.0 | P1 (M3) |
 | Change source / versioning (Model_v4 detection) | both | Repoint links, newest-file prompts | shipped v2.1 | P2 (M3) |
-| Export text (cell -> placeholder) | both | Live text links | Backend | P2 (M3) |
+| Export text (cell -> text box) | both | Live text links | shipped v2.5 (one cell, whole-box; runs inside a sentence deferred) | P2 (M3) |
 | Native PPT table export | US | Editable table, format survives refresh | Partial (PPT table API at 1.8; format drift risk) | P3 |
 | Preserve cell visibility / image width options | US | Advanced export toggles | Backend | P3 |
 | Data Pack (deck's sources -> one workbook) | US | Collect linked content | Backend | P3 |
