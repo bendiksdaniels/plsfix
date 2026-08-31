@@ -74,6 +74,30 @@
         role="tabpanel"
         aria-labelledby="tab-tools"
       >
+        <section class="first-run" id="first-run" data-help="first-run">
+          <div class="section-heading">
+            <div>
+              <p class="kicker">GETTING STARTED</p>
+              <h2 id="first-run-heading">New here?</h2>
+            </div>
+          </div>
+          <p>
+            1. Select cells, then a preset or a format cycle (Ctrl+Shift+1 to
+            7).
+          </p>
+          <p>
+            2. Links: export a range, a chart or one cell to PowerPoint and
+            update it later.
+          </p>
+          <p>3. Every section has a ? beside its heading.</p>
+          <div class="io-row">
+            <button id="first-run-shortcuts" type="button">
+              Shortcut card
+            </button>
+            <button id="first-run-dismiss" type="button">Got it</button>
+          </div>
+        </section>
+
         <section class="selection-card" aria-labelledby="selection-heading">
           <div class="section-heading compact">
             <div>
@@ -87,6 +111,16 @@
               aria-label="Refresh selection"
             >
               ↻
+            </button>
+            <button
+              id="shortcut-card"
+              class="icon-button"
+              data-action="shortcut-card"
+              type="button"
+              aria-label="Shortcut card"
+              title="Shortcut card"
+            >
+              ⌨
             </button>
           </div>
           <div class="selection-address" id="selection-address">

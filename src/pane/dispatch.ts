@@ -1,7 +1,9 @@
 // The action dispatch table: turns a [data-action] id (button click or ribbon
 // shortcut) into the excel/pane call it makes. Called through the shared
-// guard by main.ts's button loop and its styles-delete confirm. Office.js
-// only reaches here through ../excel.
+// guard by main.ts's button loop and its styles-delete confirm. Business
+// logic's Office.js only reaches here through ../excel; the one exception is
+// the shortcut card, core Office chrome (displayDialogAsync) rather than a
+// workbook action.
 
 import {
   addCagrLabel,
@@ -45,6 +47,24 @@ import { prepareShare } from "./share-panel";
 import { deleteStyles, scanStyles } from "./styles-panel";
 import { startTrace, toggleAudit } from "./trace-panel";
 import { insertTocSheet, scanNames } from "./workbook-tab";
+
+// The card is a static page, not a workbook write: a failed dialog (some
+// hosts refuse displayDialogAsync) falls back to a plain browser tab.
+function openShortcutCard(): Promise<string> {
+  const url = new URL("shortcuts.html", location.href).href;
+  return new Promise((resolve) => {
+    Office.context.ui.displayDialogAsync(
+      url,
+      { height: 80, width: 45, displayInIframe: true },
+      (result) => {
+        if (result.status === Office.AsyncResultStatus.Failed) {
+          window.open(url, "_blank");
+        }
+        resolve("Shortcut card opened");
+      },
+    );
+  });
+}
 
 export async function dispatch(action: string): Promise<string> {
   if (action.startsWith("style-")) {
@@ -165,6 +185,8 @@ export async function dispatch(action: string): Promise<string> {
         return prepareShare();
       case "run-model-check":
         return runCheck();
+      case "shortcut-card":
+        return openShortcutCard();
       default:
         throw new Error(`Unknown action: ${action}`);
     }

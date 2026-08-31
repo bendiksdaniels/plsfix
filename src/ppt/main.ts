@@ -15,6 +15,7 @@ import {
   type Workspace,
 } from "../link/workspace";
 import { getElement } from "../ui/dom";
+import { installFirstRun } from "../ui/first-run";
 import { makeGuard } from "../ui/guard";
 import { installHelp } from "../ui/help";
 import { describeError, installErrorReporting } from "../ui/report";
@@ -75,6 +76,8 @@ installErrorReporting(REPORT_CONTEXT, (message, details) =>
 installTabs(getElement("tab-bar"));
 // The "?" on every section heading, added once the markup is in place.
 installHelp(document);
+// The Inbox tab's "New here?" card, dismissed for good on this machine.
+installFirstRun(document, "plsfix.firstRun.ppt.v1", "first-run-ppt");
 
 // ---------------------------------------------------------------------------
 // Rendering

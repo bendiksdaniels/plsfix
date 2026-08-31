@@ -47,6 +47,7 @@ import {
   renderNames,
 } from "./pane/workbook-tab";
 import { getElement } from "./ui/dom";
+import { installFirstRun } from "./ui/first-run";
 import { installHelp } from "./ui/help";
 import { installErrorReporting } from "./ui/report";
 
@@ -63,6 +64,11 @@ loadSettings();
 loadPaintSlots();
 // The "?" on every section heading, added once the markup is in place.
 installHelp(document);
+// The Tools tab's "New here?" card; its Shortcut card button runs the same
+// dispatch action as the Tools tab's own button.
+installFirstRun(document, "plsfix.firstRun.v1", "first-run", () => {
+  void guard(() => dispatch("shortcut-card"), "shortcut-card");
+});
 getElement<HTMLButtonElement>("tab-workbook").addEventListener(
   "click",
   // Sheets change without the pane hearing about it, so the explorer is

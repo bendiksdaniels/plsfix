@@ -7,11 +7,23 @@
 import type { HelpCopy } from "./copy";
 
 const tools: HelpCopy = {
+  "first-run": {
+    about:
+      "A short checklist shown once on a machine that has not opened pls,fix before.",
+    buttons: {
+      "first-run-shortcuts":
+        "Opens the same printable shortcut card as the Tools tab.",
+      "first-run-dismiss":
+        "Dismisses this card. It will not show again on this machine.",
+    },
+  },
   "selection-heading": {
     about: "What the selection holds right now, before you act on it.",
     buttons: {
       "refresh-selection":
         "Reads the selection again, for when the counts look stale after an edit in Excel.",
+      "shortcut-card":
+        "Opens a printable page listing every keyboard shortcut.",
     },
   },
   "format-heading": {
