@@ -3,7 +3,7 @@
 // the header comment and base URL. Also proves the top-level <Requirements>
 // block is Workbook-only, every ribbon group and its label resource render
 // the expected number of times, every ribbon FunctionName is registered in
-// src/main.ts, and every interpolated value is XML-escaped.
+// src/pane/commands.ts, and every interpolated value is XML-escaped.
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { ADDIN, ENVIRONMENTS, WORKBOOK_HOST } from "./spec";
@@ -263,7 +263,7 @@ describe("buildManifest", () => {
     );
   });
 
-  it("every ribbon FunctionName is registered in src/main.ts registerCommands", () => {
+  it("every ribbon FunctionName is registered in src/pane/commands.ts registerCommands", () => {
     const xml = buildManifest(prod, ADDIN);
     const functionNames = new Set(
       [...xml.matchAll(/<FunctionName>([A-Z_]+)<\/FunctionName>/g)].map(
@@ -272,12 +272,12 @@ describe("buildManifest", () => {
     );
     expect(functionNames.size).toBeGreaterThan(0);
 
-    const mainSrc = readFileSync(
-      new URL("../src/main.ts", import.meta.url),
+    const commandsSrc = readFileSync(
+      new URL("../src/pane/commands.ts", import.meta.url),
       "utf8",
     );
     const registered = new Set(
-      [...mainSrc.matchAll(/(PLSFIX_[A-Z_]+):/g)].map((match) => match[1]!),
+      [...commandsSrc.matchAll(/(PLSFIX_[A-Z_]+):/g)].map((match) => match[1]!),
     );
     for (const name of functionNames) {
       expect(registered.has(name)).toBe(true);
