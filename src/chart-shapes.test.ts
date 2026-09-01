@@ -189,6 +189,21 @@ describe("layoutChart line", () => {
     expect([...markers, ...lines].every((item) => inside(item.box))).toBe(true);
   });
 
+  it("centres each marker on its category label, Excel's own axis centring", () => {
+    const out = layoutChart({ ...column, kind: "line" }, box);
+    const markers = out.filter(
+      (item): item is Ellipse => item.kind === "ellipse",
+    );
+    const categories = texts(out).filter((t) => t.name.startsWith("category"));
+    expect(markers).toHaveLength(categories.length);
+    markers.forEach((marker, i) => {
+      const markerCentre = marker.box.left + marker.box.width / 2;
+      const label = categories[i]!;
+      const labelCentre = label.box.left + label.box.width / 2;
+      expect(markerCentre).toBeCloseTo(labelCentre, 5);
+    });
+  });
+
   it("labels every point, one label per point per series, inside the box", () => {
     const out = layoutChart(twoSeries, box);
     const markers = out.filter(

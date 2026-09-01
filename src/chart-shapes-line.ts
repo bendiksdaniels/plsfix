@@ -29,6 +29,9 @@ interface Point {
   top: number;
 }
 
+// Point i sits at the centre of slot i, the same centring categoryLabels in
+// chart-shapes.ts already uses for the axis below it (Excel's own default
+// for a category axis): half a slot in from the edge, not flush with it.
 function positionsFor(
   series: ChartSeries,
   slot: number,
@@ -36,7 +39,7 @@ function positionsFor(
   scale: ValueScale,
 ): Point[] {
   return series.values.map((value, pointIndex) => ({
-    left: plot.left + pointIndex * slot,
+    left: plot.left + (pointIndex + 0.5) * slot,
     top: valueY(value, scale, plot),
   }));
 }
@@ -141,10 +144,10 @@ export function lineSeries(
   scale: ValueScale,
 ): Primitive[] {
   const points = data.categories.length;
-  const slot = points > 1 ? plot.width / (points - 1) : 0;
+  const slot = plot.width / points;
   const marker = Math.min(
     MARKER_MAX,
-    Math.max(MARKER_MIN, plot.width / points / MARKER_SPACING_DIVISOR),
+    Math.max(MARKER_MIN, slot / MARKER_SPACING_DIVISOR),
   );
   const out: Primitive[] = [];
   data.series.forEach((series, seriesIndex) => {
