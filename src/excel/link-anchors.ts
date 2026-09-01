@@ -47,7 +47,15 @@ export type ResolvedSource = ResolvedRange | ResolvedChart;
 // part of a label or a message.
 export function staged(stage: string, error: unknown): Error {
   const reason = error instanceof Error ? error.message : String(error);
-  return new Error(`${stage}: ${reason}`);
+  const out = new Error(`${stage}: ${reason}`);
+  // office.js hangs `code` and `debugInfo` (the statement that failed) on its
+  // errors and the pane's "Copy details" prints both: they ride along, so a
+  // report from a host nobody can drive still names the failing call.
+  for (const key of ["code", "debugInfo"]) {
+    const value = (error as Record<string, unknown> | null)?.[key];
+    if (value !== undefined) Object.assign(out, { [key]: value });
+  }
+  return out;
 }
 
 // A render that fell back and was refused again. The fallback's own error

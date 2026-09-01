@@ -311,9 +311,15 @@ describe("charts", () => {
     helpers.setActiveChart(workbook.charts[0]!);
     helpers.failNextImage();
     helpers.failNextImage();
-    await expect(links.exportActiveChart(ws, relay)).rejects.toThrow(
+    const failure = (await links
+      .exportActiveChart(ws, relay)
+      .then(() => null)
+      .catch((error: unknown) => error)) as { message: string; code?: string };
+    expect(failure.message).toMatch(
       /export Model: Revenue bridge: sharp: GeneralException; plain: The image failed to render/,
     );
+    // The stage wrapper keeps the host's code, so "Copy details" names it.
+    expect(failure.code).toBe("GeneralException");
     expect(workbook.charts[0]!.name).toBe("Revenue bridge");
     expect(workbook.names).toEqual([]);
     expect(helpers.setting(REGISTRY_SETTING)).toBeNull();
