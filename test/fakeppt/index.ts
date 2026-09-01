@@ -17,6 +17,8 @@ export type {
 } from "./model";
 export type { FakeTable, FakeTableCell } from "./tables";
 export { FakePresentation } from "./model";
+// The current selection, in order: what getSelectedShapes() hands back.
+export { selectedShapeIds } from "./objects";
 
 export interface Box {
   left: number;
@@ -43,6 +45,10 @@ export interface FakePptOptions {
 export interface FakePptHelpers {
   selectSlide(id: string): void;
   clearSelection(): void;
+  // Sets the shape selection directly, order preserved, skipping the
+  // same-slide rule Slide.setSelectedShapes enforces: a fixture shortcut
+  // mirroring selectSlide.
+  selectShapes(shapeIds: string[]): void;
   setSupported(check: (set: string, version: string) => boolean): void;
   // Office.context.platform, "Mac" until a test asks for another host: the web
   // is the one that draws fewer shapes before it gives up.

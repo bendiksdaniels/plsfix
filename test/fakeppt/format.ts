@@ -32,9 +32,48 @@ abstract class ShapeFormatBound extends Loadable {
   }
 }
 
+// The fill/line fields PowerPointApi 1.4 added after fillColor/lineColor were
+// modeled: attached directly to the shape object rather than declared on
+// model.ts's FakePptShape, which is already at the file's line cap. Reading
+// through the same object a copy/paste clone shares - a shallow spread of
+// exactly these fields, `cloneShape` in model.ts - carries them across a
+// clone the same way it carries every field model.ts does declare.
+interface FillLineExtras {
+  fillTransparency: number;
+  lineTransparency: number;
+  lineDashStyle: string;
+  lineStyle: string;
+}
+
+function extras(shape: FakePptShape): FillLineExtras {
+  const extended = shape as FakePptShape & Partial<FillLineExtras>;
+  extended.fillTransparency ??= 0;
+  extended.lineTransparency ??= 0;
+  extended.lineDashStyle ??= "Solid";
+  extended.lineStyle ??= "Single";
+  return extended as FillLineExtras;
+}
+
 // PowerPoint.ShapeFill: the picture a link is painted with, the solid brand
 // colour a chart bar takes, and the clear that leaves the shape with neither.
 export class ShapeFillProxy extends ShapeFormatBound {
+  // Derived, never stored: whichever of fillImage/fillColor is set decides it,
+  // the same way real PowerPoint reports a fill type nobody chose directly.
+  get type(): string {
+    const shape = this.shape();
+    if (shape.fillImage !== null) return "PictureAndTexture";
+    if (shape.fillColor !== null) return "Solid";
+    return "NoFill";
+  }
+  get foregroundColor(): string {
+    return this.shape().fillColor ?? "";
+  }
+  get transparency(): number {
+    return extras(this.shape()).fillTransparency;
+  }
+  set transparency(value: number) {
+    extras(this.shape()).fillTransparency = value;
+  }
   setImage(base64EncodedImage: string): void {
     const shape = this.shape();
     shape.fillImage = base64EncodedImage;
@@ -71,6 +110,24 @@ export class ShapeLineProxy extends ShapeFormatBound {
   }
   set weight(value: number | null) {
     this.shape().lineWeight = value;
+  }
+  get transparency(): number {
+    return extras(this.shape()).lineTransparency;
+  }
+  set transparency(value: number) {
+    extras(this.shape()).lineTransparency = value;
+  }
+  get dashStyle(): string {
+    return extras(this.shape()).lineDashStyle;
+  }
+  set dashStyle(value: string) {
+    extras(this.shape()).lineDashStyle = value;
+  }
+  get style(): string {
+    return extras(this.shape()).lineStyle;
+  }
+  set style(value: string) {
+    extras(this.shape()).lineStyle = value;
   }
 }
 

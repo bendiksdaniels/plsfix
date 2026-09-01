@@ -12,6 +12,7 @@ import {
 } from "./format";
 import {
   gone,
+  invalidArgument,
   type FakePptShape,
   type FakePresentation,
   type FakeShapeGroup,
@@ -50,6 +51,20 @@ interface BoxOptions {
   top?: number;
   width?: number;
   height?: number;
+}
+
+// getSelectedShapes(), in order; off FakePresentation itself, at its cap.
+const selectedShapes = new WeakMap<FakePresentation, string[]>();
+
+export function selectedShapeIds(deck: FakePresentation): string[] {
+  return selectedShapes.get(deck) ?? [];
+}
+
+export function setSelectedShapeIds(
+  deck: FakePresentation,
+  ids: string[],
+): void {
+  selectedShapes.set(deck, [...ids]);
 }
 
 // Slides, shapes and tags are all addressed by id: the deck holds the truth,
@@ -104,6 +119,17 @@ class SlideProxy extends Handle {
   }
   get shapes(): ShapeCollectionProxy {
     return new ShapeCollectionProxy(this.deck, this.handleId);
+  }
+
+  // setSelectedShapes: every id must be a shape on this slide, or the whole
+  // call is refused; otherwise it replaces the selection and selects the slide.
+  setSelectedShapes(shapeIds: string[]): void {
+    const onSlide = new Set(this.model().shapes.map((shape) => shape.id));
+    for (const id of shapeIds) {
+      if (!onSlide.has(id)) throw invalidArgument(`shape "${id}" not here`);
+    }
+    this.deck.selectedSlideIds = [this.handleId];
+    setSelectedShapeIds(this.deck, shapeIds);
   }
 
   private peek(): FakeSlide | null {
@@ -212,7 +238,7 @@ abstract class ShapeBound extends Handle {
   }
 }
 
-class ShapeProxy extends ShapeBound {
+export class ShapeProxy extends ShapeBound {
   // The id is the object's own handle, so it survives the shape being deleted.
   get id(): string {
     return this.nullable && !this.peek() ? "" : this.handleId;
@@ -284,6 +310,13 @@ class ShapeProxy extends ShapeBound {
   }
   getParentSlideOrNullObject(): SlideProxy {
     return new SlideProxy(this.deck, this.peek()?.slide.id ?? "", true);
+  }
+  // getParentSlide: the slide proxy, or the ItemNotFound a gone shape answers
+  // everywhere else in this fake.
+  getParentSlide(): SlideProxy {
+    const site = this.peek();
+    if (!site) throw gone("shape", this.handleId);
+    return new SlideProxy(this.deck, site.slide.id);
   }
 }
 

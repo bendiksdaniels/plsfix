@@ -158,4 +158,151 @@ describe("fake PowerPoint shapes", () => {
     helpers.setPlatform("OfficeOnline");
     expect(Office.context.platform).toBe(Office.PlatformType.OfficeOnline);
   });
+
+  it("derives fill.type, reads foregroundColor, and reads/writes fill.transparency", async () => {
+    installFakePpt({ slides: 1 });
+    await PowerPoint.run(async (c) => {
+      const shapes = c.presentation.slides.getItemAt(0).shapes;
+      const rect = shapes.addGeometricShape("Rectangle", box(0, 0, 10, 10));
+      rect.fill.setSolidColor("#B27E54");
+      rect.fill.load("type,foregroundColor,transparency");
+      await c.sync();
+      expect(rect.fill.type).toBe("Solid");
+      expect(rect.fill.foregroundColor).toBe("#B27E54");
+      expect(rect.fill.transparency).toBe(0);
+      rect.fill.transparency = 0.5;
+      rect.fill.clear();
+      rect.fill.load("type,transparency");
+      await c.sync();
+      expect(rect.fill.type).toBe("NoFill");
+      expect(rect.fill.transparency).toBe(0.5);
+    });
+  });
+
+  it("gives a picture fill the type PictureAndTexture", async () => {
+    installFakePpt({ slides: 1 });
+    await PowerPoint.run(async (c) => {
+      const shapes = c.presentation.slides.getItemAt(0).shapes;
+      const pic = shapes.addGeometricShape("Rectangle", box(0, 0, 10, 10));
+      pic.fill.setImage("<png>");
+      pic.fill.load("type");
+      await c.sync();
+      expect(pic.fill.type).toBe("PictureAndTexture");
+    });
+  });
+
+  it("reads and writes line.transparency, dashStyle and style, defaulted like PowerPoint's own", async () => {
+    installFakePpt({ slides: 1 });
+    await PowerPoint.run(async (c) => {
+      const shapes = c.presentation.slides.getItemAt(0).shapes;
+      const rect = shapes.addGeometricShape("Rectangle", box(0, 0, 10, 10));
+      rect.lineFormat.load("transparency,dashStyle,style");
+      await c.sync();
+      expect(rect.lineFormat.transparency).toBe(0);
+      expect(rect.lineFormat.dashStyle).toBe("Solid");
+      expect(rect.lineFormat.style).toBe("Single");
+      rect.lineFormat.transparency = 0.25;
+      rect.lineFormat.dashStyle = "DashDot";
+      rect.lineFormat.style = "ThickThin";
+      rect.lineFormat.load("transparency,dashStyle,style");
+      await c.sync();
+      expect(rect.lineFormat.transparency).toBe(0.25);
+      expect(rect.lineFormat.dashStyle).toBe("DashDot");
+      expect(rect.lineFormat.style).toBe("ThickThin");
+    });
+  });
+
+  it("throws PropertyNotLoaded for an unloaded fill or line scalar", async () => {
+    installFakePpt({ slides: 1 });
+    await PowerPoint.run(async (c) => {
+      const shapes = c.presentation.slides.getItemAt(0).shapes;
+      const rect = shapes.addGeometricShape("Rectangle", box(0, 0, 10, 10));
+      rect.load("id");
+      await c.sync();
+      expect(() => rect.fill.type).toThrow(/PropertyNotLoaded/);
+      expect(() => rect.lineFormat.dashStyle).toThrow(/PropertyNotLoaded/);
+    });
+  });
+
+  it("returns the selection in the order it was made, with getCount", async () => {
+    const { presentation, helpers } = installFakePpt({ slides: 1 });
+    const slide = presentation.slides[0]!;
+    const a = presentation.addShape(slide, box(0, 0, 10, 10));
+    const b = presentation.addShape(slide, box(20, 0, 10, 10));
+    helpers.selectShapes([b.id, a.id]);
+    await PowerPoint.run(async (c) => {
+      const selected = c.presentation.getSelectedShapes();
+      selected.load("items/id");
+      const count = selected.getCount();
+      await c.sync();
+      expect(selected.items.map((s) => s.id)).toEqual([b.id, a.id]);
+      expect(count.value).toBe(2);
+    });
+  });
+
+  it("addresses the selection by index and by id, and refuses one outside it", async () => {
+    const { presentation, helpers } = installFakePpt({ slides: 1 });
+    const slide = presentation.slides[0]!;
+    const a = presentation.addShape(slide, box(0, 0, 10, 10));
+    const b = presentation.addShape(slide, box(20, 0, 10, 10));
+    const outside = presentation.addShape(slide, box(40, 0, 10, 10));
+    helpers.selectShapes([b.id, a.id]);
+    await PowerPoint.run(async (c) => {
+      const selected = c.presentation.getSelectedShapes();
+      const first = selected.getItemAt(0);
+      const byId = selected.getItem(a.id);
+      first.load("id");
+      byId.load("id");
+      await c.sync();
+      expect(first.id).toBe(b.id);
+      expect(byId.id).toBe(a.id);
+      expect(() => selected.getItem(outside.id)).toThrow(/ItemNotFound/);
+      expect(() => selected.getItemAt(5)).toThrow(/InvalidArgument/);
+    });
+    expect(() => helpers.selectShapes(["bogus"])).toThrow(/ItemNotFound/);
+  });
+
+  it("Slide.setSelectedShapes refuses a shape from elsewhere, else replaces the selection", async () => {
+    const { presentation, helpers } = installFakePpt({ slides: 2 });
+    const [slide0, slide1] = presentation.slides as [
+      (typeof presentation.slides)[0],
+      (typeof presentation.slides)[0],
+    ];
+    const a = presentation.addShape(slide0, box(0, 0, 10, 10));
+    const b = presentation.addShape(slide0, box(20, 0, 10, 10));
+    const elsewhere = presentation.addShape(slide1, box(0, 0, 10, 10));
+    helpers.selectSlide(slide1.id);
+    await PowerPoint.run(async (c) => {
+      const slide = c.presentation.slides.getItemAt(0);
+      expect(() => {
+        slide.setSelectedShapes([a.id, elsewhere.id]);
+      }).toThrow(/InvalidArgument/);
+      slide.setSelectedShapes([b.id, a.id]);
+    });
+    expect(presentation.selectedSlideIds).toEqual([slide0.id]);
+    await PowerPoint.run(async (c) => {
+      const selected = c.presentation.getSelectedShapes();
+      selected.load("items/id");
+      await c.sync();
+      expect(selected.items.map((s) => s.id)).toEqual([b.id, a.id]);
+    });
+  });
+
+  it("getParentSlide finds the shape's slide, or throws once the shape is gone", async () => {
+    const { presentation } = installFakePpt({ slides: 2 });
+    const slide1 = presentation.slides[1]!;
+    const shape = presentation.addShape(slide1, box(0, 0, 10, 10));
+    await PowerPoint.run(async (c) => {
+      const handle = c.presentation.slides
+        .getItem(slide1.id)
+        .shapes.getItem(shape.id);
+      const parent = handle.getParentSlide();
+      parent.load("id");
+      await c.sync();
+      expect(parent.id).toBe(slide1.id);
+      handle.delete();
+      await c.sync();
+      expect(() => handle.getParentSlide()).toThrow(/ItemNotFound/);
+    });
+  });
 });
