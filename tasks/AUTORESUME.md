@@ -1,4 +1,29 @@
-# AUTORESUME - pls,fix (v2.4.8 pending, v2.4.7 LIVE 2026-08-31)
+# AUTORESUME - pls,fix (v2.5.6 tagged 01.09 evening, v2.5.2 LIVE; launch = v2.6.0)
+
+## 01.09: launch slice (plan ~/.claude/plans/zippy-herding-globe.md, approved; goal "zero bugs, all features working")
+
+- Codex (01.09 day) shipped v2.4.9 ribbon icons, v2.5.0 native line charts + link search/status
+  filter + paint slots in the workbook, v2.5.1 "Harden Mac link exports" (an unverified
+  platform branch), v2.5.2 one-click "Paste latest linked" (LIVE), and left uncommitted the
+  reconcile section, the PowerPoint Tools tab, the source/slide filters and the Save/Use labels.
+- Controller (Fable) committed that slice as v2.5.3, then three worktree agents: C (opus) replaced
+  the Mac platform branch with retry-on-refusal in the same context (`link-render.ts`,
+  `link-table.ts`, `bothRefused`; `staged()` keeps `code` + `debugInfo`) = v2.5.4; A (sonnet)
+  proved the object tools in the fake (`test/fakeppt/selection.ts`, 1.5 guard, UX gate walks the
+  Tools tab) = v2.5.5; B (sonnet) proved reconcile in the fake (`worksheet.getRanges`, four
+  syncs), `saveWorkbookPaintSlots` never throws, line charts got value labels in
+  `src/chart-shapes-line.ts`, the summary line shows cents = v2.5.6. Gates: 1122 vitest,
+  ux:check 0/72, build ok. Docs done: README, FEATURES, Map, lessons (dispatch message = Agent
+  calls only). Wave 2 in flight: opus review of the whole day's diff, sonnet Latvian manual
+  chapters + `docs/IT-vienlapa.md`, sonnet demo blocks (Variance sheet + checklist rows).
+- VM (`~/claude-vm`, `vmctl`): booted 01.09 22:43, Excel shows the M365 activation wall; Daniel
+  must sign in over `vnc://192.168.64.2` (admin/admin) before the VM agent can sideload
+  `manifest.prod.xml`, reproduce the Mac export, capture "Copy details", verify v2.6.0 and record
+  the demo video (in-VM `screencapture -V`, copy via `share/` to his Desktop).
+- NEXT: apply review findings -> merge docs + demo -> `npm run check` -> `sh scripts/release.sh
+  minor` (v2.6.0) -> `the hosting gateway's deploy.sh modelis` -> `/version` 2.6.0 -> VM agent
+  (after the sign-in) -> memory + this file. Daniel's gates unchanged: Windows pass, M365 upload,
+  Cloudflare rate-limit rule, IT one-pager review, ROADMAP tick-through, the Mac paste.
 
 ## 31.08: v2.5 slice "ready for other people" (plan ~/.claude/plans/cozy-plotting-honey.md, approved)
 
