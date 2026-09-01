@@ -1,11 +1,12 @@
 // Reading a range as a table: one getCellProperties for the formats, the text
 // Excel shows and every column's width, mapped to the cell grid PowerPoint
-// rebuilds. Owns the Excel-to-TableCell mapping and what counts as a default
+// rebuilds - and a plain grid of text and widths for a host that refuses the
+// formats. Owns the Excel-to-TableCell mapping and what counts as a default
 // worth leaving out. Invariant: a cell wearing Excel's own defaults carries
 // nothing but its text, so the deck's table style shows through.
 
 import { overTableCap, TABLE_TOO_BIG, type TableCell } from "../link/model";
-import { isMacExcel } from "./link-platform";
+import { bothRefused } from "./link-anchors";
 
 // Excel's defaults. A cell wearing these adds nothing but its size to the payload.
 const DEFAULT_FONT_COLOR = "#000000";
@@ -36,7 +37,10 @@ export interface TableRender {
 
 // Two syncs whatever the size: the grid's dimensions, because the column
 // widths have to be asked for one column at a time, then the text, the formats
-// and those widths together.
+// and those widths together. A host that refuses the second batch is asked for
+// the plain grid instead, in the same context: a table with its values and its
+// widths is worth more than an export that stops before the relay, and a later
+// push from a host that answers enriches the cells again.
 export async function renderTable(
   context: Excel.RequestContext,
   range: Excel.Range,
@@ -46,14 +50,20 @@ export async function renderTable(
   const rows = range.rowCount;
   const cols = range.columnCount;
   if (overTableCap(rows, cols)) throw new Error(TABLE_TOO_BIG);
+  try {
+    return await renderRichTable(context, range, rows, cols);
+  } catch (rich) {
+    return await renderPlainTable(context, range, rows, cols, rich);
+  }
+}
 
-  // Mac's rich CellProperties grid is the other export call known to fail
-  // before a relay request. Preserve the editable table's displayed values,
-  // numeric alignment and column sizing instead of failing the whole export;
-  // chart/table source data remains intact and a later push on another host
-  // can enrich its per-cell formatting again.
-  if (isMacExcel()) return renderMacTable(context, range, rows, cols);
-
+// Sync two: the formats, the text and every column's width in one batch.
+async function renderRichTable(
+  context: Excel.RequestContext,
+  range: Excel.Range,
+  rows: number,
+  cols: number,
+): Promise<TableRender> {
   const properties = range.getCellProperties(WANTED);
   range.load("text,values");
   const columns = Array.from({ length: cols }, (_unused, index) => {
@@ -74,31 +84,41 @@ export async function renderTable(
   return { rows, cols, cells, widths };
 }
 
-async function renderMacTable(
+// What the deck can still be given when the formats are refused: the text
+// Excel shows, a number's own right alignment and the column widths. The reads
+// are queued fresh because the batch that asked for them was never committed.
+async function renderPlainTable(
   context: Excel.RequestContext,
   range: Excel.Range,
   rows: number,
   cols: number,
+  rich: unknown,
 ): Promise<TableRender> {
-  range.load("text,values");
-  const columns = Array.from({ length: cols }, (_unused, index) => {
-    const column = range.getColumn(index);
-    column.load("format/columnWidth");
-    return column;
-  });
-  await context.sync();
-  const cells = range.text.map((row, r) =>
-    row.map((text, c) => ({
-      t: text,
-      ...(typeof range.values[r]?.[c] === "number" ? { a: "r" as const } : {}),
-    })),
-  );
-  return {
-    rows,
-    cols,
-    cells,
-    widths: columns.map((one) => one.format.columnWidth),
-  };
+  try {
+    range.load("text,values");
+    const columns = Array.from({ length: cols }, (_unused, index) => {
+      const column = range.getColumn(index);
+      column.load("format/columnWidth");
+      return column;
+    });
+    await context.sync();
+    const cells = range.text.map((row, r) =>
+      row.map((text, c) => ({
+        t: text,
+        ...(typeof range.values[r]?.[c] === "number"
+          ? { a: "r" as const }
+          : {}),
+      })),
+    );
+    return {
+      rows,
+      cols,
+      cells,
+      widths: columns.map((one) => one.format.columnWidth),
+    };
+  } catch (plain) {
+    throw bothRefused(rich, "rich", plain, "plain");
+  }
 }
 
 // Every key but the text is omitted unless the cell says something Excel's

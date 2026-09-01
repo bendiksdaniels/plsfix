@@ -50,6 +50,28 @@ export function staged(stage: string, error: unknown): Error {
   return new Error(`${stage}: ${reason}`);
 }
 
+// A render that fell back and was refused again. The fallback's own error
+// object travels - office.js hangs `code` and `debugInfo` on it and the pane's
+// "Copy details" prints both - carrying the first attempt's name and code in
+// its message, so a report names the pair rather than the retry alone.
+export function bothRefused(
+  first: unknown,
+  firstLabel: string,
+  second: unknown,
+  secondLabel: string,
+): Error {
+  const error = second instanceof Error ? second : new Error(String(second));
+  error.message = `${firstLabel}: ${reasonOf(first)}; ${secondLabel}: ${error.message}`;
+  return error;
+}
+
+// office.js names its failures with a `code`; anything else has its message.
+function reasonOf(error: unknown): string {
+  const code: unknown = (error as { code?: unknown } | null)?.code;
+  if (typeof code === "string" && code !== "") return code;
+  return error instanceof Error ? error.message : String(error);
+}
+
 // Range.getImage and the chart image surface both arrived in ExcelApi 1.9;
 // without them there is no picture to send, so a flow stops before it anchors
 // anything.
