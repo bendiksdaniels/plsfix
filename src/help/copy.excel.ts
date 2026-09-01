@@ -28,7 +28,7 @@ const tools: HelpCopy = {
   },
   "format-heading": {
     about:
-      "One look for the whole model: five cell styles, four number formats and three format slots.",
+      "One look for the whole model: five cell styles, four number formats and three custom styles saved in this workbook.",
     buttons: {
       "style-title": "Applies the title style from your Brand palette.",
       "style-header":
@@ -46,7 +46,7 @@ const tools: HelpCopy = {
         "Currency format. The symbol and where it sits follow the Brand tab.",
       "number-percent": "Percentages with one decimal place.",
       "paint-capture-1":
-        "Remembers the active cell's number format, font, fill, alignment and borders in slot 1.",
+        "Saves the active cell's number format, font, fill, alignment and borders in workbook style 1.",
       "paint-capture-2": "The same, into slot 2.",
       "paint-capture-3": "The same, into slot 3.",
       "paint-apply-1": "Paints what slot 1 remembers over the selection.",

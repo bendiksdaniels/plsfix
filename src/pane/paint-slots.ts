@@ -1,6 +1,6 @@
-// Paintbrush slots: three captured formats, kept on the machine like the
-// brand palette. They outlive the pane, and nothing about them is written
-// into the workbook. Office.js only reaches here through ../excel.
+// Paintbrush slots: three captured formats carried by the workbook. Local
+// storage is only a first-run fallback for an older or unsaved workbook.
+// Office.js only reaches here through ../excel.
 
 import {
   applySlot,
