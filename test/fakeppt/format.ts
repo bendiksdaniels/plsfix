@@ -19,6 +19,17 @@ function unsynced(): Error {
   return Object.assign(error, { code: "InvalidParam" });
 }
 
+// fill.transparency and lineFormat.weight read back as null once the shape
+// stops supporting them (a cleared fill, an invisible line); the d.ts types
+// them as a plain number regardless, so a caller that forwards a captured
+// null through unchanged reaches this setter, not a compiler error.
+function requireFiniteNumber(label: string, value: number): number {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    throw invalidArgument(`${label} must be a number`);
+  }
+  return value;
+}
+
 abstract class ShapeFormatBound extends Loadable {
   constructor(
     protected deck: FakePresentation,
@@ -68,11 +79,18 @@ export class ShapeFillProxy extends ShapeFormatBound {
   get foregroundColor(): string {
     return this.shape().fillColor ?? "";
   }
-  get transparency(): number {
-    return extras(this.shape()).fillTransparency;
+  // PowerPointApi 1.4: null once the fill type no longer supports one, a
+  // cleared (NoFill) shape being the one pls,fix ever meets.
+  get transparency(): number | null {
+    return this.type === "NoFill"
+      ? null
+      : extras(this.shape()).fillTransparency;
   }
   set transparency(value: number) {
-    extras(this.shape()).fillTransparency = value;
+    extras(this.shape()).fillTransparency = requireFiniteNumber(
+      "fill.transparency",
+      value,
+    );
   }
   setImage(base64EncodedImage: string): void {
     const shape = this.shape();
@@ -105,11 +123,13 @@ export class ShapeLineProxy extends ShapeFormatBound {
   set color(value: string | null) {
     this.shape().lineColor = value;
   }
+  // PowerPointApi 1.4: null while the line isn't visible, whatever weight
+  // was last written.
   get weight(): number | null {
-    return this.shape().lineWeight;
+    return this.shape().lineVisible ? this.shape().lineWeight : null;
   }
-  set weight(value: number | null) {
-    this.shape().lineWeight = value;
+  set weight(value: number) {
+    this.shape().lineWeight = requireFiniteNumber("lineFormat.weight", value);
   }
   get transparency(): number {
     return extras(this.shape()).lineTransparency;
@@ -117,14 +137,15 @@ export class ShapeLineProxy extends ShapeFormatBound {
   set transparency(value: number) {
     extras(this.shape()).lineTransparency = value;
   }
-  get dashStyle(): string {
-    return extras(this.shape()).lineDashStyle;
+  // PowerPointApi 1.4: null while the line isn't visible - see weight above.
+  get dashStyle(): string | null {
+    return this.shape().lineVisible ? extras(this.shape()).lineDashStyle : null;
   }
   set dashStyle(value: string) {
     extras(this.shape()).lineDashStyle = value;
   }
-  get style(): string {
-    return extras(this.shape()).lineStyle;
+  get style(): string | null {
+    return this.shape().lineVisible ? extras(this.shape()).lineStyle : null;
   }
   set style(value: string) {
     extras(this.shape()).lineStyle = value;

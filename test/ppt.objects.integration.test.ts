@@ -246,6 +246,32 @@ describe("Smart Painter", () => {
     expect(shape.fillCleared).toBe(true);
   });
 
+  it("captures a solid fill with no outline and paints without throwing", async () => {
+    // Every pls,fix link rectangle sets lineFormat.visible = false, so this
+    // is the shape Smart Painter actually meets in the deck: weight,
+    // dashStyle and style all read null off a line that isn't visible.
+    const slide = presentation.slides[0]!;
+    const source = presentation.addShape(slide, box(0, 0, 40, 40));
+    source.fillColor = "#B27E54";
+    source.lineVisible = false;
+    const target = presentation.addShape(slide, box(100, 0, 20, 20));
+    target.lineColor = "#000000";
+    target.lineWeight = 3;
+
+    helpers.selectShapes([source.id]);
+    await tools.captureObjectStyle();
+    helpers.selectShapes([target.id]);
+    await expect(tools.applyObjectStyle()).resolves.toBe("Painted 1 object.");
+
+    const { shape } = presentation.findShape(target.id);
+    expect(shape.fillColor).toBe("#B27E54");
+    expect(shape.fillCleared).toBe(false);
+    // The captured line was invisible: the target's ends invisible too,
+    // rather than painted with whatever the null weight/dash/style coerced
+    // to on the way through.
+    expect(shape.lineVisible).toBe(false);
+  });
+
   it("refuses to capture a picture fill", async () => {
     const slide = presentation.slides[0]!;
     const picture = presentation.addShape(slide, {
