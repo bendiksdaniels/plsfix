@@ -62,6 +62,26 @@ describe("fake PowerPoint shapes", () => {
     });
   });
 
+  it("refuses a negative width or height, on add and on a later write", async () => {
+    installFakePpt({ slides: 1 });
+    await PowerPoint.run(async (c) => {
+      const shapes = c.presentation.slides.getItemAt(0).shapes;
+      expect(() =>
+        shapes.addGeometricShape("Rectangle", box(0, 0, -5, 10)),
+      ).toThrow(/InvalidArgument/);
+      expect(() => shapes.addLine("Straight", box(0, 0, 10, -5))).toThrow(
+        /InvalidArgument/,
+      );
+      const rect = shapes.addGeometricShape("Rectangle", box(0, 0, 10, 10));
+      expect(() => {
+        rect.width = -1;
+      }).toThrow(/InvalidArgument/);
+      expect(() => {
+        rect.height = -1;
+      }).toThrow(/InvalidArgument/);
+    });
+  });
+
   it("shapes a pie only after its first sync and normalises the angles", async () => {
     installFakePpt({ slides: 1 });
     await PowerPoint.run(async (c) => {

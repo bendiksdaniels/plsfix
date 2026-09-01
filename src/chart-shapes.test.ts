@@ -4,6 +4,7 @@ import {
   chartSize,
   layoutChart,
   type Ellipse,
+  type Line,
   type Primitive,
   type Rect,
   type Text,
@@ -21,12 +22,19 @@ const base = {
 const rects = (p: Primitive[]) =>
   p.filter((x): x is Rect => x.kind === "rect" && x.name.startsWith("bar"));
 const texts = (p: Primitive[]) => p.filter((x): x is Text => x.kind === "text");
+const lineShapes = (p: Primitive[]) =>
+  p.filter((x): x is Line => x.kind === "line");
+// A box PowerPoint would refuse (InvalidArgument on a negative width or
+// height) can still land inside these outer bounds by coordinate alone, so a
+// negative side must fail this check on its own before the position checks.
 const inside = (b: {
   left: number;
   top: number;
   width: number;
   height: number;
 }) =>
+  b.width >= 0 &&
+  b.height >= 0 &&
   b.left >= box.left - 0.01 &&
   b.top >= box.top - 0.01 &&
   b.left + b.width <= box.left + box.width + 0.01 &&
@@ -202,6 +210,22 @@ describe("layoutChart line", () => {
       const labelCentre = label.box.left + label.box.width / 2;
       expect(markerCentre).toBeCloseTo(labelCentre, 5);
     });
+  });
+
+  it("normalises every connector to a non-negative box and flags a rising segment", () => {
+    // column.series[0] is 100, -50, 200: point 0 to 1 falls, point 1 to 2
+    // rises. valueY maps a bigger value to a smaller top, so the naive box
+    // from a rising pair (previous.top, dy = point.top - previous.top) comes
+    // out with a negative height unless it is normalised.
+    const out = layoutChart({ ...column, kind: "line" }, box);
+    const connectors = lineShapes(out).filter((l) => l.name.startsWith("line"));
+    expect(connectors).toHaveLength(2);
+    expect(connectors.every((l) => l.box.width >= 0 && l.box.height >= 0)).toBe(
+      true,
+    );
+    expect(connectors.every((l) => inside(l.box))).toBe(true);
+    expect(connectors[0]!.rising).toBe(false); // 100 -> -50
+    expect(connectors[1]!.rising).toBe(true); // -50 -> 200
   });
 
   it("labels every point, one label per point per series, inside the box", () => {

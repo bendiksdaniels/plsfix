@@ -97,6 +97,20 @@ function addPrimitive(
     case "text":
       return addLabel(shapes, primitive, spec.font, at);
     case "line": {
+      // A box is always normalised to a non-negative width and height (see
+      // chart-shapes-parts.ts lineBetween), so a rising segment - bottom-left
+      // to top-right - cannot be drawn as a straight connector from it: the
+      // host has no "flip" on ConnectorType.straight, only a second preset
+      // for the other diagonal.
+      if (primitive.rising) {
+        const shape = shapes.addGeometricShape(
+          PowerPoint.GeometricShapeType.lineInverse,
+          at,
+        );
+        shape.lineFormat.color = primitive.color;
+        shape.lineFormat.weight = primitive.weight;
+        return shape;
+      }
       const shape = shapes.addLine(PowerPoint.ConnectorType.straight, at);
       // The host reads a zero width or height in the add as "not given" and
       // draws the line sloped over its 72 pt default (PowerPoint for the web,

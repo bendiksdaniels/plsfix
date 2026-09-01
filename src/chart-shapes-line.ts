@@ -4,7 +4,7 @@
 // edge). Pure: no Office.js, no DOM. Invariant: every primitive lies inside
 // the box it was given.
 
-import { boxAt, label, lineShape } from "./chart-shapes-parts";
+import { boxAt, label, lineBetween } from "./chart-shapes-parts";
 import {
   LABEL_HEIGHT,
   LABEL_SIZE,
@@ -100,13 +100,11 @@ function seriesPrimitives(
     if (pointIndex > 0) {
       const previous = positions[pointIndex - 1]!;
       out.push(
-        lineShape(
-          boxAt(
-            previous.left,
-            previous.top,
-            point.left - previous.left,
-            point.top - previous.top,
-          ),
+        lineBetween(
+          previous.left,
+          previous.top,
+          point.left,
+          point.top,
           series.colors[pointIndex]!,
           CONNECTOR_WEIGHT,
           `line ${seriesIndex}.${pointIndex - 1}`,
