@@ -156,6 +156,37 @@
           </div>
         </section>
 
+        <section aria-labelledby="reconcile-heading">
+          <div class="section-heading">
+            <div>
+              <p class="kicker">VARIANCE</p>
+              <h2 id="reconcile-heading">Find a combination</h2>
+            </div>
+          </div>
+          <div class="reconcile-form">
+            <label>
+              <span>Target</span>
+              <input id="reconcile-target" type="number" value="0" step="any" />
+            </label>
+            <label>
+              <span>Tolerance</span>
+              <input
+                id="reconcile-tolerance"
+                type="number"
+                value="0.01"
+                min="0"
+                step="any"
+              />
+            </label>
+            <button data-action="reconcile-find" type="button">
+              Find cells
+            </button>
+          </div>
+          <p id="reconcile-result" class="hint" aria-live="polite">
+            Select up to 34 numeric cells. Matching cells become the selection.
+          </p>
+        </section>
+
         <section aria-labelledby="templates-heading">
           <div class="section-heading">
             <div>

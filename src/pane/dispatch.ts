@@ -44,6 +44,7 @@ import { runFind } from "./find-panel";
 import { runCheck } from "./model-check-panel";
 import { applyPaintSlot, capturePaintSlot } from "./paint-slots";
 import { prepareShare } from "./share-panel";
+import { runReconciliation } from "./reconcile-panel";
 import { deleteStyles, scanStyles } from "./styles-panel";
 import { startTrace, toggleAudit } from "./trace-panel";
 import { insertTocSheet, scanNames } from "./workbook-tab";
@@ -185,6 +186,8 @@ export async function dispatch(action: string): Promise<string> {
         return prepareShare();
       case "run-model-check":
         return runCheck();
+      case "reconcile-find":
+        return runReconciliation();
       case "shortcut-card":
         return openShortcutCard();
       default:

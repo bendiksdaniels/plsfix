@@ -54,6 +54,14 @@ const tools: HelpCopy = {
       "paint-apply-3": "Paints what slot 3 remembers over the selection.",
     },
   },
+  "reconcile-heading": {
+    about:
+      "Finds which selected numbers add up to a target, within a tolerance, and selects those cells for review.",
+    buttons: {
+      "reconcile-find":
+        "Checks up to 34 numeric cells and selects the smallest matching combination it can find.",
+    },
+  },
   "cycles-heading": {
     about:
       "Buttons that step. Press the same one again and the format moves to the next variant.",
