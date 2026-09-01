@@ -33,17 +33,31 @@ const escapeXml = (text: string): string =>
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&apos;");
 
-function icons(spec: AddinSpec, indent: number): string {
+interface IconResids {
+  16: string;
+  32: string;
+  80: string;
+}
+
+function icons(resids: IconResids, indent: number): string {
   return pad(
     [
       "<Icon>",
-      `  <bt:Image size="16" resid="${escapeXml(spec.iconResids[16])}"/>`,
-      `  <bt:Image size="32" resid="${escapeXml(spec.iconResids[32])}"/>`,
-      `  <bt:Image size="80" resid="${escapeXml(spec.iconResids[80])}"/>`,
+      `  <bt:Image size="16" resid="${escapeXml(resids[16])}"/>`,
+      `  <bt:Image size="32" resid="${escapeXml(resids[32])}"/>`,
+      `  <bt:Image size="80" resid="${escapeXml(resids[80])}"/>`,
       "</Icon>",
     ].join("\n"),
     indent,
   );
+}
+
+function buttonIconResids(button: ButtonSpec): IconResids {
+  return {
+    16: `PLSFIX.Icon.${button.id}.16`,
+    32: `PLSFIX.Icon.${button.id}.32`,
+    80: `PLSFIX.Icon.${button.id}.80`,
+  };
 }
 
 function control(spec: AddinSpec, host: HostSpec, button: ButtonSpec): string {
@@ -67,7 +81,7 @@ function control(spec: AddinSpec, host: HostSpec, button: ButtonSpec): string {
     `    <Title resid="PLSFIX.${escapeXml(button.id)}.Label"/>`,
     `    <Description resid="PLSFIX.${escapeXml(button.id)}.Tip"/>`,
     `  </Supertip>`,
-    icons(spec, 2),
+    icons(buttonIconResids(button), 2),
     ...action.map((line) => `  ${line}`),
     `</Control>`,
   ].join("\n");
@@ -80,7 +94,7 @@ function groupBlock(spec: AddinSpec, host: HostSpec, group: GroupSpec): string {
   return [
     `<Group id="${escapeXml(group.id)}">`,
     `  <Label resid="${escapeXml(group.id)}.Label"/>`,
-    pad(icons(spec, 0), 2),
+    pad(icons(spec.iconResids, 0), 2),
     ...group.buttons.map((button) => pad(control(spec, host, button), 2)),
     `</Group>`,
   ].join("\n");
@@ -154,6 +168,17 @@ function resources(env: ManifestEnvironment, spec: AddinSpec): string {
     (size) =>
       `<bt:Image id="${escapeXml(spec.iconResids[size])}" DefaultValue="${escapeXml(env.baseUrl)}assets/icon-${size}.png"/>`,
   );
+  const commandImages = spec.hosts.flatMap((host) =>
+    host.groups.flatMap((group) =>
+      group.buttons.flatMap((button) => {
+        const resids = buttonIconResids(button);
+        return ICON_SIZES.map(
+          (size) =>
+            `<bt:Image id="${escapeXml(resids[size])}" DefaultValue="${escapeXml(env.baseUrl)}assets/ribbon/${escapeXml(button.icon)}-${size}.png"/>`,
+        );
+      }),
+    ),
+  );
   const urls = [
     ...spec.hosts.map(
       (host) =>
@@ -195,11 +220,17 @@ function resources(env: ManifestEnvironment, spec: AddinSpec): string {
       ),
     ),
   );
-  assertUniqueResourceIds([...images, ...urls, ...shorts, ...longs]);
+  assertUniqueResourceIds([
+    ...images,
+    ...commandImages,
+    ...urls,
+    ...shorts,
+    ...longs,
+  ]);
   return [
     `<Resources>`,
     `  <bt:Images>`,
-    ...images.map((line) => `    ${line}`),
+    ...[...images, ...commandImages].map((line) => `    ${line}`),
     `  </bt:Images>`,
     `  <bt:Urls>`,
     ...urls.map((line) => `    ${line}`),

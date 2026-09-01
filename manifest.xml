@@ -69,9 +69,9 @@
                     <Description resid="PLSFIX.OpenPane.Tip"/>
                   </Supertip>
                   <Icon>
-                    <bt:Image size="16" resid="PLSFIX.Icon.16"/>
-                    <bt:Image size="32" resid="PLSFIX.Icon.32"/>
-                    <bt:Image size="80" resid="PLSFIX.Icon.80"/>
+                    <bt:Image size="16" resid="PLSFIX.Icon.OpenPane.16"/>
+                    <bt:Image size="32" resid="PLSFIX.Icon.OpenPane.32"/>
+                    <bt:Image size="80" resid="PLSFIX.Icon.OpenPane.80"/>
                   </Icon>
                   <Action xsi:type="ShowTaskpane">
                     <TaskpaneId>PLSFIX.Taskpane</TaskpaneId>
@@ -85,9 +85,9 @@
                     <Description resid="PLSFIX.Autocolor.Tip"/>
                   </Supertip>
                   <Icon>
-                    <bt:Image size="16" resid="PLSFIX.Icon.16"/>
-                    <bt:Image size="32" resid="PLSFIX.Icon.32"/>
-                    <bt:Image size="80" resid="PLSFIX.Icon.80"/>
+                    <bt:Image size="16" resid="PLSFIX.Icon.Autocolor.16"/>
+                    <bt:Image size="32" resid="PLSFIX.Icon.Autocolor.32"/>
+                    <bt:Image size="80" resid="PLSFIX.Icon.Autocolor.80"/>
                   </Icon>
                   <Action xsi:type="ExecuteFunction">
                     <FunctionName>PLSFIX_AUTOCOLOR</FunctionName>
@@ -100,9 +100,9 @@
                     <Description resid="PLSFIX.FillRight.Tip"/>
                   </Supertip>
                   <Icon>
-                    <bt:Image size="16" resid="PLSFIX.Icon.16"/>
-                    <bt:Image size="32" resid="PLSFIX.Icon.32"/>
-                    <bt:Image size="80" resid="PLSFIX.Icon.80"/>
+                    <bt:Image size="16" resid="PLSFIX.Icon.FillRight.16"/>
+                    <bt:Image size="32" resid="PLSFIX.Icon.FillRight.32"/>
+                    <bt:Image size="80" resid="PLSFIX.Icon.FillRight.80"/>
                   </Icon>
                   <Action xsi:type="ExecuteFunction">
                     <FunctionName>PLSFIX_FILLRIGHT</FunctionName>
@@ -115,9 +115,9 @@
                     <Description resid="PLSFIX.FillDown.Tip"/>
                   </Supertip>
                   <Icon>
-                    <bt:Image size="16" resid="PLSFIX.Icon.16"/>
-                    <bt:Image size="32" resid="PLSFIX.Icon.32"/>
-                    <bt:Image size="80" resid="PLSFIX.Icon.80"/>
+                    <bt:Image size="16" resid="PLSFIX.Icon.FillDown.16"/>
+                    <bt:Image size="32" resid="PLSFIX.Icon.FillDown.32"/>
+                    <bt:Image size="80" resid="PLSFIX.Icon.FillDown.80"/>
                   </Icon>
                   <Action xsi:type="ExecuteFunction">
                     <FunctionName>PLSFIX_FILLDOWN</FunctionName>
@@ -130,9 +130,9 @@
                     <Description resid="PLSFIX.IfError.Tip"/>
                   </Supertip>
                   <Icon>
-                    <bt:Image size="16" resid="PLSFIX.Icon.16"/>
-                    <bt:Image size="32" resid="PLSFIX.Icon.32"/>
-                    <bt:Image size="80" resid="PLSFIX.Icon.80"/>
+                    <bt:Image size="16" resid="PLSFIX.Icon.IfError.16"/>
+                    <bt:Image size="32" resid="PLSFIX.Icon.IfError.32"/>
+                    <bt:Image size="80" resid="PLSFIX.Icon.IfError.80"/>
                   </Icon>
                   <Action xsi:type="ExecuteFunction">
                     <FunctionName>PLSFIX_IFERROR</FunctionName>
@@ -153,9 +153,9 @@
                     <Description resid="PLSFIX.Audit.Tip"/>
                   </Supertip>
                   <Icon>
-                    <bt:Image size="16" resid="PLSFIX.Icon.16"/>
-                    <bt:Image size="32" resid="PLSFIX.Icon.32"/>
-                    <bt:Image size="80" resid="PLSFIX.Icon.80"/>
+                    <bt:Image size="16" resid="PLSFIX.Icon.Audit.16"/>
+                    <bt:Image size="32" resid="PLSFIX.Icon.Audit.32"/>
+                    <bt:Image size="80" resid="PLSFIX.Icon.Audit.80"/>
                   </Icon>
                   <Action xsi:type="ExecuteFunction">
                     <FunctionName>PLSFIX_AUDIT</FunctionName>
@@ -168,9 +168,9 @@
                     <Description resid="PLSFIX.TracePre.Tip"/>
                   </Supertip>
                   <Icon>
-                    <bt:Image size="16" resid="PLSFIX.Icon.16"/>
-                    <bt:Image size="32" resid="PLSFIX.Icon.32"/>
-                    <bt:Image size="80" resid="PLSFIX.Icon.80"/>
+                    <bt:Image size="16" resid="PLSFIX.Icon.TracePre.16"/>
+                    <bt:Image size="32" resid="PLSFIX.Icon.TracePre.32"/>
+                    <bt:Image size="80" resid="PLSFIX.Icon.TracePre.80"/>
                   </Icon>
                   <Action xsi:type="ExecuteFunction">
                     <FunctionName>PLSFIX_TRACE_PRE</FunctionName>
@@ -183,9 +183,9 @@
                     <Description resid="PLSFIX.TraceDep.Tip"/>
                   </Supertip>
                   <Icon>
-                    <bt:Image size="16" resid="PLSFIX.Icon.16"/>
-                    <bt:Image size="32" resid="PLSFIX.Icon.32"/>
-                    <bt:Image size="80" resid="PLSFIX.Icon.80"/>
+                    <bt:Image size="16" resid="PLSFIX.Icon.TraceDep.16"/>
+                    <bt:Image size="32" resid="PLSFIX.Icon.TraceDep.32"/>
+                    <bt:Image size="80" resid="PLSFIX.Icon.TraceDep.80"/>
                   </Icon>
                   <Action xsi:type="ExecuteFunction">
                     <FunctionName>PLSFIX_TRACE_DEP</FunctionName>
@@ -206,9 +206,9 @@
                     <Description resid="PLSFIX.Undo.Tip"/>
                   </Supertip>
                   <Icon>
-                    <bt:Image size="16" resid="PLSFIX.Icon.16"/>
-                    <bt:Image size="32" resid="PLSFIX.Icon.32"/>
-                    <bt:Image size="80" resid="PLSFIX.Icon.80"/>
+                    <bt:Image size="16" resid="PLSFIX.Icon.Undo.16"/>
+                    <bt:Image size="32" resid="PLSFIX.Icon.Undo.32"/>
+                    <bt:Image size="80" resid="PLSFIX.Icon.Undo.80"/>
                   </Icon>
                   <Action xsi:type="ExecuteFunction">
                     <FunctionName>PLSFIX_UNDO</FunctionName>
@@ -221,9 +221,9 @@
                     <Description resid="PLSFIX.PasteValues.Tip"/>
                   </Supertip>
                   <Icon>
-                    <bt:Image size="16" resid="PLSFIX.Icon.16"/>
-                    <bt:Image size="32" resid="PLSFIX.Icon.32"/>
-                    <bt:Image size="80" resid="PLSFIX.Icon.80"/>
+                    <bt:Image size="16" resid="PLSFIX.Icon.PasteValues.16"/>
+                    <bt:Image size="32" resid="PLSFIX.Icon.PasteValues.32"/>
+                    <bt:Image size="80" resid="PLSFIX.Icon.PasteValues.80"/>
                   </Icon>
                   <Action xsi:type="ExecuteFunction">
                     <FunctionName>PLSFIX_PASTE_VALUES</FunctionName>
@@ -236,9 +236,9 @@
                     <Description resid="PLSFIX.PasteFormats.Tip"/>
                   </Supertip>
                   <Icon>
-                    <bt:Image size="16" resid="PLSFIX.Icon.16"/>
-                    <bt:Image size="32" resid="PLSFIX.Icon.32"/>
-                    <bt:Image size="80" resid="PLSFIX.Icon.80"/>
+                    <bt:Image size="16" resid="PLSFIX.Icon.PasteFormats.16"/>
+                    <bt:Image size="32" resid="PLSFIX.Icon.PasteFormats.32"/>
+                    <bt:Image size="80" resid="PLSFIX.Icon.PasteFormats.80"/>
                   </Icon>
                   <Action xsi:type="ExecuteFunction">
                     <FunctionName>PLSFIX_PASTE_FORMATS</FunctionName>
@@ -259,9 +259,9 @@
                     <Description resid="PLSFIX.Cagr.Tip"/>
                   </Supertip>
                   <Icon>
-                    <bt:Image size="16" resid="PLSFIX.Icon.16"/>
-                    <bt:Image size="32" resid="PLSFIX.Icon.32"/>
-                    <bt:Image size="80" resid="PLSFIX.Icon.80"/>
+                    <bt:Image size="16" resid="PLSFIX.Icon.Cagr.16"/>
+                    <bt:Image size="32" resid="PLSFIX.Icon.Cagr.32"/>
+                    <bt:Image size="80" resid="PLSFIX.Icon.Cagr.80"/>
                   </Icon>
                   <Action xsi:type="ExecuteFunction">
                     <FunctionName>PLSFIX_CAGR</FunctionName>
@@ -274,9 +274,9 @@
                     <Description resid="PLSFIX.Sign.Tip"/>
                   </Supertip>
                   <Icon>
-                    <bt:Image size="16" resid="PLSFIX.Icon.16"/>
-                    <bt:Image size="32" resid="PLSFIX.Icon.32"/>
-                    <bt:Image size="80" resid="PLSFIX.Icon.80"/>
+                    <bt:Image size="16" resid="PLSFIX.Icon.Sign.16"/>
+                    <bt:Image size="32" resid="PLSFIX.Icon.Sign.32"/>
+                    <bt:Image size="80" resid="PLSFIX.Icon.Sign.80"/>
                   </Icon>
                   <Action xsi:type="ExecuteFunction">
                     <FunctionName>PLSFIX_SIGN</FunctionName>
@@ -289,9 +289,9 @@
                     <Description resid="PLSFIX.ScaleUp.Tip"/>
                   </Supertip>
                   <Icon>
-                    <bt:Image size="16" resid="PLSFIX.Icon.16"/>
-                    <bt:Image size="32" resid="PLSFIX.Icon.32"/>
-                    <bt:Image size="80" resid="PLSFIX.Icon.80"/>
+                    <bt:Image size="16" resid="PLSFIX.Icon.ScaleUp.16"/>
+                    <bt:Image size="32" resid="PLSFIX.Icon.ScaleUp.32"/>
+                    <bt:Image size="80" resid="PLSFIX.Icon.ScaleUp.80"/>
                   </Icon>
                   <Action xsi:type="ExecuteFunction">
                     <FunctionName>PLSFIX_SCALEUP</FunctionName>
@@ -304,9 +304,9 @@
                     <Description resid="PLSFIX.ScaleDown.Tip"/>
                   </Supertip>
                   <Icon>
-                    <bt:Image size="16" resid="PLSFIX.Icon.16"/>
-                    <bt:Image size="32" resid="PLSFIX.Icon.32"/>
-                    <bt:Image size="80" resid="PLSFIX.Icon.80"/>
+                    <bt:Image size="16" resid="PLSFIX.Icon.ScaleDown.16"/>
+                    <bt:Image size="32" resid="PLSFIX.Icon.ScaleDown.32"/>
+                    <bt:Image size="80" resid="PLSFIX.Icon.ScaleDown.80"/>
                   </Icon>
                   <Action xsi:type="ExecuteFunction">
                     <FunctionName>PLSFIX_SCALEDOWN</FunctionName>
@@ -327,9 +327,9 @@
                     <Description resid="PLSFIX.Waterfall.Tip"/>
                   </Supertip>
                   <Icon>
-                    <bt:Image size="16" resid="PLSFIX.Icon.16"/>
-                    <bt:Image size="32" resid="PLSFIX.Icon.32"/>
-                    <bt:Image size="80" resid="PLSFIX.Icon.80"/>
+                    <bt:Image size="16" resid="PLSFIX.Icon.Waterfall.16"/>
+                    <bt:Image size="32" resid="PLSFIX.Icon.Waterfall.32"/>
+                    <bt:Image size="80" resid="PLSFIX.Icon.Waterfall.80"/>
                   </Icon>
                   <Action xsi:type="ExecuteFunction">
                     <FunctionName>PLSFIX_WATERFALL</FunctionName>
@@ -342,9 +342,9 @@
                     <Description resid="PLSFIX.Toc.Tip"/>
                   </Supertip>
                   <Icon>
-                    <bt:Image size="16" resid="PLSFIX.Icon.16"/>
-                    <bt:Image size="32" resid="PLSFIX.Icon.32"/>
-                    <bt:Image size="80" resid="PLSFIX.Icon.80"/>
+                    <bt:Image size="16" resid="PLSFIX.Icon.Toc.16"/>
+                    <bt:Image size="32" resid="PLSFIX.Icon.Toc.32"/>
+                    <bt:Image size="80" resid="PLSFIX.Icon.Toc.80"/>
                   </Icon>
                   <Action xsi:type="ExecuteFunction">
                     <FunctionName>PLSFIX_TOC</FunctionName>
@@ -378,9 +378,9 @@
                     <Description resid="PLSFIX.OpenLinks.Tip"/>
                   </Supertip>
                   <Icon>
-                    <bt:Image size="16" resid="PLSFIX.Icon.16"/>
-                    <bt:Image size="32" resid="PLSFIX.Icon.32"/>
-                    <bt:Image size="80" resid="PLSFIX.Icon.80"/>
+                    <bt:Image size="16" resid="PLSFIX.Icon.OpenLinks.16"/>
+                    <bt:Image size="32" resid="PLSFIX.Icon.OpenLinks.32"/>
+                    <bt:Image size="80" resid="PLSFIX.Icon.OpenLinks.80"/>
                   </Icon>
                   <Action xsi:type="ShowTaskpane">
                     <TaskpaneId>PLSFIX.Pptpane</TaskpaneId>
@@ -399,6 +399,60 @@
         <bt:Image id="PLSFIX.Icon.16" DefaultValue="https://localhost:3000/assets/icon-16.png"/>
         <bt:Image id="PLSFIX.Icon.32" DefaultValue="https://localhost:3000/assets/icon-32.png"/>
         <bt:Image id="PLSFIX.Icon.80" DefaultValue="https://localhost:3000/assets/icon-80.png"/>
+        <bt:Image id="PLSFIX.Icon.OpenPane.16" DefaultValue="https://localhost:3000/assets/ribbon/pane-16.png"/>
+        <bt:Image id="PLSFIX.Icon.OpenPane.32" DefaultValue="https://localhost:3000/assets/ribbon/pane-32.png"/>
+        <bt:Image id="PLSFIX.Icon.OpenPane.80" DefaultValue="https://localhost:3000/assets/ribbon/pane-80.png"/>
+        <bt:Image id="PLSFIX.Icon.Autocolor.16" DefaultValue="https://localhost:3000/assets/ribbon/palette-16.png"/>
+        <bt:Image id="PLSFIX.Icon.Autocolor.32" DefaultValue="https://localhost:3000/assets/ribbon/palette-32.png"/>
+        <bt:Image id="PLSFIX.Icon.Autocolor.80" DefaultValue="https://localhost:3000/assets/ribbon/palette-80.png"/>
+        <bt:Image id="PLSFIX.Icon.FillRight.16" DefaultValue="https://localhost:3000/assets/ribbon/fill-right-16.png"/>
+        <bt:Image id="PLSFIX.Icon.FillRight.32" DefaultValue="https://localhost:3000/assets/ribbon/fill-right-32.png"/>
+        <bt:Image id="PLSFIX.Icon.FillRight.80" DefaultValue="https://localhost:3000/assets/ribbon/fill-right-80.png"/>
+        <bt:Image id="PLSFIX.Icon.FillDown.16" DefaultValue="https://localhost:3000/assets/ribbon/fill-down-16.png"/>
+        <bt:Image id="PLSFIX.Icon.FillDown.32" DefaultValue="https://localhost:3000/assets/ribbon/fill-down-32.png"/>
+        <bt:Image id="PLSFIX.Icon.FillDown.80" DefaultValue="https://localhost:3000/assets/ribbon/fill-down-80.png"/>
+        <bt:Image id="PLSFIX.Icon.IfError.16" DefaultValue="https://localhost:3000/assets/ribbon/guard-16.png"/>
+        <bt:Image id="PLSFIX.Icon.IfError.32" DefaultValue="https://localhost:3000/assets/ribbon/guard-32.png"/>
+        <bt:Image id="PLSFIX.Icon.IfError.80" DefaultValue="https://localhost:3000/assets/ribbon/guard-80.png"/>
+        <bt:Image id="PLSFIX.Icon.Audit.16" DefaultValue="https://localhost:3000/assets/ribbon/audit-16.png"/>
+        <bt:Image id="PLSFIX.Icon.Audit.32" DefaultValue="https://localhost:3000/assets/ribbon/audit-32.png"/>
+        <bt:Image id="PLSFIX.Icon.Audit.80" DefaultValue="https://localhost:3000/assets/ribbon/audit-80.png"/>
+        <bt:Image id="PLSFIX.Icon.TracePre.16" DefaultValue="https://localhost:3000/assets/ribbon/precedents-16.png"/>
+        <bt:Image id="PLSFIX.Icon.TracePre.32" DefaultValue="https://localhost:3000/assets/ribbon/precedents-32.png"/>
+        <bt:Image id="PLSFIX.Icon.TracePre.80" DefaultValue="https://localhost:3000/assets/ribbon/precedents-80.png"/>
+        <bt:Image id="PLSFIX.Icon.TraceDep.16" DefaultValue="https://localhost:3000/assets/ribbon/dependents-16.png"/>
+        <bt:Image id="PLSFIX.Icon.TraceDep.32" DefaultValue="https://localhost:3000/assets/ribbon/dependents-32.png"/>
+        <bt:Image id="PLSFIX.Icon.TraceDep.80" DefaultValue="https://localhost:3000/assets/ribbon/dependents-80.png"/>
+        <bt:Image id="PLSFIX.Icon.Undo.16" DefaultValue="https://localhost:3000/assets/ribbon/undo-16.png"/>
+        <bt:Image id="PLSFIX.Icon.Undo.32" DefaultValue="https://localhost:3000/assets/ribbon/undo-32.png"/>
+        <bt:Image id="PLSFIX.Icon.Undo.80" DefaultValue="https://localhost:3000/assets/ribbon/undo-80.png"/>
+        <bt:Image id="PLSFIX.Icon.PasteValues.16" DefaultValue="https://localhost:3000/assets/ribbon/paste-values-16.png"/>
+        <bt:Image id="PLSFIX.Icon.PasteValues.32" DefaultValue="https://localhost:3000/assets/ribbon/paste-values-32.png"/>
+        <bt:Image id="PLSFIX.Icon.PasteValues.80" DefaultValue="https://localhost:3000/assets/ribbon/paste-values-80.png"/>
+        <bt:Image id="PLSFIX.Icon.PasteFormats.16" DefaultValue="https://localhost:3000/assets/ribbon/paste-formats-16.png"/>
+        <bt:Image id="PLSFIX.Icon.PasteFormats.32" DefaultValue="https://localhost:3000/assets/ribbon/paste-formats-32.png"/>
+        <bt:Image id="PLSFIX.Icon.PasteFormats.80" DefaultValue="https://localhost:3000/assets/ribbon/paste-formats-80.png"/>
+        <bt:Image id="PLSFIX.Icon.Cagr.16" DefaultValue="https://localhost:3000/assets/ribbon/cagr-16.png"/>
+        <bt:Image id="PLSFIX.Icon.Cagr.32" DefaultValue="https://localhost:3000/assets/ribbon/cagr-32.png"/>
+        <bt:Image id="PLSFIX.Icon.Cagr.80" DefaultValue="https://localhost:3000/assets/ribbon/cagr-80.png"/>
+        <bt:Image id="PLSFIX.Icon.Sign.16" DefaultValue="https://localhost:3000/assets/ribbon/sign-16.png"/>
+        <bt:Image id="PLSFIX.Icon.Sign.32" DefaultValue="https://localhost:3000/assets/ribbon/sign-32.png"/>
+        <bt:Image id="PLSFIX.Icon.Sign.80" DefaultValue="https://localhost:3000/assets/ribbon/sign-80.png"/>
+        <bt:Image id="PLSFIX.Icon.ScaleUp.16" DefaultValue="https://localhost:3000/assets/ribbon/scale-up-16.png"/>
+        <bt:Image id="PLSFIX.Icon.ScaleUp.32" DefaultValue="https://localhost:3000/assets/ribbon/scale-up-32.png"/>
+        <bt:Image id="PLSFIX.Icon.ScaleUp.80" DefaultValue="https://localhost:3000/assets/ribbon/scale-up-80.png"/>
+        <bt:Image id="PLSFIX.Icon.ScaleDown.16" DefaultValue="https://localhost:3000/assets/ribbon/scale-down-16.png"/>
+        <bt:Image id="PLSFIX.Icon.ScaleDown.32" DefaultValue="https://localhost:3000/assets/ribbon/scale-down-32.png"/>
+        <bt:Image id="PLSFIX.Icon.ScaleDown.80" DefaultValue="https://localhost:3000/assets/ribbon/scale-down-80.png"/>
+        <bt:Image id="PLSFIX.Icon.Waterfall.16" DefaultValue="https://localhost:3000/assets/ribbon/waterfall-16.png"/>
+        <bt:Image id="PLSFIX.Icon.Waterfall.32" DefaultValue="https://localhost:3000/assets/ribbon/waterfall-32.png"/>
+        <bt:Image id="PLSFIX.Icon.Waterfall.80" DefaultValue="https://localhost:3000/assets/ribbon/waterfall-80.png"/>
+        <bt:Image id="PLSFIX.Icon.Toc.16" DefaultValue="https://localhost:3000/assets/ribbon/toc-16.png"/>
+        <bt:Image id="PLSFIX.Icon.Toc.32" DefaultValue="https://localhost:3000/assets/ribbon/toc-32.png"/>
+        <bt:Image id="PLSFIX.Icon.Toc.80" DefaultValue="https://localhost:3000/assets/ribbon/toc-80.png"/>
+        <bt:Image id="PLSFIX.Icon.OpenLinks.16" DefaultValue="https://localhost:3000/assets/ribbon/links-16.png"/>
+        <bt:Image id="PLSFIX.Icon.OpenLinks.32" DefaultValue="https://localhost:3000/assets/ribbon/links-32.png"/>
+        <bt:Image id="PLSFIX.Icon.OpenLinks.80" DefaultValue="https://localhost:3000/assets/ribbon/links-80.png"/>
       </bt:Images>
       <bt:Urls>
         <bt:Url id="PLSFIX.Taskpane.Url" DefaultValue="https://localhost:3000/taskpane.html"/>
@@ -498,9 +552,9 @@
                       <Description resid="PLSFIX.OpenPane.Tip"/>
                     </Supertip>
                     <Icon>
-                      <bt:Image size="16" resid="PLSFIX.Icon.16"/>
-                      <bt:Image size="32" resid="PLSFIX.Icon.32"/>
-                      <bt:Image size="80" resid="PLSFIX.Icon.80"/>
+                      <bt:Image size="16" resid="PLSFIX.Icon.OpenPane.16"/>
+                      <bt:Image size="32" resid="PLSFIX.Icon.OpenPane.32"/>
+                      <bt:Image size="80" resid="PLSFIX.Icon.OpenPane.80"/>
                     </Icon>
                     <Action xsi:type="ShowTaskpane">
                       <TaskpaneId>PLSFIX.Taskpane</TaskpaneId>
@@ -514,9 +568,9 @@
                       <Description resid="PLSFIX.Autocolor.Tip"/>
                     </Supertip>
                     <Icon>
-                      <bt:Image size="16" resid="PLSFIX.Icon.16"/>
-                      <bt:Image size="32" resid="PLSFIX.Icon.32"/>
-                      <bt:Image size="80" resid="PLSFIX.Icon.80"/>
+                      <bt:Image size="16" resid="PLSFIX.Icon.Autocolor.16"/>
+                      <bt:Image size="32" resid="PLSFIX.Icon.Autocolor.32"/>
+                      <bt:Image size="80" resid="PLSFIX.Icon.Autocolor.80"/>
                     </Icon>
                     <Action xsi:type="ExecuteFunction">
                       <FunctionName>PLSFIX_AUTOCOLOR</FunctionName>
@@ -529,9 +583,9 @@
                       <Description resid="PLSFIX.FillRight.Tip"/>
                     </Supertip>
                     <Icon>
-                      <bt:Image size="16" resid="PLSFIX.Icon.16"/>
-                      <bt:Image size="32" resid="PLSFIX.Icon.32"/>
-                      <bt:Image size="80" resid="PLSFIX.Icon.80"/>
+                      <bt:Image size="16" resid="PLSFIX.Icon.FillRight.16"/>
+                      <bt:Image size="32" resid="PLSFIX.Icon.FillRight.32"/>
+                      <bt:Image size="80" resid="PLSFIX.Icon.FillRight.80"/>
                     </Icon>
                     <Action xsi:type="ExecuteFunction">
                       <FunctionName>PLSFIX_FILLRIGHT</FunctionName>
@@ -544,9 +598,9 @@
                       <Description resid="PLSFIX.FillDown.Tip"/>
                     </Supertip>
                     <Icon>
-                      <bt:Image size="16" resid="PLSFIX.Icon.16"/>
-                      <bt:Image size="32" resid="PLSFIX.Icon.32"/>
-                      <bt:Image size="80" resid="PLSFIX.Icon.80"/>
+                      <bt:Image size="16" resid="PLSFIX.Icon.FillDown.16"/>
+                      <bt:Image size="32" resid="PLSFIX.Icon.FillDown.32"/>
+                      <bt:Image size="80" resid="PLSFIX.Icon.FillDown.80"/>
                     </Icon>
                     <Action xsi:type="ExecuteFunction">
                       <FunctionName>PLSFIX_FILLDOWN</FunctionName>
@@ -559,9 +613,9 @@
                       <Description resid="PLSFIX.IfError.Tip"/>
                     </Supertip>
                     <Icon>
-                      <bt:Image size="16" resid="PLSFIX.Icon.16"/>
-                      <bt:Image size="32" resid="PLSFIX.Icon.32"/>
-                      <bt:Image size="80" resid="PLSFIX.Icon.80"/>
+                      <bt:Image size="16" resid="PLSFIX.Icon.IfError.16"/>
+                      <bt:Image size="32" resid="PLSFIX.Icon.IfError.32"/>
+                      <bt:Image size="80" resid="PLSFIX.Icon.IfError.80"/>
                     </Icon>
                     <Action xsi:type="ExecuteFunction">
                       <FunctionName>PLSFIX_IFERROR</FunctionName>
@@ -582,9 +636,9 @@
                       <Description resid="PLSFIX.Audit.Tip"/>
                     </Supertip>
                     <Icon>
-                      <bt:Image size="16" resid="PLSFIX.Icon.16"/>
-                      <bt:Image size="32" resid="PLSFIX.Icon.32"/>
-                      <bt:Image size="80" resid="PLSFIX.Icon.80"/>
+                      <bt:Image size="16" resid="PLSFIX.Icon.Audit.16"/>
+                      <bt:Image size="32" resid="PLSFIX.Icon.Audit.32"/>
+                      <bt:Image size="80" resid="PLSFIX.Icon.Audit.80"/>
                     </Icon>
                     <Action xsi:type="ExecuteFunction">
                       <FunctionName>PLSFIX_AUDIT</FunctionName>
@@ -597,9 +651,9 @@
                       <Description resid="PLSFIX.TracePre.Tip"/>
                     </Supertip>
                     <Icon>
-                      <bt:Image size="16" resid="PLSFIX.Icon.16"/>
-                      <bt:Image size="32" resid="PLSFIX.Icon.32"/>
-                      <bt:Image size="80" resid="PLSFIX.Icon.80"/>
+                      <bt:Image size="16" resid="PLSFIX.Icon.TracePre.16"/>
+                      <bt:Image size="32" resid="PLSFIX.Icon.TracePre.32"/>
+                      <bt:Image size="80" resid="PLSFIX.Icon.TracePre.80"/>
                     </Icon>
                     <Action xsi:type="ExecuteFunction">
                       <FunctionName>PLSFIX_TRACE_PRE</FunctionName>
@@ -612,9 +666,9 @@
                       <Description resid="PLSFIX.TraceDep.Tip"/>
                     </Supertip>
                     <Icon>
-                      <bt:Image size="16" resid="PLSFIX.Icon.16"/>
-                      <bt:Image size="32" resid="PLSFIX.Icon.32"/>
-                      <bt:Image size="80" resid="PLSFIX.Icon.80"/>
+                      <bt:Image size="16" resid="PLSFIX.Icon.TraceDep.16"/>
+                      <bt:Image size="32" resid="PLSFIX.Icon.TraceDep.32"/>
+                      <bt:Image size="80" resid="PLSFIX.Icon.TraceDep.80"/>
                     </Icon>
                     <Action xsi:type="ExecuteFunction">
                       <FunctionName>PLSFIX_TRACE_DEP</FunctionName>
@@ -635,9 +689,9 @@
                       <Description resid="PLSFIX.Undo.Tip"/>
                     </Supertip>
                     <Icon>
-                      <bt:Image size="16" resid="PLSFIX.Icon.16"/>
-                      <bt:Image size="32" resid="PLSFIX.Icon.32"/>
-                      <bt:Image size="80" resid="PLSFIX.Icon.80"/>
+                      <bt:Image size="16" resid="PLSFIX.Icon.Undo.16"/>
+                      <bt:Image size="32" resid="PLSFIX.Icon.Undo.32"/>
+                      <bt:Image size="80" resid="PLSFIX.Icon.Undo.80"/>
                     </Icon>
                     <Action xsi:type="ExecuteFunction">
                       <FunctionName>PLSFIX_UNDO</FunctionName>
@@ -650,9 +704,9 @@
                       <Description resid="PLSFIX.PasteValues.Tip"/>
                     </Supertip>
                     <Icon>
-                      <bt:Image size="16" resid="PLSFIX.Icon.16"/>
-                      <bt:Image size="32" resid="PLSFIX.Icon.32"/>
-                      <bt:Image size="80" resid="PLSFIX.Icon.80"/>
+                      <bt:Image size="16" resid="PLSFIX.Icon.PasteValues.16"/>
+                      <bt:Image size="32" resid="PLSFIX.Icon.PasteValues.32"/>
+                      <bt:Image size="80" resid="PLSFIX.Icon.PasteValues.80"/>
                     </Icon>
                     <Action xsi:type="ExecuteFunction">
                       <FunctionName>PLSFIX_PASTE_VALUES</FunctionName>
@@ -665,9 +719,9 @@
                       <Description resid="PLSFIX.PasteFormats.Tip"/>
                     </Supertip>
                     <Icon>
-                      <bt:Image size="16" resid="PLSFIX.Icon.16"/>
-                      <bt:Image size="32" resid="PLSFIX.Icon.32"/>
-                      <bt:Image size="80" resid="PLSFIX.Icon.80"/>
+                      <bt:Image size="16" resid="PLSFIX.Icon.PasteFormats.16"/>
+                      <bt:Image size="32" resid="PLSFIX.Icon.PasteFormats.32"/>
+                      <bt:Image size="80" resid="PLSFIX.Icon.PasteFormats.80"/>
                     </Icon>
                     <Action xsi:type="ExecuteFunction">
                       <FunctionName>PLSFIX_PASTE_FORMATS</FunctionName>
@@ -688,9 +742,9 @@
                       <Description resid="PLSFIX.Cagr.Tip"/>
                     </Supertip>
                     <Icon>
-                      <bt:Image size="16" resid="PLSFIX.Icon.16"/>
-                      <bt:Image size="32" resid="PLSFIX.Icon.32"/>
-                      <bt:Image size="80" resid="PLSFIX.Icon.80"/>
+                      <bt:Image size="16" resid="PLSFIX.Icon.Cagr.16"/>
+                      <bt:Image size="32" resid="PLSFIX.Icon.Cagr.32"/>
+                      <bt:Image size="80" resid="PLSFIX.Icon.Cagr.80"/>
                     </Icon>
                     <Action xsi:type="ExecuteFunction">
                       <FunctionName>PLSFIX_CAGR</FunctionName>
@@ -703,9 +757,9 @@
                       <Description resid="PLSFIX.Sign.Tip"/>
                     </Supertip>
                     <Icon>
-                      <bt:Image size="16" resid="PLSFIX.Icon.16"/>
-                      <bt:Image size="32" resid="PLSFIX.Icon.32"/>
-                      <bt:Image size="80" resid="PLSFIX.Icon.80"/>
+                      <bt:Image size="16" resid="PLSFIX.Icon.Sign.16"/>
+                      <bt:Image size="32" resid="PLSFIX.Icon.Sign.32"/>
+                      <bt:Image size="80" resid="PLSFIX.Icon.Sign.80"/>
                     </Icon>
                     <Action xsi:type="ExecuteFunction">
                       <FunctionName>PLSFIX_SIGN</FunctionName>
@@ -718,9 +772,9 @@
                       <Description resid="PLSFIX.ScaleUp.Tip"/>
                     </Supertip>
                     <Icon>
-                      <bt:Image size="16" resid="PLSFIX.Icon.16"/>
-                      <bt:Image size="32" resid="PLSFIX.Icon.32"/>
-                      <bt:Image size="80" resid="PLSFIX.Icon.80"/>
+                      <bt:Image size="16" resid="PLSFIX.Icon.ScaleUp.16"/>
+                      <bt:Image size="32" resid="PLSFIX.Icon.ScaleUp.32"/>
+                      <bt:Image size="80" resid="PLSFIX.Icon.ScaleUp.80"/>
                     </Icon>
                     <Action xsi:type="ExecuteFunction">
                       <FunctionName>PLSFIX_SCALEUP</FunctionName>
@@ -733,9 +787,9 @@
                       <Description resid="PLSFIX.ScaleDown.Tip"/>
                     </Supertip>
                     <Icon>
-                      <bt:Image size="16" resid="PLSFIX.Icon.16"/>
-                      <bt:Image size="32" resid="PLSFIX.Icon.32"/>
-                      <bt:Image size="80" resid="PLSFIX.Icon.80"/>
+                      <bt:Image size="16" resid="PLSFIX.Icon.ScaleDown.16"/>
+                      <bt:Image size="32" resid="PLSFIX.Icon.ScaleDown.32"/>
+                      <bt:Image size="80" resid="PLSFIX.Icon.ScaleDown.80"/>
                     </Icon>
                     <Action xsi:type="ExecuteFunction">
                       <FunctionName>PLSFIX_SCALEDOWN</FunctionName>
@@ -756,9 +810,9 @@
                       <Description resid="PLSFIX.Waterfall.Tip"/>
                     </Supertip>
                     <Icon>
-                      <bt:Image size="16" resid="PLSFIX.Icon.16"/>
-                      <bt:Image size="32" resid="PLSFIX.Icon.32"/>
-                      <bt:Image size="80" resid="PLSFIX.Icon.80"/>
+                      <bt:Image size="16" resid="PLSFIX.Icon.Waterfall.16"/>
+                      <bt:Image size="32" resid="PLSFIX.Icon.Waterfall.32"/>
+                      <bt:Image size="80" resid="PLSFIX.Icon.Waterfall.80"/>
                     </Icon>
                     <Action xsi:type="ExecuteFunction">
                       <FunctionName>PLSFIX_WATERFALL</FunctionName>
@@ -771,9 +825,9 @@
                       <Description resid="PLSFIX.Toc.Tip"/>
                     </Supertip>
                     <Icon>
-                      <bt:Image size="16" resid="PLSFIX.Icon.16"/>
-                      <bt:Image size="32" resid="PLSFIX.Icon.32"/>
-                      <bt:Image size="80" resid="PLSFIX.Icon.80"/>
+                      <bt:Image size="16" resid="PLSFIX.Icon.Toc.16"/>
+                      <bt:Image size="32" resid="PLSFIX.Icon.Toc.32"/>
+                      <bt:Image size="80" resid="PLSFIX.Icon.Toc.80"/>
                     </Icon>
                     <Action xsi:type="ExecuteFunction">
                       <FunctionName>PLSFIX_TOC</FunctionName>
@@ -807,9 +861,9 @@
                       <Description resid="PLSFIX.OpenLinks.Tip"/>
                     </Supertip>
                     <Icon>
-                      <bt:Image size="16" resid="PLSFIX.Icon.16"/>
-                      <bt:Image size="32" resid="PLSFIX.Icon.32"/>
-                      <bt:Image size="80" resid="PLSFIX.Icon.80"/>
+                      <bt:Image size="16" resid="PLSFIX.Icon.OpenLinks.16"/>
+                      <bt:Image size="32" resid="PLSFIX.Icon.OpenLinks.32"/>
+                      <bt:Image size="80" resid="PLSFIX.Icon.OpenLinks.80"/>
                     </Icon>
                     <Action xsi:type="ShowTaskpane">
                       <TaskpaneId>PLSFIX.Pptpane</TaskpaneId>
@@ -828,6 +882,60 @@
           <bt:Image id="PLSFIX.Icon.16" DefaultValue="https://localhost:3000/assets/icon-16.png"/>
           <bt:Image id="PLSFIX.Icon.32" DefaultValue="https://localhost:3000/assets/icon-32.png"/>
           <bt:Image id="PLSFIX.Icon.80" DefaultValue="https://localhost:3000/assets/icon-80.png"/>
+          <bt:Image id="PLSFIX.Icon.OpenPane.16" DefaultValue="https://localhost:3000/assets/ribbon/pane-16.png"/>
+          <bt:Image id="PLSFIX.Icon.OpenPane.32" DefaultValue="https://localhost:3000/assets/ribbon/pane-32.png"/>
+          <bt:Image id="PLSFIX.Icon.OpenPane.80" DefaultValue="https://localhost:3000/assets/ribbon/pane-80.png"/>
+          <bt:Image id="PLSFIX.Icon.Autocolor.16" DefaultValue="https://localhost:3000/assets/ribbon/palette-16.png"/>
+          <bt:Image id="PLSFIX.Icon.Autocolor.32" DefaultValue="https://localhost:3000/assets/ribbon/palette-32.png"/>
+          <bt:Image id="PLSFIX.Icon.Autocolor.80" DefaultValue="https://localhost:3000/assets/ribbon/palette-80.png"/>
+          <bt:Image id="PLSFIX.Icon.FillRight.16" DefaultValue="https://localhost:3000/assets/ribbon/fill-right-16.png"/>
+          <bt:Image id="PLSFIX.Icon.FillRight.32" DefaultValue="https://localhost:3000/assets/ribbon/fill-right-32.png"/>
+          <bt:Image id="PLSFIX.Icon.FillRight.80" DefaultValue="https://localhost:3000/assets/ribbon/fill-right-80.png"/>
+          <bt:Image id="PLSFIX.Icon.FillDown.16" DefaultValue="https://localhost:3000/assets/ribbon/fill-down-16.png"/>
+          <bt:Image id="PLSFIX.Icon.FillDown.32" DefaultValue="https://localhost:3000/assets/ribbon/fill-down-32.png"/>
+          <bt:Image id="PLSFIX.Icon.FillDown.80" DefaultValue="https://localhost:3000/assets/ribbon/fill-down-80.png"/>
+          <bt:Image id="PLSFIX.Icon.IfError.16" DefaultValue="https://localhost:3000/assets/ribbon/guard-16.png"/>
+          <bt:Image id="PLSFIX.Icon.IfError.32" DefaultValue="https://localhost:3000/assets/ribbon/guard-32.png"/>
+          <bt:Image id="PLSFIX.Icon.IfError.80" DefaultValue="https://localhost:3000/assets/ribbon/guard-80.png"/>
+          <bt:Image id="PLSFIX.Icon.Audit.16" DefaultValue="https://localhost:3000/assets/ribbon/audit-16.png"/>
+          <bt:Image id="PLSFIX.Icon.Audit.32" DefaultValue="https://localhost:3000/assets/ribbon/audit-32.png"/>
+          <bt:Image id="PLSFIX.Icon.Audit.80" DefaultValue="https://localhost:3000/assets/ribbon/audit-80.png"/>
+          <bt:Image id="PLSFIX.Icon.TracePre.16" DefaultValue="https://localhost:3000/assets/ribbon/precedents-16.png"/>
+          <bt:Image id="PLSFIX.Icon.TracePre.32" DefaultValue="https://localhost:3000/assets/ribbon/precedents-32.png"/>
+          <bt:Image id="PLSFIX.Icon.TracePre.80" DefaultValue="https://localhost:3000/assets/ribbon/precedents-80.png"/>
+          <bt:Image id="PLSFIX.Icon.TraceDep.16" DefaultValue="https://localhost:3000/assets/ribbon/dependents-16.png"/>
+          <bt:Image id="PLSFIX.Icon.TraceDep.32" DefaultValue="https://localhost:3000/assets/ribbon/dependents-32.png"/>
+          <bt:Image id="PLSFIX.Icon.TraceDep.80" DefaultValue="https://localhost:3000/assets/ribbon/dependents-80.png"/>
+          <bt:Image id="PLSFIX.Icon.Undo.16" DefaultValue="https://localhost:3000/assets/ribbon/undo-16.png"/>
+          <bt:Image id="PLSFIX.Icon.Undo.32" DefaultValue="https://localhost:3000/assets/ribbon/undo-32.png"/>
+          <bt:Image id="PLSFIX.Icon.Undo.80" DefaultValue="https://localhost:3000/assets/ribbon/undo-80.png"/>
+          <bt:Image id="PLSFIX.Icon.PasteValues.16" DefaultValue="https://localhost:3000/assets/ribbon/paste-values-16.png"/>
+          <bt:Image id="PLSFIX.Icon.PasteValues.32" DefaultValue="https://localhost:3000/assets/ribbon/paste-values-32.png"/>
+          <bt:Image id="PLSFIX.Icon.PasteValues.80" DefaultValue="https://localhost:3000/assets/ribbon/paste-values-80.png"/>
+          <bt:Image id="PLSFIX.Icon.PasteFormats.16" DefaultValue="https://localhost:3000/assets/ribbon/paste-formats-16.png"/>
+          <bt:Image id="PLSFIX.Icon.PasteFormats.32" DefaultValue="https://localhost:3000/assets/ribbon/paste-formats-32.png"/>
+          <bt:Image id="PLSFIX.Icon.PasteFormats.80" DefaultValue="https://localhost:3000/assets/ribbon/paste-formats-80.png"/>
+          <bt:Image id="PLSFIX.Icon.Cagr.16" DefaultValue="https://localhost:3000/assets/ribbon/cagr-16.png"/>
+          <bt:Image id="PLSFIX.Icon.Cagr.32" DefaultValue="https://localhost:3000/assets/ribbon/cagr-32.png"/>
+          <bt:Image id="PLSFIX.Icon.Cagr.80" DefaultValue="https://localhost:3000/assets/ribbon/cagr-80.png"/>
+          <bt:Image id="PLSFIX.Icon.Sign.16" DefaultValue="https://localhost:3000/assets/ribbon/sign-16.png"/>
+          <bt:Image id="PLSFIX.Icon.Sign.32" DefaultValue="https://localhost:3000/assets/ribbon/sign-32.png"/>
+          <bt:Image id="PLSFIX.Icon.Sign.80" DefaultValue="https://localhost:3000/assets/ribbon/sign-80.png"/>
+          <bt:Image id="PLSFIX.Icon.ScaleUp.16" DefaultValue="https://localhost:3000/assets/ribbon/scale-up-16.png"/>
+          <bt:Image id="PLSFIX.Icon.ScaleUp.32" DefaultValue="https://localhost:3000/assets/ribbon/scale-up-32.png"/>
+          <bt:Image id="PLSFIX.Icon.ScaleUp.80" DefaultValue="https://localhost:3000/assets/ribbon/scale-up-80.png"/>
+          <bt:Image id="PLSFIX.Icon.ScaleDown.16" DefaultValue="https://localhost:3000/assets/ribbon/scale-down-16.png"/>
+          <bt:Image id="PLSFIX.Icon.ScaleDown.32" DefaultValue="https://localhost:3000/assets/ribbon/scale-down-32.png"/>
+          <bt:Image id="PLSFIX.Icon.ScaleDown.80" DefaultValue="https://localhost:3000/assets/ribbon/scale-down-80.png"/>
+          <bt:Image id="PLSFIX.Icon.Waterfall.16" DefaultValue="https://localhost:3000/assets/ribbon/waterfall-16.png"/>
+          <bt:Image id="PLSFIX.Icon.Waterfall.32" DefaultValue="https://localhost:3000/assets/ribbon/waterfall-32.png"/>
+          <bt:Image id="PLSFIX.Icon.Waterfall.80" DefaultValue="https://localhost:3000/assets/ribbon/waterfall-80.png"/>
+          <bt:Image id="PLSFIX.Icon.Toc.16" DefaultValue="https://localhost:3000/assets/ribbon/toc-16.png"/>
+          <bt:Image id="PLSFIX.Icon.Toc.32" DefaultValue="https://localhost:3000/assets/ribbon/toc-32.png"/>
+          <bt:Image id="PLSFIX.Icon.Toc.80" DefaultValue="https://localhost:3000/assets/ribbon/toc-80.png"/>
+          <bt:Image id="PLSFIX.Icon.OpenLinks.16" DefaultValue="https://localhost:3000/assets/ribbon/links-16.png"/>
+          <bt:Image id="PLSFIX.Icon.OpenLinks.32" DefaultValue="https://localhost:3000/assets/ribbon/links-32.png"/>
+          <bt:Image id="PLSFIX.Icon.OpenLinks.80" DefaultValue="https://localhost:3000/assets/ribbon/links-80.png"/>
         </bt:Images>
         <bt:Urls>
           <bt:Url id="PLSFIX.Taskpane.Url" DefaultValue="https://localhost:3000/taskpane.html"/>

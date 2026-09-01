@@ -30,6 +30,7 @@
     "validate": "office-addin-manifest validate manifest.xml && office-addin-manifest validate manifest.prod.xml",
     "manifest:build": "tsx scripts/build-manifests.ts",
     "manifest:check": "tsx scripts/build-manifests.ts --check",
+    "ribbon-icons:build": "tsx scripts/build-ribbon-icons.ts",
     "functions:build": "tsx scripts/build-functions-metadata.ts",
     "functions:check": "tsx scripts/build-functions-metadata.ts --check",
     "shortcuts:build": "tsx scripts/build-shortcuts-page.ts",

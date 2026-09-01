@@ -4,7 +4,7 @@
 // block is Workbook-only, every ribbon group and its label resource render
 // the expected number of times, every ribbon FunctionName is registered in
 // src/pane/commands.ts, and every interpolated value is XML-escaped.
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { ADDIN, ENVIRONMENTS, WORKBOOK_HOST } from "./spec";
 import type { AddinSpec } from "./spec";
@@ -207,6 +207,27 @@ describe("buildManifest", () => {
     }
   });
 
+  it("gives every command a semantic icon at every Office ribbon size", () => {
+    const xml = buildManifest(prod, ADDIN);
+    for (const host of ADDIN.hosts) {
+      for (const group of host.groups) {
+        for (const button of group.buttons) {
+          for (const size of [16, 32, 80]) {
+            expect(xml).toContain(`assets/ribbon/${button.icon}-${size}.png`);
+            expect(
+              existsSync(
+                new URL(
+                  `../public/assets/ribbon/${button.icon}-${size}.png`,
+                  import.meta.url,
+                ),
+              ),
+            ).toBe(true);
+          }
+        }
+      }
+    }
+  });
+
   // The generated-bytes gate compares the build to the committed file, so it
   // cannot see a duplicate id: both sides would carry it. Only the renderer can.
   it("refuses a spec whose two hosts reuse one button id", () => {
@@ -229,6 +250,7 @@ describe("buildManifest", () => {
                   id: "OpenPane",
                   label: "Links",
                   tip: "Open the pls,fix linked-objects pane.",
+                  icon: "pane",
                   action: { kind: "showPane" },
                 },
               ],
@@ -238,7 +260,7 @@ describe("buildManifest", () => {
       ],
     };
     expect(() => buildManifest(prod, pptWithOpenPane)).toThrow(
-      "manifest: duplicate resource id PLSFIX.OpenPane.Label",
+      "manifest: duplicate resource id PLSFIX.Icon.OpenPane.16",
     );
   });
 
@@ -299,6 +321,7 @@ describe("buildManifest", () => {
                   id: "OpenPane",
                   label: "Model Tools",
                   tip: 'Fill & go "now"',
+                  icon: "pane",
                   action: { kind: "showPane" },
                 },
               ],
@@ -328,6 +351,7 @@ describe("buildManifest", () => {
                   id: "OpenPane",
                   label: "Model Tools",
                   tip: "<script>alert('x')</script>",
+                  icon: "pane",
                   action: { kind: "showPane" },
                 },
               ],

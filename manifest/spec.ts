@@ -16,8 +16,32 @@ export interface ButtonSpec {
   id: string; // e.g. "Autocolor" -> control id PLSFIX.Button.Autocolor
   label: string;
   tip: string;
+  // A semantic name from public/assets/ribbon. Commands deliberately have
+  // their own artwork: Office's ribbon is visual at a glance, while the app
+  // mark remains the icon for the add-in and its groups.
+  icon: RibbonIcon;
   action: { kind: "showPane" } | { kind: "function"; name: string };
 }
+
+export type RibbonIcon =
+  | "audit"
+  | "cagr"
+  | "dependents"
+  | "fill-down"
+  | "fill-right"
+  | "guard"
+  | "links"
+  | "palette"
+  | "pane"
+  | "paste-formats"
+  | "paste-values"
+  | "precedents"
+  | "scale-down"
+  | "scale-up"
+  | "sign"
+  | "toc"
+  | "undo"
+  | "waterfall";
 
 export interface GroupSpec {
   id: string; // e.g. "PLSFIX.Group.Audit" -> resource id PLSFIX.Group.Audit.Label
@@ -105,30 +129,35 @@ export const WORKBOOK_HOST: HostSpec = {
           id: "OpenPane",
           label: "Model Tools",
           tip: "Open the pls,fix task pane.",
+          icon: "pane",
           action: { kind: "showPane" },
         },
         {
           id: "Autocolor",
           label: "Autocolor",
           tip: "Color inputs, formulas and links in your palette.",
+          icon: "palette",
           action: { kind: "function", name: "PLSFIX_AUTOCOLOR" },
         },
         {
           id: "FillRight",
           label: "Fill Right",
           tip: "Fill the formula from the left cell across the selection.",
+          icon: "fill-right",
           action: { kind: "function", name: "PLSFIX_FILLRIGHT" },
         },
         {
           id: "FillDown",
           label: "Fill Down",
           tip: "Fill the formula from the top cell down the selection.",
+          icon: "fill-down",
           action: { kind: "function", name: "PLSFIX_FILLDOWN" },
         },
         {
           id: "IfError",
           label: "IFERROR",
           tip: "Wrap selected formulas with IFERROR.",
+          icon: "guard",
           action: { kind: "function", name: "PLSFIX_IFERROR" },
         },
       ],
@@ -141,18 +170,21 @@ export const WORKBOOK_HOST: HostSpec = {
           id: "Audit",
           label: "Audit overlay",
           tip: "Toggle the formula consistency overlay.",
+          icon: "audit",
           action: { kind: "function", name: "PLSFIX_AUDIT" },
         },
         {
           id: "TracePre",
           label: "Precedents",
           tip: "Jump to the direct precedents of the active cell.",
+          icon: "precedents",
           action: { kind: "function", name: "PLSFIX_TRACE_PRE" },
         },
         {
           id: "TraceDep",
           label: "Dependents",
           tip: "Jump to the direct dependents of the active cell.",
+          icon: "dependents",
           action: { kind: "function", name: "PLSFIX_TRACE_DEP" },
         },
       ],
@@ -165,18 +197,21 @@ export const WORKBOOK_HOST: HostSpec = {
           id: "Undo",
           label: "pls,fix Undo",
           tip: "Restore the last range changed by pls,fix.",
+          icon: "undo",
           action: { kind: "function", name: "PLSFIX_UNDO" },
         },
         {
           id: "PasteValues",
           label: "Paste values",
           tip: "Paste the copied source as values.",
+          icon: "paste-values",
           action: { kind: "function", name: "PLSFIX_PASTE_VALUES" },
         },
         {
           id: "PasteFormats",
           label: "Paste formats",
           tip: "Paste the copied source's formats only.",
+          icon: "paste-formats",
           action: { kind: "function", name: "PLSFIX_PASTE_FORMATS" },
         },
       ],
@@ -189,24 +224,28 @@ export const WORKBOOK_HOST: HostSpec = {
           id: "Cagr",
           label: "CAGR",
           tip: "Insert a CAGR formula for the selection.",
+          icon: "cagr",
           action: { kind: "function", name: "PLSFIX_CAGR" },
         },
         {
           id: "Sign",
           label: "Sign flip",
           tip: "Flip the sign of the selected formulas and values.",
+          icon: "sign",
           action: { kind: "function", name: "PLSFIX_SIGN" },
         },
         {
           id: "ScaleUp",
           label: "x1000",
           tip: "Scale the selection up by a thousand.",
+          icon: "scale-up",
           action: { kind: "function", name: "PLSFIX_SCALEUP" },
         },
         {
           id: "ScaleDown",
           label: "/1000",
           tip: "Scale the selection down by a thousand.",
+          icon: "scale-down",
           action: { kind: "function", name: "PLSFIX_SCALEDOWN" },
         },
       ],
@@ -219,12 +258,14 @@ export const WORKBOOK_HOST: HostSpec = {
           id: "Waterfall",
           label: "Waterfall",
           tip: "Build a waterfall chart from the selected bridge table.",
+          icon: "waterfall",
           action: { kind: "function", name: "PLSFIX_WATERFALL" },
         },
         {
           id: "Toc",
           label: "Contents sheet",
           tip: "Insert or refresh the workbook contents sheet.",
+          icon: "toc",
           action: { kind: "function", name: "PLSFIX_TOC" },
         },
       ],
@@ -246,6 +287,7 @@ export const PRESENTATION_HOST: HostSpec = {
           id: "OpenLinks",
           label: "Links",
           tip: "Open the pls,fix linked-objects pane.",
+          icon: "links",
           action: { kind: "showPane" },
         },
       ],
