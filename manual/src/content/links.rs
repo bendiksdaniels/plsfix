@@ -1,6 +1,6 @@
 // Chapter 6: linked objects between Excel and PowerPoint. Reuses the wording of
 // docs/lietotaja-rokasgramata-saites.md and owns both sides of the flow, the
-// Excel "Links" tab and the three PowerPoint tabs.
+// Excel "Links" tab and the four PowerPoint tabs.
 
 use super::{Block, Chapter, Section, section};
 
@@ -15,7 +15,10 @@ pub fn links() -> Chapter {
             toggles(),
             insert(),
             update(),
+            filters(),
             manage(),
+            object_tools(),
+            smart_painter(),
             security(),
         ],
     }
@@ -32,7 +35,7 @@ fn how_it_works() -> Section {
                 r#"Excel puse ieraksta avotam slēptu nosaukumu, tāpēc saite seko līdzi arī tad, kad virs apgabala tiek ievietotas rindas vai lapa tiek pārdēvēta. Attēls tiek nosūtīts uz releju, no kurienes to paņem PowerPoint puse."#,
             ),
             Block::Para(
-                r#"Saitē var būt attēls, tabula vai diagramma. Diagramma slaidā nonāk kā rediģējamu figūru grupa ar zīmola krāsām un tikai vērtību etiķetēm (stabiņu, joslu, tilta un sektoru diagrammas). Ja PowerPoint to nevar uzzīmēt vai diagramma ir par lielu (vairāk nekā 40 punkti, 3 sērijas vai 12 sektori), tā tiek ievietota kā attēls, un panelis to pasaka."#,
+                r#"Saitē var būt attēls, tabula vai diagramma. Diagramma slaidā nonāk kā rediģējamu figūru grupa ar zīmola krāsām un tikai vērtību etiķetēm: stabiņu, joslu, tilta, sektoru un līniju diagrammas. Līniju diagrammā katrs punkts ir sava figūra, savienota ar līniju līdz nākamajam punktam. Šai figūru grupai nepieciešams PowerPoint 2504 vai jaunāks Windows datorā, 16.96 vai jaunāks Mac datorā; vecākā versijā, kā arī pāri 40 punktiem, 3 sērijām vai 12 sektoriem, diagramma tiek ievietota kā attēls, un panelis to pasaka."#,
             ),
         ],
     )
@@ -140,6 +143,9 @@ fn insert() -> Section {
                 "Objekts (attēls, tabula vai diagramma) tiek ievietots atlasītajā slaidā brīvā vietā un pielāgots tā izmēram. Pēc tam to var pārvietot un mainīt tā izmēru.",
             ]),
             Block::Para(
+                r#"Poga "Paste latest linked" paveic to pašu vienā solī: tā ievieto jaunāko no Excel nosūtīto eksportu aktīvajā slaidā, neizvēloties konkrētu vienumu sarakstā."#,
+            ),
+            Block::Para(
                 r#"Vienumi cilnē "Inbox" ir derīgi 7 dienas pēc nosūtīšanas. Ja saraksts ir tukšs un panelī redzams "Not paired", vispirms ielīmējiet saites atslēgu cilnē "Settings"."#,
             ),
             Block::Image {
@@ -183,6 +189,39 @@ fn update() -> Section {
     )
 }
 
+fn filters() -> Section {
+    section(
+        "Meklēšana un filtrēšana",
+        vec![
+            Block::Para(
+                r#"Virs saišu tabulas cilnē "Links" ir meklēšanas lauks un trīs filtri. Tie sašaurina redzamo sarakstu, bet atzīmētās rindas paliek atzīmētas arī tad, kad filtrs tās paslēpj."#,
+            ),
+            Block::Table {
+                head: &["Vadīkla", "Ko tā sašaurina"],
+                rows: &[
+                    &[
+                        "Meklēšanas lauks",
+                        "meklē pēc slaida numura, objekta un tā avota darbgrāmatas nosaukuma",
+                    ],
+                    &[
+                        r#""Source workbook""#,
+                        "rāda tikai izvēlētās darbgrāmatas saites",
+                    ],
+                    &[r#""Slide""#, "rāda tikai izvēlētā slaida saites"],
+                    &[r#""Link status""#, "rāda tikai izvēlētā stāvokļa saites"],
+                ],
+            },
+            Block::Para("Stāvokļa filtra četras vērtības:"),
+            Block::Bullets(&[
+                r#""Needs update": avota dati Excel pusē mainījušies kopš pēdējās atjaunināšanas."#,
+                r#""Missing source": relejā šai saitei vairs nav neviena attēla."#,
+                r#""Wrong link key": attēls saglabāts ar citu saites atslēgu, nevis šī datora aktuālo."#,
+                r#""Up to date": attēls atbilst jaunākajam Excel eksportam."#,
+            ]),
+        ],
+    )
+}
+
 fn manage() -> Section {
     section(
         "Go to slide, Change source un Break link",
@@ -196,6 +235,56 @@ fn manage() -> Section {
             ),
             Block::Para(
                 r#"Poga "Break link" noņem attēlam saites marķieri. Attēls slaidā paliek, bet vairs netiek atjaunināts."#,
+            ),
+        ],
+    )
+}
+
+fn object_tools() -> Section {
+    section(
+        "Object tools",
+        vec![
+            Block::Para(
+                r#"PowerPoint cilnē "Tools" ir sadaļa "Object tools" darbam ar slaidā atlasītajām figūrām. Tā prasa PowerPoint 2021 vai Microsoft 365; vecākā versijā panelis to pasaka jau pieslēdzoties."#,
+            ),
+            Block::Para(
+                r#""Align" izvēlnē izvēlieties virzienu (pa kreisi, centrā, pa labi, augšā, vidū vai apakšā) un nospiediet "Apply": atlasītās figūras līdzinās pēc visu atlasīto figūru kopējām malām. Nepieciešamas vismaz divas figūras."#,
+            ),
+            Block::Para(
+                r#""Distribute" izvēlnē izvēlieties virzienu (šķērsām vai lejup) un nospiediet "Apply": atstarpes starp trim vai vairāk figūrām kļūst vienādas; pirmās un pēdējās figūras vieta nemainās. Nepieciešamas vismaz trīs figūras."#,
+            ),
+            Block::Table {
+                head: &["Poga", "Ko tā dara"],
+                rows: &[
+                    &[
+                        r#""Match size""#,
+                        "uzliek pirmās atlasītās figūras platumu un augstumu visām pārējām atlasītajām figūrām",
+                    ],
+                    &[
+                        r#""Select similar""#,
+                        "no vienas atlasītas figūras atlasa visas pārējās tā paša tipa un gandrīz tāda paša izmēra figūras tajā pašā slaidā",
+                    ],
+                    &[r#""Swap""#, "samaina vietām tieši divas atlasītas figūras"],
+                ],
+            },
+        ],
+    )
+}
+
+fn smart_painter() -> Section {
+    section(
+        "Smart Painter",
+        vec![
+            Block::Para(
+                r#"Zem "Object tools" ir "Smart Painter": tas nokopē vienas figūras aizpildījumu un kontūru uz citām figūrām, neatkarīgi no to izmēra vai satura."#,
+            ),
+            Block::Steps(&[
+                r#"Atlasiet vienu figūru ar vienkrāsainu aizpildījumu vai bez aizpildījuma un nospiediet "Capture"."#,
+                "Atlasiet vienu vai vairākas mērķa figūras.",
+                r#"Nospiediet "Apply"."#,
+            ]),
+            Block::Para(
+                r#"Attēla vai gradienta aizpildījumu "Capture" nepieņem: der tikai vienkrāsains aizpildījums vai figūra bez aizpildījuma."#,
             ),
         ],
     )

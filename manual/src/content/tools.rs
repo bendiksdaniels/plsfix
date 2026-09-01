@@ -9,6 +9,7 @@ pub fn tools() -> Chapter {
     let mut sections = vec![
         overview(),
         inspector(),
+        reconcile(),
         formatting(),
         paintbrush(),
         cycles(),
@@ -56,6 +57,28 @@ fn inspector() -> Section {
     )
 }
 
+fn reconcile() -> Section {
+    section(
+        "Atrast kombināciju",
+        vec![
+            Block::Para(
+                r#"Sadaļa "Find a combination" atrod, kuras atlasītā apgabala šūnas kopā dod vēlamo summu. Tas noder, piemēram, pārbaudot, kuri posteņi kopā veido starpību starp divām kopsummām."#,
+            ),
+            Block::Steps(&[
+                "Atlasiet vienu nepārtrauktu apgabalu ar skaitļiem.",
+                r#"Laukā "Target" ierakstiet meklējamo summu, laukā "Tolerance" pieļaujamo novirzi."#,
+                r#"Nospiediet "Find cells"."#,
+            ]),
+            Block::Para(
+                r#"Apgabalā drīkst būt līdz 34 skaitliskām šūnām; teksts, tukšas šūnas un formulu kļūdas netiek skaitītas. Ja atlasē ir vairāk, panelis lūdz atlasīt mazāku apgabalu."#,
+            ),
+            Block::Para(
+                r#"Kad kombinācija atrasta, tieši tās šūnas kļūst par jauno atlasi. Zem pogas parādās, cik šūnu atrasts, to summa ("Sum") un atlikusī novirze no mērķa ("Variance"). Ja neviena kombinācija tolerances robežās neatbilst, panelis to pasaka."#,
+            ),
+        ],
+    )
+}
+
 fn formatting() -> Section {
     section(
         "Noformējuma stili un skaitļu formāti",
@@ -78,10 +101,10 @@ fn paintbrush() -> Section {
         "Otas sloti",
         vec![
             Block::Para(
-                r#"Pogas "Capture 1", "Capture 2" un "Capture 3" iegaumē aktīvās šūnas skaitļu formātu, fontu, aizpildījumu, līdzinājumu un apmales. Pogas "Apply 1", "Apply 2" un "Apply 3" uzliek iegaumēto noformējumu atlasei."#,
+                r#"Pogas "Save 1", "Save 2" un "Save 3" iegaumē aktīvās šūnas skaitļu formātu, fontu, aizpildījumu, līdzinājumu un apmales. Pogas "Use 1", "Use 2" un "Use 3" uzliek iegaumēto noformējumu atlasei."#,
             ),
             Block::Para(
-                r#"Sloti glabājas datorā, tāpēc tie saglabājas arī pēc paneļa aizvēršanas. Zem pogām redzams, kas katrā slotā ir iegaumēts."#,
+                r#"Sloti tiek saglabāti pašā darbgrāmatā, tāpēc kolēģis, kas atver to pašu failu citā datorā, redz tos pašus trīs slotus. Ja darbgrāmata vēl nekad nav saglabājusi nevienu slotu, tiek izmantoti šī datora sloti. Zem pogām redzams, kas katrā slotā ir iegaumēts."#,
             ),
         ],
     )
