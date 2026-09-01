@@ -24,7 +24,7 @@ pls,fix ir Excel un PowerPoint pievienojumprogramma finanšu modelēšanai. Šī
 
 ## Dati un drošība
 
-- Darbgrāmatas un prezentācijas dati serverim nekad nenonāk; vienīgais, kas ceļo, ir PowerPoint saistīto objektu attēls.
+- Darbgrāmatas un prezentācijas kā faili serverim nekad nenonāk; ceļo tikai PowerPoint saistīto objektu saturs: attēls, tabulas šūnu teksts ar formātiem vai vienas šūnas teksts.
 - Šis attēls tiek šifrēts pašā panelī (AES-GCM) pirms nosūtīšanas; atslēgu atvasina no saites atslēgas, kas atrodas tikai prezentācijas slaidu birkās un darbgrāmatas reģistrā.
 - Serveris glabā tikai šifrētu saturu un autorizācijas atslēgas SHA-256 nospiedumu, nevis pašu atslēgu, failu nosaukumus vai saturu; nav lietotāju kontu un nav telemetrijas.
 - Saites derīgas 30 dienas, "Inbox" vienumi 7 dienas; pēc tam tie no servera tiek dzēsti.
