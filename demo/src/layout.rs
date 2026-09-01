@@ -10,6 +10,7 @@ pub const TITLE_ROW: u32 = 0;
 pub const HEADER_ROW: u32 = 2;
 pub const PNL_SHEET: &str = "P&L";
 pub const ASSUMPTIONS_SHEET: &str = "Assumptions";
+pub const VARIANCE_SHEET: &str = "Variance";
 
 /// Assumptions rows; the forecast years 2025E-2029E start in FIRST_YEAR_COL.
 pub mod assumptions {
@@ -41,6 +42,15 @@ pub mod pnl {
     pub const NET_MARGIN: u32 = 17;
     pub const PER_MONTH: u32 = 18;
     pub const CHECK: u32 = 19;
+}
+
+/// Variance rows: the amounts list starts at FIRST_ROW, one row per item,
+/// then a blank row before the Target two rows below the last amount.
+pub mod variance {
+    pub const FIRST_ROW: u32 = 3;
+    pub const COUNT: u32 = 14;
+    pub const TARGET_ROW: u32 = 18;
+    pub const AMOUNT_COL: u16 = 1;
 }
 
 /// Column of P&L year `i` (0 = 2024A).

@@ -4,8 +4,8 @@
 
 use std::io::{Cursor, Read};
 
-use smt_demo::layout::{cell, pnl, year_col, PNL_SHEET};
-use smt_demo::sheets::{pnl::planted_cells, scratch, BROKEN_NAME, SHEETS};
+use smt_demo::layout::{cell, pnl, variance as vlayout, year_col, PNL_SHEET};
+use smt_demo::sheets::{pnl::planted_cells, scratch, variance, BROKEN_NAME, SHEETS};
 use smt_demo::tally::Tally;
 
 type Archive = zip::ZipArchive<Cursor<Vec<u8>>>;
@@ -107,4 +107,55 @@ fn every_chart_labels_the_values_only() {
             assert!(!chart.contains(&on), "chart {index} shows {part}: {chart}");
         }
     }
+}
+
+#[test]
+fn variance_amounts_match_the_saved_cells() {
+    let (mut archive, _) = archive();
+    let sheet = sheet_xml(&mut archive, variance::NAME);
+    for (i, (label, amount)) in variance::AMOUNTS.iter().enumerate() {
+        let address = cell(vlayout::FIRST_ROW + i as u32, vlayout::AMOUNT_COL);
+        let xml = cell_xml(&sheet, &address);
+        assert!(!xml.contains("<f>"), "{label} must be a literal number: {xml}");
+        assert!(xml.contains(&format!("<v>{}</v>", *amount as i64)), "{label}: {xml}");
+    }
+}
+
+#[test]
+fn variance_target_lands_at_its_advertised_cell() {
+    let (mut archive, _) = archive();
+    let sheet = sheet_xml(&mut archive, variance::NAME);
+    let address = cell(vlayout::TARGET_ROW, vlayout::AMOUNT_COL);
+    let xml = cell_xml(&sheet, &address);
+    assert!(!xml.contains("<f>"), "target must be a literal number: {xml}");
+    assert!(xml.contains(&format!("<v>{}</v>", variance::TARGET as i64)), "{xml}");
+}
+
+// The puzzle only works as "Find a combination" if exactly one combination of
+// invoice lines reaches the target: proved here by brute force (2^14 - 1
+// non-empty subsets) instead of trusted by eye.
+#[test]
+fn variance_target_is_reachable_by_exactly_one_subset() {
+    let amounts: Vec<f64> = variance::AMOUNTS.iter().map(|(_, value)| *value).collect();
+    let (hits, size) = subset_sum_hits(&amounts, variance::TARGET);
+    assert_eq!(hits, 1, "expected exactly one subset of the amounts to reach the target");
+    assert!((3..=4).contains(&size), "the one subset should be 3-4 cells, was {size}");
+}
+
+/// How many non-empty subsets of `values` sum to `target`, and the cell
+/// count of the last one found (meaningful only when there is one hit).
+fn subset_sum_hits(values: &[f64], target: f64) -> (u32, u32) {
+    let mut hits = 0;
+    let mut size = 0;
+    for mask in 1u32..(1 << values.len()) {
+        let sum: f64 = (0..values.len())
+            .filter(|bit| mask & (1 << bit) != 0)
+            .map(|bit| values[bit])
+            .sum();
+        if (sum - target).abs() < 1e-6 {
+            hits += 1;
+            size = mask.count_ones();
+        }
+    }
+    (hits, size)
 }
