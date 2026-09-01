@@ -159,7 +159,7 @@ const PPT_STATES = [
   },
   {
     slug: "empty",
-    tabs: ["links", "inbox"],
+    tabs: ["links", "inbox", "tools"],
     apply: async (page) => {
       await setConnection(page, "Connecting", "waiting");
       await seedPptRows(page, []);
