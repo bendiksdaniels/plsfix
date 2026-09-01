@@ -52,7 +52,7 @@ not yet built.
 | Change sign | US | Flips sign of selected constants | shipped v1.1 | P1 |
 | Pinstripes (alternate row/col shading) | MB | Odd/even shading via conditional format | Yes (ConditionalFormat API) | P2 |
 | Custom Styles / Style Cycles (user-defined, 8 slots) | MB | Reusable multi-property styles on one key | Yes (settings-driven) | P2 |
-| Paintbrush (multi-slot format painter) | MB | Copy/apply formatting without clipboard, FIFO slots | shipped v2.1 | P2 |
+| Paintbrush (multi-slot format painter) | MB | Copy/apply formatting without clipboard, FIFO slots | shipped v2.1; slots saved with the workbook v2.5 | P2 |
 | Indent cycles, center cycle, underline cycle | MB | Alignment/underline cycling | Yes | P2 |
 | Footnote cycle/toggle/hide/checker (in-cell superscripts) | MB | Numbered footnote management in cells | Partial (number-format superscript tricks; font runs limited) | P3 |
 | Standard Sizes (conform cells/charts to preset dims) | MB | Preset output dimensions | Yes | P3 |
@@ -156,7 +156,8 @@ survive row/column moves (Macabacus mechanism).
 
 Priorities within the PPT add-in once it exists: agenda/TOC engine (sections, dividers,
 breadcrumbs, one-click refresh — PowerPointApi supports slide/shape/text manipulation),
-Smart Align/Swap/Select Similar/Smart Painter (shape APIs), Slide Check subset (fonts,
+Smart Align/Swap/Select Similar/Smart Painter (shipped v2.6 as the PowerPoint Tools tab: align,
+distribute, match size, select similar, swap, Smart Painter for solid fill + outline), Slide Check subset (fonts,
 placeholders, double spaces, alignment), cross-references + footnotes, library insert
 (slides from published decks), templates. Track Changes, AI checks, Dynamic Library,
 Logo Finder, Proposal Wizard = P3/enterprise. Deck Check full parity and native-UI
@@ -183,7 +184,7 @@ suppression are out of reach; additive checks only.
 | pls,fix Undo: snapshot + restore last bulk action | #1 Macabacus trust complaint (undo broken) | shipped v1.1 | P1 — fold into C5 |
 | Palette legend insert (auto color key block) | F1F9 "Keys" | shipped v1.1 | P1 — fold into C3 |
 | =PLSFIX.ROUND consistent-rounding custom functions | think-cell TCROUND | shipped v2.1 | P2 (v1.x) |
-| Reconciliation solver (subset-sum: which cells make up a variance) | Kutools "Make Up a Number" | Yes (pure TS) | P2 (v1.x) |
+| Reconciliation solver (subset-sum: which cells make up a variance) | Kutools "Make Up a Number" | shipped v2.6 ("Find a combination", 34 cells, meet-in-the-middle) | - |
 | Tornado chart builder | PowerUser | shipped v2.1 | P2 (v1.x) |
 | Unpivot selection | PowerUser + Ablebits | shipped v2.1 | P2 (v1.x) |
 | Workbook diff vs uploaded version (insertion-aware) | Arixcel | Partial (parse uploaded .xlsx in-pane, diff vs live workbook) | P2/P3 |

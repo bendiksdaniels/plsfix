@@ -10,7 +10,7 @@ pls,fix is an Excel productivity add-in for financial modelling teams. It is a w
 - Five financial-model formatting presets
 - Whole-number, decimal, euro, and percentage number formats
 - Format cycles: press the same key again to step through number formats (general, date, currency, percent, multiple), title, result and item row styles, brand fill or font colors, borders (bottom rule, total, result line, box, grid), and row heights or column widths
-- Paintbrush: three slots that capture the active cell's number format, font, fill, alignment and border rules and paint any of them over a selection; the slots stay on the machine, so they survive closing the pane
+- Paintbrush: three slots that capture the active cell's number format, font, fill, alignment and border rules and paint any of them over a selection (Save 1-3 / Use 1-3); the slots are saved with the workbook, so a shared model carries its formatting kit, and a workbook that never saved any falls back to the slots kept on the machine
 - Fill, paste and undo: fills sized by the neighbouring column or row, a marked copy source pasted as values, formats, exact formulas or transposed, quick CAGR, sign flip and decimal steppers, and **Undo last pls,fix action**, which puts back the formulas, number formats and colors the add-in last wrote (Office.js writes never reach Excel's own undo stack)
 - Reversible `IFERROR(..., 0)` guard: the same action strips it again
 - Financial-model autocoloring: hardcodes blue, formulas black, cross-sheet links green
@@ -23,12 +23,13 @@ pls,fix is an Excel productivity add-in for financial modelling teams. It is a w
 - Consistent rounding: `=PLSFIX.ROUND` and `=PLSFIX.ROUNDSUM` custom functions round a row or column so the rounded numbers still add up to the rounded total (largest remainder, think-cell TCROUND style), written beside the selection by one button in the Model tools list
 - Templates: six ready calculation blocks written at the active cell in your brand styles (annuity debt schedule, DCF, NPV / IRR with a formula-based payback, working-capital days, a two-way sensitivity grid and an EBITDA bridge shaped for the waterfall), each refused rather than written where something already stands
 - Brand tab: company palette (pickers, hex entry, or logo upload with local color extraction), font, language and currency settings (the language sets the house number style: thousands with a space in Latvian and Russian, a comma in English, the decimal always a point, the currency after the amount or before it; the pane also reads which separators Excel is set to and says where to change them), JSON import/export; all presets and autocolor follow the palette; persisted in the task pane and saved with the workbook, so a model keeps its brand when it is opened on another computer
-- pls,fix ribbon tab with one-click commands (autocolor, fills, IFERROR) and customizable keyboard shortcuts via the shared runtime (`public/shortcuts.json`)
+- pls,fix ribbon tab with one-click commands (autocolor, fills, IFERROR), each with its own icon, and customizable keyboard shortcuts via the shared runtime (`public/shortcuts.json`)
 - Workbook tab: a sheet explorer that jumps to, hides and shows sheets (very hidden ones are listed but never touched), a hyperlinked contents sheet rebuilt on demand, and a scrubber that finds and deletes defined names left pointing at `#REF!`
 - Super Find: one search across every sheet (hidden ones included) over values, formula text, workbook-level defined names, sheet names and cell comments, listed in workbook order with one click to jump to the hit
 - Style scrubber: the custom cell styles no cell in the workbook wears, listed with a count and deleted on a confirmed second click; a sheet too large to scan is named and blocks the delete, so a partial answer never removes a style still in use
 - Prepare for sharing: one pass that puts every visible sheet back at A1 and leaves the workbook on the first of them, then reports what a reader would still find - hidden sheets, links to other workbooks, names left on `#REF!` and autocolor still running on every edit; nothing is deleted, hidden sheets are untouched, and zoom cannot be reset because Office.js does not expose it
 - Model check: one pass that lists formula errors, hardcodes inside formulas, inconsistent formulas, volatile functions, broken names, unused styles, hidden sheets and external links, each with a jump to the cell, and a copyable report
+- Find a combination: which numbers in the selected block add up to a target, within a tolerance (up to 34 numeric cells); the matching cells become the selection and the pane reports their sum and the remaining variance
 
 ## Keyboard shortcuts
 
@@ -149,7 +150,7 @@ Export a range or a chart from Excel and keep it fresh in a deck without re-past
   chart's name, and sends the picture to the relay. *Export as table* sends the same range as an
   editable PowerPoint table instead (up to 60 rows and 20 columns, PowerPoint 2021 or Microsoft 365).
   *Export as text* sends one cell's displayed text as a text box that keeps its place, size and
-  font when it refreshes (up to 500 characters). A column, bar, waterfall or pie
+  font when it refreshes (up to 500 characters). A column, bar, line, waterfall or pie
   chart lands as a group of editable shapes with value labels (PowerPoint 2504/16.96 and newer; pie wedges 2601/16.105), a
   picture elsewhere or past 40 points, 3 series or 12 slices. *Push all* re-renders every link through
   its anchor. Generate the **link key** once under Links > Settings and paste it into
@@ -159,14 +160,21 @@ Export a range or a chart from Excel and keep it fresh in a deck without re-past
   **Highlight linked cells** (a second tick box) tints every linked range so you can see what
   feeds the deck, and puts the original fills back when it is switched off; charts are not tinted.
 - PowerPoint, tab **pls,fix > Links**: the **Inbox** lists exports waiting to be placed;
-  *Insert* puts a picture on the selected slide with a tracker in the shape's tags. The
-  **Links** list shows every tracked picture in the deck (slide, source, status) and
+  *Insert* puts a picture on the selected slide with a tracker in the shape's tags, and
+  *Paste latest linked* does the same for the newest export in one click. The
+  **Links** list shows every tracked picture in the deck (slide, source, status), can be
+  searched and filtered by status, source workbook and slide, and
   *Update selected / slide / all* repaints them in place: position and size are kept, only
   the height follows when the picture's aspect ratio changed. *Revert last update* puts the
   ticked rows back to the previous render, the one revision the relay still holds. *Change
   source* points the one ticked picture at another export waiting in the Inbox - the same table
   from a newer workbook, say - keeping its slide, position and size. *Break
   link* removes the tracker and leaves the picture.
+- PowerPoint, tab **Tools**: object tools for the shapes selected on the slide - align (left,
+  centre, right, top, middle, bottom), distribute across or down, match size to the first
+  selected object, select similar (same type and size on the slide), swap two positions - and a
+  **Smart Painter** that captures one object's solid fill and outline and applies them to the
+  objects you select next (PowerPoint 2021 or Microsoft 365).
 - The relay stores only encrypted blobs for 30 days; anyone holding the deck can pull a
   linked picture for that long, so **break links before sending a deck outside**.
 

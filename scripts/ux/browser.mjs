@@ -5,14 +5,31 @@
 // nothing else: callers get a browser and close it themselves.
 
 import { createRequire } from "node:module";
-import { existsSync } from "node:fs";
+import { existsSync, readdirSync } from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
 
-const DEFAULT_PLAYWRIGHT_DIR = path.join(
-  homedir(),
-  ".npm/_npx/31e32ef8478fbf80/node_modules",
-);
+// The npx cache keys its directories by a hash that changes with the package
+// set, so the gate probes every cache entry for playwright-core instead of
+// pinning one hash that rots the next time npx installs something.
+const NPX_CACHE = path.join(homedir(), ".npm/_npx");
+
+function findNpxPlaywrightDir() {
+  let entries = [];
+  try {
+    entries = readdirSync(NPX_CACHE);
+  } catch {
+    return null;
+  }
+  for (const entry of entries) {
+    const dir = path.join(NPX_CACHE, entry, "node_modules");
+    if (existsSync(path.join(dir, "playwright-core"))) return dir;
+  }
+  return null;
+}
+
+const DEFAULT_PLAYWRIGHT_DIR =
+  findNpxPlaywrightDir() ?? path.join(NPX_CACHE, "none/node_modules");
 const DEFAULT_CHROMIUM = path.join(
   homedir(),
   "Library/Caches/ms-playwright/chromium_headless_shell-1234/chrome-headless-shell-mac-arm64/chrome-headless-shell",
