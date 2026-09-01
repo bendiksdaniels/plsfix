@@ -330,6 +330,62 @@ function waterfallBars(
   return out;
 }
 
+// A native line chart becomes one editable connector and one small marker per
+// point. Markers make individual values selectable in PowerPoint and avoid a
+// line disappearing into a matching-colour slide background.
+function lineSeries(
+  data: ChartData,
+  plot: Box,
+  scale: ValueScale,
+): Primitive[] {
+  const points = data.categories.length;
+  const slot = points > 1 ? plot.width / (points - 1) : 0;
+  const marker = Math.min(6, Math.max(3, plot.width / points / 5));
+  const out: Primitive[] = [];
+  data.series.forEach((series, seriesIndex) => {
+    const positions = series.values.map((value, pointIndex) => ({
+      left: plot.left + pointIndex * slot,
+      top: valueY(value, scale, plot),
+    }));
+    positions.forEach((point, pointIndex) => {
+      if (pointIndex > 0) {
+        const previous = positions[pointIndex - 1]!;
+        out.push(
+          lineShape(
+            boxAt(
+              previous.left,
+              previous.top,
+              point.left - previous.left,
+              point.top - previous.top,
+            ),
+            series.colors[pointIndex]!,
+            1.5,
+            `line ${seriesIndex}.${pointIndex - 1}`,
+          ),
+        );
+      }
+      out.push({
+        kind: "ellipse",
+        box: boxAt(
+          Math.max(
+            plot.left,
+            Math.min(point.left - marker / 2, plot.left + plot.width - marker),
+          ),
+          Math.max(
+            plot.top,
+            Math.min(point.top - marker / 2, plot.top + plot.height - marker),
+          ),
+          marker,
+          marker,
+        ),
+        color: series.colors[pointIndex]!,
+        name: `marker ${seriesIndex}.${pointIndex}`,
+      });
+    });
+  });
+  return out;
+}
+
 // One label per category: centred under its slot (column/waterfall) or
 // right-aligned in the left column (bar/tornado); truncated to fit.
 function categoryLabels(
@@ -379,6 +435,13 @@ export function layoutChart(data: ChartData, box: Box): Primitive[] {
       );
       if (labelColumn)
         out.push(...categoryLabels(data, plot, labelColumn, true));
+    } else if (data.kind === "line") {
+      out.push(
+        ...lineSeries(data, plot, scale),
+        baselineLine(data.kind, data, plot, scale),
+      );
+      if (categoryBand)
+        out.push(...categoryLabels(data, plot, categoryBand, false));
     } else {
       out.push(
         ...waterfallBars(data, plot, scale),

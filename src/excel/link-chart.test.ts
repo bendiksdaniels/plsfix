@@ -29,7 +29,8 @@ describe("chartKind", () => {
   });
 
   it("leaves every other chart type to the picture", () => {
-    expect(chartKind("Line", null)).toBeNull();
+    expect(chartKind("Line", null)).toBe("line");
+    expect(chartKind("LineMarkers", null)).toBe("line");
     expect(chartKind("Doughnut", null)).toBeNull();
     expect(chartKind("Area", null)).toBeNull();
     expect(chartKind("", null)).toBeNull();

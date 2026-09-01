@@ -2,7 +2,12 @@
 // brand palette. They outlive the pane, and nothing about them is written
 // into the workbook. Office.js only reaches here through ../excel.
 
-import { applySlot, captureSlot } from "../excel";
+import {
+  applySlot,
+  captureSlot,
+  loadWorkbookPaintSlots,
+  saveWorkbookPaintSlots,
+} from "../excel";
 import {
   emptySlots,
   type PaintSlots,
@@ -31,6 +36,16 @@ export function renderPaintSlots(): void {
   });
 }
 
+// The workbook is the authority once Excel is connected. A null result means
+// this workbook has never saved slots, so the local slots remain a helpful
+// first-run fallback instead of being wiped.
+export async function loadWorkbookSlots(): Promise<void> {
+  const saved = await loadWorkbookPaintSlots();
+  if (saved === null) return;
+  paintSlots = saved;
+  renderPaintSlots();
+}
+
 export async function capturePaintSlot(index: number): Promise<string> {
   const slot = await captureSlot(index);
   paintSlots[index - 1] = slot;
@@ -39,6 +54,7 @@ export async function capturePaintSlot(index: number): Promise<string> {
   } catch {
     // Storage can be unavailable in private webviews; slots stay in memory.
   }
+  await saveWorkbookPaintSlots(paintSlots);
   renderPaintSlots();
   return `Slot ${index}: ${slotLabel(slot)}`;
 }

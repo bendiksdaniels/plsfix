@@ -36,6 +36,7 @@ const A1_RANGE = /^\$?[A-Za-z]{1,3}\$?\d{1,7}(:\$?[A-Za-z]{1,3}\$?\d{1,7})?$/;
 const KIND_RULES: readonly (readonly [RegExp, ChartKind])[] = [
   [/^Waterfall$/, "waterfall"],
   [/^(3D)?Pie(Exploded)?$/, "pie"],
+  [/^Line(Markers)?$/, "line"],
   [/^(3D)?(Bar|CylinderBar|ConeBar|PyramidBar)Stacked/, "stackedBar"],
   [/^(3D)?(Bar|CylinderBar|ConeBar|PyramidBar)Clustered$/, "bar"],
   [/^(3D)?(Column|Cylinder|Cone|Pyramid)(Col)?.*Stacked/, "stackedColumn"],

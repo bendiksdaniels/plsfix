@@ -86,7 +86,7 @@ describe("isChartData", () => {
   });
 
   it("refuses an unknown kind, a bad colour, a non-finite value and a long title", () => {
-    expect(isChartData({ ...column, kind: "line" })).toBe(false);
+    expect(isChartData({ ...column, kind: "line" })).toBe(true);
     expect(
       isChartData({
         ...column,

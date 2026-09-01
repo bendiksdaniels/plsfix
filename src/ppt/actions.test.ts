@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { LinkStatus } from "../link/status";
 import {
+  filterRows,
   pruneSelection,
   requireSelection,
   rowKey,
@@ -101,6 +102,36 @@ describe("selection", () => {
   it("refuses an action with nothing ticked", () => {
     expect(() => requireSelection([])).toThrow("Tick a link");
     expect(requireSelection([row("s1", "sh1")])).toHaveLength(1);
+  });
+});
+
+describe("link filters", () => {
+  it("filters by status without changing the row identity", () => {
+    const rows = [
+      row("s1", "sh1", "current", 0),
+      row("s2", "sh2", "missing", 1),
+      row("s3", "sh3", "updateAvailable", 2),
+    ];
+    expect(
+      filterRows(rows, { query: "", status: "missing" }).map((item) =>
+        rowKey(item.found),
+      ),
+    ).toEqual(["s2/sh2"]);
+  });
+
+  it("searches visible source, object type, status and slide number", () => {
+    const rows = [
+      row("s1", "sh1", "current", 0),
+      row("s2", "sh2", "missing", 4),
+    ];
+    expect(filterRows(rows, { query: "model_v4", status: "all" })).toHaveLength(
+      2,
+    );
+    expect(filterRows(rows, { query: "range", status: "all" })).toHaveLength(2);
+    expect(filterRows(rows, { query: "missing", status: "all" })).toEqual([
+      rows[1],
+    ]);
+    expect(filterRows(rows, { query: "5", status: "all" })).toEqual([rows[1]]);
   });
 });
 

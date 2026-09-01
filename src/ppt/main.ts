@@ -23,6 +23,7 @@ import { installTabs } from "../ui/tabs";
 import { createToast } from "../ui/toast";
 import { formatVersion } from "../ui/version";
 import {
+  filterRows,
   pruneSelection,
   requireSelection,
   selectedRows,
@@ -53,6 +54,9 @@ const PAIR_FIRST = "Paste the link key in Settings";
 const connectionStatus = getElement<HTMLSpanElement>("connection-status");
 const linkRowsBody = getElement<HTMLTableSectionElement>("link-rows");
 const linksEmpty = getElement("links-empty");
+const linksFilteredEmpty = getElement("links-filtered-empty");
+const linkSearch = getElement<HTMLInputElement>("link-search");
+const linkStatusFilter = getElement<HTMLSelectElement>("link-status-filter");
 const inboxList = getElement("inbox-list");
 const inboxUnpaired = getElement("inbox-unpaired");
 const workspaceState = getElement("workspace-state");
@@ -84,8 +88,15 @@ installFirstRun(document, "plsfix.firstRun.ppt.v1", "first-run-ppt");
 // ---------------------------------------------------------------------------
 
 function renderLinks(): void {
-  renderLinkRows(linkRowsBody, toRowViews(rows, selected), toggleSelection);
+  const filtered = filterRows(rows, {
+    query: linkSearch.value,
+    status: linkStatusFilter.value as Parameters<
+      typeof filterRows
+    >[1]["status"],
+  });
+  renderLinkRows(linkRowsBody, toRowViews(filtered, selected), toggleSelection);
   linksEmpty.hidden = rows.length > 0;
+  linksFilteredEmpty.hidden = rows.length === 0 || filtered.length > 0;
   syncChangeSource();
 }
 
@@ -355,6 +366,9 @@ workspaceKey.addEventListener("keydown", (event) => {
   event.preventDefault();
   act(saveKey, "save-key");
 });
+
+linkSearch.addEventListener("input", renderLinks);
+linkStatusFilter.addEventListener("change", renderLinks);
 
 renderLinks();
 renderInboxView();

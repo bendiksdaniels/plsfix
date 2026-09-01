@@ -19,6 +19,40 @@
   cursor: pointer;
 }
 
+.link-filters {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--gap-tight);
+  min-width: 0;
+}
+.link-filters input,
+.link-filters select {
+  min-width: 0;
+  height: var(--control-h);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+  color: var(--ink);
+  background: var(--surface);
+  font: inherit;
+}
+.link-filters input {
+  width: 100%;
+  padding: 4px 9px;
+}
+.link-filters select {
+  max-width: 132px;
+  padding: 4px 6px;
+}
+
+@media (max-width: 360px) {
+  .link-filters {
+    grid-template-columns: 1fr;
+  }
+  .link-filters select {
+    max-width: none;
+  }
+}
+
 /* Fixed layout, so these widths rule: the tick, the slide number, the status
    and the age get exactly what they need and the object name takes the rest -
    ellipsised, with the full text in its title. The workbook name is the least

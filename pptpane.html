@@ -127,6 +127,24 @@
             </button>
           </div>
 
+          <div class="link-filters" role="search" aria-label="Filter links">
+            <label class="sr-only" for="link-search">Search links</label>
+            <input
+              id="link-search"
+              type="search"
+              placeholder="Search slide, object or workbook"
+              autocomplete="off"
+            />
+            <label class="sr-only" for="link-status-filter">Link status</label>
+            <select id="link-status-filter">
+              <option value="all">All statuses</option>
+              <option value="updateAvailable">Update available</option>
+              <option value="missing">Source missing</option>
+              <option value="wrongKey">Wrong link key</option>
+              <option value="current">Up to date</option>
+            </select>
+          </div>
+
           <div id="change-source-chooser" class="source-chooser" hidden>
             <label class="key-label" for="change-source-list">
               Point this link at
@@ -157,6 +175,9 @@
           </table>
           <p class="hint" id="links-empty">
             No linked objects in this deck yet. Insert one from the Inbox.
+          </p>
+          <p class="hint" id="links-filtered-empty" hidden>
+            No links match this filter. Your selected links are kept.
           </p>
 
           <button id="break-selected" class="danger" type="button">

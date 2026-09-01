@@ -4,7 +4,13 @@
 // Pure: no Office.js, nothing from src/excel or src/ppt.
 
 export type ChartKind =
-  "column" | "stackedColumn" | "bar" | "stackedBar" | "waterfall" | "pie";
+  | "column"
+  | "stackedColumn"
+  | "bar"
+  | "stackedBar"
+  | "waterfall"
+  | "pie"
+  | "line";
 
 // One series: a value, its displayed text and its brand colour per category.
 export interface ChartSeries {
@@ -40,6 +46,7 @@ const KINDS: readonly string[] = [
   "stackedBar",
   "waterfall",
   "pie",
+  "line",
 ];
 const HEX_COLOR = /^#[0-9A-Fa-f]{6}$/;
 const FULL_TURN = 360;

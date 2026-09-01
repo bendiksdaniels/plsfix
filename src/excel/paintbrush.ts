@@ -10,14 +10,39 @@ import { captureUndo } from "./undo";
 import { makeFormatGrid } from "../model";
 import {
   PAINT_SLOT_COUNT,
+  parseSlots,
+  serializeSlots,
   type PaintBorder,
   type PaintEdge,
   type PaintSlot,
+  type PaintSlots,
 } from "../paintbrush";
 
 // Errors say which flow asked, the way the other multi-area guards do.
 const STAGE = "paintbrush";
 const CAP_LABEL = "Paintbrush";
+const PAINT_SLOTS_SETTING = "PLSFIX_PAINT_SLOTS_V1";
+
+// Slots normally travel with the workbook. Local storage remains a small
+// fallback for hosts that block workbook settings, and for an unsaved new
+// workbook before Excel has a file to carry them in.
+export async function loadWorkbookPaintSlots(): Promise<PaintSlots | null> {
+  return Excel.run(async (context) => {
+    const setting =
+      context.workbook.settings.getItemOrNullObject(PAINT_SLOTS_SETTING);
+    setting.load("isNullObject,value");
+    await context.sync();
+    if (setting.isNullObject || typeof setting.value !== "string") return null;
+    return parseSlots(setting.value);
+  });
+}
+
+export async function saveWorkbookPaintSlots(slots: PaintSlots): Promise<void> {
+  await Excel.run(async (context) => {
+    context.workbook.settings.add(PAINT_SLOTS_SETTING, serializeSlots(slots));
+    await context.sync();
+  });
+}
 
 // The scalars a slot is made of, in one load: the number format sits on the
 // range, everything else on its format tree. Borders load separately - each

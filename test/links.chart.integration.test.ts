@@ -121,7 +121,7 @@ describe("exportActiveChart: the chart data beside the picture", () => {
     ]);
   });
 
-  it("sends a line chart as a picture alone", async () => {
+  it("sends line-chart data beside the picture so PowerPoint can rebuild it", async () => {
     const chart = helpers.addChart("Model", {
       name: "Revenue trend",
       chartType: "Line",
@@ -133,7 +133,12 @@ describe("exportActiveChart: the chart data beside the picture", () => {
     const { id } = await links.exportActiveChart(ws, relay);
     const payload = await pictureOf(id);
     expect(payload.png).not.toBe("");
-    expect(payload.chart).toBeUndefined();
+    expect(payload.chart).toMatchObject({
+      v: 1,
+      kind: "line",
+      title: "Revenue",
+      categories: CATEGORIES,
+    });
   });
 
   // The tornado: one clustered bar chart whose two series sit on the same row.

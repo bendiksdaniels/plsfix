@@ -158,6 +158,21 @@ describe("layoutChart stacked and bars", () => {
   });
 });
 
+describe("layoutChart line", () => {
+  it("rebuilds each data point as an editable marker and joins consecutive points", () => {
+    const out = layoutChart({ ...column, kind: "line" }, box);
+    const markers = out.filter(
+      (item) => item.kind === "ellipse" && item.name.startsWith("marker"),
+    );
+    const lines = out.filter(
+      (item) => item.kind === "line" && item.name.startsWith("line"),
+    );
+    expect(markers).toHaveLength(3);
+    expect(lines).toHaveLength(2);
+    expect([...markers, ...lines].every((item) => inside(item.box))).toBe(true);
+  });
+});
+
 describe("layoutChart waterfall", () => {
   const bridge: ChartData = {
     ...column,

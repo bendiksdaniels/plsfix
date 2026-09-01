@@ -263,7 +263,7 @@ describe("chart data on a picture payload", () => {
   });
 
   it("refuses a malformed chart", () => {
-    const broken = { ...picture, chart: { ...chart, kind: "line" } };
+    const broken = { ...picture, chart: { ...chart, kind: "area" } };
     expect(() =>
       decodePayload(new TextEncoder().encode(JSON.stringify(broken))),
     ).toThrow();

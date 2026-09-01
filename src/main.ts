@@ -20,7 +20,11 @@ import { dispatch } from "./pane/dispatch";
 import { renderFind, runFind } from "./pane/find-panel";
 import { installLinksTab } from "./pane/links-tab";
 import { copyReport, renderModelCheck } from "./pane/model-check-panel";
-import { loadPaintSlots, renderPaintSlots } from "./pane/paint-slots";
+import {
+  loadPaintSlots,
+  loadWorkbookSlots,
+  renderPaintSlots,
+} from "./pane/paint-slots";
 import {
   actionButtons,
   APP_VERSION,
@@ -125,6 +129,9 @@ async function boot(host: Office.HostType, degraded: boolean): Promise<void> {
   connectionStatus.textContent = "Excel connected";
   connectionStatus.className = "connection ready";
   setExcelReady(true);
+  // Slots saved with the workbook win over the machine-local fallback loaded
+  // before Office was ready, so a shared model carries its formatting kit.
+  void loadWorkbookSlots().catch(() => undefined);
   if (degraded) toast.show(DEGRADED_BOOT_MESSAGE);
   void readSeparators()
     .then(applyExcelSeparators)

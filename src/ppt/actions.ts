@@ -8,6 +8,13 @@ import type { FoundLink } from "./host";
 import type { LinkRow, UpdateSummary } from "./links";
 import type { LinkRowView } from "./views";
 
+export type LinkFilterStatus = "all" | LinkRow["status"];
+
+export interface LinkFilter {
+  query: string;
+  status: LinkFilterStatus;
+}
+
 // Slide plus shape: a copied link keeps its id and token, so identity in the
 // list is the shape it lives on, never the link id.
 export function rowKey(found: FoundLink): string {
@@ -30,6 +37,26 @@ export function toRowViews(
       pushedAt: row.pushedAt,
       selected: selected.has(key),
     };
+  });
+}
+
+// Keep filtering in the state layer, rather than in the renderer, so a
+// selected link stays selected when it is temporarily outside the current
+// view. Search covers the labels people can see: source workbook, sheet/range,
+// kind, status and the one-based slide number.
+export function filterRows(rows: LinkRow[], filter: LinkFilter): LinkRow[] {
+  const query = filter.query.trim().toLocaleLowerCase();
+  return rows.filter((row) => {
+    if (filter.status !== "all" && row.status !== filter.status) return false;
+    if (query === "") return true;
+    const values = [
+      sourceLabel(row.found.tag.src, row.found.tag.kind),
+      row.found.tag.src.workbook,
+      row.found.tag.kind,
+      row.status,
+      String(row.found.slideIndex + 1),
+    ];
+    return values.some((value) => value.toLocaleLowerCase().includes(query));
   });
 }
 
