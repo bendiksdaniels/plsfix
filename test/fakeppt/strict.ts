@@ -24,7 +24,10 @@ const KINDS: Record<string, Descriptor> = {
   context: { children: { presentation: "presentation" } },
   presentation: {
     children: { slides: "slides" },
-    returns: { getSelectedSlides: "slides" },
+    returns: {
+      getSelectedSlides: "slides",
+      getSelectedShapes: "selectedShapes",
+    },
   },
   slides: {
     items: "slide",
@@ -72,7 +75,11 @@ const KINDS: Record<string, Descriptor> = {
       textFrame: "textFrame",
       adjustments: "adjustments",
     },
-    returns: { getParentSlideOrNullObject: "slide", getTable: "table" },
+    returns: {
+      getParentSlide: "slide",
+      getParentSlideOrNullObject: "slide",
+      getTable: "table",
+    },
   },
   // A shape of type Group and the shapes inside it: one more level of the same
   // items/<property> load paths, which is how office.js reads a group too.
@@ -85,8 +92,28 @@ const KINDS: Record<string, Descriptor> = {
       getCount: "clientResult",
     },
   },
-  fill: {},
-  lineFormat: { scalars: ["visible", "color", "weight"] },
+  // context.presentation.getSelectedShapes() (PowerPointApi 1.5): the
+  // selection itself, in the order it was made.
+  selectedShapes: {
+    items: "shape",
+    returns: {
+      getItem: "shape",
+      getItemAt: "shape",
+      getItemOrNullObject: "shape",
+      getCount: "clientResult",
+    },
+  },
+  fill: { scalars: ["type", "foregroundColor", "transparency"] },
+  lineFormat: {
+    scalars: [
+      "visible",
+      "color",
+      "weight",
+      "transparency",
+      "dashStyle",
+      "style",
+    ],
+  },
   // The geometry's own handles: a pie's start and end angle, read back one at
   // a time through a ClientResult.
   adjustments: { scalars: ["count"], returns: { get: "clientResult" } },

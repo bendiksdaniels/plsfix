@@ -12,9 +12,21 @@ import {
   type ObjectBox,
   type ObjectMove,
 } from "./object-math";
+import { hasPowerPointApi } from "./shapes";
 
 const GEOMETRY =
   "items/id,items/type,items/left,items/top,items/width,items/height";
+
+// The whole selection surface (getSelectedShapes, setSelectedShapes,
+// getParentSlide) is PowerPointApi 1.5; the fill/line members below it are
+// 1.4, so gating every entry point at 1.5 covers both.
+const OBJECT_TOOLS_API = "1.5";
+
+function requireObjectToolsApi(): void {
+  if (!hasPowerPointApi(OBJECT_TOOLS_API)) {
+    throw new Error("Object tools need PowerPoint 2021 or Microsoft 365.");
+  }
+}
 
 interface CapturedStyle {
   fill: { type: string; color: string; transparency: number };
@@ -67,6 +79,7 @@ async function transform(
   make: (boxes: ObjectBox[]) => ObjectMove[],
   maximum?: number,
 ): Promise<number> {
+  requireObjectToolsApi();
   return PowerPoint.run(async (context) => {
     const selected = context.presentation.getSelectedShapes();
     selected.load(GEOMETRY);
@@ -114,6 +127,7 @@ export async function swapSelected(): Promise<string> {
 }
 
 export async function selectSimilar(): Promise<string> {
+  requireObjectToolsApi();
   return PowerPoint.run(async (context) => {
     const selected = context.presentation.getSelectedShapes();
     selected.load(GEOMETRY);
@@ -134,6 +148,7 @@ export async function selectSimilar(): Promise<string> {
 }
 
 export async function captureObjectStyle(): Promise<string> {
+  requireObjectToolsApi();
   return PowerPoint.run(async (context) => {
     const selected = context.presentation.getSelectedShapes();
     selected.load("items/id");
@@ -168,6 +183,7 @@ export async function captureObjectStyle(): Promise<string> {
 }
 
 export async function applyObjectStyle(): Promise<string> {
+  requireObjectToolsApi();
   if (painter === null) throw new Error("Capture an object style first.");
   const style = painter;
   return PowerPoint.run(async (context) => {

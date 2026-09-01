@@ -6,6 +6,10 @@
 import type { Box, FakePptHelpers, FakePptOptions, SelectionInsert } from ".";
 import { FakePresentation } from "./model";
 import { SlideCollectionProxy } from "./objects";
+import {
+  SelectedShapesCollectionProxy,
+  selectShapesForTest,
+} from "./selection";
 import { Loadable, StrictLoads } from "./strict";
 
 interface SelectionOptions {
@@ -110,6 +114,9 @@ class PresentationProxy extends Loadable {
   }
   setSelectedSlides(slideIds: string[]): void {
     this.deck.selectedSlideIds = [...slideIds];
+  }
+  getSelectedShapes(): SelectedShapesCollectionProxy {
+    return new SelectedShapesCollectionProxy(this.deck);
   }
 }
 
@@ -271,6 +278,9 @@ function makeHelpers(runtime: FakeRuntime): FakePptHelpers {
     },
     clearSelection() {
       runtime.presentation.selectedSlideIds = [];
+    },
+    selectShapes(ids) {
+      selectShapesForTest(runtime.presentation, ids);
     },
     setSupported(check) {
       runtime.supported = check;
