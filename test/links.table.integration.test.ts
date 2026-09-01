@@ -86,8 +86,11 @@ async function tableOf(id: string): Promise<TablePayload> {
 }
 
 describe("exportSelectionAsTable", () => {
-  it("uses Mac compatibility rendering instead of the rich cell-properties grid", async () => {
-    (Office.context as unknown as { platform: string }).platform = "Mac";
+  // A host that refuses the rich grid still answers for text and widths: the
+  // table lands as a plain one rather than failing before the relay, and the
+  // anchor the rich batch bound stays bound.
+  it("falls back to the plain grid when the cell-properties read is refused", async () => {
+    helpers.failNextCellProperties();
     const result = await links.exportSelectionAsTable(ws, relay);
     const payload = await tableOf(result.id);
     expect(payload.cells).toEqual([
@@ -95,6 +98,18 @@ describe("exportSelectionAsTable", () => {
       [{ t: "Costs" }, { t: "-400", a: "r" }],
     ]);
     expect(payload.widths).toEqual([96, 48]);
+    expect(
+      workbook.names.find((n) => n.name === anchorName(result.id)),
+    ).toBeDefined();
+    expect(
+      JSON.parse(String(helpers.setting(REGISTRY_SETTING))).links,
+    ).toHaveLength(1);
+  });
+
+  it("costs a working host no extra round trip", async () => {
+    const before = helpers.syncCount();
+    await links.exportSelectionAsTable(ws, relay);
+    expect(helpers.syncCount() - before).toBe(6);
   });
 
   it("anchors the range, records a table entry and pushes the cells, formats and widths", async () => {

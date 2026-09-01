@@ -76,6 +76,31 @@ async function payloadOf(id: string, token: string) {
   return payload;
 }
 
+// A chart the slide can draw as shapes, so its export carries chart data
+// beside the picture: the values are the cells the suite already seeded.
+function addChartWithData(): void {
+  helpers.addChart("Model", {
+    name: "Revenue bridge",
+    width: 400,
+    height: 200,
+    chartType: "ColumnClustered",
+    title: "Revenue",
+    series: [
+      {
+        name: "Revenue",
+        categories: ["2024A", "2025E", "2026E"],
+        values: [1, 2, 3],
+        valuesSource: "Model!$B$4:$D$4",
+      },
+    ],
+  });
+  helpers.setActiveChart(workbook.charts[0]!);
+}
+
+function registryToken(): string {
+  return JSON.parse(String(helpers.setting(REGISTRY_SETTING))).links[0].token;
+}
+
 describe("exportSelection", () => {
   it("anchors a hidden name, records the registry, pushes a sealed picture and posts to the inbox", async () => {
     const result = await links.exportSelection(ws, relay);
@@ -177,18 +202,39 @@ describe("pushLinks", () => {
 });
 
 describe("charts", () => {
-  it("uses the Mac chart-image compatibility path", async () => {
-    (Office.context as unknown as { platform: string }).platform = "Mac";
-    helpers.addChart("Model", {
-      name: "Revenue bridge",
-      width: 400,
-      height: 200,
-    });
-    helpers.setActiveChart(workbook.charts[0]!);
+  // The sizing arguments are a call a host can refuse on its own. The fallback
+  // asks the same chart for its own picture in the same context, so the link
+  // still lands - at the chart's rendered size instead of twice it.
+  it("falls back to the chart's own picture when the sharp export is refused", async () => {
+    addChartWithData();
+    helpers.failNextImage();
     const result = await links.exportActiveChart(ws, relay);
-    const token = JSON.parse(String(helpers.setting(REGISTRY_SETTING))).links[0]
-      .token;
-    expect((await payloadOf(result.id, token)).png).toBe(fakePng(400, 200));
+    const payload = await payloadOf(result.id, registryToken());
+    expect(payload.png).toBe(fakePng(400, 200));
+    expect(payload.chart).toMatchObject({ kind: "column", title: "Revenue" });
+    expect(workbook.charts[0]!.name).toBe(anchorName(result.id));
+  });
+
+  // The head reads ride the picture's batch, so a chart office.js will not
+  // describe fails the sync the picture was in: the retry has to land the
+  // picture anyway.
+  it("still lands the picture when the chart head read fails beside it", async () => {
+    addChartWithData();
+    helpers.failNextChartRead();
+    const result = await links.exportActiveChart(ws, relay);
+    const payload = await payloadOf(result.id, registryToken());
+    expect(payload.png).toBe(fakePng(400, 200));
+    expect(payload.chart).toMatchObject({ kind: "column" });
+  });
+
+  it("ships the picture alone when the chart data fails on the retry too", async () => {
+    addChartWithData();
+    helpers.failNextChartRead();
+    helpers.failNextChartRead();
+    const result = await links.exportActiveChart(ws, relay);
+    const payload = await payloadOf(result.id, registryToken());
+    expect(payload.png).toBe(fakePng(400, 200));
+    expect(payload.chart).toBeUndefined();
   });
 
   it("exports the active chart by renaming it to the anchor and finds it on another sheet later", async () => {
@@ -259,18 +305,30 @@ describe("charts", () => {
   });
   // The rename is committed by the sync that asks for the picture: without the
   // undo the chart keeps an anchor name no entry claims and can never be
-  // exported again.
-  it("gives a chart its name back when the picture never renders, and exports on the retry", async () => {
+  // exported again. Only a host that refuses both pictures gets that far.
+  it("gives a chart its name back when neither picture renders, and exports on the retry", async () => {
     helpers.addChart("Model", { name: "Revenue bridge" });
     helpers.setActiveChart(workbook.charts[0]!);
     helpers.failNextImage();
+    helpers.failNextImage();
     await expect(links.exportActiveChart(ws, relay)).rejects.toThrow(
-      /export Model: Revenue bridge: The image failed to render/,
+      /export Model: Revenue bridge: sharp: GeneralException; plain: The image failed to render/,
     );
     expect(workbook.charts[0]!.name).toBe("Revenue bridge");
+    expect(workbook.names).toEqual([]);
+    expect(helpers.setting(REGISTRY_SETTING)).toBeNull();
+    expect(relay.links.size).toBe(0);
 
     const result = await links.exportActiveChart(ws, relay);
     expect(workbook.charts[0]!.name).toBe(anchorName(result.id));
+  });
+  // A host that answers costs exactly what it cost before the fallback existed:
+  // the retry is queued only after a sync has already been refused.
+  it("costs a working host no extra round trip", async () => {
+    addChartWithData();
+    const before = helpers.syncCount();
+    await links.exportActiveChart(ws, relay);
+    expect(helpers.syncCount() - before).toBe(7);
   });
   it("re-anchors a chart whose anchor name no link claims", async () => {
     const orphan = anchorName("f".repeat(32));

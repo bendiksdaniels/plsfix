@@ -1447,7 +1447,16 @@ class FakeRuntime {
   failSync: Error | null = null;
   // Armed by helpers.failNextImage(): the next getImage queues this error, so
   // the render fails at the sync that was going to commit the anchor with it.
-  failImage: Error | null = null;
+  // A queue rather than one slot, so a test can meet a host that refuses the
+  // same call twice - which is what tells a fallback that lands from one that
+  // has nowhere left to go.
+  failImages: Error[] = [];
+  // Armed by helpers.failNextChartRead(): the chart head read that rides the
+  // picture's own batch.
+  failChartReads: Error[] = [];
+  // Armed by helpers.failNextCellProperties(): the rich grid a table render
+  // asks for before it falls back to text and widths alone.
+  failCellProperties: Error[] = [];
   supported: (set: string, version: string) => boolean;
   rewriteCurrencyFormats: boolean;
   maxCells: number;
@@ -1473,14 +1482,12 @@ class FakeRuntime {
   }
 }
 
-// getImage is queued like any other call: Excel reports the failure on the sync
-// that runs the batch, by which time the writes queued beside it have already
-// been applied. Consumed by the one call it was armed for.
-function queueImageFailure(runtime: FakeRuntime, ctx: FakeContext): void {
-  const failure = runtime.failImage;
-  if (!failure) return;
-  runtime.failImage = null;
-  ctx.queueError(failure);
+// A refused call is queued like any other: Excel reports it on the sync that
+// runs the batch, by which time the writes queued beside it have already been
+// applied. One armed error per call, consumed in the order it was armed.
+function queueFailure(queue: Error[], ctx: FakeContext): void {
+  const failure = queue.shift();
+  if (failure) ctx.queueError(failure);
 }
 
 // ---------------------------------------------------------------------------
@@ -1942,6 +1949,7 @@ class RangeProxy {
   getCellProperties(options: Record<string, unknown>): {
     value: Record<string, unknown>[][];
   } {
+    queueFailure(this.runtime.failCellProperties, this.ctx);
     const wanted = (options?.format ?? {}) as Record<string, unknown>;
     const pick = <T extends object>(
       source: T,
@@ -2026,7 +2034,7 @@ class RangeProxy {
   // Excel renders the range at its on-screen size; the fake grid is a fixed
   // 64pt column by a 20pt row, so the rectangle is the picture.
   getImage(): { value: string } {
-    queueImageFailure(this.runtime, this.ctx);
+    queueFailure(this.runtime.failImages, this.ctx);
     return { value: fakePng(this.width, this.height) };
   }
 
@@ -2585,7 +2593,7 @@ class ChartProxy {
     _fittingMode?: string,
   ): { value: string } {
     void _fittingMode;
-    queueImageFailure(this.runtime, this.ctx);
+    queueFailure(this.runtime.failImages, this.ctx);
     return {
       value: fakePng(width ?? this.width, height ?? this.height),
     };
@@ -2629,8 +2637,12 @@ class ChartProxy {
   }
 
   // Excel answers for a chart with no title of its own with an empty string.
+  // The title is asked for in the batch that carries the chart's picture, so
+  // this is where an armed head-read failure lands: `load` itself is swallowed
+  // by the strict layer, the property access is not.
   get title() {
     const record = this.record;
+    queueFailure(this.runtime.failChartReads, this.ctx);
     return {
       load: () => undefined,
       get text(): string {
@@ -3579,8 +3591,16 @@ export interface FakeHelpers {
   setSupported(check: (set: string, version: string) => boolean): void;
   failNextSync(error?: Error): void;
   // Makes the next Range/Chart getImage fail, the way a chart mid-render or a
-  // protected sheet does, without touching the writes queued beside it.
+  // protected sheet does, without touching the writes queued beside it. Called
+  // twice, it refuses two pictures: a render that retries meets a host that
+  // says no both times.
   failNextImage(error?: Error): void;
+  // Makes the next chart head read (its title, beside the chart type and the
+  // series names) fail: the read that rides the same batch as the picture.
+  failNextChartRead(error?: Error): void;
+  // Makes the next getCellProperties fail, the rich grid a table render asks
+  // for before its plain fallback.
+  failNextCellProperties(error?: Error): void;
   changeHandlerCount(): number;
   // Round trips so far, for the tests that hold a flow to a sync budget.
   syncCount(): number;
@@ -3894,9 +3914,22 @@ export function installFakeHost(options: FakeHostOptions = {}): {
         error ?? hostError(ErrorCodes.generalException, "The sync failed.");
     },
     failNextImage(error) {
-      runtime.failImage =
+      runtime.failImages.push(
         error ??
-        hostError(ErrorCodes.generalException, "The image failed to render.");
+          hostError(ErrorCodes.generalException, "The image failed to render."),
+      );
+    },
+    failNextChartRead(error) {
+      runtime.failChartReads.push(
+        error ??
+          hostError(ErrorCodes.generalException, "The chart cannot be read."),
+      );
+    },
+    failNextCellProperties(error) {
+      runtime.failCellProperties.push(
+        error ??
+          hostError(ErrorCodes.generalException, "The cell formats failed."),
+      );
     },
     changeHandlerCount: () => runtime.changeHandlers.length,
     syncCount: () => runtime.syncs,

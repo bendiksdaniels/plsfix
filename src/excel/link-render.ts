@@ -1,17 +1,19 @@
 // What a link's source becomes on the wire: the base64 picture a range or a
 // chart gives, the cell grid link-table.ts reads, or the one cell a text link
-// shows. Owns the Render union and every render. Invariant: a render bound to
-// a fresh anchor undoes that anchor when it fails, so no hidden name outlives
-// the export that made it.
+// shows. Owns the Render union and every render. A call a host refuses is
+// retried once, plainly, in the same context - what the host answers decides,
+// never which platform it says it is. Invariant: a render bound to a fresh
+// anchor undoes that anchor when every attempt fails, so no hidden name
+// outlives the export that made it.
 
 import { type ChartData } from "../link/chart-model";
 import {
+  bothRefused,
   staged,
   type ResolvedChart,
   type ResolvedSource,
 } from "./link-anchors";
 import { readChartData } from "./link-chart";
-import { isMacExcel } from "./link-platform";
 import { renderTable, type TableRender } from "./link-table";
 
 // Charts are laid out in points; rendering at twice that keeps the slide
@@ -77,22 +79,60 @@ export async function renderSource(
 }
 
 // The picture is queued first and the reads ride the same batch: a chart the
-// slide cannot draw costs the one round trip a chart link costs today.
+// slide cannot draw costs the one round trip a chart link costs today. A host
+// that refuses that batch - the sizing arguments, or a head read beside them -
+// is asked again, plainly, rather than costing the link its picture.
 async function renderChart(
   context: Excel.RequestContext,
   resolved: ResolvedChart,
 ): Promise<Render> {
-  // Excel Mac 16.107 has reported GeneralException for the optional sizing
-  // arguments even though getImage itself is available. Its default image is
-  // the chart's rendered size and is reliable; other hosts retain the sharper
-  // two-times export used for slide placement.
-  const image = isMacExcel()
-    ? resolved.chart.getImage()
-    : resolved.chart.getImage(
-        Math.round(resolved.width * CHART_PIXEL_SCALE),
-        Math.round(resolved.height * CHART_PIXEL_SCALE),
-        Excel.ImageFittingMode.fit,
-      );
-  const chart = await readChartData(context, resolved.chart);
-  return { kind: "picture", png: image.value, ...(chart ? { chart } : {}) };
+  try {
+    const image = resolved.chart.getImage(
+      Math.round(resolved.width * CHART_PIXEL_SCALE),
+      Math.round(resolved.height * CHART_PIXEL_SCALE),
+      Excel.ImageFittingMode.fit,
+    );
+    const chart = await readChartData(context, resolved.chart);
+    return picture(image.value, chart);
+  } catch (sharp) {
+    return renderChartPlain(context, resolved, sharp);
+  }
+}
+
+// The picture alone, at the chart's own size, in the context the sharp attempt
+// already failed in. It gets its own sync first, so the chart data - the read
+// that may have been what failed - can fail again without taking the picture
+// with it, exactly as an undrawable chart travels today.
+async function renderChartPlain(
+  context: Excel.RequestContext,
+  resolved: ResolvedChart,
+  sharp: unknown,
+): Promise<Render> {
+  try {
+    const image = resolved.chart.getImage();
+    await context.sync();
+    return picture(image.value, await tryChartData(context, resolved.chart));
+  } catch (plain) {
+    throw bothRefused(sharp, "sharp", plain, "plain");
+  }
+}
+
+// readChartData answers null for a chart it cannot describe, but a host that
+// refuses the read itself rejects the sync: the picture is already in hand by
+// then, and a link with a picture beats one with nothing.
+async function tryChartData(
+  context: Excel.RequestContext,
+  chart: Excel.Chart,
+): Promise<ChartData | null> {
+  try {
+    return await readChartData(context, chart);
+  } catch {
+    return null;
+  }
+}
+
+// One shape for both attempts: the chart key is left out entirely rather than
+// sent as null, because that is what the payload codec reads as "no chart".
+function picture(png: string, chart: ChartData | null): Render {
+  return { kind: "picture", png, ...(chart ? { chart } : {}) };
 }
