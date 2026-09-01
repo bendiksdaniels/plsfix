@@ -13,6 +13,8 @@ export type LinkFilterStatus = "all" | LinkRow["status"];
 export interface LinkFilter {
   query: string;
   status: LinkFilterStatus;
+  source?: string;
+  slide?: number | "all";
 }
 
 // Slide plus shape: a copied link keeps its id and token, so identity in the
@@ -48,6 +50,20 @@ export function filterRows(rows: LinkRow[], filter: LinkFilter): LinkRow[] {
   const query = filter.query.trim().toLocaleLowerCase();
   return rows.filter((row) => {
     if (filter.status !== "all" && row.status !== filter.status) return false;
+    if (
+      filter.source !== undefined &&
+      filter.source !== "all" &&
+      row.found.tag.src.workbook !== filter.source
+    ) {
+      return false;
+    }
+    if (
+      filter.slide !== undefined &&
+      filter.slide !== "all" &&
+      row.found.slideIndex + 1 !== filter.slide
+    ) {
+      return false;
+    }
     if (query === "") return true;
     const values = [
       sourceLabel(row.found.tag.src, row.found.tag.kind),
@@ -58,6 +74,16 @@ export function filterRows(rows: LinkRow[], filter: LinkFilter): LinkRow[] {
     ];
     return values.some((value) => value.toLocaleLowerCase().includes(query));
   });
+}
+
+export function linkSources(rows: LinkRow[]): string[] {
+  return [...new Set(rows.map((row) => row.found.tag.src.workbook))].sort();
+}
+
+export function linkSlides(rows: LinkRow[]): number[] {
+  return [...new Set(rows.map((row) => row.found.slideIndex + 1))].sort(
+    (a, b) => a - b,
+  );
 }
 
 export function selectedRows(

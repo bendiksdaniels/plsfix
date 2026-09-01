@@ -24,6 +24,8 @@ import { createToast } from "../ui/toast";
 import { formatVersion } from "../ui/version";
 import {
   filterRows,
+  linkSlides,
+  linkSources,
   pruneSelection,
   requireSelection,
   selectedRows,
@@ -44,6 +46,15 @@ import {
   type LinkRow,
 } from "./links";
 import { revertLinks, summarizeRevert } from "./revert";
+import {
+  alignSelected,
+  applyObjectStyle,
+  captureObjectStyle,
+  distributeSelected,
+  matchSelectedSize,
+  selectSimilar,
+  swapSelected,
+} from "./object-tools";
 import { renderInbox, renderLinkRows } from "./views";
 
 const APP_VERSION = formatVersion(__APP_VERSION__);
@@ -58,6 +69,12 @@ const linksEmpty = getElement("links-empty");
 const linksFilteredEmpty = getElement("links-filtered-empty");
 const linkSearch = getElement<HTMLInputElement>("link-search");
 const linkStatusFilter = getElement<HTMLSelectElement>("link-status-filter");
+const linkSourceFilter = getElement<HTMLSelectElement>("link-source-filter");
+const linkSlideFilter = getElement<HTMLSelectElement>("link-slide-filter");
+const objectAlignMode = getElement<HTMLSelectElement>("object-align-mode");
+const objectDistributeAxis = getElement<HTMLSelectElement>(
+  "object-distribute-axis",
+);
 const inboxList = getElement("inbox-list");
 const inboxUnpaired = getElement("inbox-unpaired");
 const workspaceState = getElement("workspace-state");
@@ -89,16 +106,52 @@ installFirstRun(document, "plsfix.firstRun.ppt.v1", "first-run-ppt");
 // ---------------------------------------------------------------------------
 
 function renderLinks(): void {
+  syncLinkFilterOptions();
   const filtered = filterRows(rows, {
     query: linkSearch.value,
     status: linkStatusFilter.value as Parameters<
       typeof filterRows
     >[1]["status"],
+    source: linkSourceFilter.value,
+    slide:
+      linkSlideFilter.value === "all" ? "all" : Number(linkSlideFilter.value),
   });
   renderLinkRows(linkRowsBody, toRowViews(filtered, selected), toggleSelection);
   linksEmpty.hidden = rows.length > 0;
   linksFilteredEmpty.hidden = rows.length === 0 || filtered.length > 0;
   syncChangeSource();
+}
+
+function replaceFilterOptions(
+  select: HTMLSelectElement,
+  allLabel: string,
+  values: (string | number)[],
+  label: (value: string | number) => string,
+): void {
+  const selectedValue = select.value;
+  const options = [new Option(allLabel, "all")];
+  for (const value of values) {
+    options.push(new Option(label(value), String(value)));
+  }
+  select.replaceChildren(...options);
+  select.value = options.some((option) => option.value === selectedValue)
+    ? selectedValue
+    : "all";
+}
+
+function syncLinkFilterOptions(): void {
+  replaceFilterOptions(
+    linkSourceFilter,
+    "All sources",
+    linkSources(rows),
+    String,
+  );
+  replaceFilterOptions(
+    linkSlideFilter,
+    "All slides",
+    linkSlides(rows),
+    (value) => `Slide ${String(value)}`,
+  );
 }
 
 function toggleSelection(key: string, isSelected: boolean): void {
@@ -371,6 +424,17 @@ const BUTTON_ACTIONS: Record<string, () => Promise<string>> = {
   "paste-latest-linked": pasteLatestLinked,
   "save-key": saveKey,
   "forget-key": forgetKey,
+  "align-objects": () =>
+    alignSelected(objectAlignMode.value as Parameters<typeof alignSelected>[0]),
+  "distribute-objects": () =>
+    distributeSelected(
+      objectDistributeAxis.value as Parameters<typeof distributeSelected>[0],
+    ),
+  "match-size": matchSelectedSize,
+  "select-similar": selectSimilar,
+  "swap-objects": swapSelected,
+  "capture-object-style": captureObjectStyle,
+  "apply-object-style": applyObjectStyle,
 };
 
 for (const [id, run] of Object.entries(BUTTON_ACTIONS)) {
@@ -387,6 +451,8 @@ workspaceKey.addEventListener("keydown", (event) => {
 
 linkSearch.addEventListener("input", renderLinks);
 linkStatusFilter.addEventListener("change", renderLinks);
+linkSourceFilter.addEventListener("change", renderLinks);
+linkSlideFilter.addEventListener("change", renderLinks);
 
 renderLinks();
 renderInboxView();

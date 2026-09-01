@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import type { LinkStatus } from "../link/status";
 import {
   filterRows,
+  linkSlides,
+  linkSources,
   pruneSelection,
   requireSelection,
   rowKey,
@@ -132,6 +134,24 @@ describe("link filters", () => {
       rows[1],
     ]);
     expect(filterRows(rows, { query: "5", status: "all" })).toEqual([rows[1]]);
+  });
+
+  it("combines workbook, slide and status views", () => {
+    const rows = [
+      row("s1", "sh1", "current", 0),
+      row("s2", "sh2", "missing", 4),
+    ];
+    rows[1]!.found.tag.src.workbook = "Budget.xlsx";
+    expect(
+      filterRows(rows, {
+        query: "",
+        status: "missing",
+        source: "Budget.xlsx",
+        slide: 5,
+      }),
+    ).toEqual([rows[1]]);
+    expect(linkSources(rows)).toEqual(["Budget.xlsx", "Model_v4.xlsx"]);
+    expect(linkSlides(rows)).toEqual([1, 5]);
   });
 });
 

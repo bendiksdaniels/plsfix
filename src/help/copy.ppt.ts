@@ -51,4 +51,29 @@ export const PPT_HELP: HelpCopy = {
         "Deletes the key from this computer. The deck's links stay, but the inbox closes.",
     },
   },
+  "object-tools-heading": {
+    about:
+      "Moves and sizes the objects selected on the active slide without changing their content.",
+    buttons: {
+      "align-objects":
+        "Aligns selected objects using the direction chosen beside it.",
+      "distribute-objects":
+        "Spaces three or more selected objects evenly across or down.",
+      "match-size":
+        "Makes every target the width and height of the first selected object.",
+      "select-similar":
+        "Selects every object on this slide with the same type and size.",
+      "swap-objects": "Swaps the positions of exactly two selected objects.",
+    },
+  },
+  "smart-painter-heading": {
+    about:
+      "Copies a solid fill and outline without changing object content or geometry.",
+    buttons: {
+      "capture-object-style":
+        "Captures the fill and outline of one selected object.",
+      "apply-object-style":
+        "Applies the captured fill and outline to every selected target.",
+    },
+  },
 };

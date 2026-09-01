@@ -47,6 +47,16 @@
           Inbox
         </button>
         <button
+          id="tab-tools"
+          class="tab"
+          role="tab"
+          aria-selected="false"
+          aria-controls="view-tools"
+          type="button"
+        >
+          Tools
+        </button>
+        <button
           id="tab-settings"
           class="tab"
           role="tab"
@@ -135,11 +145,21 @@
               placeholder="Search slide, object or workbook"
               autocomplete="off"
             />
+            <label class="sr-only" for="link-source-filter"
+              >Source workbook</label
+            >
+            <select id="link-source-filter">
+              <option value="all">All sources</option>
+            </select>
+            <label class="sr-only" for="link-slide-filter">Slide</label>
+            <select id="link-slide-filter">
+              <option value="all">All slides</option>
+            </select>
             <label class="sr-only" for="link-status-filter">Link status</label>
             <select id="link-status-filter">
               <option value="all">All statuses</option>
-              <option value="updateAvailable">Update available</option>
-              <option value="missing">Source missing</option>
+              <option value="updateAvailable">Needs update</option>
+              <option value="missing">Missing source</option>
               <option value="wrongKey">Wrong link key</option>
               <option value="current">Up to date</option>
             </select>
@@ -186,6 +206,71 @@
           <p class="hint">
             Anyone holding this deck can pull a linked picture for 30 days.
             Break links before sending a deck outside.
+          </p>
+        </section>
+      </div>
+
+      <div
+        id="view-tools"
+        class="view"
+        role="tabpanel"
+        aria-labelledby="tab-tools"
+        hidden
+      >
+        <section aria-labelledby="object-tools-heading">
+          <div class="section-heading compact">
+            <div>
+              <p class="kicker">CURRENT SELECTION</p>
+              <h2 id="object-tools-heading">Object tools</h2>
+            </div>
+          </div>
+
+          <div class="object-action-row">
+            <label for="object-align-mode">Align</label>
+            <select id="object-align-mode">
+              <option value="left">Left</option>
+              <option value="center">Centre</option>
+              <option value="right">Right</option>
+              <option value="top">Top</option>
+              <option value="middle">Middle</option>
+              <option value="bottom">Bottom</option>
+            </select>
+            <button id="align-objects" type="button">Apply</button>
+          </div>
+
+          <div class="object-action-row">
+            <label for="object-distribute-axis">Distribute</label>
+            <select id="object-distribute-axis">
+              <option value="horizontal">Across</option>
+              <option value="vertical">Down</option>
+            </select>
+            <button id="distribute-objects" type="button">Apply</button>
+          </div>
+
+          <div class="object-tools-grid">
+            <button id="match-size" type="button">Match size</button>
+            <button id="select-similar" type="button">Select similar</button>
+            <button id="swap-objects" type="button">Swap</button>
+          </div>
+          <p class="hint">
+            Match Size uses the first selected object. Swap needs exactly two.
+            Select Similar matches type and size on this slide.
+          </p>
+        </section>
+
+        <section aria-labelledby="smart-painter-heading">
+          <div class="section-heading compact">
+            <div>
+              <p class="kicker">FILL AND OUTLINE</p>
+              <h2 id="smart-painter-heading">Smart Painter</h2>
+            </div>
+          </div>
+          <div class="object-tools-grid painter-grid">
+            <button id="capture-object-style" type="button">Capture</button>
+            <button id="apply-object-style" type="button">Apply</button>
+          </div>
+          <p class="hint">
+            Capture one solid object, select the targets, then Apply.
           </p>
         </section>
       </div>
