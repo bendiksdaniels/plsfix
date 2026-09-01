@@ -10,7 +10,7 @@ use crate::layout::{
 };
 use crate::pen::Pen;
 use crate::sheets::pnl::planted_cells;
-use crate::sheets::{bridge, data, rounding, scratch, sensitivity};
+use crate::sheets::{bridge, data, rounding, scratch, sensitivity, variance};
 use crate::style::Styles;
 use crate::tally::Tally;
 
@@ -85,6 +85,7 @@ fn model_steps() -> Vec<Step> {
         step("Fill formula right", PNL_SHEET, format!("Select {} and press Fill formula right", range(pnl::PER_MONTH, FIRST_YEAR_COL, pnl::PER_MONTH, last)), "The first cell's formula is filled across the row"),
         step("Number formats, x1000, /1000, Sign flip", PNL_SHEET, "Select some numbers and press the buttons on the Tools tab; Undo last pls,fix action takes the last one back", "Formats cycle; values scale or flip sign"),
         step("CAGR", PNL_SHEET, format!("Select {} (Revenue) and press CAGR", range(pnl::REVENUE, FIRST_YEAR_COL, pnl::REVENUE, last)), "The 2024A-2029E CAGR written beside the row"),
+        step("Find a combination", variance::NAME, format!("Select {} and type the number from {} into the pane's Find a combination, then press Find cells", variance::amounts_address(), variance::target_address()), "The invoice lines that add up to the target become the selection; nothing else in the list matches"),
     ]
 }
 
@@ -109,7 +110,10 @@ fn link_steps() -> Vec<Step> {
     let last = last_year_col();
     vec![
         step("Export to PowerPoint", "Links tab", format!("Select {} on {} and press Export selection; click the Revenue chart on {} and press Export active chart", range(HEADER_ROW, LABEL_COL, pnl::NET_INCOME, last), PNL_SHEET, bridge::NAME), "Two links in the list; both wait in the PowerPoint Inbox (if it says unpaired: Generate and Copy the key on this tab, paste it in PowerPoint Settings, Save key)"),
-        step("Insert and update", "PowerPoint: pls,fix tab, Links", format!("Insert both from the Inbox, move and resize them; in Excel set {}!{} to 12% and press Push all; in PowerPoint press Update all", ASSUMPTIONS_SHEET, cell(a::GROWTH, FIRST_YEAR_COL)), "Both pictures refresh in place with the new numbers, sizes kept"),
+        step("Paste latest linked", "PowerPoint: pls,fix tab, Inbox", "With both exports waiting, click Paste latest linked", "The most recent export (the Revenue chart) lands on the active slide in one click, no need to open the list"),
+        step("Insert and update", "PowerPoint: pls,fix tab, Links", format!("Insert the remaining item (the P&L table) from the Inbox, then move and resize both objects; in Excel set {}!{} to 12% and press Push all; in PowerPoint press Update all", ASSUMPTIONS_SHEET, cell(a::GROWTH, FIRST_YEAR_COL)), "Both objects refresh in place with the new numbers, sizes kept"),
+        step("Links list filters", "PowerPoint: pls,fix tab, Links", "Type part of a slide, object or workbook name in the search box, then try the Source workbook, Slide and Link status dropdowns", "The link table narrows to matching rows; a ticked row stays ticked even if the filter hides it"),
         step("Source missing", PNL_SHEET, format!("Delete rows {}-{} (the whole exported block) and press Push all; then undo with Cmd+Z and push again", a1_row(HEADER_ROW), a1_row(pnl::NET_INCOME)), "Push reports 1 missing and the link reads \"source missing\"; after the undo it pushes again (deleting rows inside the block only shrinks it)"),
+        step("Align, distribute, match size, select similar, swap, Smart Painter", "PowerPoint: pls,fix tab, Tools", "Insert 3-4 shapes on a slide, select them and try Align, Distribute, Match size, Select similar and Swap; then Capture one shape's style under Smart Painter and Apply it to another", "Shapes line up or space out, match the first one's size, swap places, or pick up its fill and outline"),
     ]
 }

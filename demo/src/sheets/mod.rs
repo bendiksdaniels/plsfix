@@ -9,6 +9,7 @@ pub mod rounding;
 pub mod scratch;
 pub mod sensitivity;
 pub mod start;
+pub mod variance;
 
 use rust_xlsxwriter::{Workbook, Worksheet, XlsxError};
 
@@ -18,13 +19,14 @@ use crate::tally::Tally;
 
 pub type Builder = fn(&mut Worksheet, &Styles) -> Result<Tally, XlsxError>;
 
-pub const SHEETS: [(&str, Builder); 8] = [
+pub const SHEETS: [(&str, Builder); 9] = [
     (start::NAME, start::build as Builder),
     (assumptions::NAME, assumptions::build as Builder),
     (pnl::NAME, pnl::build as Builder),
     (bridge::NAME, bridge::build as Builder),
     (sensitivity::NAME, sensitivity::build as Builder),
     (rounding::NAME, rounding::build as Builder),
+    (variance::NAME, variance::build as Builder),
     (data::NAME, data::build as Builder),
     (scratch::NAME, scratch::build as Builder),
 ];
