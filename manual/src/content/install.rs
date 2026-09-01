@@ -92,6 +92,9 @@ fn ribbon() -> Section {
                 ],
             },
             Block::Para(
+                r#"Katrai lentes pogai ir sava ikona, tāpēc darbības var atpazīt bez uzraksta."#,
+            ),
+            Block::Para(
                 r#"Paneli atver poga "Model Tools" grupā "Model Tools" vai taustiņu kombinācija Ctrl+Shift+M. PowerPoint pusē paneli atver poga "Links" grupā "Links"."#,
             ),
             Block::Para(

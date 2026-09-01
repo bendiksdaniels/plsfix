@@ -153,6 +153,11 @@ const MESSAGES: &[&[&str]] = &[
         "PowerPoint nav ielīmēta atslēga vai ielīmēta ir vecā atslēga.",
         r#"Nokopējiet atslēgu Excel cilnē "Links" un ielīmējiet to PowerPoint cilnē "Settings"."#,
     ],
+    &[
+        r#""No combination reaches the target within the tolerance.""#,
+        "Neviena skaitļu kombinācija atlasē nesasniedz mērķi pieļaujamās novirzes robežās.",
+        "Palieliniet toleranci vai pārbaudiet, vai atlasē ir īstie skaitļi.",
+    ],
 ];
 
 fn limits() -> Section {
@@ -168,6 +173,9 @@ fn limits() -> Section {
             r#"Poga "Prepare for sharing" tālummaiņu atiestatīt nevar, jo Office.js to nepiedāvā."#,
             "PowerPoint saites grupās tiek atrastas trīs līmeņus dziļi un tikai ar PowerPointApi 1.8.",
             r#"Relejs glabā vienu iepriekšējo attēla versiju, tāpēc "Revert last update" atgriež tikai vienu soli."#,
+            r#""Find a combination" aptver līdz 34 skaitliskām šūnām vienā atlasē."#,
+            r#""Object tools" un "Smart Painter" prasa PowerPoint 2021 vai Microsoft 365 (PowerPointApi 1.5)."#,
+            r#""Align" prasa vismaz divas atlasītas figūras, "Distribute" vismaz trīs, "Swap" tieši divas."#,
         ])],
     )
 }

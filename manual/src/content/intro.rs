@@ -123,7 +123,7 @@ fn pane_tabs() -> Section {
                 ],
             },
             Block::Para(
-                r#"PowerPoint panelī ir trīs cilnes: "Links", "Inbox" un "Settings". Tās aprakstītas nodaļā par saitēm."#,
+                r#"PowerPoint panelī ir četras cilnes: "Links", "Inbox", "Tools" un "Settings". Tās aprakstītas nodaļā par saitēm."#,
             ),
         ],
     )
