@@ -85,7 +85,9 @@ Three agents launched right after a `cd` into the memory repo got worktrees of t
 found no source and stopped (about 180k tokens for nothing). Rule: run `cd ~/plsfix && pwd` as
 the last shell command before any `isolation: worktree` dispatch, tell the agent which repo it
 must be in (`git remote -v`, `ls package.json`) and to report BLOCKED otherwise, and verify with
-`git worktree list` right after launching.
+`git worktree list` right after launching. Repeated 01.09: a `cd ~/claude-vm` in a Bash call sent
+in the SAME message as two dispatches made both fail ("Failed to resolve base branch HEAD").
+The dispatch message carries the Agent calls and nothing else.
 
 ## 2026-08-30: an agent symlinked the repo's node_modules into its worktree
 
