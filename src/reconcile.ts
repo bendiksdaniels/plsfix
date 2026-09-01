@@ -111,6 +111,9 @@ export function solveReconciliation(
 // A difference this small is floating-point noise from the subset sum, not a
 // real variance, so the summary line shows a clean zero instead.
 const ZERO_DIFFERENCE = 1e-10;
+// Amounts reconcile to the cent, so the line shows cents; formatAmount's
+// default of one decimal would round 12.34 to 12.3 and hide a real variance.
+const SUMMARY_DECIMALS = 2;
 
 export interface ReconciliationTotals {
   count: number;
@@ -125,5 +128,7 @@ export function reconcileSummary(
 ): string {
   const difference =
     Math.abs(result.difference) < ZERO_DIFFERENCE ? 0 : result.difference;
-  return `${String(result.count)} cells selected · Sum ${formatAmount(result.sum, language)} · Variance ${formatAmount(difference, language)}`;
+  const sum = formatAmount(result.sum, language, SUMMARY_DECIMALS);
+  const variance = formatAmount(difference, language, SUMMARY_DECIMALS);
+  return `${String(result.count)} cells selected · Sum ${sum} · Variance ${variance}`;
 }

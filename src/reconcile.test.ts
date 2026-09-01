@@ -35,13 +35,13 @@ describe("variance reconciliation", () => {
 describe("reconcileSummary", () => {
   it("groups thousands by a space in Latvian and drops a noise-level difference", () => {
     expect(
-      reconcileSummary({ count: 3, sum: 1234.5, difference: 1e-12 }, "lv"),
-    ).toBe("3 cells selected · Sum 1 234.5 · Variance 0");
+      reconcileSummary({ count: 3, sum: 1234.56, difference: 1e-12 }, "lv"),
+    ).toBe("3 cells selected · Sum 1 234.56 · Variance 0");
   });
 
   it("groups thousands by a comma in English and keeps a real negative variance", () => {
     expect(
       reconcileSummary({ count: 5, sum: 98765, difference: -12.34 }, "en"),
-    ).toBe("5 cells selected · Sum 98,765 · Variance -12.3");
+    ).toBe("5 cells selected · Sum 98,765 · Variance -12.34");
   });
 });
