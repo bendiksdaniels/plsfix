@@ -2580,13 +2580,15 @@ class ChartProxy {
   // The fitting mode is signature parity only: the fake draws exactly the size
   // it was asked for.
   getImage(
-    width: number,
-    height: number,
+    width?: number,
+    height?: number,
     _fittingMode?: string,
   ): { value: string } {
     void _fittingMode;
     queueImageFailure(this.runtime, this.ctx);
-    return { value: fakePng(width, height) };
+    return {
+      value: fakePng(width ?? this.width, height ?? this.height),
+    };
   }
 
   activate(): void {

@@ -86,6 +86,17 @@ async function tableOf(id: string): Promise<TablePayload> {
 }
 
 describe("exportSelectionAsTable", () => {
+  it("uses Mac compatibility rendering instead of the rich cell-properties grid", async () => {
+    (Office.context as unknown as { platform: string }).platform = "Mac";
+    const result = await links.exportSelectionAsTable(ws, relay);
+    const payload = await tableOf(result.id);
+    expect(payload.cells).toEqual([
+      [{ t: "Revenue" }, { t: "1000", a: "r" }],
+      [{ t: "Costs" }, { t: "-400", a: "r" }],
+    ]);
+    expect(payload.widths).toEqual([96, 48]);
+  });
+
   it("anchors the range, records a table entry and pushes the cells, formats and widths", async () => {
     const result = await links.exportSelectionAsTable(ws, relay);
     expect(result.label).toBe("Model!B4:C5 table");

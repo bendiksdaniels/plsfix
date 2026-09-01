@@ -11,6 +11,7 @@ import {
   type ResolvedSource,
 } from "./link-anchors";
 import { readChartData } from "./link-chart";
+import { isMacExcel } from "./link-platform";
 import { renderTable, type TableRender } from "./link-table";
 
 // Charts are laid out in points; rendering at twice that keeps the slide
@@ -81,11 +82,17 @@ async function renderChart(
   context: Excel.RequestContext,
   resolved: ResolvedChart,
 ): Promise<Render> {
-  const image = resolved.chart.getImage(
-    Math.round(resolved.width * CHART_PIXEL_SCALE),
-    Math.round(resolved.height * CHART_PIXEL_SCALE),
-    Excel.ImageFittingMode.fit,
-  );
+  // Excel Mac 16.107 has reported GeneralException for the optional sizing
+  // arguments even though getImage itself is available. Its default image is
+  // the chart's rendered size and is reliable; other hosts retain the sharper
+  // two-times export used for slide placement.
+  const image = isMacExcel()
+    ? resolved.chart.getImage()
+    : resolved.chart.getImage(
+        Math.round(resolved.width * CHART_PIXEL_SCALE),
+        Math.round(resolved.height * CHART_PIXEL_SCALE),
+        Excel.ImageFittingMode.fit,
+      );
   const chart = await readChartData(context, resolved.chart);
   return { kind: "picture", png: image.value, ...(chart ? { chart } : {}) };
 }

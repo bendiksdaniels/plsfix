@@ -177,6 +177,20 @@ describe("pushLinks", () => {
 });
 
 describe("charts", () => {
+  it("uses the Mac chart-image compatibility path", async () => {
+    (Office.context as unknown as { platform: string }).platform = "Mac";
+    helpers.addChart("Model", {
+      name: "Revenue bridge",
+      width: 400,
+      height: 200,
+    });
+    helpers.setActiveChart(workbook.charts[0]!);
+    const result = await links.exportActiveChart(ws, relay);
+    const token = JSON.parse(String(helpers.setting(REGISTRY_SETTING))).links[0]
+      .token;
+    expect((await payloadOf(result.id, token)).png).toBe(fakePng(400, 200));
+  });
+
   it("exports the active chart by renaming it to the anchor and finds it on another sheet later", async () => {
     helpers.addChart("Model", {
       name: "Revenue bridge",

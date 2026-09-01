@@ -5,6 +5,7 @@
 // nothing but its text, so the deck's table style shows through.
 
 import { overTableCap, TABLE_TOO_BIG, type TableCell } from "../link/model";
+import { isMacExcel } from "./link-platform";
 
 // Excel's defaults. A cell wearing these adds nothing but its size to the payload.
 const DEFAULT_FONT_COLOR = "#000000";
@@ -46,6 +47,13 @@ export async function renderTable(
   const cols = range.columnCount;
   if (overTableCap(rows, cols)) throw new Error(TABLE_TOO_BIG);
 
+  // Mac's rich CellProperties grid is the other export call known to fail
+  // before a relay request. Preserve the editable table's displayed values,
+  // numeric alignment and column sizing instead of failing the whole export;
+  // chart/table source data remains intact and a later push on another host
+  // can enrich its per-cell formatting again.
+  if (isMacExcel()) return renderMacTable(context, range, rows, cols);
+
   const properties = range.getCellProperties(WANTED);
   range.load("text,values");
   const columns = Array.from({ length: cols }, (_unused, index) => {
@@ -64,6 +72,33 @@ export async function renderTable(
   );
   const widths = columns.map((one) => one.format.columnWidth);
   return { rows, cols, cells, widths };
+}
+
+async function renderMacTable(
+  context: Excel.RequestContext,
+  range: Excel.Range,
+  rows: number,
+  cols: number,
+): Promise<TableRender> {
+  range.load("text,values");
+  const columns = Array.from({ length: cols }, (_unused, index) => {
+    const column = range.getColumn(index);
+    column.load("format/columnWidth");
+    return column;
+  });
+  await context.sync();
+  const cells = range.text.map((row, r) =>
+    row.map((text, c) => ({
+      t: text,
+      ...(typeof range.values[r]?.[c] === "number" ? { a: "r" as const } : {}),
+    })),
+  );
+  return {
+    rows,
+    cols,
+    cells,
+    widths: columns.map((one) => one.format.columnWidth),
+  };
 }
 
 // Every key but the text is omitted unless the cell says something Excel's
