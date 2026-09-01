@@ -1,6 +1,9 @@
-// Meet-in-the-middle subset solver for variance reconciliation. Pure and
+// Meet-in-the-middle subset solver for variance reconciliation, plus the
+// house-style summary line the pane shows for a solved result. Pure and
 // bounded: 34 values produce at most 131,072 candidates per half, small enough
 // for an Office pane without freezing Excel.
+
+import { formatAmount, type Language } from "./numbers";
 
 export const RECONCILE_MAX_VALUES = 34;
 
@@ -103,4 +106,24 @@ export function solveReconciliation(
   ];
   const sum = picked.reduce((total, index) => total + values[index]!, 0);
   return { indices: picked, sum, difference: sum - target };
+}
+
+// A difference this small is floating-point noise from the subset sum, not a
+// real variance, so the summary line shows a clean zero instead.
+const ZERO_DIFFERENCE = 1e-10;
+
+export interface ReconciliationTotals {
+  count: number;
+  sum: number;
+  difference: number;
+}
+
+/** The pane's result line, house number style: "N cells selected · Sum X · Variance Y". */
+export function reconcileSummary(
+  result: ReconciliationTotals,
+  language: Language,
+): string {
+  const difference =
+    Math.abs(result.difference) < ZERO_DIFFERENCE ? 0 : result.difference;
+  return `${String(result.count)} cells selected · Sum ${formatAmount(result.sum, language)} · Variance ${formatAmount(difference, language)}`;
 }

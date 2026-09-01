@@ -3,6 +3,7 @@ import type { ChartData } from "./link/chart-model";
 import {
   chartSize,
   layoutChart,
+  type Ellipse,
   type Primitive,
   type Rect,
   type Text,
@@ -159,6 +160,22 @@ describe("layoutChart stacked and bars", () => {
 });
 
 describe("layoutChart line", () => {
+  // Series 0 (100, -50, 200) is column's own; its last point sits at the
+  // scale max, so its marker touches the plot's top edge - see the flip test.
+  const twoSeries: ChartData = {
+    ...column,
+    kind: "line",
+    series: [
+      column.series[0]!,
+      {
+        name: "t",
+        values: [10, 60, 30],
+        labels: ["10", "60", "30"],
+        colors: ["#B27E54", "#B27E54", "#B27E54"],
+      },
+    ],
+  };
+
   it("rebuilds each data point as an editable marker and joins consecutive points", () => {
     const out = layoutChart({ ...column, kind: "line" }, box);
     const markers = out.filter(
@@ -170,6 +187,49 @@ describe("layoutChart line", () => {
     expect(markers).toHaveLength(3);
     expect(lines).toHaveLength(2);
     expect([...markers, ...lines].every((item) => inside(item.box))).toBe(true);
+  });
+
+  it("labels every point, one label per point per series, inside the box", () => {
+    const out = layoutChart(twoSeries, box);
+    const markers = out.filter(
+      (item): item is Ellipse => item.kind === "ellipse",
+    );
+    const labels = texts(out).filter((t) => t.name.startsWith("label"));
+
+    expect(markers).toHaveLength(6);
+    expect(labels).toHaveLength(6);
+    expect(labels.map((t) => t.text).sort()).toEqual(
+      ["10", "100", "200", "30", "60", "(50)"].sort(),
+    );
+    expect(labels.every((t) => inside(t.box))).toBe(true);
+  });
+
+  it("flips a label below its marker when the marker sits on the plot's top edge", () => {
+    const out = layoutChart({ ...column, kind: "line" }, box);
+    const markers = out.filter(
+      (item): item is Ellipse => item.kind === "ellipse",
+    );
+    const labels = texts(out).filter((t) => t.name.startsWith("label"));
+
+    // Point 0.2 is value 200, the scale max: its marker is clamped to the
+    // plot's own top edge, so its label must sit below the marker instead of
+    // spilling out above the box like a normally placed label would.
+    const topMarker = markers.find((m) => m.name === "marker 0.2")!;
+    const topLabel = labels.find((t) => t.name === "label 0.2")!;
+    expect(topLabel.box.top).toBeCloseTo(
+      topMarker.box.top + topMarker.box.height,
+      5,
+    );
+
+    const midMarker = markers.find((m) => m.name === "marker 0.0")!;
+    const midLabel = labels.find((t) => t.name === "label 0.0")!;
+    expect(midLabel.box.top + midLabel.box.height).toBeCloseTo(
+      midMarker.box.top,
+      5,
+    );
+
+    expect(inside(topLabel.box)).toBe(true);
+    expect(inside(midLabel.box)).toBe(true);
   });
 });
 

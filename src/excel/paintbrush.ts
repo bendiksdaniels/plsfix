@@ -37,11 +37,22 @@ export async function loadWorkbookPaintSlots(): Promise<PaintSlots | null> {
   });
 }
 
-export async function saveWorkbookPaintSlots(slots: PaintSlots): Promise<void> {
-  await Excel.run(async (context) => {
-    context.workbook.settings.add(PAINT_SLOTS_SETTING, serializeSlots(slots));
-    await context.sync();
-  });
+// Never throws: a host that refuses to persist workbook settings still leaves
+// the caller's in-memory and localStorage copies as the fallback the comment
+// above promises, instead of turning every capture into a pane error. The
+// boolean says whether the workbook copy actually landed.
+export async function saveWorkbookPaintSlots(
+  slots: PaintSlots,
+): Promise<boolean> {
+  try {
+    await Excel.run(async (context) => {
+      context.workbook.settings.add(PAINT_SLOTS_SETTING, serializeSlots(slots));
+      await context.sync();
+    });
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 // The scalars a slot is made of, in one load: the number format sits on the
