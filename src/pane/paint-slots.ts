@@ -19,6 +19,9 @@ import { getElement } from "../ui/dom";
 
 const PAINT_KEY = "plsfix.paint.v1";
 let paintSlots: PaintSlots = emptySlots();
+// The workbook read at boot is not awaited; a capture that lands before it
+// resolves must not be overwritten by the older array it brings back.
+let capturedSinceBoot = false;
 
 export function loadPaintSlots(): void {
   let raw: string | null = null;
@@ -41,13 +44,14 @@ export function renderPaintSlots(): void {
 // first-run fallback instead of being wiped.
 export async function loadWorkbookSlots(): Promise<void> {
   const saved = await loadWorkbookPaintSlots();
-  if (saved === null) return;
+  if (saved === null || capturedSinceBoot) return;
   paintSlots = saved;
   renderPaintSlots();
 }
 
 export async function capturePaintSlot(index: number): Promise<string> {
   const slot = await captureSlot(index);
+  capturedSinceBoot = true;
   paintSlots[index - 1] = slot;
   try {
     localStorage.setItem(PAINT_KEY, serializeSlots(paintSlots));

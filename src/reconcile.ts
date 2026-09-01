@@ -46,6 +46,22 @@ function lowerBound(sorted: SumChoice[], wanted: number): number {
   return low;
 }
 
+// The search looks at the three sums nearest the wanted one, so equal sums
+// must collapse to their cheapest combination first: otherwise a run of equal
+// sums hides the single cell behind two that add up to the same amount.
+function fewestPerSum(sorted: SumChoice[]): SumChoice[] {
+  const out: SumChoice[] = [];
+  for (const choice of sorted) {
+    const last = out[out.length - 1];
+    if (last && last.sum === choice.sum) {
+      if (choice.count < last.count) out[out.length - 1] = choice;
+    } else {
+      out.push(choice);
+    }
+  }
+  return out;
+}
+
 function indices(mask: number, offset: number, count: number): number[] {
   const out: number[] = [];
   for (let bit = 0; bit < count; bit += 1) {
@@ -74,7 +90,9 @@ export function solveReconciliation(
 
   const cut = Math.floor(values.length / 2);
   const left = choices(values.slice(0, cut));
-  const right = choices(values.slice(cut)).sort((a, b) => a.sum - b.sum);
+  const right = fewestPerSum(
+    choices(values.slice(cut)).sort((a, b) => a.sum - b.sum),
+  );
   let best: {
     left: SumChoice;
     right: SumChoice;

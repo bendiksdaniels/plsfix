@@ -18,6 +18,11 @@ describe("variance reconciliation", () => {
 
   it("chooses the smallest exact combination and supports a tolerance", () => {
     expect(solveReconciliation([5, 5, 10], 10, 0)?.indices).toEqual([2]);
+    // Three right-half combinations reach 10 (3+7, 4+6, 10): the single cell
+    // must win even when it sorts behind the pairs.
+    expect(
+      solveReconciliation([1, 9, 2, 8, 3, 7, 4, 6, 10], 10, 0)?.indices,
+    ).toEqual([8]);
     const close = solveReconciliation([33.33, 66.66], 100, 0.02);
     expect(close?.indices).toEqual([0, 1]);
     expect(close?.difference).toBeCloseTo(-0.01);

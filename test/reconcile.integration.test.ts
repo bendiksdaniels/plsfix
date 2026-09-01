@@ -79,7 +79,17 @@ describe("reconcileSelection", () => {
 
     await smt.reconcileSelection(49, 0.001);
 
-    expect(helpers.syncCount() - before).toBe(4);
+    expect(helpers.syncCount() - before).toBe(5);
+  });
+
+  // A clicked column header is a million cells: the cap answers before a
+  // single value is read, the way the other selection tools refuse.
+  it("refuses a selection over the cell cap before reading its values", async () => {
+    helpers.select("Model!A1:A5001");
+
+    expect(await rejects(() => smt.reconcileSelection(1, 0))).toBe(
+      "Reconciliation supports up to 5,000 selected cells at once.",
+    );
   });
 
   it("refuses a range with no numeric cell", async () => {

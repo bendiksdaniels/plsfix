@@ -3,7 +3,7 @@
 // so the modeller can inspect the answer in place.
 
 import { RECONCILE_MAX_VALUES, solveReconciliation } from "../reconcile";
-import { selectedSingleRange } from "./internal";
+import { selectedSingleRange, withinCap } from "./internal";
 import { parseAddress } from "./shared";
 
 export interface ReconciliationSelection {
@@ -25,7 +25,13 @@ export async function reconcileSelection(
   tolerance: number,
 ): Promise<ReconciliationSelection> {
   return Excel.run(async (context) => {
-    const range = await selectedSingleRange(context, "Reconciliation");
+    // The cap is checked before the values are asked for: a clicked column
+    // header is a million cells, and the 34-cell rule only runs after the read.
+    const range = await withinCap(
+      context,
+      await selectedSingleRange(context, "Reconciliation"),
+      "Reconciliation",
+    );
     range.load("values,rowCount,columnCount");
     await context.sync();
 

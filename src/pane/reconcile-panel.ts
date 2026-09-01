@@ -8,7 +8,9 @@ import { getActiveSettings } from "../settings";
 import { getElement } from "../ui/dom";
 
 function numberFrom(id: string, label: string): number {
-  const value = Number(getElement<HTMLInputElement>(id).value);
+  const raw = getElement<HTMLInputElement>(id).value.trim();
+  // Number("") is 0, which would quietly search for a zero target.
+  const value = raw === "" ? Number.NaN : Number(raw);
   if (!Number.isFinite(value)) throw new Error(`${label} must be a number.`);
   return value;
 }
