@@ -3,6 +3,8 @@
 // forcing the user to add the cells again by hand.
 
 import { reconcileSelection } from "../excel";
+import { reconcileSummary } from "../reconcile";
+import { getActiveSettings } from "../settings";
 import { getElement } from "../ui/dom";
 
 function numberFrom(id: string, label: string): number {
@@ -17,9 +19,9 @@ export async function runReconciliation(): Promise<string> {
   if (tolerance < 0) throw new Error("Tolerance must be zero or greater.");
 
   const result = await reconcileSelection(target, tolerance);
-  const difference =
-    Math.abs(result.difference) < 1e-10 ? 0 : result.difference;
-  getElement("reconcile-result").textContent =
-    `${String(result.count)} cells selected · Sum ${result.sum.toLocaleString()} · Variance ${difference.toLocaleString()}`;
+  getElement("reconcile-result").textContent = reconcileSummary(
+    result,
+    getActiveSettings().language,
+  );
   return `Found ${String(result.count)} matching cells`;
 }

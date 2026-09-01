@@ -11,7 +11,7 @@ import {
   uninstallFakeHost,
 } from "./fakehost";
 import type * as ExcelModule from "../src/excel";
-import type { PaintSlot } from "../src/paintbrush";
+import { emptySlots, type PaintSlot } from "../src/paintbrush";
 
 enableStrictLoadSemantics();
 
@@ -187,5 +187,21 @@ describe("paintbrush apply", () => {
     expect(await rejects(() => smt.applySlot(1, slot))).toBe(
       "Paintbrush supports up to 5,000 selected cells at once.",
     );
+  });
+});
+
+describe("workbook paint slots", () => {
+  it("round trips through workbook settings", async () => {
+    const slots = emptySlots();
+    slots[0] = await captureFromSource();
+
+    expect(await smt.saveWorkbookPaintSlots(slots)).toBe(true);
+    expect(await smt.loadWorkbookPaintSlots()).toEqual(slots);
+  });
+
+  it("tolerates a host that refuses to save workbook settings", async () => {
+    helpers.failNextSync();
+
+    await expect(smt.saveWorkbookPaintSlots(emptySlots())).resolves.toBe(false);
   });
 });

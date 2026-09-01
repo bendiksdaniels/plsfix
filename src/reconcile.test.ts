@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { RECONCILE_MAX_VALUES, solveReconciliation } from "./reconcile";
+import {
+  RECONCILE_MAX_VALUES,
+  reconcileSummary,
+  solveReconciliation,
+} from "./reconcile";
 
 describe("variance reconciliation", () => {
   it("finds a subset that equals the target across both halves", () => {
@@ -25,5 +29,19 @@ describe("variance reconciliation", () => {
       solveReconciliation(Array(RECONCILE_MAX_VALUES + 1).fill(1), 2, 0),
     ).toThrow("up to");
     expect(() => solveReconciliation([1], 1, -1)).toThrow("Tolerance");
+  });
+});
+
+describe("reconcileSummary", () => {
+  it("groups thousands by a space in Latvian and drops a noise-level difference", () => {
+    expect(
+      reconcileSummary({ count: 3, sum: 1234.5, difference: 1e-12 }, "lv"),
+    ).toBe("3 cells selected · Sum 1 234.5 · Variance 0");
+  });
+
+  it("groups thousands by a comma in English and keeps a real negative variance", () => {
+    expect(
+      reconcileSummary({ count: 5, sum: 98765, difference: -12.34 }, "en"),
+    ).toBe("5 cells selected · Sum 98,765 · Variance -12.3");
   });
 });
