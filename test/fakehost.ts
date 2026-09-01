@@ -793,6 +793,7 @@ const SHAPES: Record<string, Shape> = {
       getRange: "range",
       getRangeByIndexes: "range",
       getUsedRangeOrNullObject: "range",
+      getRanges: "rangeAreas",
     },
   },
   sheetProtection: { scalars: ["protected"] },
@@ -3109,6 +3110,56 @@ class WorksheetProxy {
     return proxy;
   }
 
+  // Excel.RangeAreas from a comma-separated list of A1 addresses: each one
+  // either bare (this sheet) or its own "Sheet!" prefix, reopened the way
+  // getSelectedRanges reports an existing selection. select() replaces the
+  // whole selection with exactly these areas - only refused, like
+  // RangeProxy.select(), when this worksheet is not the active one.
+  getRanges(address: string): {
+    areaCount: number;
+    address: string;
+    select: () => void;
+    load: () => void;
+  } {
+    const runtime = this.runtime;
+    const sheet = this.sheet;
+    const areas = address
+      .split(",")
+      .map((part) => parseRangeArea(runtime.workbook, sheet, part));
+
+    return {
+      get areaCount(): number {
+        return areas.length;
+      },
+      get address(): string {
+        return areas
+          .map(
+            (area) => `${quoteSheet(area.sheet.name)}!${formatA1(area.rect)}`,
+          )
+          .join(",");
+      },
+      select(): void {
+        if (runtime.workbook.activeSheetId !== sheet.id) {
+          throw hostError(
+            ErrorCodes.invalidOperation,
+            `${sheet.name} is not the active sheet.`,
+          );
+        }
+        runtime.workbook.selectionAreas = areas.map((area) => ({
+          sheetId: area.sheet.id,
+          rect: { ...area.rect },
+        }));
+        runtime.workbook.selection = {
+          sheetId: areas[0]!.sheet.id,
+          rect: { ...areas[0]!.rect },
+        };
+        runtime.workbook.activeCell = null;
+        runtime.workbook.activeSheetId = sheet.id;
+      },
+      load: () => undefined,
+    };
+  }
+
   get charts() {
     const runtime = this.runtime;
     const ctx = this.ctx;
@@ -3589,6 +3640,27 @@ export interface FakeHelpers {
   // the host writes it.
   fireChanged(sheetIdOrName: string, address: string): Promise<void>;
   actions(): Map<string, (event?: { completed: () => void }) => void>;
+}
+
+// One area of a getRanges() address list: bare (this sheet) or carrying its
+// own "Sheet!" prefix, the way office.js accepts a RangeAreas address.
+function parseRangeArea(
+  workbook: FakeWorkbook,
+  sheet: FakeSheet,
+  part: string,
+): { sheet: FakeSheet; rect: Rect } {
+  const trimmed = part.trim();
+  const cut = trimmed.lastIndexOf("!");
+  if (cut < 0) return { sheet, rect: parseA1(trimmed) };
+  const sheetName = trimmed
+    .slice(0, cut)
+    .replace(/^'|'$/g, "")
+    .replace(/''/g, "'");
+  const found = workbook.find(sheetName);
+  if (!found) {
+    throw hostError(ErrorCodes.itemNotFound, `No sheet ${sheetName}.`);
+  }
+  return { sheet: found, rect: parseA1(trimmed.slice(cut + 1)) };
 }
 
 function resolve(
