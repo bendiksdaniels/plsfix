@@ -303,15 +303,26 @@ export async function listInbox(
   ws: Workspace,
   relay: RelayApi,
 ): Promise<InboxItem[]> {
-  const items: InboxItem[] = [];
+  const items: { item: InboxItem; createdAt: number }[] = [];
   for (const row of await relay.listInbox(ws.id, ws.auth)) {
     try {
-      items.push(decodeInboxItem(await open(ws.enc, ws.id, row.blob)));
+      items.push({
+        item: decodeInboxItem(await open(ws.enc, ws.id, row.blob)),
+        createdAt: row.createdAt,
+      });
     } catch {
       // Sealed with another workspace key, or corrupt: not ours to show.
     }
   }
-  return items;
+  // A relay is free to return rows in storage order. The pane's one-click
+  // paste must mean newest export, not whichever row happened to arrive first.
+  return items
+    .sort((left, right) => right.createdAt - left.createdAt)
+    .map(({ item }) => item);
+}
+
+export function latestInboxItem(items: InboxItem[]): InboxItem | null {
+  return items[0] ?? null;
 }
 
 // What the pane adds to "Inserted <label>." after a host that had something to

@@ -19,6 +19,20 @@
   cursor: pointer;
 }
 
+.paste-latest {
+  min-height: var(--control-h);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-control);
+  color: var(--ink);
+  background: var(--accent);
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+.paste-latest:hover:not(:disabled) {
+  background: #53d2c5;
+}
+
 .link-filters {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;

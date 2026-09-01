@@ -44,6 +44,28 @@ function box(shape: FakePptShape): Box {
 }
 
 describe("insert from inbox", () => {
+  it("orders inbox objects newest first for one-click paste", async () => {
+    const ws = await createWorkspace(memoryStore());
+    const older = await seedLink(fakePng(100, 50));
+    await relay.postInbox(
+      ws.id,
+      ws.auth,
+      older.id,
+      await seal(ws.enc, ws.id, encodeInboxItem(older)),
+    );
+    relay.now += 1;
+    const newer = await seedLink(fakePng(200, 100));
+    await relay.postInbox(
+      ws.id,
+      ws.auth,
+      newer.id,
+      await seal(ws.enc, ws.id, encodeInboxItem(newer)),
+    );
+    const inbox = await links.listInbox(ws, relay);
+    expect(inbox.map((item) => item.id)).toEqual([newer.id, older.id]);
+    expect(links.latestInboxItem(inbox)?.id).toBe(newer.id);
+  });
+
   it("creates a tagged picture-filled rectangle sized to the image, at the first free spot, and clears the inbox", async () => {
     const ws = await createWorkspace(memoryStore());
     const item = await seedLink(fakePng(800, 400));

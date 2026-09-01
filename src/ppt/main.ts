@@ -36,6 +36,7 @@ import { activeSlideId, breakLink, goToSlide } from "./host";
 import {
   insertFromInbox,
   insertNote,
+  latestInboxItem,
   listInbox,
   listLinks,
   summarize,
@@ -275,6 +276,22 @@ async function insertItem(item: InboxItem): Promise<string> {
   return `Inserted ${item.label}.${insertNote(placed)}`;
 }
 
+// The normal cross-app flow: Excel exports, then PowerPoint puts the freshest
+// waiting object on the active slide and tags it in the same action. Read the
+// relay here rather than trusting the rendered Inbox, which may be seconds old.
+async function pasteLatestLinked(): Promise<string> {
+  const ws = requireWorkspace();
+  inboxItems = await listInbox(ws, relay);
+  const item = latestInboxItem(inboxItems);
+  if (item === null) {
+    renderInboxView();
+    throw new Error(
+      "Nothing waiting from Excel. Export an object there first.",
+    );
+  }
+  return insertItem(item);
+}
+
 // The "Change source" picker owns its own three buttons; the pane hands it the
 // state it must read and the reads that follow a successful change.
 const syncChangeSource = installChangeSource({
@@ -351,6 +368,7 @@ const BUTTON_ACTIONS: Record<string, () => Promise<string>> = {
   "break-selected": breakSelected,
   "go-to-slide": goToSelectedSlide,
   "refresh-inbox": refreshInbox,
+  "paste-latest-linked": pasteLatestLinked,
   "save-key": saveKey,
   "forget-key": forgetKey,
 };

@@ -35,6 +35,8 @@ export const PPT_HELP: HelpCopy = {
     buttons: {
       "refresh-inbox":
         "Asks the relay for the exports waiting under your link key.",
+      "paste-latest-linked":
+        "Inserts the newest Excel export on the active slide and creates its tracked link.",
       "first-run-ppt-dismiss":
         "Dismisses this card. It will not show again on this machine.",
     },
