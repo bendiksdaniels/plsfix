@@ -1,4 +1,32 @@
-# AUTORESUME - pls,fix (v2.5.6 tagged 01.09 evening, v2.5.2 LIVE; launch = v2.6.0)
+# AUTORESUME - pls,fix (v2.6.0 LIVE 02.09 01:30, deployed from d488f92)
+
+## 02.09 night: v2.6.0 launch release LIVE; VM proof and demo video wait for Daniel's sign-in
+
+- v2.5.7 = the opus review's three host-only bugs fixed with fake fidelity (rising line segments
+  drawn as `GeometricShapeType.lineInverse` from a normalised box with a `rising` flag; the fake
+  throws on a negative size via `test/fakeppt/size-guard.ts`; Smart Painter `paintShape` never
+  writes a null line or fill value and the fake answers null like the host; line points centred
+  on their category slot) plus the controller's reconcile cap/tie/empty-input and paint-slot race
+  fixes. v2.6.0 = the minor bump (`release.sh minor`), manual regenerated `manual v2.6.000`
+  (d488f92), `deploy.sh modelis` -> `/version` 2.6.0, `/healthz` 200, `ux:check` 0/72,
+  1129 vitest / 101 files. Merged today: demo Variance sheet (target 2 230, one 4-cell subset) +
+  four checklist rows; Latvian manual chapters; `docs/IT-vienlapa.md`.
+- The sonnet fix agent died on the session's rate limit one step from its gate (resets 02:40
+  Riga); its three commits were complete, the controller committed its uncommitted tail
+  (`test/ppt.charts.line.integration.test.ts`, `addLineShape`) and merged.
+- VM: `~/claude-vm/share/plsfix/` holds `manifest.prod.xml` (v2.6.0), the demo workbook and
+  `sideload.sh` (`sideload` copies the manifest into both guest wef folders + the workbook to the
+  guest Desktop; `record [seconds]` starts `screencapture -v -V<s> -x` into the share; `stop`).
+  Guest Excel still shows the M365 activation wall (checked 01:18 guest time): Daniel signs in
+  over `vnc://192.168.64.2` (admin/admin), then an opus agent runs
+  `vmctl ssh sh "/Volumes/My Shared Files/share/plsfix/sideload.sh"`, opens the demo, exports a
+  chart and a table, reads "Copy details" (`vmctl` clipboard), verifies v2.6.0, records the demo
+  and the host copies `share/plsfix/pls,fix demo.mov` to `~/Desktop/`.
+- Daniel's gates unchanged: Windows pass, M365 centralized upload of `manifest.prod.xml` (icons +
+  PowerPoint host + custom functions; first upload ever), Cloudflare rate-limit rule on
+  `/modelis/api/*`, IT one-pager review, ROADMAP tick-through from docs/FEATURES.md. Codex's own
+  open note: the PowerPoint ribbon still has one command (Links); the Tools tab has no ribbon
+  buttons or icons.
 
 ## 01.09: launch slice (plan ~/.claude/plans/zippy-herding-globe.md, approved; goal "zero bugs, all features working")
 
