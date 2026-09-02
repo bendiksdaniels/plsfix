@@ -234,6 +234,7 @@ function powerPointGlobal(runtime: FakeRuntime): Record<string, unknown> {
       rectangle: "Rectangle",
       ellipse: "Ellipse",
       pie: "Pie",
+      lineInverse: "LineInverse",
     },
     ConnectorType: { straight: "Straight", elbow: "Elbow", curve: "Curve" },
     ShapeAutoSize: {

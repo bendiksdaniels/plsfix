@@ -62,6 +62,26 @@ describe("fake PowerPoint shapes", () => {
     });
   });
 
+  it("refuses a negative width or height, on add and on a later write", async () => {
+    installFakePpt({ slides: 1 });
+    await PowerPoint.run(async (c) => {
+      const shapes = c.presentation.slides.getItemAt(0).shapes;
+      expect(() =>
+        shapes.addGeometricShape("Rectangle", box(0, 0, -5, 10)),
+      ).toThrow(/InvalidArgument/);
+      expect(() => shapes.addLine("Straight", box(0, 0, 10, -5))).toThrow(
+        /InvalidArgument/,
+      );
+      const rect = shapes.addGeometricShape("Rectangle", box(0, 0, 10, 10));
+      expect(() => {
+        rect.width = -1;
+      }).toThrow(/InvalidArgument/);
+      expect(() => {
+        rect.height = -1;
+      }).toThrow(/InvalidArgument/);
+    });
+  });
+
   it("shapes a pie only after its first sync and normalises the angles", async () => {
     installFakePpt({ slides: 1 });
     await PowerPoint.run(async (c) => {
@@ -175,7 +195,8 @@ describe("fake PowerPoint shapes", () => {
       rect.fill.load("type,transparency");
       await c.sync();
       expect(rect.fill.type).toBe("NoFill");
-      expect(rect.fill.transparency).toBe(0.5);
+      // PowerPointApi 1.4: null once the fill type no longer supports one.
+      expect(rect.fill.transparency).toBeNull();
     });
   });
 
@@ -209,6 +230,28 @@ describe("fake PowerPoint shapes", () => {
       expect(rect.lineFormat.transparency).toBe(0.25);
       expect(rect.lineFormat.dashStyle).toBe("DashDot");
       expect(rect.lineFormat.style).toBe("ThickThin");
+    });
+  });
+
+  it("nulls weight, dashStyle and style once the line is invisible", async () => {
+    installFakePpt({ slides: 1 });
+    await PowerPoint.run(async (c) => {
+      const shapes = c.presentation.slides.getItemAt(0).shapes;
+      const rect = shapes.addGeometricShape("Rectangle", box(0, 0, 10, 10));
+      rect.lineFormat.weight = 2;
+      rect.lineFormat.dashStyle = "DashDot";
+      rect.lineFormat.style = "ThickThin";
+      rect.lineFormat.visible = false;
+      rect.lineFormat.load("weight,dashStyle,style");
+      await c.sync();
+      // PowerPointApi 1.4: null while the line isn't visible, whatever was
+      // last written - a capture that skips visibility loses these for good.
+      expect(rect.lineFormat.weight).toBeNull();
+      expect(rect.lineFormat.dashStyle).toBeNull();
+      expect(rect.lineFormat.style).toBeNull();
+      expect(() => {
+        rect.lineFormat.weight = null as unknown as number;
+      }).toThrow(/InvalidArgument/);
     });
   });
 

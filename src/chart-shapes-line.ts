@@ -4,7 +4,7 @@
 // edge). Pure: no Office.js, no DOM. Invariant: every primitive lies inside
 // the box it was given.
 
-import { boxAt, label, lineShape } from "./chart-shapes-parts";
+import { boxAt, label, lineBetween } from "./chart-shapes-parts";
 import {
   LABEL_HEIGHT,
   LABEL_SIZE,
@@ -29,6 +29,9 @@ interface Point {
   top: number;
 }
 
+// Point i sits at the centre of slot i, the same centring categoryLabels in
+// chart-shapes.ts already uses for the axis below it (Excel's own default
+// for a category axis): half a slot in from the edge, not flush with it.
 function positionsFor(
   series: ChartSeries,
   slot: number,
@@ -36,7 +39,7 @@ function positionsFor(
   scale: ValueScale,
 ): Point[] {
   return series.values.map((value, pointIndex) => ({
-    left: plot.left + pointIndex * slot,
+    left: plot.left + (pointIndex + 0.5) * slot,
     top: valueY(value, scale, plot),
   }));
 }
@@ -97,13 +100,11 @@ function seriesPrimitives(
     if (pointIndex > 0) {
       const previous = positions[pointIndex - 1]!;
       out.push(
-        lineShape(
-          boxAt(
-            previous.left,
-            previous.top,
-            point.left - previous.left,
-            point.top - previous.top,
-          ),
+        lineBetween(
+          previous.left,
+          previous.top,
+          point.left,
+          point.top,
           series.colors[pointIndex]!,
           CONNECTOR_WEIGHT,
           `line ${seriesIndex}.${pointIndex - 1}`,
@@ -141,10 +142,10 @@ export function lineSeries(
   scale: ValueScale,
 ): Primitive[] {
   const points = data.categories.length;
-  const slot = points > 1 ? plot.width / (points - 1) : 0;
+  const slot = plot.width / points;
   const marker = Math.min(
     MARKER_MAX,
-    Math.max(MARKER_MIN, plot.width / points / MARKER_SPACING_DIVISOR),
+    Math.max(MARKER_MIN, slot / MARKER_SPACING_DIVISOR),
   );
   const out: Primitive[] = [];
   data.series.forEach((series, seriesIndex) => {

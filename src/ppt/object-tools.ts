@@ -29,14 +29,14 @@ function requireObjectToolsApi(): void {
 }
 
 interface CapturedStyle {
-  fill: { type: string; color: string; transparency: number };
+  fill: { type: string; color: string; transparency: number | null };
   line: {
     visible: boolean;
     color: string;
-    transparency: number;
-    weight: number;
-    dashStyle: string;
-    style: string;
+    transparency: number | null;
+    weight: number | null;
+    dashStyle: string | null;
+    style: string | null;
   };
 }
 
@@ -174,12 +174,45 @@ export async function captureObjectStyle(): Promise<string> {
         color: shape.lineFormat.color,
         transparency: shape.lineFormat.transparency,
         weight: shape.lineFormat.weight,
-        dashStyle: String(shape.lineFormat.dashStyle),
-        style: String(shape.lineFormat.style),
+        // The host answers null, not the string "null", once the line isn't
+        // visible: coercing it through String() here is what used to turn a
+        // captured null into a bogus dash/line style applyObjectStyle later
+        // wrote back as if it were real.
+        dashStyle: shape.lineFormat.dashStyle,
+        style: shape.lineFormat.style,
       },
     };
     return "Object style captured.";
   });
+}
+
+// A cleared fill has no transparency to restore, and an invisible line has
+// no colour, transparency, weight, dashStyle or style: the host answers null
+// for all of them, so only a visible capture's line is painted, and only the
+// fields that came back as real values on the way in.
+function paintShape(shape: PowerPoint.Shape, style: CapturedStyle): void {
+  if (style.fill.type === "NoFill") {
+    shape.fill.clear();
+  } else {
+    shape.fill.setSolidColor(style.fill.color);
+    if (style.fill.transparency !== null) {
+      shape.fill.transparency = style.fill.transparency;
+    }
+  }
+  shape.lineFormat.visible = style.line.visible;
+  if (!style.line.visible) return;
+  shape.lineFormat.color = style.line.color;
+  if (style.line.transparency !== null) {
+    shape.lineFormat.transparency = style.line.transparency;
+  }
+  if (style.line.weight !== null) shape.lineFormat.weight = style.line.weight;
+  if (style.line.dashStyle !== null) {
+    shape.lineFormat.dashStyle = style.line
+      .dashStyle as PowerPoint.ShapeLineDashStyle;
+  }
+  if (style.line.style !== null) {
+    shape.lineFormat.style = style.line.style as PowerPoint.ShapeLineStyle;
+  }
 }
 
 export async function applyObjectStyle(): Promise<string> {
@@ -195,12 +228,7 @@ export async function applyObjectStyle(): Promise<string> {
       1,
       "Select at least one target object.",
     );
-    for (const shape of selected.items) {
-      if (style.fill.type === "NoFill") shape.fill.clear();
-      else shape.fill.setSolidColor(style.fill.color);
-      shape.fill.transparency = style.fill.transparency;
-      Object.assign(shape.lineFormat, style.line);
-    }
+    for (const shape of selected.items) paintShape(shape, style);
     await context.sync();
     const count = selected.items.length;
     return `Painted ${String(count)} object${count === 1 ? "" : "s"}.`;

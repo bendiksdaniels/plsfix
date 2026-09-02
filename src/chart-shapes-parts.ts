@@ -55,7 +55,35 @@ export function lineShape(
   weight: number,
   name: string,
 ): Line {
-  return { kind: "line", box, color, weight, name };
+  return { kind: "line", box, color, weight, rising: false, name };
+}
+
+// A connector between two points, normalised so width and height are never
+// negative (PowerPoint throws InvalidArgument on a negative side, on both the
+// add and a later write) and flagged when the segment climbs left to right,
+// since that box alone no longer says which way the line ran.
+export function lineBetween(
+  x0: number,
+  y0: number,
+  x1: number,
+  y1: number,
+  color: string,
+  weight: number,
+  name: string,
+): Line {
+  return {
+    kind: "line",
+    box: boxAt(
+      Math.min(x0, x1),
+      Math.min(y0, y1),
+      Math.abs(x1 - x0),
+      Math.abs(y1 - y0),
+    ),
+    color,
+    weight,
+    rising: y1 < y0,
+    name,
+  };
 }
 export function label(
   box: Box,

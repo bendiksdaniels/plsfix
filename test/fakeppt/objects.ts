@@ -20,6 +20,7 @@ import {
   type FakeSlide,
   type ShapeSite,
 } from "./model";
+import { requireNonNegative, validatedShapeInit } from "./size-guard";
 import { FakeClientResult, Loadable } from "./strict";
 import { newFakeTable, TableProxy } from "./tables";
 
@@ -165,7 +166,6 @@ class ShapeCollectionProxy extends Handle {
     return this.add("TextBox", { type: "TextBox", text, ...options });
   }
 
-  // addLine: the connector type is the line's geometry, the box its ends.
   // addLine: the connector type is the line's geometry, the box its ends. The
   // host reads a zero width or height as "not given" and uses its default,
   // which is how a baseline asked for at height 0 comes out sloped (measured
@@ -217,7 +217,7 @@ class ShapeCollectionProxy extends Handle {
     const slide = this.slide();
     const shape = this.deck.addShape(slide, {
       name: `${label} ${String(slide.shapes.length + 1)}`,
-      ...init,
+      ...validatedShapeInit(init),
     });
     return new ShapeProxy(this.deck, shape.id);
   }
@@ -274,13 +274,13 @@ export class ShapeProxy extends ShapeBound {
     return this.model().width;
   }
   set width(value: number) {
-    this.model().width = value;
+    this.model().width = requireNonNegative(value);
   }
   get height(): number {
     return this.model().height;
   }
   set height(value: number) {
-    this.model().height = value;
+    this.model().height = requireNonNegative(value);
   }
 
   get fill(): ShapeFillProxy {

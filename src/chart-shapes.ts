@@ -58,6 +58,7 @@ export interface Line {
   box: Box;
   color: string;
   weight: number;
+  rising: boolean; // climbs left to right; box is always non-negative
   name: string;
 }
 export type Primitive = Rect | Wedge | Ellipse | Text | Line;
