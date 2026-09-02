@@ -388,6 +388,232 @@
                   </Action>
                 </Control>
               </Group>
+              <Group id="PLSFIX.Group.Objects">
+                <Label resid="PLSFIX.Group.Objects.Label"/>
+                <Icon>
+                  <bt:Image size="16" resid="PLSFIX.Icon.16"/>
+                  <bt:Image size="32" resid="PLSFIX.Icon.32"/>
+                  <bt:Image size="80" resid="PLSFIX.Icon.80"/>
+                </Icon>
+                <Control xsi:type="Button" id="PLSFIX.Button.ObjectTools">
+                  <Label resid="PLSFIX.ObjectTools.Label"/>
+                  <Supertip>
+                    <Title resid="PLSFIX.ObjectTools.Label"/>
+                    <Description resid="PLSFIX.ObjectTools.Tip"/>
+                  </Supertip>
+                  <Icon>
+                    <bt:Image size="16" resid="PLSFIX.Icon.ObjectTools.16"/>
+                    <bt:Image size="32" resid="PLSFIX.Icon.ObjectTools.32"/>
+                    <bt:Image size="80" resid="PLSFIX.Icon.ObjectTools.80"/>
+                  </Icon>
+                  <Action xsi:type="ExecuteFunction">
+                    <FunctionName>PLSFIX_PPT_TOOLS</FunctionName>
+                  </Action>
+                </Control>
+                <Control xsi:type="Button" id="PLSFIX.Button.MatchSize">
+                  <Label resid="PLSFIX.MatchSize.Label"/>
+                  <Supertip>
+                    <Title resid="PLSFIX.MatchSize.Label"/>
+                    <Description resid="PLSFIX.MatchSize.Tip"/>
+                  </Supertip>
+                  <Icon>
+                    <bt:Image size="16" resid="PLSFIX.Icon.MatchSize.16"/>
+                    <bt:Image size="32" resid="PLSFIX.Icon.MatchSize.32"/>
+                    <bt:Image size="80" resid="PLSFIX.Icon.MatchSize.80"/>
+                  </Icon>
+                  <Action xsi:type="ExecuteFunction">
+                    <FunctionName>PLSFIX_PPT_MATCH</FunctionName>
+                  </Action>
+                </Control>
+                <Control xsi:type="Button" id="PLSFIX.Button.SelectSimilar">
+                  <Label resid="PLSFIX.SelectSimilar.Label"/>
+                  <Supertip>
+                    <Title resid="PLSFIX.SelectSimilar.Label"/>
+                    <Description resid="PLSFIX.SelectSimilar.Tip"/>
+                  </Supertip>
+                  <Icon>
+                    <bt:Image size="16" resid="PLSFIX.Icon.SelectSimilar.16"/>
+                    <bt:Image size="32" resid="PLSFIX.Icon.SelectSimilar.32"/>
+                    <bt:Image size="80" resid="PLSFIX.Icon.SelectSimilar.80"/>
+                  </Icon>
+                  <Action xsi:type="ExecuteFunction">
+                    <FunctionName>PLSFIX_PPT_SIMILAR</FunctionName>
+                  </Action>
+                </Control>
+                <Control xsi:type="Button" id="PLSFIX.Button.Swap">
+                  <Label resid="PLSFIX.Swap.Label"/>
+                  <Supertip>
+                    <Title resid="PLSFIX.Swap.Label"/>
+                    <Description resid="PLSFIX.Swap.Tip"/>
+                  </Supertip>
+                  <Icon>
+                    <bt:Image size="16" resid="PLSFIX.Icon.Swap.16"/>
+                    <bt:Image size="32" resid="PLSFIX.Icon.Swap.32"/>
+                    <bt:Image size="80" resid="PLSFIX.Icon.Swap.80"/>
+                  </Icon>
+                  <Action xsi:type="ExecuteFunction">
+                    <FunctionName>PLSFIX_PPT_SWAP</FunctionName>
+                  </Action>
+                </Control>
+                <Control xsi:type="Button" id="PLSFIX.Button.CaptureStyle">
+                  <Label resid="PLSFIX.CaptureStyle.Label"/>
+                  <Supertip>
+                    <Title resid="PLSFIX.CaptureStyle.Label"/>
+                    <Description resid="PLSFIX.CaptureStyle.Tip"/>
+                  </Supertip>
+                  <Icon>
+                    <bt:Image size="16" resid="PLSFIX.Icon.CaptureStyle.16"/>
+                    <bt:Image size="32" resid="PLSFIX.Icon.CaptureStyle.32"/>
+                    <bt:Image size="80" resid="PLSFIX.Icon.CaptureStyle.80"/>
+                  </Icon>
+                  <Action xsi:type="ExecuteFunction">
+                    <FunctionName>PLSFIX_PPT_CAPTURE</FunctionName>
+                  </Action>
+                </Control>
+                <Control xsi:type="Button" id="PLSFIX.Button.ApplyStyle">
+                  <Label resid="PLSFIX.ApplyStyle.Label"/>
+                  <Supertip>
+                    <Title resid="PLSFIX.ApplyStyle.Label"/>
+                    <Description resid="PLSFIX.ApplyStyle.Tip"/>
+                  </Supertip>
+                  <Icon>
+                    <bt:Image size="16" resid="PLSFIX.Icon.ApplyStyle.16"/>
+                    <bt:Image size="32" resid="PLSFIX.Icon.ApplyStyle.32"/>
+                    <bt:Image size="80" resid="PLSFIX.Icon.ApplyStyle.80"/>
+                  </Icon>
+                  <Action xsi:type="ExecuteFunction">
+                    <FunctionName>PLSFIX_PPT_PAINT</FunctionName>
+                  </Action>
+                </Control>
+              </Group>
+              <Group id="PLSFIX.Group.Arrange">
+                <Label resid="PLSFIX.Group.Arrange.Label"/>
+                <Icon>
+                  <bt:Image size="16" resid="PLSFIX.Icon.16"/>
+                  <bt:Image size="32" resid="PLSFIX.Icon.32"/>
+                  <bt:Image size="80" resid="PLSFIX.Icon.80"/>
+                </Icon>
+                <Control xsi:type="Button" id="PLSFIX.Button.AlignLeft">
+                  <Label resid="PLSFIX.AlignLeft.Label"/>
+                  <Supertip>
+                    <Title resid="PLSFIX.AlignLeft.Label"/>
+                    <Description resid="PLSFIX.AlignLeft.Tip"/>
+                  </Supertip>
+                  <Icon>
+                    <bt:Image size="16" resid="PLSFIX.Icon.AlignLeft.16"/>
+                    <bt:Image size="32" resid="PLSFIX.Icon.AlignLeft.32"/>
+                    <bt:Image size="80" resid="PLSFIX.Icon.AlignLeft.80"/>
+                  </Icon>
+                  <Action xsi:type="ExecuteFunction">
+                    <FunctionName>PLSFIX_PPT_ALIGN_LEFT</FunctionName>
+                  </Action>
+                </Control>
+                <Control xsi:type="Button" id="PLSFIX.Button.AlignCenter">
+                  <Label resid="PLSFIX.AlignCenter.Label"/>
+                  <Supertip>
+                    <Title resid="PLSFIX.AlignCenter.Label"/>
+                    <Description resid="PLSFIX.AlignCenter.Tip"/>
+                  </Supertip>
+                  <Icon>
+                    <bt:Image size="16" resid="PLSFIX.Icon.AlignCenter.16"/>
+                    <bt:Image size="32" resid="PLSFIX.Icon.AlignCenter.32"/>
+                    <bt:Image size="80" resid="PLSFIX.Icon.AlignCenter.80"/>
+                  </Icon>
+                  <Action xsi:type="ExecuteFunction">
+                    <FunctionName>PLSFIX_PPT_ALIGN_CENTER</FunctionName>
+                  </Action>
+                </Control>
+                <Control xsi:type="Button" id="PLSFIX.Button.AlignRight">
+                  <Label resid="PLSFIX.AlignRight.Label"/>
+                  <Supertip>
+                    <Title resid="PLSFIX.AlignRight.Label"/>
+                    <Description resid="PLSFIX.AlignRight.Tip"/>
+                  </Supertip>
+                  <Icon>
+                    <bt:Image size="16" resid="PLSFIX.Icon.AlignRight.16"/>
+                    <bt:Image size="32" resid="PLSFIX.Icon.AlignRight.32"/>
+                    <bt:Image size="80" resid="PLSFIX.Icon.AlignRight.80"/>
+                  </Icon>
+                  <Action xsi:type="ExecuteFunction">
+                    <FunctionName>PLSFIX_PPT_ALIGN_RIGHT</FunctionName>
+                  </Action>
+                </Control>
+                <Control xsi:type="Button" id="PLSFIX.Button.AlignTop">
+                  <Label resid="PLSFIX.AlignTop.Label"/>
+                  <Supertip>
+                    <Title resid="PLSFIX.AlignTop.Label"/>
+                    <Description resid="PLSFIX.AlignTop.Tip"/>
+                  </Supertip>
+                  <Icon>
+                    <bt:Image size="16" resid="PLSFIX.Icon.AlignTop.16"/>
+                    <bt:Image size="32" resid="PLSFIX.Icon.AlignTop.32"/>
+                    <bt:Image size="80" resid="PLSFIX.Icon.AlignTop.80"/>
+                  </Icon>
+                  <Action xsi:type="ExecuteFunction">
+                    <FunctionName>PLSFIX_PPT_ALIGN_TOP</FunctionName>
+                  </Action>
+                </Control>
+                <Control xsi:type="Button" id="PLSFIX.Button.AlignMiddle">
+                  <Label resid="PLSFIX.AlignMiddle.Label"/>
+                  <Supertip>
+                    <Title resid="PLSFIX.AlignMiddle.Label"/>
+                    <Description resid="PLSFIX.AlignMiddle.Tip"/>
+                  </Supertip>
+                  <Icon>
+                    <bt:Image size="16" resid="PLSFIX.Icon.AlignMiddle.16"/>
+                    <bt:Image size="32" resid="PLSFIX.Icon.AlignMiddle.32"/>
+                    <bt:Image size="80" resid="PLSFIX.Icon.AlignMiddle.80"/>
+                  </Icon>
+                  <Action xsi:type="ExecuteFunction">
+                    <FunctionName>PLSFIX_PPT_ALIGN_MIDDLE</FunctionName>
+                  </Action>
+                </Control>
+                <Control xsi:type="Button" id="PLSFIX.Button.AlignBottom">
+                  <Label resid="PLSFIX.AlignBottom.Label"/>
+                  <Supertip>
+                    <Title resid="PLSFIX.AlignBottom.Label"/>
+                    <Description resid="PLSFIX.AlignBottom.Tip"/>
+                  </Supertip>
+                  <Icon>
+                    <bt:Image size="16" resid="PLSFIX.Icon.AlignBottom.16"/>
+                    <bt:Image size="32" resid="PLSFIX.Icon.AlignBottom.32"/>
+                    <bt:Image size="80" resid="PLSFIX.Icon.AlignBottom.80"/>
+                  </Icon>
+                  <Action xsi:type="ExecuteFunction">
+                    <FunctionName>PLSFIX_PPT_ALIGN_BOTTOM</FunctionName>
+                  </Action>
+                </Control>
+                <Control xsi:type="Button" id="PLSFIX.Button.DistributeAcross">
+                  <Label resid="PLSFIX.DistributeAcross.Label"/>
+                  <Supertip>
+                    <Title resid="PLSFIX.DistributeAcross.Label"/>
+                    <Description resid="PLSFIX.DistributeAcross.Tip"/>
+                  </Supertip>
+                  <Icon>
+                    <bt:Image size="16" resid="PLSFIX.Icon.DistributeAcross.16"/>
+                    <bt:Image size="32" resid="PLSFIX.Icon.DistributeAcross.32"/>
+                    <bt:Image size="80" resid="PLSFIX.Icon.DistributeAcross.80"/>
+                  </Icon>
+                  <Action xsi:type="ExecuteFunction">
+                    <FunctionName>PLSFIX_PPT_DIST_ACROSS</FunctionName>
+                  </Action>
+                </Control>
+                <Control xsi:type="Button" id="PLSFIX.Button.DistributeDown">
+                  <Label resid="PLSFIX.DistributeDown.Label"/>
+                  <Supertip>
+                    <Title resid="PLSFIX.DistributeDown.Label"/>
+                    <Description resid="PLSFIX.DistributeDown.Tip"/>
+                  </Supertip>
+                  <Icon>
+                    <bt:Image size="16" resid="PLSFIX.Icon.DistributeDown.16"/>
+                    <bt:Image size="32" resid="PLSFIX.Icon.DistributeDown.32"/>
+                    <bt:Image size="80" resid="PLSFIX.Icon.DistributeDown.80"/>
+                  </Icon>
+                  <Action xsi:type="ExecuteFunction">
+                    <FunctionName>PLSFIX_PPT_DIST_DOWN</FunctionName>
+                  </Action>
+                </Control>
+              </Group>
               <Label resid="PLSFIX.Tab.Label"/>
             </CustomTab>
           </ExtensionPoint>
@@ -453,6 +679,48 @@
         <bt:Image id="PLSFIX.Icon.OpenLinks.16" DefaultValue="https://localhost:3000/assets/ribbon/links-16.png"/>
         <bt:Image id="PLSFIX.Icon.OpenLinks.32" DefaultValue="https://localhost:3000/assets/ribbon/links-32.png"/>
         <bt:Image id="PLSFIX.Icon.OpenLinks.80" DefaultValue="https://localhost:3000/assets/ribbon/links-80.png"/>
+        <bt:Image id="PLSFIX.Icon.ObjectTools.16" DefaultValue="https://localhost:3000/assets/ribbon/objects-16.png"/>
+        <bt:Image id="PLSFIX.Icon.ObjectTools.32" DefaultValue="https://localhost:3000/assets/ribbon/objects-32.png"/>
+        <bt:Image id="PLSFIX.Icon.ObjectTools.80" DefaultValue="https://localhost:3000/assets/ribbon/objects-80.png"/>
+        <bt:Image id="PLSFIX.Icon.MatchSize.16" DefaultValue="https://localhost:3000/assets/ribbon/match-size-16.png"/>
+        <bt:Image id="PLSFIX.Icon.MatchSize.32" DefaultValue="https://localhost:3000/assets/ribbon/match-size-32.png"/>
+        <bt:Image id="PLSFIX.Icon.MatchSize.80" DefaultValue="https://localhost:3000/assets/ribbon/match-size-80.png"/>
+        <bt:Image id="PLSFIX.Icon.SelectSimilar.16" DefaultValue="https://localhost:3000/assets/ribbon/select-similar-16.png"/>
+        <bt:Image id="PLSFIX.Icon.SelectSimilar.32" DefaultValue="https://localhost:3000/assets/ribbon/select-similar-32.png"/>
+        <bt:Image id="PLSFIX.Icon.SelectSimilar.80" DefaultValue="https://localhost:3000/assets/ribbon/select-similar-80.png"/>
+        <bt:Image id="PLSFIX.Icon.Swap.16" DefaultValue="https://localhost:3000/assets/ribbon/swap-16.png"/>
+        <bt:Image id="PLSFIX.Icon.Swap.32" DefaultValue="https://localhost:3000/assets/ribbon/swap-32.png"/>
+        <bt:Image id="PLSFIX.Icon.Swap.80" DefaultValue="https://localhost:3000/assets/ribbon/swap-80.png"/>
+        <bt:Image id="PLSFIX.Icon.CaptureStyle.16" DefaultValue="https://localhost:3000/assets/ribbon/capture-style-16.png"/>
+        <bt:Image id="PLSFIX.Icon.CaptureStyle.32" DefaultValue="https://localhost:3000/assets/ribbon/capture-style-32.png"/>
+        <bt:Image id="PLSFIX.Icon.CaptureStyle.80" DefaultValue="https://localhost:3000/assets/ribbon/capture-style-80.png"/>
+        <bt:Image id="PLSFIX.Icon.ApplyStyle.16" DefaultValue="https://localhost:3000/assets/ribbon/apply-style-16.png"/>
+        <bt:Image id="PLSFIX.Icon.ApplyStyle.32" DefaultValue="https://localhost:3000/assets/ribbon/apply-style-32.png"/>
+        <bt:Image id="PLSFIX.Icon.ApplyStyle.80" DefaultValue="https://localhost:3000/assets/ribbon/apply-style-80.png"/>
+        <bt:Image id="PLSFIX.Icon.AlignLeft.16" DefaultValue="https://localhost:3000/assets/ribbon/align-left-16.png"/>
+        <bt:Image id="PLSFIX.Icon.AlignLeft.32" DefaultValue="https://localhost:3000/assets/ribbon/align-left-32.png"/>
+        <bt:Image id="PLSFIX.Icon.AlignLeft.80" DefaultValue="https://localhost:3000/assets/ribbon/align-left-80.png"/>
+        <bt:Image id="PLSFIX.Icon.AlignCenter.16" DefaultValue="https://localhost:3000/assets/ribbon/align-center-16.png"/>
+        <bt:Image id="PLSFIX.Icon.AlignCenter.32" DefaultValue="https://localhost:3000/assets/ribbon/align-center-32.png"/>
+        <bt:Image id="PLSFIX.Icon.AlignCenter.80" DefaultValue="https://localhost:3000/assets/ribbon/align-center-80.png"/>
+        <bt:Image id="PLSFIX.Icon.AlignRight.16" DefaultValue="https://localhost:3000/assets/ribbon/align-right-16.png"/>
+        <bt:Image id="PLSFIX.Icon.AlignRight.32" DefaultValue="https://localhost:3000/assets/ribbon/align-right-32.png"/>
+        <bt:Image id="PLSFIX.Icon.AlignRight.80" DefaultValue="https://localhost:3000/assets/ribbon/align-right-80.png"/>
+        <bt:Image id="PLSFIX.Icon.AlignTop.16" DefaultValue="https://localhost:3000/assets/ribbon/align-top-16.png"/>
+        <bt:Image id="PLSFIX.Icon.AlignTop.32" DefaultValue="https://localhost:3000/assets/ribbon/align-top-32.png"/>
+        <bt:Image id="PLSFIX.Icon.AlignTop.80" DefaultValue="https://localhost:3000/assets/ribbon/align-top-80.png"/>
+        <bt:Image id="PLSFIX.Icon.AlignMiddle.16" DefaultValue="https://localhost:3000/assets/ribbon/align-middle-16.png"/>
+        <bt:Image id="PLSFIX.Icon.AlignMiddle.32" DefaultValue="https://localhost:3000/assets/ribbon/align-middle-32.png"/>
+        <bt:Image id="PLSFIX.Icon.AlignMiddle.80" DefaultValue="https://localhost:3000/assets/ribbon/align-middle-80.png"/>
+        <bt:Image id="PLSFIX.Icon.AlignBottom.16" DefaultValue="https://localhost:3000/assets/ribbon/align-bottom-16.png"/>
+        <bt:Image id="PLSFIX.Icon.AlignBottom.32" DefaultValue="https://localhost:3000/assets/ribbon/align-bottom-32.png"/>
+        <bt:Image id="PLSFIX.Icon.AlignBottom.80" DefaultValue="https://localhost:3000/assets/ribbon/align-bottom-80.png"/>
+        <bt:Image id="PLSFIX.Icon.DistributeAcross.16" DefaultValue="https://localhost:3000/assets/ribbon/distribute-across-16.png"/>
+        <bt:Image id="PLSFIX.Icon.DistributeAcross.32" DefaultValue="https://localhost:3000/assets/ribbon/distribute-across-32.png"/>
+        <bt:Image id="PLSFIX.Icon.DistributeAcross.80" DefaultValue="https://localhost:3000/assets/ribbon/distribute-across-80.png"/>
+        <bt:Image id="PLSFIX.Icon.DistributeDown.16" DefaultValue="https://localhost:3000/assets/ribbon/distribute-down-16.png"/>
+        <bt:Image id="PLSFIX.Icon.DistributeDown.32" DefaultValue="https://localhost:3000/assets/ribbon/distribute-down-32.png"/>
+        <bt:Image id="PLSFIX.Icon.DistributeDown.80" DefaultValue="https://localhost:3000/assets/ribbon/distribute-down-80.png"/>
       </bt:Images>
       <bt:Urls>
         <bt:Url id="PLSFIX.Taskpane.Url" DefaultValue="https://localhost:3000/taskpane.html"/>
@@ -486,6 +754,22 @@
         <bt:String id="PLSFIX.Toc.Label" DefaultValue="Contents sheet"/>
         <bt:String id="PLSFIX.Group.Links.Label" DefaultValue="Links"/>
         <bt:String id="PLSFIX.OpenLinks.Label" DefaultValue="Links"/>
+        <bt:String id="PLSFIX.Group.Objects.Label" DefaultValue="Objects"/>
+        <bt:String id="PLSFIX.ObjectTools.Label" DefaultValue="Object tools"/>
+        <bt:String id="PLSFIX.MatchSize.Label" DefaultValue="Match size"/>
+        <bt:String id="PLSFIX.SelectSimilar.Label" DefaultValue="Select similar"/>
+        <bt:String id="PLSFIX.Swap.Label" DefaultValue="Swap"/>
+        <bt:String id="PLSFIX.CaptureStyle.Label" DefaultValue="Capture style"/>
+        <bt:String id="PLSFIX.ApplyStyle.Label" DefaultValue="Apply style"/>
+        <bt:String id="PLSFIX.Group.Arrange.Label" DefaultValue="Arrange"/>
+        <bt:String id="PLSFIX.AlignLeft.Label" DefaultValue="Align left"/>
+        <bt:String id="PLSFIX.AlignCenter.Label" DefaultValue="Align centre"/>
+        <bt:String id="PLSFIX.AlignRight.Label" DefaultValue="Align right"/>
+        <bt:String id="PLSFIX.AlignTop.Label" DefaultValue="Align top"/>
+        <bt:String id="PLSFIX.AlignMiddle.Label" DefaultValue="Align middle"/>
+        <bt:String id="PLSFIX.AlignBottom.Label" DefaultValue="Align bottom"/>
+        <bt:String id="PLSFIX.DistributeAcross.Label" DefaultValue="Distribute across"/>
+        <bt:String id="PLSFIX.DistributeDown.Label" DefaultValue="Distribute down"/>
         <bt:String id="PLSFIX.Functions.Namespace" DefaultValue="PLSFIX"/>
       </bt:ShortStrings>
       <bt:LongStrings>
@@ -507,6 +791,20 @@
         <bt:String id="PLSFIX.Waterfall.Tip" DefaultValue="Build a waterfall chart from the selected bridge table."/>
         <bt:String id="PLSFIX.Toc.Tip" DefaultValue="Insert or refresh the workbook contents sheet."/>
         <bt:String id="PLSFIX.OpenLinks.Tip" DefaultValue="Open the pls,fix linked-objects pane."/>
+        <bt:String id="PLSFIX.ObjectTools.Tip" DefaultValue="Open the pls,fix pane on its Tools tab."/>
+        <bt:String id="PLSFIX.MatchSize.Tip" DefaultValue="Give every selected object the first selected object&apos;s width and height."/>
+        <bt:String id="PLSFIX.SelectSimilar.Tip" DefaultValue="Select every object on this slide with the same type and size as the selected one."/>
+        <bt:String id="PLSFIX.Swap.Tip" DefaultValue="Swap the positions of exactly two selected objects."/>
+        <bt:String id="PLSFIX.CaptureStyle.Tip" DefaultValue="Smart Painter: remember the selected object&apos;s solid fill and outline."/>
+        <bt:String id="PLSFIX.ApplyStyle.Tip" DefaultValue="Smart Painter: paint the captured fill and outline over the selected objects."/>
+        <bt:String id="PLSFIX.AlignLeft.Tip" DefaultValue="Align the selected objects on their leftmost edge."/>
+        <bt:String id="PLSFIX.AlignCenter.Tip" DefaultValue="Centre the selected objects horizontally on the selection."/>
+        <bt:String id="PLSFIX.AlignRight.Tip" DefaultValue="Align the selected objects on their rightmost edge."/>
+        <bt:String id="PLSFIX.AlignTop.Tip" DefaultValue="Align the selected objects on their topmost edge."/>
+        <bt:String id="PLSFIX.AlignMiddle.Tip" DefaultValue="Centre the selected objects vertically on the selection."/>
+        <bt:String id="PLSFIX.AlignBottom.Tip" DefaultValue="Align the selected objects on their bottom edge."/>
+        <bt:String id="PLSFIX.DistributeAcross.Tip" DefaultValue="Space three or more selected objects evenly from left to right, outer edges fixed."/>
+        <bt:String id="PLSFIX.DistributeDown.Tip" DefaultValue="Space three or more selected objects evenly from top to bottom, outer edges fixed."/>
       </bt:LongStrings>
     </Resources>
     <VersionOverrides xmlns="http://schemas.microsoft.com/office/taskpaneappversionoverrides/1.1" xsi:type="VersionOverridesV1_1">
@@ -871,6 +1169,232 @@
                     </Action>
                   </Control>
                 </Group>
+                <Group id="PLSFIX.Group.Objects">
+                  <Label resid="PLSFIX.Group.Objects.Label"/>
+                  <Icon>
+                    <bt:Image size="16" resid="PLSFIX.Icon.16"/>
+                    <bt:Image size="32" resid="PLSFIX.Icon.32"/>
+                    <bt:Image size="80" resid="PLSFIX.Icon.80"/>
+                  </Icon>
+                  <Control xsi:type="Button" id="PLSFIX.Button.ObjectTools">
+                    <Label resid="PLSFIX.ObjectTools.Label"/>
+                    <Supertip>
+                      <Title resid="PLSFIX.ObjectTools.Label"/>
+                      <Description resid="PLSFIX.ObjectTools.Tip"/>
+                    </Supertip>
+                    <Icon>
+                      <bt:Image size="16" resid="PLSFIX.Icon.ObjectTools.16"/>
+                      <bt:Image size="32" resid="PLSFIX.Icon.ObjectTools.32"/>
+                      <bt:Image size="80" resid="PLSFIX.Icon.ObjectTools.80"/>
+                    </Icon>
+                    <Action xsi:type="ExecuteFunction">
+                      <FunctionName>PLSFIX_PPT_TOOLS</FunctionName>
+                    </Action>
+                  </Control>
+                  <Control xsi:type="Button" id="PLSFIX.Button.MatchSize">
+                    <Label resid="PLSFIX.MatchSize.Label"/>
+                    <Supertip>
+                      <Title resid="PLSFIX.MatchSize.Label"/>
+                      <Description resid="PLSFIX.MatchSize.Tip"/>
+                    </Supertip>
+                    <Icon>
+                      <bt:Image size="16" resid="PLSFIX.Icon.MatchSize.16"/>
+                      <bt:Image size="32" resid="PLSFIX.Icon.MatchSize.32"/>
+                      <bt:Image size="80" resid="PLSFIX.Icon.MatchSize.80"/>
+                    </Icon>
+                    <Action xsi:type="ExecuteFunction">
+                      <FunctionName>PLSFIX_PPT_MATCH</FunctionName>
+                    </Action>
+                  </Control>
+                  <Control xsi:type="Button" id="PLSFIX.Button.SelectSimilar">
+                    <Label resid="PLSFIX.SelectSimilar.Label"/>
+                    <Supertip>
+                      <Title resid="PLSFIX.SelectSimilar.Label"/>
+                      <Description resid="PLSFIX.SelectSimilar.Tip"/>
+                    </Supertip>
+                    <Icon>
+                      <bt:Image size="16" resid="PLSFIX.Icon.SelectSimilar.16"/>
+                      <bt:Image size="32" resid="PLSFIX.Icon.SelectSimilar.32"/>
+                      <bt:Image size="80" resid="PLSFIX.Icon.SelectSimilar.80"/>
+                    </Icon>
+                    <Action xsi:type="ExecuteFunction">
+                      <FunctionName>PLSFIX_PPT_SIMILAR</FunctionName>
+                    </Action>
+                  </Control>
+                  <Control xsi:type="Button" id="PLSFIX.Button.Swap">
+                    <Label resid="PLSFIX.Swap.Label"/>
+                    <Supertip>
+                      <Title resid="PLSFIX.Swap.Label"/>
+                      <Description resid="PLSFIX.Swap.Tip"/>
+                    </Supertip>
+                    <Icon>
+                      <bt:Image size="16" resid="PLSFIX.Icon.Swap.16"/>
+                      <bt:Image size="32" resid="PLSFIX.Icon.Swap.32"/>
+                      <bt:Image size="80" resid="PLSFIX.Icon.Swap.80"/>
+                    </Icon>
+                    <Action xsi:type="ExecuteFunction">
+                      <FunctionName>PLSFIX_PPT_SWAP</FunctionName>
+                    </Action>
+                  </Control>
+                  <Control xsi:type="Button" id="PLSFIX.Button.CaptureStyle">
+                    <Label resid="PLSFIX.CaptureStyle.Label"/>
+                    <Supertip>
+                      <Title resid="PLSFIX.CaptureStyle.Label"/>
+                      <Description resid="PLSFIX.CaptureStyle.Tip"/>
+                    </Supertip>
+                    <Icon>
+                      <bt:Image size="16" resid="PLSFIX.Icon.CaptureStyle.16"/>
+                      <bt:Image size="32" resid="PLSFIX.Icon.CaptureStyle.32"/>
+                      <bt:Image size="80" resid="PLSFIX.Icon.CaptureStyle.80"/>
+                    </Icon>
+                    <Action xsi:type="ExecuteFunction">
+                      <FunctionName>PLSFIX_PPT_CAPTURE</FunctionName>
+                    </Action>
+                  </Control>
+                  <Control xsi:type="Button" id="PLSFIX.Button.ApplyStyle">
+                    <Label resid="PLSFIX.ApplyStyle.Label"/>
+                    <Supertip>
+                      <Title resid="PLSFIX.ApplyStyle.Label"/>
+                      <Description resid="PLSFIX.ApplyStyle.Tip"/>
+                    </Supertip>
+                    <Icon>
+                      <bt:Image size="16" resid="PLSFIX.Icon.ApplyStyle.16"/>
+                      <bt:Image size="32" resid="PLSFIX.Icon.ApplyStyle.32"/>
+                      <bt:Image size="80" resid="PLSFIX.Icon.ApplyStyle.80"/>
+                    </Icon>
+                    <Action xsi:type="ExecuteFunction">
+                      <FunctionName>PLSFIX_PPT_PAINT</FunctionName>
+                    </Action>
+                  </Control>
+                </Group>
+                <Group id="PLSFIX.Group.Arrange">
+                  <Label resid="PLSFIX.Group.Arrange.Label"/>
+                  <Icon>
+                    <bt:Image size="16" resid="PLSFIX.Icon.16"/>
+                    <bt:Image size="32" resid="PLSFIX.Icon.32"/>
+                    <bt:Image size="80" resid="PLSFIX.Icon.80"/>
+                  </Icon>
+                  <Control xsi:type="Button" id="PLSFIX.Button.AlignLeft">
+                    <Label resid="PLSFIX.AlignLeft.Label"/>
+                    <Supertip>
+                      <Title resid="PLSFIX.AlignLeft.Label"/>
+                      <Description resid="PLSFIX.AlignLeft.Tip"/>
+                    </Supertip>
+                    <Icon>
+                      <bt:Image size="16" resid="PLSFIX.Icon.AlignLeft.16"/>
+                      <bt:Image size="32" resid="PLSFIX.Icon.AlignLeft.32"/>
+                      <bt:Image size="80" resid="PLSFIX.Icon.AlignLeft.80"/>
+                    </Icon>
+                    <Action xsi:type="ExecuteFunction">
+                      <FunctionName>PLSFIX_PPT_ALIGN_LEFT</FunctionName>
+                    </Action>
+                  </Control>
+                  <Control xsi:type="Button" id="PLSFIX.Button.AlignCenter">
+                    <Label resid="PLSFIX.AlignCenter.Label"/>
+                    <Supertip>
+                      <Title resid="PLSFIX.AlignCenter.Label"/>
+                      <Description resid="PLSFIX.AlignCenter.Tip"/>
+                    </Supertip>
+                    <Icon>
+                      <bt:Image size="16" resid="PLSFIX.Icon.AlignCenter.16"/>
+                      <bt:Image size="32" resid="PLSFIX.Icon.AlignCenter.32"/>
+                      <bt:Image size="80" resid="PLSFIX.Icon.AlignCenter.80"/>
+                    </Icon>
+                    <Action xsi:type="ExecuteFunction">
+                      <FunctionName>PLSFIX_PPT_ALIGN_CENTER</FunctionName>
+                    </Action>
+                  </Control>
+                  <Control xsi:type="Button" id="PLSFIX.Button.AlignRight">
+                    <Label resid="PLSFIX.AlignRight.Label"/>
+                    <Supertip>
+                      <Title resid="PLSFIX.AlignRight.Label"/>
+                      <Description resid="PLSFIX.AlignRight.Tip"/>
+                    </Supertip>
+                    <Icon>
+                      <bt:Image size="16" resid="PLSFIX.Icon.AlignRight.16"/>
+                      <bt:Image size="32" resid="PLSFIX.Icon.AlignRight.32"/>
+                      <bt:Image size="80" resid="PLSFIX.Icon.AlignRight.80"/>
+                    </Icon>
+                    <Action xsi:type="ExecuteFunction">
+                      <FunctionName>PLSFIX_PPT_ALIGN_RIGHT</FunctionName>
+                    </Action>
+                  </Control>
+                  <Control xsi:type="Button" id="PLSFIX.Button.AlignTop">
+                    <Label resid="PLSFIX.AlignTop.Label"/>
+                    <Supertip>
+                      <Title resid="PLSFIX.AlignTop.Label"/>
+                      <Description resid="PLSFIX.AlignTop.Tip"/>
+                    </Supertip>
+                    <Icon>
+                      <bt:Image size="16" resid="PLSFIX.Icon.AlignTop.16"/>
+                      <bt:Image size="32" resid="PLSFIX.Icon.AlignTop.32"/>
+                      <bt:Image size="80" resid="PLSFIX.Icon.AlignTop.80"/>
+                    </Icon>
+                    <Action xsi:type="ExecuteFunction">
+                      <FunctionName>PLSFIX_PPT_ALIGN_TOP</FunctionName>
+                    </Action>
+                  </Control>
+                  <Control xsi:type="Button" id="PLSFIX.Button.AlignMiddle">
+                    <Label resid="PLSFIX.AlignMiddle.Label"/>
+                    <Supertip>
+                      <Title resid="PLSFIX.AlignMiddle.Label"/>
+                      <Description resid="PLSFIX.AlignMiddle.Tip"/>
+                    </Supertip>
+                    <Icon>
+                      <bt:Image size="16" resid="PLSFIX.Icon.AlignMiddle.16"/>
+                      <bt:Image size="32" resid="PLSFIX.Icon.AlignMiddle.32"/>
+                      <bt:Image size="80" resid="PLSFIX.Icon.AlignMiddle.80"/>
+                    </Icon>
+                    <Action xsi:type="ExecuteFunction">
+                      <FunctionName>PLSFIX_PPT_ALIGN_MIDDLE</FunctionName>
+                    </Action>
+                  </Control>
+                  <Control xsi:type="Button" id="PLSFIX.Button.AlignBottom">
+                    <Label resid="PLSFIX.AlignBottom.Label"/>
+                    <Supertip>
+                      <Title resid="PLSFIX.AlignBottom.Label"/>
+                      <Description resid="PLSFIX.AlignBottom.Tip"/>
+                    </Supertip>
+                    <Icon>
+                      <bt:Image size="16" resid="PLSFIX.Icon.AlignBottom.16"/>
+                      <bt:Image size="32" resid="PLSFIX.Icon.AlignBottom.32"/>
+                      <bt:Image size="80" resid="PLSFIX.Icon.AlignBottom.80"/>
+                    </Icon>
+                    <Action xsi:type="ExecuteFunction">
+                      <FunctionName>PLSFIX_PPT_ALIGN_BOTTOM</FunctionName>
+                    </Action>
+                  </Control>
+                  <Control xsi:type="Button" id="PLSFIX.Button.DistributeAcross">
+                    <Label resid="PLSFIX.DistributeAcross.Label"/>
+                    <Supertip>
+                      <Title resid="PLSFIX.DistributeAcross.Label"/>
+                      <Description resid="PLSFIX.DistributeAcross.Tip"/>
+                    </Supertip>
+                    <Icon>
+                      <bt:Image size="16" resid="PLSFIX.Icon.DistributeAcross.16"/>
+                      <bt:Image size="32" resid="PLSFIX.Icon.DistributeAcross.32"/>
+                      <bt:Image size="80" resid="PLSFIX.Icon.DistributeAcross.80"/>
+                    </Icon>
+                    <Action xsi:type="ExecuteFunction">
+                      <FunctionName>PLSFIX_PPT_DIST_ACROSS</FunctionName>
+                    </Action>
+                  </Control>
+                  <Control xsi:type="Button" id="PLSFIX.Button.DistributeDown">
+                    <Label resid="PLSFIX.DistributeDown.Label"/>
+                    <Supertip>
+                      <Title resid="PLSFIX.DistributeDown.Label"/>
+                      <Description resid="PLSFIX.DistributeDown.Tip"/>
+                    </Supertip>
+                    <Icon>
+                      <bt:Image size="16" resid="PLSFIX.Icon.DistributeDown.16"/>
+                      <bt:Image size="32" resid="PLSFIX.Icon.DistributeDown.32"/>
+                      <bt:Image size="80" resid="PLSFIX.Icon.DistributeDown.80"/>
+                    </Icon>
+                    <Action xsi:type="ExecuteFunction">
+                      <FunctionName>PLSFIX_PPT_DIST_DOWN</FunctionName>
+                    </Action>
+                  </Control>
+                </Group>
                 <Label resid="PLSFIX.Tab.Label"/>
               </CustomTab>
             </ExtensionPoint>
@@ -936,6 +1460,48 @@
           <bt:Image id="PLSFIX.Icon.OpenLinks.16" DefaultValue="https://localhost:3000/assets/ribbon/links-16.png"/>
           <bt:Image id="PLSFIX.Icon.OpenLinks.32" DefaultValue="https://localhost:3000/assets/ribbon/links-32.png"/>
           <bt:Image id="PLSFIX.Icon.OpenLinks.80" DefaultValue="https://localhost:3000/assets/ribbon/links-80.png"/>
+          <bt:Image id="PLSFIX.Icon.ObjectTools.16" DefaultValue="https://localhost:3000/assets/ribbon/objects-16.png"/>
+          <bt:Image id="PLSFIX.Icon.ObjectTools.32" DefaultValue="https://localhost:3000/assets/ribbon/objects-32.png"/>
+          <bt:Image id="PLSFIX.Icon.ObjectTools.80" DefaultValue="https://localhost:3000/assets/ribbon/objects-80.png"/>
+          <bt:Image id="PLSFIX.Icon.MatchSize.16" DefaultValue="https://localhost:3000/assets/ribbon/match-size-16.png"/>
+          <bt:Image id="PLSFIX.Icon.MatchSize.32" DefaultValue="https://localhost:3000/assets/ribbon/match-size-32.png"/>
+          <bt:Image id="PLSFIX.Icon.MatchSize.80" DefaultValue="https://localhost:3000/assets/ribbon/match-size-80.png"/>
+          <bt:Image id="PLSFIX.Icon.SelectSimilar.16" DefaultValue="https://localhost:3000/assets/ribbon/select-similar-16.png"/>
+          <bt:Image id="PLSFIX.Icon.SelectSimilar.32" DefaultValue="https://localhost:3000/assets/ribbon/select-similar-32.png"/>
+          <bt:Image id="PLSFIX.Icon.SelectSimilar.80" DefaultValue="https://localhost:3000/assets/ribbon/select-similar-80.png"/>
+          <bt:Image id="PLSFIX.Icon.Swap.16" DefaultValue="https://localhost:3000/assets/ribbon/swap-16.png"/>
+          <bt:Image id="PLSFIX.Icon.Swap.32" DefaultValue="https://localhost:3000/assets/ribbon/swap-32.png"/>
+          <bt:Image id="PLSFIX.Icon.Swap.80" DefaultValue="https://localhost:3000/assets/ribbon/swap-80.png"/>
+          <bt:Image id="PLSFIX.Icon.CaptureStyle.16" DefaultValue="https://localhost:3000/assets/ribbon/capture-style-16.png"/>
+          <bt:Image id="PLSFIX.Icon.CaptureStyle.32" DefaultValue="https://localhost:3000/assets/ribbon/capture-style-32.png"/>
+          <bt:Image id="PLSFIX.Icon.CaptureStyle.80" DefaultValue="https://localhost:3000/assets/ribbon/capture-style-80.png"/>
+          <bt:Image id="PLSFIX.Icon.ApplyStyle.16" DefaultValue="https://localhost:3000/assets/ribbon/apply-style-16.png"/>
+          <bt:Image id="PLSFIX.Icon.ApplyStyle.32" DefaultValue="https://localhost:3000/assets/ribbon/apply-style-32.png"/>
+          <bt:Image id="PLSFIX.Icon.ApplyStyle.80" DefaultValue="https://localhost:3000/assets/ribbon/apply-style-80.png"/>
+          <bt:Image id="PLSFIX.Icon.AlignLeft.16" DefaultValue="https://localhost:3000/assets/ribbon/align-left-16.png"/>
+          <bt:Image id="PLSFIX.Icon.AlignLeft.32" DefaultValue="https://localhost:3000/assets/ribbon/align-left-32.png"/>
+          <bt:Image id="PLSFIX.Icon.AlignLeft.80" DefaultValue="https://localhost:3000/assets/ribbon/align-left-80.png"/>
+          <bt:Image id="PLSFIX.Icon.AlignCenter.16" DefaultValue="https://localhost:3000/assets/ribbon/align-center-16.png"/>
+          <bt:Image id="PLSFIX.Icon.AlignCenter.32" DefaultValue="https://localhost:3000/assets/ribbon/align-center-32.png"/>
+          <bt:Image id="PLSFIX.Icon.AlignCenter.80" DefaultValue="https://localhost:3000/assets/ribbon/align-center-80.png"/>
+          <bt:Image id="PLSFIX.Icon.AlignRight.16" DefaultValue="https://localhost:3000/assets/ribbon/align-right-16.png"/>
+          <bt:Image id="PLSFIX.Icon.AlignRight.32" DefaultValue="https://localhost:3000/assets/ribbon/align-right-32.png"/>
+          <bt:Image id="PLSFIX.Icon.AlignRight.80" DefaultValue="https://localhost:3000/assets/ribbon/align-right-80.png"/>
+          <bt:Image id="PLSFIX.Icon.AlignTop.16" DefaultValue="https://localhost:3000/assets/ribbon/align-top-16.png"/>
+          <bt:Image id="PLSFIX.Icon.AlignTop.32" DefaultValue="https://localhost:3000/assets/ribbon/align-top-32.png"/>
+          <bt:Image id="PLSFIX.Icon.AlignTop.80" DefaultValue="https://localhost:3000/assets/ribbon/align-top-80.png"/>
+          <bt:Image id="PLSFIX.Icon.AlignMiddle.16" DefaultValue="https://localhost:3000/assets/ribbon/align-middle-16.png"/>
+          <bt:Image id="PLSFIX.Icon.AlignMiddle.32" DefaultValue="https://localhost:3000/assets/ribbon/align-middle-32.png"/>
+          <bt:Image id="PLSFIX.Icon.AlignMiddle.80" DefaultValue="https://localhost:3000/assets/ribbon/align-middle-80.png"/>
+          <bt:Image id="PLSFIX.Icon.AlignBottom.16" DefaultValue="https://localhost:3000/assets/ribbon/align-bottom-16.png"/>
+          <bt:Image id="PLSFIX.Icon.AlignBottom.32" DefaultValue="https://localhost:3000/assets/ribbon/align-bottom-32.png"/>
+          <bt:Image id="PLSFIX.Icon.AlignBottom.80" DefaultValue="https://localhost:3000/assets/ribbon/align-bottom-80.png"/>
+          <bt:Image id="PLSFIX.Icon.DistributeAcross.16" DefaultValue="https://localhost:3000/assets/ribbon/distribute-across-16.png"/>
+          <bt:Image id="PLSFIX.Icon.DistributeAcross.32" DefaultValue="https://localhost:3000/assets/ribbon/distribute-across-32.png"/>
+          <bt:Image id="PLSFIX.Icon.DistributeAcross.80" DefaultValue="https://localhost:3000/assets/ribbon/distribute-across-80.png"/>
+          <bt:Image id="PLSFIX.Icon.DistributeDown.16" DefaultValue="https://localhost:3000/assets/ribbon/distribute-down-16.png"/>
+          <bt:Image id="PLSFIX.Icon.DistributeDown.32" DefaultValue="https://localhost:3000/assets/ribbon/distribute-down-32.png"/>
+          <bt:Image id="PLSFIX.Icon.DistributeDown.80" DefaultValue="https://localhost:3000/assets/ribbon/distribute-down-80.png"/>
         </bt:Images>
         <bt:Urls>
           <bt:Url id="PLSFIX.Taskpane.Url" DefaultValue="https://localhost:3000/taskpane.html"/>
@@ -969,6 +1535,22 @@
           <bt:String id="PLSFIX.Toc.Label" DefaultValue="Contents sheet"/>
           <bt:String id="PLSFIX.Group.Links.Label" DefaultValue="Links"/>
           <bt:String id="PLSFIX.OpenLinks.Label" DefaultValue="Links"/>
+          <bt:String id="PLSFIX.Group.Objects.Label" DefaultValue="Objects"/>
+          <bt:String id="PLSFIX.ObjectTools.Label" DefaultValue="Object tools"/>
+          <bt:String id="PLSFIX.MatchSize.Label" DefaultValue="Match size"/>
+          <bt:String id="PLSFIX.SelectSimilar.Label" DefaultValue="Select similar"/>
+          <bt:String id="PLSFIX.Swap.Label" DefaultValue="Swap"/>
+          <bt:String id="PLSFIX.CaptureStyle.Label" DefaultValue="Capture style"/>
+          <bt:String id="PLSFIX.ApplyStyle.Label" DefaultValue="Apply style"/>
+          <bt:String id="PLSFIX.Group.Arrange.Label" DefaultValue="Arrange"/>
+          <bt:String id="PLSFIX.AlignLeft.Label" DefaultValue="Align left"/>
+          <bt:String id="PLSFIX.AlignCenter.Label" DefaultValue="Align centre"/>
+          <bt:String id="PLSFIX.AlignRight.Label" DefaultValue="Align right"/>
+          <bt:String id="PLSFIX.AlignTop.Label" DefaultValue="Align top"/>
+          <bt:String id="PLSFIX.AlignMiddle.Label" DefaultValue="Align middle"/>
+          <bt:String id="PLSFIX.AlignBottom.Label" DefaultValue="Align bottom"/>
+          <bt:String id="PLSFIX.DistributeAcross.Label" DefaultValue="Distribute across"/>
+          <bt:String id="PLSFIX.DistributeDown.Label" DefaultValue="Distribute down"/>
           <bt:String id="PLSFIX.Functions.Namespace" DefaultValue="PLSFIX"/>
         </bt:ShortStrings>
         <bt:LongStrings>
@@ -990,6 +1572,20 @@
           <bt:String id="PLSFIX.Waterfall.Tip" DefaultValue="Build a waterfall chart from the selected bridge table."/>
           <bt:String id="PLSFIX.Toc.Tip" DefaultValue="Insert or refresh the workbook contents sheet."/>
           <bt:String id="PLSFIX.OpenLinks.Tip" DefaultValue="Open the pls,fix linked-objects pane."/>
+          <bt:String id="PLSFIX.ObjectTools.Tip" DefaultValue="Open the pls,fix pane on its Tools tab."/>
+          <bt:String id="PLSFIX.MatchSize.Tip" DefaultValue="Give every selected object the first selected object&apos;s width and height."/>
+          <bt:String id="PLSFIX.SelectSimilar.Tip" DefaultValue="Select every object on this slide with the same type and size as the selected one."/>
+          <bt:String id="PLSFIX.Swap.Tip" DefaultValue="Swap the positions of exactly two selected objects."/>
+          <bt:String id="PLSFIX.CaptureStyle.Tip" DefaultValue="Smart Painter: remember the selected object&apos;s solid fill and outline."/>
+          <bt:String id="PLSFIX.ApplyStyle.Tip" DefaultValue="Smart Painter: paint the captured fill and outline over the selected objects."/>
+          <bt:String id="PLSFIX.AlignLeft.Tip" DefaultValue="Align the selected objects on their leftmost edge."/>
+          <bt:String id="PLSFIX.AlignCenter.Tip" DefaultValue="Centre the selected objects horizontally on the selection."/>
+          <bt:String id="PLSFIX.AlignRight.Tip" DefaultValue="Align the selected objects on their rightmost edge."/>
+          <bt:String id="PLSFIX.AlignTop.Tip" DefaultValue="Align the selected objects on their topmost edge."/>
+          <bt:String id="PLSFIX.AlignMiddle.Tip" DefaultValue="Centre the selected objects vertically on the selection."/>
+          <bt:String id="PLSFIX.AlignBottom.Tip" DefaultValue="Align the selected objects on their bottom edge."/>
+          <bt:String id="PLSFIX.DistributeAcross.Tip" DefaultValue="Space three or more selected objects evenly from left to right, outer edges fixed."/>
+          <bt:String id="PLSFIX.DistributeDown.Tip" DefaultValue="Space three or more selected objects evenly from top to bottom, outer edges fixed."/>
         </bt:LongStrings>
       </Resources>
       <ExtendedOverrides Url="https://localhost:3000/shortcuts.json"/>

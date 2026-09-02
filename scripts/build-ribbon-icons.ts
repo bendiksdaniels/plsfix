@@ -32,6 +32,22 @@ const icons = {
   waterfall: `<path d="M11 51h42M14 45h8V28h10v12h10V18h8v27" ${ink}/><path d="M22 28v17M32 40v5M42 18v27" ${accent}/>`,
   toc: `<rect x="14" y="10" width="36" height="44" rx="4" ${ink}/><path d="M23 21h18M23 32h18M23 43h12" ${ink}/><circle cx="19" cy="21" r="2" fill="${teal}"/><circle cx="19" cy="32" r="2" fill="${teal}"/><circle cx="19" cy="43" r="2" fill="${teal}"/>`,
   links: `<path d="m26 39-4 4c-5 5-12-2-7-7l10-10c5-5 12 2 7 7l-3 3M38 25l4-4c5-5 12 2 7 7L39 38c-5 5-12-2-7-7l3-3" ${ink}/><path d="m25 39 14-14" ${accent}/>`,
+  // PowerPoint: the Objects group.
+  objects: `<rect x="10" y="10" width="28" height="28" rx="4" ${ink}/><rect x="26" y="26" width="28" height="28" rx="4" ${accent}/>`,
+  "match-size": `<rect x="8" y="16" width="20" height="32" rx="4" ${ink}/><rect x="36" y="16" width="20" height="32" rx="4" ${accent}/><path d="M28 28h8M28 36h8" ${ink}/>`,
+  "select-similar": `<rect x="8" y="10" width="18" height="18" rx="3" ${accent}/><rect x="38" y="10" width="18" height="18" rx="3" ${accent}/><circle cx="32" cy="45" r="9" ${ink}/>`,
+  swap: `<rect x="8" y="8" width="20" height="20" rx="4" ${ink}/><rect x="36" y="36" width="20" height="20" rx="4" ${accent}/><path d="M36 18h10v8M28 46H18v-8" ${ink}/><path d="m41 21 5 5 5-5M23 43l-5-5-5 5" ${accent}/>`,
+  "capture-style": `<rect x="10" y="24" width="24" height="24" rx="4" fill="${teal}" stroke="none"/><path d="m40 24 14-14M44 20l8 8-14 14-8-8 14-14Z" ${ink}/>`,
+  "apply-style": `<rect x="30" y="30" width="24" height="24" rx="4" ${ink}/><path d="M12 52c0-8 6-10 10-14l10 10c-4 4-6 10-14 10Z" fill="${teal}" stroke="none"/><path d="m22 38 16-16 10 10-16 16" ${ink}/>`,
+  // PowerPoint: the Arrange group.
+  "align-left": `<path d="M10 8v48" ${accent}/><rect x="16" y="14" width="36" height="14" rx="3" ${ink}/><rect x="16" y="36" width="22" height="14" rx="3" ${ink}/>`,
+  "align-center": `<path d="M32 8v48" ${accent}/><rect x="12" y="14" width="40" height="14" rx="3" ${ink}/><rect x="20" y="36" width="24" height="14" rx="3" ${ink}/>`,
+  "align-right": `<path d="M54 8v48" ${accent}/><rect x="12" y="14" width="36" height="14" rx="3" ${ink}/><rect x="26" y="36" width="22" height="14" rx="3" ${ink}/>`,
+  "align-top": `<path d="M8 10h48" ${accent}/><rect x="14" y="16" width="14" height="36" rx="3" ${ink}/><rect x="36" y="16" width="14" height="22" rx="3" ${ink}/>`,
+  "align-middle": `<path d="M8 32h48" ${accent}/><rect x="14" y="12" width="14" height="40" rx="3" ${ink}/><rect x="36" y="20" width="14" height="24" rx="3" ${ink}/>`,
+  "align-bottom": `<path d="M8 54h48" ${accent}/><rect x="14" y="12" width="14" height="36" rx="3" ${ink}/><rect x="36" y="26" width="14" height="22" rx="3" ${ink}/>`,
+  "distribute-across": `<rect x="8" y="12" width="10" height="28" rx="3" ${ink}/><rect x="27" y="12" width="10" height="28" rx="3" ${ink}/><rect x="46" y="12" width="10" height="28" rx="3" ${ink}/><path d="M12 52h40M16 48l-4 4 4 4M48 48l4 4-4 4" ${accent}/>`,
+  "distribute-down": `<rect x="12" y="8" width="28" height="10" rx="3" ${ink}/><rect x="12" y="27" width="28" height="10" rx="3" ${ink}/><rect x="12" y="46" width="28" height="10" rx="3" ${ink}/><path d="M52 12v40M48 16l4-4 4 4M48 48l4 4 4-4" ${accent}/>`,
 } as const;
 
 function svg(body: string): string {

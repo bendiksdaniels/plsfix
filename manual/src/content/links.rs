@@ -245,7 +245,7 @@ fn object_tools() -> Section {
         "Object tools",
         vec![
             Block::Para(
-                r#"PowerPoint cilnē "Tools" ir sadaļa "Object tools" darbam ar slaidā atlasītajām figūrām. Tā prasa PowerPoint 2021 vai Microsoft 365; vecākā versijā panelis to pasaka, tiklīdz nospiež kādu no šīm pogām."#,
+                r#"PowerPoint cilnē "Tools" ir sadaļa "Object tools" darbam ar slaidā atlasītajām figūrām. Tā prasa PowerPoint 2021 vai Microsoft 365; vecākā versijā panelis to pasaka, tiklīdz nospiež kādu no šīm pogām. Tie paši rīki ir arī PowerPoint lentes cilnē "pls,fix": grupā "Objects" (Object tools, Match size, Select similar, Swap, Capture style, Apply style) un grupā "Arrange" (sešas līdzināšanas un abas izkārtošanas), katrs ar savu ikonu."#,
             ),
             Block::Para(
                 r#""Align" izvēlnē izvēlieties virzienu (pa kreisi, centrā, pa labi, augšā, vidū vai apakšā) un nospiediet "Apply": atlasītās figūras līdzinās pēc visu atlasīto figūru kopējām malām. Nepieciešamas vismaz divas figūras."#,

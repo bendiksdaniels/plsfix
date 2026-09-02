@@ -174,7 +174,10 @@ Export a range or a chart from Excel and keep it fresh in a deck without re-past
   centre, right, top, middle, bottom), distribute across or down, match size to the first
   selected object, select similar (same type and size on the slide), swap two positions - and a
   **Smart Painter** that captures one object's solid fill and outline and applies them to the
-  objects you select next (PowerPoint 2021 or Microsoft 365).
+  objects you select next (PowerPoint 2021 or Microsoft 365). The same tools sit on the
+  pls,fix ribbon in PowerPoint, each with its own icon: an **Objects** group (Object tools,
+  Match size, Select similar, Swap, Capture style, Apply style) and an **Arrange** group (the
+  six alignments and both distributions), so a deck can be tidied without opening the pane.
 - The relay stores only encrypted blobs for 30 days; anyone holding the deck can pull a
   linked picture for that long, so **break links before sending a deck outside**.
 

@@ -39,14 +39,14 @@ describe("buildManifest", () => {
     expect(xml.match(/<Host Name="Workbook"\/>/g)).toHaveLength(1);
   });
 
-  it("keeps the Workbook host at five ribbon groups (Office's per-tab cap is 6), Presentation at one", () => {
+  it("keeps the Workbook host at five ribbon groups (Office's per-tab cap is 6), Presentation at three", () => {
     const workbook = ADDIN.hosts.find((host) => host.name === "Workbook")!;
     const presentation = ADDIN.hosts.find(
       (host) => host.name === "Presentation",
     )!;
     expect(workbook.groups).toHaveLength(5);
     expect(workbook.groups.length).toBeLessThanOrEqual(6);
-    expect(presentation.groups).toHaveLength(1);
+    expect(presentation.groups).toHaveLength(3);
 
     const xml = buildManifest(prod, ADDIN);
     const workbookBlocks = xml.match(
@@ -285,24 +285,44 @@ describe("buildManifest", () => {
     );
   });
 
-  it("every ribbon FunctionName is registered in src/pane/commands.ts registerCommands", () => {
+  // Each host registers its own FunctionNames in its own pane: the Excel
+  // table in src/pane/commands.ts, the PowerPoint one in src/ppt/commands.ts.
+  it("every ribbon FunctionName is registered in its host's commands table", () => {
+    const registeredIn = (file: string): Set<string> =>
+      new Set(
+        [
+          ...readFileSync(new URL(file, import.meta.url), "utf8").matchAll(
+            /(PLSFIX_[A-Z_]+)[":]/g,
+          ),
+        ].map((match) => match[1]!),
+      );
+    const tables = {
+      Workbook: registeredIn("../src/pane/commands.ts"),
+      Presentation: registeredIn("../src/ppt/commands.ts"),
+    };
+    let seen = 0;
+    for (const host of ADDIN.hosts) {
+      for (const button of host.groups.flatMap((group) => group.buttons)) {
+        if (button.action.kind !== "function") continue;
+        seen += 1;
+        expect(tables[host.name].has(button.action.name)).toBe(true);
+        if (host.name === "Presentation") {
+          expect(button.action.name.startsWith("PLSFIX_PPT_")).toBe(true);
+        }
+      }
+    }
+    expect(seen).toBeGreaterThan(0);
+
     const xml = buildManifest(prod, ADDIN);
     const functionNames = new Set(
       [...xml.matchAll(/<FunctionName>([A-Z_]+)<\/FunctionName>/g)].map(
         (match) => match[1]!,
       ),
     );
-    expect(functionNames.size).toBeGreaterThan(0);
-
-    const commandsSrc = readFileSync(
-      new URL("../src/pane/commands.ts", import.meta.url),
-      "utf8",
-    );
-    const registered = new Set(
-      [...commandsSrc.matchAll(/(PLSFIX_[A-Z_]+):/g)].map((match) => match[1]!),
-    );
     for (const name of functionNames) {
-      expect(registered.has(name)).toBe(true);
+      expect(tables.Workbook.has(name) || tables.Presentation.has(name)).toBe(
+        true,
+      );
     }
   });
 

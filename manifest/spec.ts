@@ -41,7 +41,22 @@ export type RibbonIcon =
   | "sign"
   | "toc"
   | "undo"
-  | "waterfall";
+  | "waterfall"
+  // PowerPoint: the Tools tab's object tools and the arrange commands.
+  | "objects"
+  | "match-size"
+  | "select-similar"
+  | "swap"
+  | "capture-style"
+  | "apply-style"
+  | "align-left"
+  | "align-center"
+  | "align-right"
+  | "align-top"
+  | "align-middle"
+  | "align-bottom"
+  | "distribute-across"
+  | "distribute-down";
 
 export interface GroupSpec {
   id: string; // e.g. "PLSFIX.Group.Audit" -> resource id PLSFIX.Group.Audit.Label
@@ -289,6 +304,119 @@ export const PRESENTATION_HOST: HostSpec = {
           tip: "Open the pls,fix linked-objects pane.",
           icon: "links",
           action: { kind: "showPane" },
+        },
+      ],
+    },
+    // The Tools tab's parameterless tools, one click from the ribbon; the
+    // pane's own selects stay the home of the direction-bound ones, which
+    // the Arrange group spells out button by button below.
+    {
+      id: "PLSFIX.Group.Objects",
+      label: "Objects",
+      buttons: [
+        {
+          id: "ObjectTools",
+          label: "Object tools",
+          tip: "Open the pls,fix pane on its Tools tab.",
+          icon: "objects",
+          action: { kind: "function", name: "PLSFIX_PPT_TOOLS" },
+        },
+        {
+          id: "MatchSize",
+          label: "Match size",
+          tip: "Give every selected object the first selected object's width and height.",
+          icon: "match-size",
+          action: { kind: "function", name: "PLSFIX_PPT_MATCH" },
+        },
+        {
+          id: "SelectSimilar",
+          label: "Select similar",
+          tip: "Select every object on this slide with the same type and size as the selected one.",
+          icon: "select-similar",
+          action: { kind: "function", name: "PLSFIX_PPT_SIMILAR" },
+        },
+        {
+          id: "Swap",
+          label: "Swap",
+          tip: "Swap the positions of exactly two selected objects.",
+          icon: "swap",
+          action: { kind: "function", name: "PLSFIX_PPT_SWAP" },
+        },
+        {
+          id: "CaptureStyle",
+          label: "Capture style",
+          tip: "Smart Painter: remember the selected object's solid fill and outline.",
+          icon: "capture-style",
+          action: { kind: "function", name: "PLSFIX_PPT_CAPTURE" },
+        },
+        {
+          id: "ApplyStyle",
+          label: "Apply style",
+          tip: "Smart Painter: paint the captured fill and outline over the selected objects.",
+          icon: "apply-style",
+          action: { kind: "function", name: "PLSFIX_PPT_PAINT" },
+        },
+      ],
+    },
+    {
+      id: "PLSFIX.Group.Arrange",
+      label: "Arrange",
+      buttons: [
+        {
+          id: "AlignLeft",
+          label: "Align left",
+          tip: "Align the selected objects on their leftmost edge.",
+          icon: "align-left",
+          action: { kind: "function", name: "PLSFIX_PPT_ALIGN_LEFT" },
+        },
+        {
+          id: "AlignCenter",
+          label: "Align centre",
+          tip: "Centre the selected objects horizontally on the selection.",
+          icon: "align-center",
+          action: { kind: "function", name: "PLSFIX_PPT_ALIGN_CENTER" },
+        },
+        {
+          id: "AlignRight",
+          label: "Align right",
+          tip: "Align the selected objects on their rightmost edge.",
+          icon: "align-right",
+          action: { kind: "function", name: "PLSFIX_PPT_ALIGN_RIGHT" },
+        },
+        {
+          id: "AlignTop",
+          label: "Align top",
+          tip: "Align the selected objects on their topmost edge.",
+          icon: "align-top",
+          action: { kind: "function", name: "PLSFIX_PPT_ALIGN_TOP" },
+        },
+        {
+          id: "AlignMiddle",
+          label: "Align middle",
+          tip: "Centre the selected objects vertically on the selection.",
+          icon: "align-middle",
+          action: { kind: "function", name: "PLSFIX_PPT_ALIGN_MIDDLE" },
+        },
+        {
+          id: "AlignBottom",
+          label: "Align bottom",
+          tip: "Align the selected objects on their bottom edge.",
+          icon: "align-bottom",
+          action: { kind: "function", name: "PLSFIX_PPT_ALIGN_BOTTOM" },
+        },
+        {
+          id: "DistributeAcross",
+          label: "Distribute across",
+          tip: "Space three or more selected objects evenly from left to right, outer edges fixed.",
+          icon: "distribute-across",
+          action: { kind: "function", name: "PLSFIX_PPT_DIST_ACROSS" },
+        },
+        {
+          id: "DistributeDown",
+          label: "Distribute down",
+          tip: "Space three or more selected objects evenly from top to bottom, outer edges fixed.",
+          icon: "distribute-down",
+          action: { kind: "function", name: "PLSFIX_PPT_DIST_DOWN" },
         },
       ],
     },

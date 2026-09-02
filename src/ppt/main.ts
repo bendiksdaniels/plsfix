@@ -34,6 +34,7 @@ import {
   updateDetails,
 } from "./actions";
 import { installChangeSource } from "./chooser";
+import { registerCommands } from "./commands";
 import { activeSlideId, breakLink, goToSlide } from "./host";
 import {
   insertFromInbox,
@@ -95,7 +96,17 @@ getElement("app-version").textContent = APP_VERSION;
 installErrorReporting(REPORT_CONTEXT, (message, details) =>
   toast.show(message, "error", details),
 );
-installTabs(getElement("tab-bar"));
+const tabs = installTabs(getElement("tab-bar"));
+// Ribbon commands share this runtime, so they register with the page and
+// toast into it whether or not the pane is showing.
+registerCommands({
+  notify: (message, kind, details) => toast.show(message, kind, details),
+  context: REPORT_CONTEXT,
+  showTools: async () => {
+    await Office.addin?.showAsTaskpane();
+    tabs.activate("tab-tools");
+  },
+});
 // The "?" on every section heading, added once the markup is in place.
 installHelp(document);
 // The Inbox tab's "New here?" card, dismissed for good on this machine.
