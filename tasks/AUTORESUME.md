@@ -27,8 +27,12 @@
 - VM: `~/claude-vm/share/plsfix/` holds `manifest.prod.xml` (v2.6.0), the demo workbook and
   `sideload.sh` (`sideload` copies the manifest into both guest wef folders + the workbook to the
   guest Desktop; `record [seconds]` starts `screencapture -v -V<s> -x` into the share; `stop`).
-  Guest Excel still shows the M365 activation wall (checked 01:18 guest time): Daniel signs in
-  over `vnc://192.168.64.2` (admin/admin), then an opus agent runs
+  Probed 02.09 01:30 guest time: `sideload.sh` copied the v2.6.1 manifest into both wef folders
+  and the workbook to the guest Desktop; Excel's first-run dialogs (privacy, diagnostics =
+  no, experiences) are cleared; in the unlicensed "read-only mode" the demo opens but the
+  ribbon shows NO pls,fix tab (add-ins do not load without activation), so nothing more can be
+  proven there before the sign-in. Daniel signs in over `vnc://192.168.64.2` (admin/admin),
+  then an opus agent runs
   `vmctl ssh sh "/Volumes/My Shared Files/share/plsfix/sideload.sh"`, opens the demo, exports a
   chart and a table, reads "Copy details" (`vmctl` clipboard), verifies v2.6.0, records the demo
   and the host copies `share/plsfix/pls,fix demo.mov` to `~/Desktop/`.
