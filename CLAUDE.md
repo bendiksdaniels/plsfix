@@ -36,6 +36,8 @@ State pins: `tasks/AUTORESUME.md` (resume here), `tasks/v1-plan.md`, `tasks/less
 
 ## Map
 
+Layout: frontend = `src/` (TS panes), `taskpane.html` + `pptpane.html` (Vite entries stay in the root by Vite convention), `public/` -> `dist/` . backend = `server/` (Rust axum host + link relay), `demo/` + `manual/` (Rust tools) . deploy = `deploy/`, `manifest/` -> `manifest.xml` + `manifest.prod.xml` . docs = `docs/`, `ROADMAP.md` . tasks = `tasks/` . tests = `test/` + `*.test.ts` beside the code. Launch week: no restructuring.
+
 Entry points: `taskpane.html` + `src/main.ts` (Excel pane, web edge), `pptpane.html` + `src/ppt/main.ts` (PowerPoint pane), `server/src/main.rs` (axum host + relay), `manifest/spec.ts` -> `scripts/build-manifests.ts` (both manifests), `src/functions/index.ts` -> `public/functions.js` -> `dist/` (Excel custom functions, own vite pass; the dev server serves it from `public/` too), `public/shortcuts.html` (the printable keyboard-shortcut card, opened from the Excel pane in an Office dialog), `scripts/build-ribbon-icons.ts` -> `public/assets/ribbon/<name>-{16,32,80}.png` (the 32 ribbon command icons - 18 Excel, 14 PowerPoint - drawn as inline SVG and rasterised through `sips`; each button in `manifest/spec.ts` names its `icon`, committed PNGs, `npm run ribbon-icons:build` only when the artwork changes).
 
 Modules (what each owns):
