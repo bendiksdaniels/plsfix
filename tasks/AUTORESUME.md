@@ -1,6 +1,16 @@
-# AUTORESUME - pls,fix (v2.6.0 LIVE 02.09 01:30, deployed from d488f92)
+# AUTORESUME - pls,fix (v2.6.1 LIVE 02.09 01:50, deployed from 0c82932)
 
-## 02.09 night: v2.6.0 launch release LIVE; VM proof and demo video wait for Daniel's sign-in
+## 02.09 night: v2.6.1 LIVE (PowerPoint ribbon commands); VM proof and demo video wait for Daniel's sign-in
+
+- v2.6.1 closes Codex's own open note: the PowerPoint ribbon gained an Objects group (Object
+  tools = `Office.addin.showAsTaskpane()` + the Tools tab, Match size, Select similar, Swap,
+  Capture style, Apply style) and an Arrange group (six alignments, two distributions), 14 new
+  icons from `scripts/build-ribbon-icons.ts`, `src/ppt/commands.ts` (`commandTable`,
+  `registerCommands(deps)` on the shared runtime, registered at pane load), unit test
+  `src/ppt/commands.test.ts`, fake-host proof `test/ppt.commands.integration.test.ts`;
+  `manifest/xml.test.ts` holds each host's FunctionNames against its own table. 1137 vitest /
+  103 files, manifests valid, `/version` 2.6.1, `/assets/ribbon/swap-32.png` 200. The manifest
+  changed, so Daniel's first M365 upload takes this one (`~/claude-vm/share/plsfix/` restaged).
 
 - v2.5.7 = the opus review's three host-only bugs fixed with fake fidelity (rising line segments
   drawn as `GeometricShapeType.lineInverse` from a normalised box with a `rising` flag; the fake
@@ -24,9 +34,8 @@
   and the host copies `share/plsfix/pls,fix demo.mov` to `~/Desktop/`.
 - Daniel's gates unchanged: Windows pass, M365 centralized upload of `manifest.prod.xml` (icons +
   PowerPoint host + custom functions; first upload ever), Cloudflare rate-limit rule on
-  `/modelis/api/*`, IT one-pager review, ROADMAP tick-through from docs/FEATURES.md. Codex's own
-  open note: the PowerPoint ribbon still has one command (Links); the Tools tab has no ribbon
-  buttons or icons.
+  `/modelis/api/*`, IT one-pager review, ROADMAP tick-through from docs/FEATURES.md. (Codex's
+  open note about the PowerPoint ribbon is closed by v2.6.1.)
 
 ## 01.09: launch slice (plan ~/.claude/plans/zippy-herding-globe.md, approved; goal "zero bugs, all features working")
 
