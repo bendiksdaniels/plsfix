@@ -1,5 +1,14 @@
 # AUTORESUME - pls,fix (v2.6.1 LIVE 02.09 01:50, deployed from 0c82932)
 
+## 02.09 morning: VM parked ("I did not finish building it"; no computer use for now); real-host pass = Daniel's own
+
+- Daniel 02.09 ~07:15: continue without the VM and without computer use. The activation
+  monitor is stopped, `claude-vm` is stopped (state kept, manifests still in its wef folders,
+  `share/plsfix/` staged for whenever it is finished). The real-Office proof and the demo video
+  therefore move to Daniel's own hands: `tasks/launch-check.md` is the 25-minute checklist
+  (Mac first, Windows once), and a failing export's "Copy details" paste is the bug report.
+  Nothing else in the launch scope is open on the code side.
+
 ## 02.09 night: v2.6.1 LIVE (PowerPoint ribbon commands); VM proof and demo video wait for Daniel's sign-in
 
 - v2.6.1 closes Codex's own open note: the PowerPoint ribbon gained an Objects group (Object
