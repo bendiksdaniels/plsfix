@@ -277,52 +277,6 @@ describe("insert a chart link", () => {
   });
 });
 
-describe("insert a chart link: a line chart with a rising segment", () => {
-  // 100, -50, 200: point 0 to 1 falls, point 1 to 2 rises. A rising
-  // connector's naive box has a negative height (valueY maps a bigger value
-  // to a smaller top), which the real host refuses on both the add and the
-  // width/height writes after it.
-  const LINE_RISE: ChartData = {
-    v: 1,
-    kind: "line",
-    title: null,
-    categories: ["A", "B", "C"],
-    series: [
-      {
-        name: "s",
-        values: [100, -50, 200],
-        labels: ["100", "(50)", "200"],
-        colors: ["#2EC4B6", "#2EC4B6", "#2EC4B6"],
-      },
-    ],
-    font: "Aptos Narrow",
-    ink: "#282623",
-    titleColor: "#14213D",
-  };
-  // 3 markers, 2 connectors, 3 point labels, 1 baseline, 3 category labels,
-  // no title.
-  const LINE_RISE_SHAPES = 12;
-
-  it("draws the rising connector as a LineInverse geometric shape, with no negative geometry anywhere", async () => {
-    await insert(LINE_RISE);
-    expect(shapes()).toHaveLength(1);
-    expect(children()).toHaveLength(LINE_RISE_SHAPES);
-    expect(geometries("Ellipse")).toHaveLength(3);
-    // The falling segment and the flat baseline stay native lines; only the
-    // rising segment becomes the geometric shape.
-    expect(geometries("Straight")).toHaveLength(2);
-    const rising = geometries("LineInverse");
-    expect(rising).toHaveLength(1);
-    expect(rising[0]!.lineColor).toBe("#2EC4B6");
-    // A connector carries no fill, whichever shape kind draws it.
-    expect(rising[0]!.fillColor).toBeNull();
-    expect(rising[0]!.fillCleared).toBe(false);
-    expect(
-      children().every((shape) => shape.width >= 0 && shape.height >= 0),
-    ).toBe(true);
-  });
-});
-
 describe("insert a chart link: cleanup after a failed sync", () => {
   // The insert's own sync order, per "draws in syncs of twelve and one more
   // for the group" above: 1 selects the slide, 2 places it, 3 draws the

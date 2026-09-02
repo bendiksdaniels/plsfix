@@ -4,7 +4,7 @@
 // names and tags the lot. Owns every shape-drawing Office.js call.
 // Invariant: the group carries both tags and its children carry none.
 
-import type { Primitive, Text } from "../chart-shapes";
+import type { Line, Primitive, Text } from "../chart-shapes";
 import type { Box } from "../layout";
 import { encodeTag, TAG_KEY, TAG_LINK, type LinkTag } from "../link/model";
 import { cleanupShapes } from "./chart-cleanup";
@@ -84,9 +84,40 @@ function addLabel(
   return shape;
 }
 
+// A box is always normalised to a non-negative width and height (see
+// chart-shapes-parts.ts lineBetween), so a rising segment - bottom-left to
+// top-right - cannot be drawn as a straight connector from it: the host has
+// no "flip" on ConnectorType.straight, only a second preset for the other
+// diagonal. Everything else keeps the connector it always drew as.
+function addLineShape(
+  shapes: PowerPoint.ShapeCollection,
+  primitive: Line,
+  at: Box,
+): PowerPoint.Shape {
+  if (primitive.rising) {
+    const shape = shapes.addGeometricShape(
+      PowerPoint.GeometricShapeType.lineInverse,
+      at,
+    );
+    shape.lineFormat.color = primitive.color;
+    shape.lineFormat.weight = primitive.weight;
+    return shape;
+  }
+  const shape = shapes.addLine(PowerPoint.ConnectorType.straight, at);
+  // The host reads a zero width or height in the add as "not given" and
+  // draws the line sloped over its 72 pt default (PowerPoint for the web,
+  // 30.08); written after the add, a zero side sticks.
+  shape.width = at.width;
+  shape.height = at.height;
+  shape.lineFormat.color = primitive.color;
+  shape.lineFormat.weight = primitive.weight;
+  return shape;
+}
+
 // A primitive is one shape: a bar, a legend swatch and a stacked segment are
 // rectangles, a slice is a Pie (or an Ellipse when it is the whole circle),
-// a baseline or a waterfall connector is a straight line.
+// a baseline or a waterfall connector is a line (straight, or the host's
+// other diagonal preset for a rising one).
 function addPrimitive(
   shapes: PowerPoint.ShapeCollection,
   primitive: Primitive,
@@ -96,31 +127,8 @@ function addPrimitive(
   switch (primitive.kind) {
     case "text":
       return addLabel(shapes, primitive, spec.font, at);
-    case "line": {
-      // A box is always normalised to a non-negative width and height (see
-      // chart-shapes-parts.ts lineBetween), so a rising segment - bottom-left
-      // to top-right - cannot be drawn as a straight connector from it: the
-      // host has no "flip" on ConnectorType.straight, only a second preset
-      // for the other diagonal.
-      if (primitive.rising) {
-        const shape = shapes.addGeometricShape(
-          PowerPoint.GeometricShapeType.lineInverse,
-          at,
-        );
-        shape.lineFormat.color = primitive.color;
-        shape.lineFormat.weight = primitive.weight;
-        return shape;
-      }
-      const shape = shapes.addLine(PowerPoint.ConnectorType.straight, at);
-      // The host reads a zero width or height in the add as "not given" and
-      // draws the line sloped over its 72 pt default (PowerPoint for the web,
-      // 30.08); written after the add, a zero side sticks.
-      shape.width = at.width;
-      shape.height = at.height;
-      shape.lineFormat.color = primitive.color;
-      shape.lineFormat.weight = primitive.weight;
-      return shape;
-    }
+    case "line":
+      return addLineShape(shapes, primitive, at);
     case "wedge":
       return filled(
         shapes.addGeometricShape(PowerPoint.GeometricShapeType.pie, at),
