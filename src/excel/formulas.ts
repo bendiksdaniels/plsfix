@@ -10,6 +10,7 @@ import {
   selectedSingleRange,
   SHEET_COLUMNS,
   SHEET_ROWS,
+  withinCap,
 } from "./internal";
 import { syncWrite } from "./protection";
 import { parseAddress } from "./shared";
@@ -29,6 +30,9 @@ import {
 import { ROUNDING_CELL_CAP } from "../rounding";
 
 const FILL_SCAN_LIMIT = 1_000;
+const FILL = "Fill";
+const CAGR = "CAGR";
+const ROUNDING = "Consistent rounding";
 
 // What office.js takes back: a grid of literals, never null.
 type WritableGrid = (string | number | boolean)[][];
@@ -86,11 +90,11 @@ function neighbourLines(
 // is what selecting the block said in the first place.
 export async function fastFillAuto(direction: "right" | "down"): Promise<void> {
   await Excel.run(async (context) => {
-    const selection = await selectedSingleRange(context, "Fill");
+    const selection = await selectedSingleRange(context, FILL);
     const cell = context.workbook.getActiveCell();
     const sheet = cell.worksheet;
     cell.load("rowIndex,columnIndex,formulas");
-    selection.load("rowCount,columnCount");
+    selection.load("rowIndex,columnIndex,rowCount,columnCount");
     await context.sync();
 
     const formula = (cell.formulas as CellValue[][])[0]?.[0] ?? null;
@@ -109,7 +113,13 @@ export async function fastFillAuto(direction: "right" | "down"): Promise<void> {
         return down ? values.map((row) => row[0] ?? null) : (values[0] ?? []);
       }),
     );
-    const own = down ? selection.rowCount : selection.columnCount;
+    // Dragging a block upwards or leftwards leaves the active cell at the far
+    // corner, so the selection can only size the fill as far as its own edge:
+    // its whole length past the active cell would write over cells nobody
+    // selected. Anchored at the corner, this is the selection's own length.
+    const own = down
+      ? selection.rowIndex + selection.rowCount - cell.rowIndex
+      : selection.columnIndex + selection.columnCount - cell.columnIndex;
     if (neighbours === 0 && own < 2) {
       throw new Error("No neighbor data to size the fill.");
     }
@@ -121,7 +131,7 @@ export async function fastFillAuto(direction: "right" | "down"): Promise<void> {
     await captureUndo(context, destination);
 
     destination.copyFrom(cell, Excel.RangeCopyType.formulas);
-    await context.sync();
+    await syncWrite(context, FILL);
   });
 }
 
@@ -155,7 +165,10 @@ export async function applyDecimalStep(delta: 1 | -1): Promise<void> {
 
 export async function insertCagr(): Promise<void> {
   await Excel.run(async (context) => {
-    const range = await selectedSingleRange(context, "CAGR");
+    // How many cells before their values: a whole-column click would otherwise
+    // ship a million of them across the bridge to find two periods in.
+    const selected = await selectedSingleRange(context, CAGR);
+    const range = await withinCap(context, selected, CAGR);
     range.load("rowCount,columnCount,values");
     await context.sync();
 
@@ -193,7 +206,7 @@ export async function insertCagr(): Promise<void> {
         ),
       ],
     ];
-    await context.sync();
+    await syncWrite(context, CAGR);
   });
 }
 
@@ -232,7 +245,7 @@ function requireNumbers(range: Excel.Range, count: number): void {
 // a euro or percentage block rounds the way the block reads.
 export async function insertConsistentRounding(): Promise<string> {
   return Excel.run(async (context) => {
-    const range = await selectedSingleRange(context, "Consistent rounding");
+    const range = await selectedSingleRange(context, ROUNDING);
     range.load("address,rowCount,columnCount,values,numberFormat");
     await context.sync();
 
@@ -266,8 +279,8 @@ export async function insertConsistentRounding(): Promise<string> {
 
     const formulas = roundingFormulas(reference, count, decimals);
     destination.formulas = acrossRow ? [formulas] : formulas.map((f) => [f]);
-    await context.sync();
+    await syncWrite(context, ROUNDING);
 
-    return `Consistent rounding: ${count} cells at ${decimals} decimals`;
+    return `${ROUNDING}: ${count} cells at ${decimals} decimals`;
   });
 }

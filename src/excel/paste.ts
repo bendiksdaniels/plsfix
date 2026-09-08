@@ -3,10 +3,14 @@
 // and address, not a live Excel reference, so it survives a sheet rename.
 
 import { selectedAreas } from "./areas";
+import { withinCap } from "./internal";
+import { syncWrite } from "./protection";
 import { parseAddress } from "./shared";
 import { captureUndoAreas } from "./undo";
 
 export type PasteMode = "values" | "formats" | "transpose";
+
+const PASTE = "Paste";
 
 interface CopySource {
   sheetId: string;
@@ -71,7 +75,7 @@ function pasteCopyType(mode: PasteMode): Excel.RangeCopyType {
 export async function pasteSpecial(mode: PasteMode): Promise<void> {
   await Excel.run(async (context) => {
     const from = await openCopySource(context);
-    const targets = await selectedAreas(context, "Paste");
+    const targets = await selectedAreas(context, PASTE);
     from.load("rowCount,columnCount");
     for (const target of targets) target.load("rowCount,columnCount");
     await context.sync();
@@ -97,7 +101,7 @@ export async function pasteSpecial(mode: PasteMode): Promise<void> {
     for (const target of targets) {
       target.copyFrom(from, pasteCopyType(mode), false, transposed);
     }
-    await context.sync();
+    await syncWrite(context, PASTE);
   });
 }
 
@@ -106,7 +110,11 @@ export async function pasteSpecial(mode: PasteMode): Promise<void> {
 export async function pastePreserveFormulas(): Promise<void> {
   await Excel.run(async (context) => {
     const from = await openCopySource(context);
-    const targets = await selectedAreas(context, "Paste");
+    const targets = await selectedAreas(context, PASTE);
+    // Unlike copyFrom, this one carries the source's formulas through the pane,
+    // so the source is capped the way every other grid read is. Marking a whole
+    // column stays fine: the three copyFrom pastes never leave the host.
+    await withinCap(context, from, PASTE);
     from.load("rowCount,columnCount,formulas");
     await context.sync();
 
@@ -119,6 +127,6 @@ export async function pastePreserveFormulas(): Promise<void> {
 
     for (const destination of destinations)
       destination.formulas = from.formulas;
-    await context.sync();
+    await syncWrite(context, PASTE);
   });
 }

@@ -87,6 +87,17 @@ async function seedLinks(): Promise<{ range: string; chart: string }> {
   return { range: first.id, chart: chart.id };
 }
 
+// B audit: the audit overlay only owns fills it actually striped, so the two
+// tests that need it holding them give the linked block a formula to stripe.
+function seedFormulasInTheLinkedBlock(): void {
+  helpers.seed("Model!B4", [
+    [
+      { formula: "=C4*2", r1c1: "=RC[1]*2", value: 2 },
+      { formula: "=D4*2", r1c1: "=RC[1]*2", value: 4 },
+    ],
+  ]);
+}
+
 async function rejects(run: () => Promise<unknown>): Promise<string> {
   try {
     await run();
@@ -178,6 +189,7 @@ describe("toggleLinkHighlight", () => {
 
   it("refuses while the audit overlay owns the fills", async () => {
     await seedLinks();
+    seedFormulasInTheLinkedBlock();
     helpers.select("Model!B4:D5");
     expect(await smt.toggleAuditOverlay()).toBe(true);
     const painted = helpers.cellMap("Model");
@@ -223,6 +235,7 @@ describe("toggleAuditOverlay against the highlight", () => {
 
   it("never lets both snapshots be saved in one file", async () => {
     await seedLinks();
+    seedFormulasInTheLinkedBlock();
     helpers.select("Model!B4:D5");
     expect(await smt.toggleAuditOverlay()).toBe(true);
     await rejects(() => smt.toggleLinkHighlight());
