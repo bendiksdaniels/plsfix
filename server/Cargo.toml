@@ -1,6 +1,6 @@
 [package]
 name = "plsfix-server"
-version = "2.6.4"
+version = "2.6.5"
 edition = "2021"
 description = "Static host and encrypted link relay for the pls,fix panes"
 
