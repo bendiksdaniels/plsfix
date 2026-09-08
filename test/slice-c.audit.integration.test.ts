@@ -215,6 +215,57 @@ describe("a sheet with no free block at all", () => {
 
 // ---------------------------------------------------------------------------
 
+describe("an Excel build below the chart APIs", () => {
+  // Office 2019 runs the shared runtime at ExcelApi 1.8, so every property
+  // above it has to be asked for by its own requirement set.
+  it("adds the waterfall without its 1.9 connector lines", async () => {
+    helpers.setSupported((_set, version) => version !== "1.9");
+    seedBridge();
+
+    expect(await smt.insertWaterfall()).toBe(
+      "Waterfall added: 4 points, ties at 90",
+    );
+    // ChartSeries.showConnectorLines is ExcelApi 1.9
+    // (learn.microsoft.com/javascript/api/excel/excel.chartseries).
+    expect(workbook.charts[0]?.series[0]?.showConnectorLines).toBeUndefined();
+    expect(workbook.charts[0]?.series[0]?.pointColors).toBeDefined();
+  });
+
+  it("restyles a pie without its 1.19 leader lines", async () => {
+    helpers.setSupported((_set, version) => version !== "1.19");
+    seedBridge();
+    await smt.insertWaterfall();
+    const chart = workbook.charts[0];
+    if (!chart) throw new Error("no chart");
+    chart.chartType = "Pie";
+    chart.seriesCount = 1;
+    chart.axes = { category: {}, value: {} };
+    helpers.setActiveChart(chart);
+
+    await smt.formatSelectedChart();
+    // ChartDataLabels.showLeaderLines is ExcelApi 1.19; the 1.9 property of
+    // that name is ChartSeries.showLeaderLines
+    // (learn.microsoft.com/javascript/api/excel/excel.chartdatalabels).
+    expect(chart.dataLabels.showLeaderLines).toBeUndefined();
+    expect(chart.dataLabels.position).toBe("OutsideEnd");
+    expect(chart.legend.visible).toBe(true);
+  });
+
+  it("refuses to reconcile without the RangeAreas selection", async () => {
+    helpers.setSupported((_set, version) => version !== "1.9");
+    helpers.seed("Model!A1", [[10], [20], [30]]);
+    helpers.select("Model!A1:A3");
+
+    // worksheet.getRanges and RangeAreas.select are ExcelApi 1.9
+    // (learn.microsoft.com/javascript/api/excel/excel.worksheet).
+    expect(await rejects(() => smt.reconcileSelection(30, 0))).toBe(
+      "Find a combination needs a newer Excel build.",
+    );
+  });
+});
+
+// ---------------------------------------------------------------------------
+
 describe("the CAGR callout on what a modeller selects", () => {
   it("refuses a block and a single cell by name", async () => {
     helpers.seed("Model!A1", [

@@ -3,7 +3,7 @@
 // so the modeller can inspect the answer in place.
 
 import { RECONCILE_MAX_VALUES, solveReconciliation } from "../reconcile";
-import { selectedSingleRange, withinCap } from "./internal";
+import { hostSupports, selectedSingleRange, withinCap } from "./internal";
 import { parseAddress } from "./shared";
 
 export interface ReconciliationSelection {
@@ -25,6 +25,13 @@ export async function reconcileSelection(
   tolerance: number,
 ): Promise<ReconciliationSelection> {
   return Excel.run(async (context) => {
+    // The answer is the matched cells as one multi-area selection, and
+    // RangeAreas - worksheet.getRanges and its select - arrived in ExcelApi
+    // 1.9. Below it there is nothing to hand back, so the flow says so before
+    // reading a single cell.
+    if (!hostSupports("1.9")) {
+      throw new Error("Find a combination needs a newer Excel build.");
+    }
     // The cap is checked before the values are asked for: a clicked column
     // header is a million cells, and the 34-cell rule only runs after the read.
     const range = await withinCap(
