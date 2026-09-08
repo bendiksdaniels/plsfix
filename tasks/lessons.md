@@ -153,3 +153,19 @@ call commits the batch that loads it: the strict fake threw ValueNotLoaded on th
 the plain retry ran, and a "no extra round trip" test counted one more sync. The two-statement
 form (`const read = await ...; return picture(image.value, read);`) is the rule for office.js
 code: the sync first, the `.value` after, never inside one expression.
+
+## 2026-09-08: the web rig, three things that were not true on 30.08 any more
+
+- Office on the web's "Enable Developer Mode" dialog now carries an opt-in checkbox (Excel
+  `#WACDialogOptInCheckbox-input`, PowerPoint `#optInCheckbox`); OK without the tick only
+  dismisses it, and the tick counts on the NEXT load: reload the same URL and answer the
+  "Registering Developer Add-in Manifest" Yes there (`scripts/rig/snippets/register.js`).
+- `prettier` had put a `;` after every snippet's arrow function, which `drive.mjs` wrapped
+  into `(fn;)`: every `@file` run died with "Unexpected token ';'". The driver strips it now.
+- The manifest server logs every request; run it detached with a log file, never behind
+  `| head`: the first write after the reader closes kills it and Office reports nothing.
+- A PowerPoint-for-the-web write batch can hang without rejecting (a 21-shape pie stopped
+  after its first chunk of 12 shapes); the pane stays "busy" for ever and the twelve loose
+  shapes stay on the slide. Heal: `location.reload()` in the pane frame, delete the untagged
+  leftovers, insert again (20 s the second time). Poll busy + toast + shape count so a jam
+  shows within a minute instead of a 210 s silent wait.

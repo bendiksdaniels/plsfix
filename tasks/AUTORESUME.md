@@ -26,12 +26,24 @@
 - Git: main is 206 commits ahead of origin (last push v2.1.20, 29.08); the global post-commit hook
   would push on any commit, so every commit here ran with GIT_AUTO_PUSH=0. Daniel decides whether
   plsfix joins "main always on GitHub".
-- NEXT: (1) web-rig proof once Daniel signs in to the scratch Chrome (`scripts/rig/README.md`
-  steps 2-4; profile `~/.cache/plsfix-rig-chrome` does not exist yet): `proof-charts-excel.js` +
-  `proof-charts-ppt.js` + a table read-back (`type === "Table"`); (2) Daniel's desktop pass:
-  `tasks/launch-check.md` Links rows + a 4-series chart (expect a shape group now) + a doughnut
-  (expect the reason in both toasts); (3) follow-ups not done: drop value labels before the web
-  falls back to a picture; more chart kinds; an unlinked editable chart on a new slide.
+- Web proof DONE 08.09 11:0x (scratch Chrome, NDUS tenant, both hosts registered through the
+  wdaddin* parameters after the Developer Mode opt-in + reload): Excel pane v2.6.002, five
+  exports (Revenue chart, Segment pie, a 4-series column chart = data shipped under the lifted
+  cap, a doughnut = toast "(as a picture: Doughnut charts are not drawn as shapes)", P&L!B4:E9
+  table); PowerPoint pane paired with the pasted key; slide 1 read back: `Table` native, two
+  picture links (doughnut = Excel's reason, four series = web budget), `Group` x 21 shapes
+  (pie, 20 s) and `Group` x 20 shapes (column, 30 s); source bump + Push all "5 pushed" +
+  Update all "5 updated" in 80 s, every tag rev 1 -> 2 at the same boxes. One pie insert
+  jammed after its first chunk of 12 (pane reload + retry healed it). Rig fixes committed
+  (drive.mjs semicolon, opt-in tick, README rules, four 08.09 snippets). Screenshots in
+  `.superpowers/rig/`; the proof deck "Presentation 2" and "plsfix Demo 0809.xlsx" stay in
+  Daniel's NDUS OneDrive.
+- NEXT: (1) Daniel's desktop pass after relaunching Excel + PowerPoint (wef = v2.6.2 prod):
+  `tasks/launch-check.md` Links rows + a 4-series chart (a shape group on the desktop, budget
+  200) + a doughnut (the reason in both toasts); (2) follow-ups not done: a hung web batch
+  never rejects, so `chart-cleanup` cannot run - consider a per-sync timeout that cleans up
+  and falls back to the picture; drop value labels before the web falls back; more chart
+  kinds; an unlinked editable chart on a new slide.
 
 
 ## 02.09 morning: VM parked ("I did not finish building it"; no computer use for now); real-host pass = Daniel's own

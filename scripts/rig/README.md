@@ -42,6 +42,18 @@ it needs a signed-in browser and a live document.
   read-back of groups against pictures). Read them before writing a new one:
   every pane action is verified from inside the pane frame with `Excel.run` or
   `PowerPoint.run`, not from screenshots.
+- The 08.09 links proof (v2.6.2, both hosts on the NDUS tenant):
+  `HOST_KIND=x npm run rig -- @scripts/rig/snippets/register.js` (and `p`)
+  registers with the opt-in and reloads until the tab shows;
+  `proof-links-excel.js` (key, a "Proof" sheet with a four-series column chart
+  and a doughnut, five exports incl. a table, every toast);
+  `SLIDE=0 INSERTS=1 npm run rig -- @scripts/rig/snippets/proof-insert-one.js`
+  per inbox item, polling busy/toast/shape count so a jam is visible;
+  `proof-update-all.js` (source bump, Push all, Update all, revs read back).
+  Measured 08.09: table 3 s, pictures a few seconds, 21-shape pie 20 s,
+  20-shape column 30 s, Update all over five links 80 s; one pie insert
+  jammed after its first chunk of 12 shapes and went through on the retry
+  after a pane reload.
 
 ## Rules the web taught us
 
