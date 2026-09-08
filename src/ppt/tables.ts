@@ -15,6 +15,7 @@ import {
   type TableCell,
   type TablePayload,
 } from "../link/model";
+import { cleanupShapes } from "./chart-cleanup";
 import { withSyncDeadline } from "./chart-draw";
 import type { FoundLink, InsertResult } from "./host";
 import { CONTENT_WIDTH, placeOnSlide, selectedSlideId } from "./placement";
@@ -25,6 +26,11 @@ const TABLE_API = "1.8";
 export const TABLES_NEED_1_8 = "Tables need PowerPoint 2021 or Microsoft 365.";
 // A floor, not a promise: PowerPoint grows a row to fit what is in it.
 const ROW_HEIGHT = 18;
+// How many cells one round trip formats. PowerPoint for the web spent about
+// 0.4 s per cell property write on 09.09, and a repaint writes five per cell,
+// so eight cells keep a sync near 15 s, well inside SYNC_TIMEOUT_MS, where a
+// whole 6x4 table in one batch ran past the deadline on the rig.
+export const CELLS_PER_SYNC = 8;
 // Excel's own default column width, in points: what a hidden column (which
 // Excel reports as zero) takes beside visible ones, so it neither vanishes
 // nor squeezes the others.
@@ -75,6 +81,16 @@ export async function insertTable(
     // swallows it never confirms one, so there is nothing here for a
     // cleanup to delete.
     await withSyncDeadline(context.sync(), "inserting the table");
+    // The formats come once the table exists, a few cells per round trip; a
+    // round trip that fails or stops answering takes the half-formatted
+    // table down again, so nothing is left behind and the item stays waiting.
+    try {
+      const table = shape.getTable();
+      await writeCellsInChunks(context, table, payload, false, FORMATTING);
+    } catch (error) {
+      await cleanupShapes(slideId, [shape.id]);
+      throw error;
+    }
     return { slideId, shapeId: shape.id, overlapping: placed.overlapping };
   });
 }
@@ -95,12 +111,23 @@ export async function refreshTable(
     table.load("rowCount,columnCount");
     await withSyncDeadline(context.sync(), "reading the table");
     if (table.rowCount === payload.rows && table.columnCount === payload.cols) {
-      writeCells(table, payload, true);
-      shape.tags.add(TAG_LINK, encodeTag(tag));
-    } else {
-      recreate(context, shape, found, payload, tag, stage);
+      // The tag travels with the last chunk: a repaint the host stops midway
+      // keeps the old revision, so the row stays "Update available" and the
+      // next update writes every cell again.
+      await writeCellsInChunks(context, table, payload, true, REPAINTING, () =>
+        shape.tags.add(TAG_LINK, encodeTag(tag)),
+      );
+      return;
     }
-    await withSyncDeadline(context.sync(), "repainting the table");
+    const built = recreate(context, shape, found, payload, tag, stage);
+    await withSyncDeadline(context.sync(), "rebuilding the table");
+    await writeCellsInChunks(
+      context,
+      built.getTable(),
+      payload,
+      false,
+      FORMATTING,
+    );
   });
 }
 
@@ -115,7 +142,7 @@ function recreate(
   payload: TablePayload,
   tag: LinkTag,
   stage: string,
-): void {
+): PowerPoint.Shape {
   if (isGrouped(found)) {
     throw new Error(`${stage}: ungroup the table before its size can change`);
   }
@@ -131,6 +158,7 @@ function recreate(
   shape.tags.add(TAG_LINK, encodeTag(tag));
   shape.tags.add(TAG_KEY, found.token);
   old.delete();
+  return shape;
 }
 
 function addTable(
@@ -147,7 +175,6 @@ function addTable(
     })),
   });
   shape.name = `pls,fix table ${label}`;
-  writeCells(shape.getTable(), payload, false);
   return shape;
 }
 
@@ -170,24 +197,55 @@ export function columnWidths(payload: TablePayload, width: number): number[] {
   return widths;
 }
 
+const FORMATTING = "formatting the table";
+const REPAINTING = "repainting the table";
+
+type CellAt = [row: number, column: number, cell: TableCell];
+
 // Text is written on a repaint only: an insert carries it in `values`, so a
-// plain cell then costs no call at all - which is what keeps a 60x20 table one
-// round trip rather than twelve hundred.
-function writeCells(
+// plain cell then costs no call at all - which is what keeps a plain 60x20
+// table one round trip rather than twelve hundred.
+function cellChunks(payload: TablePayload, withText: boolean): CellAt[][] {
+  const cells: CellAt[] = [];
+  payload.cells.forEach((row, rowIndex) => {
+    row.forEach((cell, columnIndex) => {
+      if (withText || formatted(cell))
+        cells.push([rowIndex, columnIndex, cell]);
+    });
+  });
+  const chunks: CellAt[][] = [];
+  for (let start = 0; start < cells.length; start += CELLS_PER_SYNC) {
+    chunks.push(cells.slice(start, start + CELLS_PER_SYNC));
+  }
+  return chunks;
+}
+
+// The cells one repaint or format pass writes, CELLS_PER_SYNC per round trip,
+// so no batch is big enough to reach the deadline and one the host swallows
+// loses a chunk rather than the whole table. `beforeLast` is queued into the
+// final round trip, for a tag that may not land before every cell has.
+async function writeCellsInChunks(
+  context: PowerPoint.RequestContext,
   table: PowerPoint.Table,
   payload: TablePayload,
   withText: boolean,
-): void {
-  payload.cells.forEach((row, rowIndex) => {
-    row.forEach((cell, columnIndex) => {
-      if (!withText && !formatted(cell)) return;
-      writeCell(
-        table.getCellOrNullObject(rowIndex, columnIndex),
-        cell,
-        withText,
-      );
-    });
-  });
+  what: string,
+  beforeLast?: () => void,
+): Promise<void> {
+  const chunks = cellChunks(payload, withText);
+  if (chunks.length === 0) {
+    if (!beforeLast) return;
+    beforeLast();
+    await withSyncDeadline(context.sync(), what);
+    return;
+  }
+  for (const [index, chunk] of chunks.entries()) {
+    for (const [row, column, cell] of chunk) {
+      writeCell(table.getCellOrNullObject(row, column), cell, withText);
+    }
+    if (index === chunks.length - 1) beforeLast?.();
+    await withSyncDeadline(context.sync(), what);
+  }
 }
 
 function formatted(cell: TableCell): boolean {
