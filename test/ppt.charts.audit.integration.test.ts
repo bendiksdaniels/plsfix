@@ -7,6 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ChartData } from "../src/link/chart-model";
 import { TAG_KEY, TAG_LINK, type InboxItem } from "../src/link/model";
 import { createWorkspace } from "../src/link/workspace";
+import { cleanupShapes } from "../src/ppt/chart-cleanup";
 import { SYNC_TIMEOUT_MS } from "../src/ppt/chart-draw";
 import type { InsertResult } from "../src/ppt/host";
 import type { FakeRelay } from "./fakerelay";
@@ -377,5 +378,52 @@ describe("a chart taller than the slide", () => {
     expect(group.top).toBeGreaterThanOrEqual(36);
     expect(group.top + group.height).toBeLessThanOrEqual(504);
     expect(group.height / group.width).toBeCloseTo(3.5, 1);
+  });
+});
+
+// The teardown a failed or swallowed draw runs: it has to survive the two
+// things a real slide does to it - being handed nothing to delete, and being
+// handed a shape the user removed while the draw was failing.
+describe("cleaning up after a draw that never finished", () => {
+  it("spends no round trip when the first sync was the one that failed", async () => {
+    const before = helpers.syncCount();
+    await cleanupShapes(presentation.slides[0]!.id, []);
+    expect(helpers.syncCount()).toBe(before);
+  });
+
+  it("skips a shape that is already gone and deletes the rest", async () => {
+    const slide = presentation.slides[0]!;
+    const kept = presentation.addShape(slide, { left: 10, top: 10, width: 20 });
+    const drawn = presentation.addShape(slide, {
+      left: 40,
+      top: 10,
+      width: 20,
+    });
+    await cleanupShapes(slide.id, [drawn.id, "shape-does-not-exist"]);
+
+    expect(slide.shapes.map((one) => one.id)).toEqual([kept.id]);
+  });
+});
+
+// The other end of the cleanup rule: a redraw whose very first chunk is
+// refused has nothing to take back, and must leave the chart the deck
+// already has exactly where it is.
+describe("a refresh the host refuses outright", () => {
+  it("leaves the old group standing and reports the row", async () => {
+    const { item } = await insert();
+    const before = shapes()[0]!;
+    await pushChart(item, columnChart(7), PNG);
+    const rows = await links.listLinks(relay);
+
+    // The update's own first sync is the draw's first chunk; nothing of the
+    // new group has reached the host when it is refused.
+    helpers.failNextSync(new Error("the host refused the shapes"));
+    const summary = await links.updateLinks(rows, relay);
+
+    expect(summary).toMatchObject({ updated: 0, failed: 1 });
+    expect(summary.failures[0]).toMatch(/refused the shapes/);
+    expect(shapes()).toHaveLength(1);
+    expect(shapes()[0]!.id).toBe(before.id);
+    expect(shapes()[0]!.group!.shapes).toHaveLength(20);
   });
 });

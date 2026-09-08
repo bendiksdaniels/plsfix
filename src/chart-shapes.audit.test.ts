@@ -237,3 +237,86 @@ describe("the inputs a modeller can still hand a chart", () => {
     expect(refused(out)).toEqual([]);
   });
 });
+
+describe("values a chart can be given that have no scale of their own", () => {
+  it("draws flat bars for a chart whose every value is zero", () => {
+    const flat: ChartData = {
+      ...base,
+      kind: "column",
+      title: "Nothing yet",
+      categories: ["A", "B", "C"],
+      series: [series([0, 0, 0])],
+    };
+    const out = layoutChart(flat, ROOMY);
+    expect(refused(out)).toEqual([]);
+    expect(outside(out, ROOMY)).toEqual([]);
+    const bars = out.filter((one) => one.name.startsWith("bar "));
+    expect(bars.map((one) => one.box.height)).toEqual([0, 0, 0]);
+  });
+
+  it("draws flat bars for a bar chart whose every value is zero", () => {
+    const flat: ChartData = {
+      ...base,
+      kind: "bar",
+      title: "Nothing yet",
+      categories: ["A", "B"],
+      series: [series([0, 0])],
+    };
+    const out = layoutChart(flat, ROOMY);
+    expect(refused(out)).toEqual([]);
+    expect(outside(out, ROOMY)).toEqual([]);
+    expect(
+      out
+        .filter((one) => one.name.startsWith("bar "))
+        .map((one) => one.box.width),
+    ).toEqual([0, 0]);
+  });
+
+  it("drops the label of a stacked bar segment too thin to hold it", () => {
+    const thin: ChartData = {
+      ...base,
+      kind: "stackedBar",
+      title: "Split",
+      categories: ["A", "B"],
+      series: [series([1000, 1000], "most"), series([1, 1], "sliver")],
+    };
+    const out = layoutChart(thin, ROOMY);
+    expect(refused(out)).toEqual([]);
+    // The 1 unit segment is under 12 pt wide, so its label is left out
+    // rather than printed over the segment beside it.
+    const labels = texts(out).filter((one) => one.name.startsWith("label "));
+    expect(labels.map((one) => one.name)).toEqual(["label 0.0", "label 0.1"]);
+  });
+
+  it("keeps a titleless chart's own band, so nothing rides above the box", () => {
+    const untitled: ChartData = {
+      ...base,
+      kind: "column",
+      title: null,
+      categories: ["A", "B"],
+      series: [series([100, 200])],
+    };
+    const out = layoutChart(untitled, ROOMY);
+    expect(texts(out).some((one) => one.name === "title")).toBe(false);
+    expect(outside(out, ROOMY)).toEqual([]);
+  });
+
+  it("cuts a category name that cannot fit its slot to an ellipsis", () => {
+    const crowded: ChartData = {
+      ...base,
+      kind: "column",
+      title: "Revenue",
+      categories: Array.from(
+        { length: 20 },
+        (_unused, i) => `A very long category name ${String(i)}`,
+      ),
+      series: [series(Array.from({ length: 20 }, (_unused, i) => 10 + i))],
+    };
+    const labels = texts(layoutChart(crowded, TIGHT)).filter((one) =>
+      one.name.startsWith("category "),
+    );
+    expect(labels).toHaveLength(20);
+    // A slot of 10 pt holds nothing but the ellipsis itself.
+    expect(labels.every((one) => one.text === "\u2026")).toBe(true);
+  });
+});
