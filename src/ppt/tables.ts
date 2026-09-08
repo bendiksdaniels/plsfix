@@ -31,10 +31,14 @@ export function requireTableApi(): void {
 }
 
 // As wide as the source columns are, capped to the slide's content width.
+// Excel reports zero for a hidden column, so a source whose columns are all
+// hidden adds up to nothing: that takes the content width instead, because a
+// table zero points wide cannot be seen or picked up again. columnWidths
+// divides it evenly, the same way it already refuses to divide by zero.
 export function tableSize(payload: TablePayload): Size {
   const width = payload.widths.reduce((total, one) => total + one, 0);
   return {
-    width: Math.min(width, CONTENT_WIDTH),
+    width: width > 0 ? Math.min(width, CONTENT_WIDTH) : CONTENT_WIDTH,
     height: payload.rows * ROW_HEIGHT,
   };
 }
