@@ -45,3 +45,62 @@ demo:build` if missing) and a blank deck.
 
 Same list; the point is the ribbon icons, the shared runtime commands and the chart groups on
 a second platform. Note the Office build (File > Account) with the result.
+
+## Added by the 09.09 audit wave (v2.6.3 to v2.6.14): only a real Office can show these
+
+The fakes proved every fix; these are the behaviours the agents could not make a fake
+refuse or answer. Same rule: a wrong one gets the toast's **Copy details** pasted back.
+
+Excel
+
+- [ ] Ctrl+Space a whole column, Autocolor: "Autocolor supports up to 5,000 selected cells
+      at once." at once, no wait. Ctrl+A the whole sheet, then a number format or any cycle:
+      the cap sentence, no freeze (Range.cellCount answers -1 there).
+- [ ] Whole column, Title preset: every row becomes 25 pt and pls,fix Undo cannot put the
+      heights back. Decide: acceptable, or should the preset skip the height above the cap?
+- [ ] Row height on a selection that includes a hidden row: the ladder restarts at 15 pt and
+      the row shows. Row height on a protected sheet: "row height: this sheet is protected,
+      nothing was changed", not Excel's own string.
+- [ ] Mac: Date cycle on a date cell, pressed repeatedly: dd.mm.yyyy, mmm-yy, yyyy, back.
+- [ ] Restyle a pie on desktop 365: labels outside the slices, no leader lines any more (the
+      label-level property is ExcelApi 1.19; the series-level one, 1.9, would bring them back).
+- [ ] A template or the tornado with the active cell in the sheet's last rows: a raw
+      InvalidArgument is expected (the fake has no grid edge). Restyle a 3-D clustered column:
+      OutsideEnd labels may be refused. Unpivot with the workbook structure protected: Excel's
+      own AccessDenied string. NPV/IRR template with a positive outlay: INDEX(cumulative, 0)
+      may spill under the block. A chart restyle is one round trip longer on the web.
+- [ ] Latvian or Russian desktop Excel, Brand tab: the note under Output defaults reads
+      "Excel shows 1 094 417.5, the house style." and names no setting to change.
+- [ ] Prepare for sharing on a workbook with a protected sheet whose "Select locked cells" is
+      off: expect a clean run or one raw Office error (range.select on every visible sheet).
+- [ ] Excel for the web on a read-only or co-authored workbook: drag a palette colour and
+      watch for a red toast per step.
+- [ ] Push a link whose source sits on a hidden sheet: a picture, or one per-link failure
+      line. Go to source on a chart dragged to another sheet: the sheet activates and the
+      chart is selected. The chart picker after a chart export lists the PLSFIX_LINK_ anchor
+      name as an option: internal bookkeeping in a dropdown, a UX call.
+- [ ] Export a range that seals past 4 MiB and push it: "That export is too big to send.
+      Export a smaller range."
+
+PowerPoint
+
+- [ ] Pull the network in the middle of Update all: within about a minute the toast says
+      "PowerPoint stopped answering while repainting the links" and the pane is usable again
+      (before: busy for ever, pane reload the only heal). Same on an insert, an object tool
+      and a scan of a deck with groups.
+- [ ] Insert onto a slide whose layout has a picture or table placeholder with no text: the
+      insert lands normally (placement reads textFrame.hasText on every placeholder).
+- [ ] Update a text link whose box you restyled by hand: the first run's formatting may
+      spread over a part-coloured number.
+- [ ] Export a pie with a negative slice: Excel plots it at its absolute size, the shapes
+      skip it; compare the picture and the group on one slide.
+- [ ] Busy web slide: insert the demo pie (21 shapes) and the column chart (20). Neither
+      may show "as a picture: PowerPoint stopped answering while drawing the shapes"; if a
+      healthy chunk trips the 60 s deadline, the constant is too tight. Force a jam and check
+      afterwards that the swallowed chunk's shapes never appear late.
+- [ ] A chart with an empty category name draws an empty text box.
+- [ ] Excel, cold launch: press a pls,fix shortcut or ribbon button before ever opening the
+      pane. It must work (the commands register at page load now, as PowerPoint's do).
+- [ ] Smart Painter: Capture from a solid shape, Apply onto a native table's outer border
+      and onto an empty content placeholder: paints, or refuses in a sentence, never a raw
+      error. Ribbon > Objects > Object tools when the pane cannot open: nothing is said.

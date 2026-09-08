@@ -169,3 +169,33 @@ code: the sync first, the `.value` after, never inside one expression.
   shapes stay on the slide. Heal: `location.reload()` in the pane frame, delete the untagged
   leftovers, insert again (20 s the second time). Poll busy + toast + shape count so a jam
   shows within a minute instead of a 210 s silent wait.
+
+## 2026-09-09: a ten-agent audit fleet, what the run itself taught
+
+- The account's session limit stops every agent at once (all ten at 22:xx, reset 23:30).
+  An agent with a commit resumes through SendMessage with its worktree intact; an agent
+  with no commit loses its worktree (auto-cleaned as unchanged) and has to be dispatched
+  again from scratch. Brief "commit early", and count the loss window in the estimate.
+- Subagents get the harness's own attribution reminder and add `Co-Authored-By` and
+  `Claude-Session` trailers despite the brief (three of ten branches). Strip them on a merge
+  branch first: `git filter-branch -f --msg-filter 'sed "/^Co-Authored-By: Claude/d;
+  /^Claude-Session:/d"' <base>..merge-x`; the tree stays byte-identical.
+- Merge branches are rewritten and rebased, so `git branch --merged` never lists the agent
+  branch; `git cherry main <branch>` with no `+` line is the merged test before a worktree
+  is removed.
+- One slice's rule breaks another's test at the rebase, never before: B's "the overlay owns
+  only fills it striped" failed E1's test that toggled the overlay over a formula-free
+  block (seed two adjacent formulas with one R1C1 form). Run the full check on the rebased
+  branch, not on the agent's own base.
+- A reviewer's "missed" item is a claim, not a fact: E1's reviewer said a table push below
+  ExcelApi 1.9 still throws raw; the try/catch in `renderTable` already falls back to the
+  plain grid. Read the code before applying a review fix.
+- The fake PowerPoint applies a repaint's `fill.setImage` and `tags.add` to an existing
+  shape at once, before the sync that carries them, so a hung sync rolls back a brand-new
+  add and nothing else; and shapes seeded by a fixture stay pending until a successful sync
+  confirms them, so a test that hangs the very first round trip loses its fixture. One
+  ordinary round trip first, then arm `hangNextSync`.
+- `ppt.charts.audit` "fails rather than waits when the placement read is the swallowed one"
+  tripped vitest's 5 s timeout once inside a full `npm run check` while two agents ran their
+  own suites on the machine; it passes alone. If it recurs, give its settle loop fewer steps
+  or the test a longer timeout, never a retry.
