@@ -20,8 +20,47 @@ export function installTabs(bar: HTMLElement): {
     }
   }
 
+  // The ARIA tabs pattern: Left/Right (Up/Down too, in case a host ever
+  // stacks the bar) move focus AND activate in one step, Home/End jump to
+  // the ends, and the move wraps past either edge. Tab itself is left alone
+  // so it still leaves the strip on the first press - nothing here traps it.
+  function moveTo(index: number): void {
+    const tab = tabs[(index + tabs.length) % tabs.length];
+    if (!tab) return;
+    tab.focus();
+    activate(tab.id);
+  }
+
+  function onKeydown(event: KeyboardEvent): void {
+    const current = tabs.findIndex((tab) => tab === event.target);
+    if (current === -1) return;
+    switch (event.key) {
+      case "ArrowRight":
+      case "ArrowDown":
+        event.preventDefault();
+        moveTo(current + 1);
+        break;
+      case "ArrowLeft":
+      case "ArrowUp":
+        event.preventDefault();
+        moveTo(current - 1);
+        break;
+      case "Home":
+        event.preventDefault();
+        moveTo(0);
+        break;
+      case "End":
+        event.preventDefault();
+        moveTo(tabs.length - 1);
+        break;
+      default:
+        break;
+    }
+  }
+
   for (const tab of tabs) {
     tab.addEventListener("click", () => activate(tab.id));
+    tab.addEventListener("keydown", onKeydown);
   }
 
   return { activate };
