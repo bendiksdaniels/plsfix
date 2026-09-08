@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
-// The four Workbook-tab panels that render a list: Super Find, the style
-// scrubber, Prepare for sharing and the model check. Driven through the real
-// pane markup with the Excel adapter mocked, so no Office host is needed.
+// Two of the Workbook tab's list panels: Super Find and the style scrubber.
+// Driven through the real pane markup with the Excel adapter mocked, so no
+// Office host is needed. Prepare for sharing and the model check are next
+// door in workbook-review.audit.test.ts.
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -36,12 +37,8 @@ import {
   findInWorkbook,
   jumpToHit,
   listUnusedStyles,
-  prepareForSharing,
-  runModelCheck,
 } from "../excel";
 import type { FindHit, FindResult, StyleScan } from "../excel";
-import type { Finding, ModelCheckReport } from "../model-check";
-import type { ShareIssue } from "../share";
 
 function paneRoot(): void {
   document.body.innerHTML = readFileSync(
@@ -57,8 +54,6 @@ async function load() {
   return {
     find: await import("./find-panel"),
     styles: await import("./styles-panel"),
-    share: await import("./share-panel"),
-    check: await import("./model-check-panel"),
   };
 }
 
@@ -73,31 +68,17 @@ function children(id: string): HTMLElement[] {
 }
 
 function hit(over: Partial<FindHit> = {}): FindHit {
-  return { kind: "cell", sheet: "Model", address: "B4", text: "Total", ...over };
-}
-
-function found(over: Partial<FindResult> = {}): FindResult {
-  return { hits: [], skippedSheets: [], commentsSkipped: false, ...over };
-}
-
-function finding(over: Partial<Finding> = {}): Finding {
   return {
-    kind: "hardcodeInFormula",
+    kind: "cell",
     sheet: "Model",
-    ref: "B4",
-    count: 1,
-    note: "=B3*1.1",
+    address: "B4",
+    text: "Total",
     ...over,
   };
 }
 
-function report(findings: Finding[]): ModelCheckReport {
-  return {
-    findings,
-    scanned: { sheets: 2, cells: 40 },
-    skipped: [],
-    truncated: false,
-  };
+function found(over: Partial<FindResult> = {}): FindResult {
+  return { hits: [], skippedSheets: [], commentsSkipped: false, ...over };
 }
 
 function scan(over: Partial<StyleScan> = {}): StyleScan {
@@ -161,9 +142,9 @@ describe("super find panel", () => {
 
     expect(await find.runFind()).toBe("3 hits.");
     const listed = children("find-results");
-    expect(listed.map((row) => row.querySelector("strong")?.textContent)).toEqual(
-      ["Model!B4", "Name · TaxRate", "Comment · Data!C3"],
-    );
+    expect(
+      listed.map((row) => row.querySelector("strong")?.textContent),
+    ).toEqual(["Model!B4", "Name · TaxRate", "Comment · Data!C3"]);
 
     (listed[2] as HTMLButtonElement).click();
     await settle();
@@ -196,7 +177,40 @@ describe("super find panel", () => {
     const { find } = await load();
     (document.getElementById("find-query") as HTMLInputElement).value = "x";
 
-    expect(await find.runFind()).toBe(`200 hits (first ${String(FIND_HIT_CAP)}).`);
+    expect(await find.runFind()).toBe(
+      `200 hits (first ${String(FIND_HIT_CAP)}).`,
+    );
+  });
+
+  // A formula runs longer than the row; the whole of it stays in the tooltip.
+  it("clips a long line into the row and keeps it whole in the title", async () => {
+    const long = `=SUM(${"A1,".repeat(60)}A2)`;
+    vi.mocked(findInWorkbook).mockResolvedValue(
+      found({ hits: [hit({ text: long })] }),
+    );
+    const { find } = await load();
+    (document.getElementById("find-query") as HTMLInputElement).value = "SUM";
+
+    await find.runFind();
+
+    const row = children("find-results")[0];
+    expect(row?.querySelector("small")?.textContent).toBe(
+      `${long.slice(0, 90)}…`,
+    );
+    expect(row?.getAttribute("title")).toContain(long);
+  });
+
+  it("opens the pane on the Workbook tab with the caret in the box", async () => {
+    const { find } = await load();
+    const box = document.getElementById("find-query") as HTMLInputElement;
+    box.value = "margin";
+
+    expect(await find.focusFind()).toBe("Find ready");
+
+    expect(document.getElementById("view-workbook")?.hidden).toBe(false);
+    expect(document.activeElement).toBe(box);
+    expect(box.selectionStart).toBe(0);
+    expect(box.selectionEnd).toBe("margin".length);
   });
 });
 
@@ -226,7 +240,9 @@ describe("style scrubber panel", () => {
 
     await styles.scanStyles();
 
-    const button = document.getElementById("styles-delete") as HTMLButtonElement;
+    const button = document.getElementById(
+      "styles-delete",
+    ) as HTMLButtonElement;
     expect(button.hidden).toBe(false);
     expect(button.disabled).toBe(true);
     expect(text("styles-result")).toContain(
@@ -265,123 +281,18 @@ describe("style scrubber panel", () => {
     expect(listUnusedStyles).toHaveBeenCalledTimes(1);
     expect(document.getElementById("view-workbook")?.hidden).toBe(false);
   });
-});
 
-describe("share panel", () => {
-  function issue(over: Partial<ShareIssue> = {}): ShareIssue {
-    return { kind: "hiddenSheet", label: "Scratch", ...over };
-  }
+  // The delete acts on a list, never on a guess: before the first scan there
+  // is no list and no button.
+  it("shows nothing to act on before the first scan", async () => {
+    const { styles } = await load();
 
-  it("shows the standing hint before the first run", async () => {
-    const { share } = await load();
-    share.renderShare(null);
+    styles.renderStyles();
 
-    expect(text("share-hint")).toContain("Nothing is deleted");
-    expect(document.getElementById("share-report")?.hidden).toBe(true);
-  });
-
-  it("badges every kind and leads with what the run did", async () => {
-    vi.mocked(prepareForSharing).mockResolvedValue({
-      report: [issue(), issue({ kind: "linkTokens", label: "Link registry" })],
-      touchedSheets: 3,
-    });
-    const { share } = await load();
-
-    const line = await share.prepareShare();
-
-    expect(line).toBe(
-      "3 sheets reset to A1; 1 hidden sheet left; link tokens travel with the file",
-    );
+    expect(text("styles-result")).toBe("Not scanned yet.");
+    expect(document.getElementById("styles-list")?.hidden).toBe(true);
     expect(
-      children("share-report").map(
-        (row) => row.querySelector(".sheet-badge")?.textContent,
-      ),
-    ).toEqual(["Hidden", "Links"]);
-    expect(text("share-hint")).toContain("Zoom cannot be reset");
-  });
-
-  it("cuts a long report off and says how much is left", async () => {
-    vi.mocked(prepareForSharing).mockResolvedValue({
-      report: Array.from({ length: 23 }, () => issue()),
-      touchedSheets: 1,
-    });
-    const { share } = await load();
-
-    await share.prepareShare();
-
-    const listed = children("share-report");
-    expect(listed).toHaveLength(21);
-    expect(listed[20]?.textContent).toBe("…and 3 more.");
-  });
-});
-
-describe("model check panel", () => {
-  it("keeps Copy out of reach until there is a report", async () => {
-    const { check } = await load();
-    check.renderModelCheck();
-
-    const copy = document.getElementById("copy-model-check") as HTMLButtonElement;
-    expect(copy.disabled).toBe(true);
-    expect(await check.copyReport()).toBe("Run the model check first.");
-
-    vi.mocked(runModelCheck).mockResolvedValue(report([finding()]));
-    expect(await check.runCheck()).toBe("Model check: 1 finding on 2 sheets");
-    expect(copy.disabled).toBe(false);
-    expect(await check.copyReport()).toBe("Copied 1 lines");
-  });
-
-  it("names the location, the kind and the note on every row", async () => {
-    vi.mocked(runModelCheck).mockResolvedValue(
-      report([finding(), finding({ kind: "brokenName", sheet: null, ref: null, note: "Costs" })]),
-    );
-    const { check } = await load();
-
-    await check.runCheck();
-
-    const listed = children("model-check-list");
-    expect(listed.map((row) => row.querySelector("strong")?.textContent)).toEqual(
-      ["Model!B4", "Workbook"],
-    );
-    expect(listed.map((row) => row.querySelector(".sheet-badge")?.textContent)).toEqual(
-      ["Hardcode in formula", "Broken name"],
-    );
-  });
-
-  // A finding the whole file carries has no cell: the row says where the fix
-  // lives instead of failing on a jump nobody can make.
-  it("points at the section instead of jumping for a workbook-wide finding", async () => {
-    vi.mocked(runModelCheck).mockResolvedValue(
-      report([
-        finding({ kind: "unusedStyle", sheet: null, ref: null, note: "Old" }),
-        finding({ kind: "hiddenSheet", ref: null, note: "Hidden" }),
-      ]),
-    );
-    const { check } = await load();
-    await check.runCheck();
-    const listed = children("model-check-list");
-
-    (listed[1] as HTMLButtonElement).click();
-    await settle();
-    expect(text("toast")).toBe("Model has no cell to jump to.");
-
-    (listed[0] as HTMLButtonElement).click();
-    await settle();
-    expect(text("toast")).toBe(
-      "The Styles section above deletes unused styles.",
-    );
-    expect(jumpToHit).not.toHaveBeenCalled();
-  });
-
-  it("cuts the list at forty and points the rest at the copied report", async () => {
-    vi.mocked(runModelCheck).mockResolvedValue(
-      report(Array.from({ length: 45 }, () => finding())),
-    );
-    const { check } = await load();
-
-    await check.runCheck();
-
-    const listed = children("model-check-list");
-    expect(listed).toHaveLength(41);
-    expect(listed[40]?.textContent).toBe("…and 5 more in the copied report.");
+      (document.getElementById("styles-delete") as HTMLButtonElement).hidden,
+    ).toBe(true);
   });
 });
