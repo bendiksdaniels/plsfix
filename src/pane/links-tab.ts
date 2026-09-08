@@ -165,18 +165,24 @@ function wireActions(tab: Tab): void {
 async function boot(tab: Tab): Promise<void> {
   await loadKey(tab);
   await refresh(tab);
-  // Best effort: a failed touch changes nothing the user can see, and the next
-  // boot tries again. Never a toast on boot.
-  try {
-    await touchWorkbookLinks(tab.deps.relay);
-  } catch {
-    // The relay is out of reach; the links keep the TTL their last push gave.
-  }
   watchSheetChanges(tab);
   watchForRefresh(tab);
   // Both boxes are told by the workbook, never by what they last showed. The
   // refresh above tells the same story in the table.
   await restoreToggles(tab.toggles);
+  await touchLinks(tab);
+}
+
+// Last, and never in front of anything the tab shows: fetch carries no timeout
+// of its own, so a relay behind a dropped route leaves this open for as long as
+// the webview's socket takes to give up. A failed touch changes nothing the
+// user can see, and the next boot tries again. Never a toast on boot.
+async function touchLinks(tab: Tab): Promise<void> {
+  try {
+    await touchWorkbookLinks(tab.deps.relay);
+  } catch {
+    // The relay is out of reach; the links keep the TTL their last push gave.
+  }
 }
 
 // A source deleted or moved keeps reading "fine" until something re-reads
