@@ -27,6 +27,7 @@ import {
 } from "../link/status";
 import type { Workspace } from "../link/workspace";
 import { chunk, planBatches, REPAINT_BUDGET_BYTES } from "./batching";
+import { isDrawTimeout } from "./chart-draw";
 import { chartPlan, declineReason } from "./charts";
 import { GROUP_TYPE } from "./shapes";
 import { fetchUpdates } from "./fetch";
@@ -283,8 +284,18 @@ async function paintBatch(
       // The batch route paints pictures alone, and a picture has nothing to
       // say: only the row-by-row path below can answer with a note.
       if (await host.refreshLinks(batch)) return batch.length;
-    } catch {
-      // One shape in the batch; the rows below name it.
+    } catch (error) {
+      // A host that has genuinely stopped answering would only hang the same
+      // way on every row's own retry below - it repaints through the same
+      // batch route with one row in it - turning one deadline into as many
+      // as the batch holds. A timeout fails every row here instead, with the
+      // sentence that says what stopped, and leaves the next batch to try its
+      // own round trip fresh. Anything else is one bad shape, and the rows
+      // below still isolate it.
+      if (isDrawTimeout(error)) {
+        for (const entry of batch) onFailure(entry.found, error);
+        return 0;
+      }
     }
   }
   let painted = 0;
