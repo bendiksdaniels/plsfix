@@ -12,7 +12,9 @@ import {
   SHEET_COLUMNS,
   styleChartLabels,
   styleChartShell,
+  withinCap,
 } from "./internal";
+import { syncWrite } from "./protection";
 import { captureUndo } from "./undo";
 import { type TornadoDriver, tornadoSeries } from "../chartmath";
 import { type CellValue } from "../model";
@@ -124,7 +126,13 @@ function styleTornado(chart: Excel.Chart, heading: string): void {
 // the selection, and pls,fix Undo captures whatever stood there first.
 export async function insertTornado(): Promise<string> {
   return Excel.run(async (context) => {
-    const range = await selectedSingleRange(context, "tornado");
+    // The cap answers before the values are asked for: a clicked column header
+    // is a million cells, and the driver cap only runs after the read.
+    const range = await withinCap(
+      context,
+      await selectedSingleRange(context, "tornado"),
+      "tornado",
+    );
     const sheet = range.worksheet;
     range.load("rowCount,columnCount,rowIndex,columnIndex,values,numberFormat");
     await context.sync();
@@ -171,7 +179,9 @@ export async function insertTornado(): Promise<string> {
       ]),
     ];
     block.numberFormat = blockFormats(format, series.labels.length);
-    await context.sync();
+    // A locked sheet refuses the helper block by name, before a chart is added
+    // over a block that never landed.
+    await syncWrite(context, "tornado");
 
     const chart = sheet.charts.add(
       Excel.ChartType.barClustered,

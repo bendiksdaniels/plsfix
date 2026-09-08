@@ -11,6 +11,7 @@ import {
   styleChartShell,
   styleChartSurface,
   syncTolerating,
+  withinCap,
 } from "./internal";
 import { seriesPalette, waterfallColors } from "../chart-colors";
 import { labelPosition, leaderLines } from "../chart-labels";
@@ -95,7 +96,13 @@ async function bridgeHeading(
 // opening and closing totals, everything between them a delta.
 export async function insertWaterfall(): Promise<string> {
   return Excel.run(async (context) => {
-    const range = await selectedSingleRange(context, "Waterfall");
+    // The cap answers before the values are asked for: a clicked column header
+    // is a million cells, and the point cap only runs after the read.
+    const range = await withinCap(
+      context,
+      await selectedSingleRange(context, "Waterfall"),
+      "Waterfall",
+    );
     const sheet = range.worksheet;
     range.load("rowCount,columnCount,rowIndex,columnIndex,values");
     await context.sync();
@@ -124,7 +131,9 @@ export async function insertWaterfall(): Promise<string> {
     chart.dataLabels.showValue = true;
 
     const series = chart.series.getItemAt(0);
-    series.showConnectorLines = true;
+    // The lines between the bars are ExcelApi 1.9; below it the bridge reads
+    // as a plain waterfall rather than failing the batch that adds it.
+    if (hostSupports("1.9")) series.showConnectorLines = true;
     await context.sync();
     // The geometry travels in its own batch: Excel for the web rejects the one
     // carrying the surface whole, and the placement must not go down with it.
@@ -182,10 +191,15 @@ export async function formatSelectedChart(): Promise<void> {
 
     const type = String(chart.chartType);
     const axisFree = AXIS_FREE_CHARTS.includes(type);
-    styleChartShell(chart, null, !axisFree);
+    // The surface stays out of this batch: Excel for the web refuses the font
+    // and the corners on a chartex chart (a waterfall, a treemap), and the
+    // branding must not go down with a refusal that is only cosmetic.
+    styleChartShell(chart, null, !axisFree, false);
     styleChartLabels(chart.dataLabels, labelPosition(type));
-    // A pie's labels sit outside the slices, tied back by leader lines (1.8).
-    if (leaderLines(type) && hostSupports("1.8")) {
+    // A pie's labels sit outside the slices, tied back by leader lines. The
+    // label-level property is ExcelApi 1.19; asking a host below it drops the
+    // whole restyle, so the lines only go on where the property exists.
+    if (leaderLines(type) && hostSupports("1.19")) {
       chart.dataLabels.showLeaderLines = true;
     }
 
@@ -199,6 +213,10 @@ export async function formatSelectedChart(): Promise<void> {
     chart.legend.visible = chart.series.count > 1 || axisFree;
 
     await context.sync();
+
+    // Its own batch, tolerated the way the waterfall's own surface is.
+    styleChartSurface(chart);
+    await syncTolerating(context, Excel.ErrorCodes.unsupportedOperation);
   });
 }
 
