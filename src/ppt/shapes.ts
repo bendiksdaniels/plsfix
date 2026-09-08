@@ -3,6 +3,8 @@
 // reachable - by the path of group ids running from the slide down to it, and
 // that path is how the same shape is addressed again on a refresh.
 
+import { withSyncDeadline } from "./chart-draw";
+
 export const SHAPE_PROPERTIES =
   "items/id,items/type,items/left,items/top,items/width,items/height";
 
@@ -90,7 +92,9 @@ async function openGroups(
       return { entry, shapes };
     });
   if (opened.length === 0) return [];
-  await context.sync();
+  // The one round trip a grouped deck adds per level; a host that swallows
+  // it would otherwise hang every scan of the deck.
+  await withSyncDeadline(context.sync(), "reading the groups");
   return opened.flatMap(({ entry, shapes }) =>
     shapes.items.map((shape) => ({
       slideId: entry.slideId,
