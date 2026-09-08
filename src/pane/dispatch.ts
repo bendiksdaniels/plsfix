@@ -45,14 +45,21 @@ import { runCheck } from "./model-check-panel";
 import { applyPaintSlot, capturePaintSlot } from "./paint-slots";
 import { prepareShare } from "./share-panel";
 import { runReconciliation } from "./reconcile-panel";
+import { isExcelReady } from "./shared";
 import { deleteStyles, scanStyles } from "./styles-panel";
 import { startTrace, toggleAudit } from "./trace-panel";
 import { insertTocSheet, scanNames } from "./workbook-tab";
 
-// The card is a static page, not a workbook write: a failed dialog (some
-// hosts refuse displayDialogAsync) falls back to a plain browser tab.
+// The card is a static page, not a workbook write: it needs Office chrome to
+// exist at all, not a connected Excel, so it works even before isExcelReady()
+// would let anything else through. A host with no dialog API at all (or one
+// that fails the call) falls back to a plain browser tab either way.
 function openShortcutCard(): Promise<string> {
   const url = new URL("shortcuts.html", location.href).href;
+  if (!Office.context?.ui?.displayDialogAsync) {
+    window.open(url, "_blank");
+    return Promise.resolve("Shortcut card opened");
+  }
   return new Promise((resolve) => {
     Office.context.ui.displayDialogAsync(
       url,
@@ -68,6 +75,14 @@ function openShortcutCard(): Promise<string> {
 }
 
 export async function dispatch(action: string): Promise<string> {
+  // Every other action reaches Excel through ../excel: without a connected
+  // workbook that would throw whatever raw error the adapter or Excel.js
+  // hits first, instead of the one clean sentence a pane with no host (or a
+  // rejected one) owes every click.
+  if (action !== "shortcut-card" && !isExcelReady()) {
+    throw new Error("Excel is not connected.");
+  }
+
   if (action.startsWith("style-")) {
     await applyPreset(action.replace("style-", "") as PresetName);
   } else if (action.startsWith("paint-capture-")) {
@@ -80,7 +95,11 @@ export async function dispatch(action: string): Promise<string> {
     await applyNumberCycle(
       action.replace("cycle-number-", "") as NumberCycleFamily,
     );
-  } else if (action.startsWith("cycle-row-")) {
+  } else if (action.startsWith("cycle-row-") && action !== "cycle-row-height") {
+    // Excludes cycle-row-height: that action is row SIZING (the switch below
+    // routes it to applyRowHeightCycle), not one of the three row-STYLE
+    // kinds this prefix owns - the prefix used to swallow it first and call
+    // applyRowStyleCycle("height"), which is not a real RowStyleKind.
     await applyRowStyleCycle(action.replace("cycle-row-", "") as RowStyleKind);
   } else if (action.startsWith("template-")) {
     return insertTemplate(action.replace("template-", ""));
