@@ -100,7 +100,27 @@ async function paint(
   const key = highlightKey();
   for (const one of anchored) applyFillKey(one.range, key);
   highlight.persist(context);
-  await context.sync();
+  try {
+    await context.sync();
+  } catch (refused) {
+    await undoPaint(context);
+    throw refused;
+  }
+}
+
+// A paint the host refused - a sheet the modeller protected is the usual
+// reason - must not leave the store claiming fills the sheet never took: the
+// audit overlay asks it before painting, and Prepare for sharing reports it,
+// while the tick box is already back to clear. restore() forgets them first, so
+// they are given up whether or not the workbook takes the write-back; best
+// effort from there, like every other rollback here, because the refusal the
+// caller is about to see is the one worth reporting.
+async function undoPaint(context: Excel.RequestContext): Promise<void> {
+  try {
+    await highlight.restore(context);
+  } catch {
+    return;
+  }
 }
 
 // Returns the state the toggle left behind: true when the workbook is painted.

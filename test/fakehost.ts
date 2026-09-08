@@ -3660,6 +3660,22 @@ export interface FakeHelpers {
   // the host writes it.
   fireChanged(sheetIdOrName: string, address: string): Promise<void>;
   actions(): Map<string, (event?: { completed: () => void }) => void>;
+  // E1 audit: a structural edit - rows or columns inserted or deleted - carries
+  // its own Excel.DataChangeType, not "RangeEdited"; the addresses a change of
+  // that kind reports are the cells as they are after the move.
+  // https://learn.microsoft.com/en-us/javascript/api/excel/excel.worksheetchangedeventargs#excel-excel-worksheetchangedeventargs-changetype-member
+  fireStructuralChange(
+    sheetIdOrName: string,
+    address: string,
+    changeType:
+      | "RowInserted"
+      | "RowDeleted"
+      | "ColumnInserted"
+      | "ColumnDeleted"
+      | "CellInserted"
+      | "CellDeleted"
+      | "Unknown",
+  ): Promise<void>;
 }
 
 // One area of a getRanges() address list: bare (this sheet) or carrying its
@@ -4028,6 +4044,30 @@ export function installFakeHost(options: FakeHostOptions = {}): {
       }
     },
     actions: () => runtime.actions,
+    // E1 audit: same event shape as fireChanged, with the changeType a row or
+    // column move carries instead of "RangeEdited".
+    async fireStructuralChange(sheetIdOrName, address, changeType) {
+      const sheet = workbook.find(sheetIdOrName);
+      if (!sheet) throw new Error(`fake host: no sheet "${sheetIdOrName}"`);
+      const areas = address.split(",").map((area) => formatA1(parseA1(area)));
+      const local = areas[0] ?? "";
+      const args = {
+        address: areas
+          .map((area) => `${quoteSheet(sheet.name)}!${area}`)
+          .join(","),
+        worksheetId: sheet.id,
+        changeType,
+        source: "Local",
+        type: "WorksheetChanged",
+        getRange: (context: FakeContext) =>
+          context.workbook.worksheets.getItem(sheet.id).getRange(local),
+        getRangeOrNullObject: (context: FakeContext) =>
+          context.workbook.worksheets.getItem(sheet.id).getRange(local),
+      };
+      for (const registration of [...runtime.changeHandlers]) {
+        await registration.handler(args);
+      }
+    },
   };
 
   return { workbook, helpers };
