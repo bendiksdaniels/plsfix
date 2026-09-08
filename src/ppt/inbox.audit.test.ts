@@ -326,6 +326,25 @@ describe("the Inbox and the pairing key", () => {
     expect(inboxButtons().map((one) => one.disabled)).toEqual([true]);
   });
 
+  // Only the refusal the user can act on is reworded; everything else reaches
+  // the toast exactly as the relay reported it.
+  it("keeps the relay's own sentence when an insert cannot reach it", async () => {
+    await seed();
+    click("refresh-inbox");
+    await settle();
+    vi.spyOn(relay, "getLink").mockRejectedValue(
+      new RelayError("network", "relay GET /api/links/aaaa: network error"),
+    );
+
+    inboxButtons()[0]!.click();
+    await settle();
+
+    expect(toastText()).toBe("relay GET /api/links/aaaa: network error");
+    expect(isError()).toBe(true);
+    expect(inboxButtons()).toHaveLength(1);
+    expect(button("refresh-inbox").disabled).toBe(false);
+  });
+
   // The relay stamps an inbox row in whole seconds, so two exports pushed in
   // the same second arrive tied. The pane's sort must not shuffle them: the
   // order the relay answered in is the tie-break, and it is stable.
