@@ -146,6 +146,8 @@ async fn the_static_host_serves_no_dotfiles_no_listing_and_nothing_above_it() {
         "/..%2foutside.txt",
         "/assets/",
         "/assets/../.env",
+        "/assets%2f.env",
+        "/assets%2F.env",
     ] {
         let (status, body) = get(&app, path).await;
         assert_eq!(status, StatusCode::NOT_FOUND, "{path} answered {status}");

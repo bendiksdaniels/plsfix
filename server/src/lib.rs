@@ -76,7 +76,13 @@ async fn cache_control(request: Request, next: Next) -> Response {
 // The percent-encoded forms are folded first, because ServeDir decodes before
 // it opens.
 async fn no_dotfiles(request: Request, next: Next) -> Response {
-    let path = request.uri().path().replace("%2e", ".").replace("%2E", ".");
+    let path = request
+        .uri()
+        .path()
+        .replace("%2e", ".")
+        .replace("%2E", ".")
+        .replace("%2f", "/")
+        .replace("%2F", "/");
     if path.split('/').any(|segment| segment.starts_with('.')) {
         return StatusCode::NOT_FOUND.into_response();
     }

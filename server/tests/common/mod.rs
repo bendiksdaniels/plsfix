@@ -80,6 +80,7 @@ pub fn static_dir(name: &str) -> PathBuf {
     std::fs::write(dir.join("taskpane.html"), "<title>pls,fix</title>").unwrap();
     std::fs::write(dir.join("pptpane.html"), "<title>pls,fix deck</title>").unwrap();
     std::fs::write(dir.join(".env"), "MODELIS_SECRET=1").unwrap();
+    std::fs::write(dir.join("assets").join(".env"), "MODELIS_SECRET=1").unwrap();
     std::fs::write(root.join("outside.txt"), "not the pane").unwrap();
     dir
 }
