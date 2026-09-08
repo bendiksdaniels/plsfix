@@ -12,6 +12,7 @@ import {
   SHEET_COLUMNS,
   styleChartLabels,
   styleChartShell,
+  withinCap,
 } from "./internal";
 import { captureUndo } from "./undo";
 import { type TornadoDriver, tornadoSeries } from "../chartmath";
@@ -124,7 +125,13 @@ function styleTornado(chart: Excel.Chart, heading: string): void {
 // the selection, and pls,fix Undo captures whatever stood there first.
 export async function insertTornado(): Promise<string> {
   return Excel.run(async (context) => {
-    const range = await selectedSingleRange(context, "tornado");
+    // The cap answers before the values are asked for: a clicked column header
+    // is a million cells, and the driver cap only runs after the read.
+    const range = await withinCap(
+      context,
+      await selectedSingleRange(context, "tornado"),
+      "tornado",
+    );
     const sheet = range.worksheet;
     range.load("rowCount,columnCount,rowIndex,columnIndex,values,numberFormat");
     await context.sync();

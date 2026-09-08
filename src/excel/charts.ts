@@ -11,6 +11,7 @@ import {
   styleChartShell,
   styleChartSurface,
   syncTolerating,
+  withinCap,
 } from "./internal";
 import { seriesPalette, waterfallColors } from "../chart-colors";
 import { labelPosition, leaderLines } from "../chart-labels";
@@ -95,7 +96,13 @@ async function bridgeHeading(
 // opening and closing totals, everything between them a delta.
 export async function insertWaterfall(): Promise<string> {
   return Excel.run(async (context) => {
-    const range = await selectedSingleRange(context, "Waterfall");
+    // The cap answers before the values are asked for: a clicked column header
+    // is a million cells, and the point cap only runs after the read.
+    const range = await withinCap(
+      context,
+      await selectedSingleRange(context, "Waterfall"),
+      "Waterfall",
+    );
     const sheet = range.worksheet;
     range.load("rowCount,columnCount,rowIndex,columnIndex,values");
     await context.sync();
