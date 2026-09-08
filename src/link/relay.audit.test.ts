@@ -199,26 +199,63 @@ describe("officeKeyStore", () => {
     }
   });
 
-  it("falls back to localStorage, and to memory when that is refused", async () => {
-    expect(await roundTrip(officeKeyStore())).toEqual([null, "V", null]);
-    const real = Object.getOwnPropertyDescriptor(globalThis, "localStorage");
-    Object.defineProperty(globalThis, "localStorage", {
-      configurable: true,
-      get() {
-        throw new Error("site data blocked");
+  // Office on the web has no OfficeRuntime.storage in every build, and the
+  // pane then keeps the pairing in the webview's own localStorage.
+  it("writes through to localStorage where the webview allows it", async () => {
+    const kept = new Map<string, string>();
+    const stand: Partial<Storage> = {
+      getItem: (key) => kept.get(key) ?? null,
+      setItem: (key, value) => {
+        kept.set(key, value);
       },
-    });
+      removeItem: (key) => {
+        kept.delete(key);
+      },
+    };
+    await withLocalStorage(
+      { configurable: true, value: stand, writable: true },
+      async () => {
+        expect(await roundTrip(officeKeyStore())).toEqual([null, "V", null]);
+        await officeKeyStore().set(WORKSPACE_STORAGE_KEY, "paired");
+        expect(kept.get(WORKSPACE_STORAGE_KEY)).toBe("paired");
+      },
+    );
+  });
+
+  // A webview with site data blocked throws on the probe, and the pairing
+  // lives in the process for the life of the pane instead of not at all.
+  it("falls back to memory when localStorage is refused", async () => {
+    await withLocalStorage(
+      {
+        configurable: true,
+        get() {
+          throw new Error("site data blocked");
+        },
+      },
+      async () => {
+        const store = officeKeyStore();
+        await store.set(WORKSPACE_STORAGE_KEY, "kept");
+        // The one process-wide map, so both calls of a pane see one pairing.
+        expect(await officeKeyStore().get(WORKSPACE_STORAGE_KEY)).toBe("kept");
+        await store.remove(WORKSPACE_STORAGE_KEY);
+        expect(await officeKeyStore().get(WORKSPACE_STORAGE_KEY)).toBeNull();
+      },
+    );
+  });
+
+  async function withLocalStorage(
+    stand: PropertyDescriptor,
+    run: () => Promise<void>,
+  ): Promise<void> {
+    const real = Object.getOwnPropertyDescriptor(globalThis, "localStorage");
+    Object.defineProperty(globalThis, "localStorage", stand);
     try {
-      // The process-wide map, so both calls of one pane see one pairing.
-      const store = officeKeyStore();
-      await store.set(WORKSPACE_STORAGE_KEY, "kept");
-      expect(await officeKeyStore().get(WORKSPACE_STORAGE_KEY)).toBe("kept");
-      await store.remove(WORKSPACE_STORAGE_KEY);
+      await run();
     } finally {
       if (real) Object.defineProperty(globalThis, "localStorage", real);
       else delete host.localStorage;
     }
-  });
+  }
 });
 
 describe("workspace lifecycle", () => {
