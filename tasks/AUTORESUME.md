@@ -23,9 +23,10 @@
 - Deploy detour: `db contracts` failed because `the bond tool's Desktop repo` had been parked by
   the iCloud Desktop toggle (07.09 23:24) in `~/Desktop/Desktop - Dāniels’s MacBook Pro/`; moved
   back with a same-volume rename (repo clean, target.nosync intact), the empty folder to Trash.
-- Git: main is 206 commits ahead of origin (last push v2.1.20, 29.08); the global post-commit hook
-  would push on any commit, so every commit here ran with GIT_AUTO_PUSH=0. Daniel decides whether
-  plsfix joins "main always on GitHub".
+- Git: Daniel said "commit to github this version" at 11:15: `git push origin main --follow-tags`
+  put 212 commits and the tags v2.5.3 .. v2.6.2 on GitHub; from here plsfix follows the global
+  auto-push rule (the earlier commits of the day ran with GIT_AUTO_PUSH=0 while the 02.09 ban
+  stood).
 - Web proof DONE 08.09 11:0x (scratch Chrome, NDUS tenant, both hosts registered through the
   wdaddin* parameters after the Developer Mode opt-in + reload): Excel pane v2.6.002, five
   exports (Revenue chart, Segment pie, a 4-series column chart = data shipped under the lifted
