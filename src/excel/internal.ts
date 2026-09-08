@@ -45,6 +45,12 @@ export const BASE_WHITE = "#FFFFFF";
 
 // A whole-column click selects a million cells; reading or writing their grids
 // would freeze the pane or overflow the request payload.
+export function overCap(cells: number): boolean {
+  // Excel answers -1 for a count past 2^31-1, which a whole-sheet Ctrl+A is:
+  // read as a number that is the largest selection there is, not the smallest.
+  return cells < 0 || cells > SELECTION_CELL_CAP;
+}
+
 export async function withinCap(
   context: Excel.RequestContext,
   range: Excel.Range,
@@ -52,7 +58,7 @@ export async function withinCap(
 ): Promise<Excel.Range> {
   range.load("cellCount");
   await context.sync();
-  if (range.cellCount > SELECTION_CELL_CAP) {
+  if (overCap(range.cellCount)) {
     throw new Error(
       `${what} supports up to ${SELECTION_CELL_CAP.toLocaleString()} selected cells at once.`,
     );

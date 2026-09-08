@@ -162,6 +162,67 @@ describe("undo into a sheet that was protected afterwards", () => {
 
 // ---------------------------------------------------------------------------
 
+// Ctrl+A. Range.cellCount answers -1 once the count runs past 2^31-1, and a
+// whole sheet is 17.2e9 cells, so every cap that only asked "> cap" read the
+// biggest possible selection as "no cells at all" and went on to read it.
+describe("a whole-sheet selection", () => {
+  const WHOLE_SHEET = "Model!A1:XFD1048576";
+  const CAP = "supports up to 5,000 selected cells at once.";
+
+  beforeEach(() => {
+    helpers.seed("Model!A1", [[1]]);
+    helpers.select(WHOLE_SHEET);
+  });
+
+  it("is over the cap for a single range", async () => {
+    const { withinCap } = await import("../src/excel/internal");
+
+    await expect(
+      Excel.run((context) =>
+        withinCap(context, context.workbook.getSelectedRange(), "Paintbrush"),
+      ),
+    ).rejects.toThrow(`Paintbrush ${CAP}`);
+  });
+
+  it("is over the cap for the areas of a selection", async () => {
+    const { cappedAreas } = await import("../src/excel/areas");
+
+    await expect(
+      Excel.run((context) => cappedAreas(context, "Border cycling")),
+    ).rejects.toThrow(`Border cycling ${CAP}`);
+  });
+
+  // Every one of these used to reach makeFormatGrid with the whole grid's
+  // dimensions and take the pane's webview down with it.
+  it("is refused by the flows that write a grid", async () => {
+    expect(await rejects(() => smt.applyNumberFormat("whole"))).toBe(
+      `Number formatting ${CAP}`,
+    );
+    expect(await rejects(() => smt.applyNumberCycle("general"))).toBe(
+      `Format cycling ${CAP}`,
+    );
+
+    helpers.setActiveCell("Model!A1");
+    const slot = await smt.captureSlot(1);
+    helpers.select(WHOLE_SHEET);
+    expect(await rejects(() => smt.applySlot(1, slot))).toBe(
+      `Paintbrush ${CAP}`,
+    );
+  });
+
+  // The selection card is a passive read after every action, so it must not be
+  // the thing that asks the host for seventeen billion cells.
+  it("is shown by address and count only", async () => {
+    const summary = await smt.inspectSelection();
+
+    expect(summary.address).toContain("A1:XFD1048576");
+    expect(summary.formulas).toBe(-1);
+    expect(summary.blanks).toBe(-1);
+  });
+});
+
+// ---------------------------------------------------------------------------
+
 // protection.ts is the one place a refusal is translated. Everything else has
 // to travel untouched, or a broken host would read as a locked sheet.
 describe("the write guard itself", () => {

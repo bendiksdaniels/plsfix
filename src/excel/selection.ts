@@ -4,7 +4,7 @@
 // as one job. The format cycles live next door in format-cycles.ts.
 
 import { cappedAreas, selectedAreas } from "./areas";
-import { numberFormat, SELECTION_CELL_CAP } from "./internal";
+import { numberFormat, overCap } from "./internal";
 import { syncWrite } from "./protection";
 import {
   type NumberFormatName,
@@ -42,10 +42,13 @@ export async function inspectSelection(): Promise<SelectionSummary> {
     await context.sync();
 
     const address = areas.map((area) => area.address).join(", ");
-    const cells = areas.reduce((total, area) => total + area.cellCount, 0);
+    const counts = areas.map((area) => area.cellCount);
+    const cells = counts.some((count) => count < 0)
+      ? -1
+      : counts.reduce((total, count) => total + count, 0);
     // Over the cap the pane shows the address and count only (metrics as "—")
     // instead of asking the host for two full-column grids on a passive click.
-    if (cells > SELECTION_CELL_CAP) {
+    if (overCap(cells)) {
       return { address, cells, formulas: -1, errors: -1, blanks: -1 };
     }
 
