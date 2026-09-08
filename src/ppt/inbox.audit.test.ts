@@ -253,12 +253,19 @@ describe("the Inbox and the pairing key", () => {
     await settle();
     expect(toastText()).toBe("Paste the link key from Excel first.");
 
-    field.value = "not a link key";
-    click("save-key");
-    await settle();
-    expect(toastText()).toBe(
-      "That is not a link key. Copy it again from Excel.",
-    );
+    // Anything that is not the key itself, a pasted "Link key: ..." label
+    // included, gets the same sentence rather than a codec error.
+    for (const typed of [
+      "not a link key",
+      `Link key: ${workspace.exportKey}`,
+    ]) {
+      field.value = typed;
+      click("save-key");
+      await settle();
+      expect(toastText()).toBe(
+        "That is not a link key. Copy it again from Excel.",
+      );
+    }
 
     // A key pasted out of an e-mail, with the whitespace it was wrapped in.
     field.value = `\n  ${workspace.exportKey}\t\n`;
@@ -317,5 +324,51 @@ describe("the Inbox and the pairing key", () => {
 
     expect(button("refresh-inbox").disabled).toBe(true);
     expect(inboxButtons().map((one) => one.disabled)).toEqual([true]);
+  });
+
+  // The relay stamps an inbox row in whole seconds, so two exports pushed in
+  // the same second arrive tied. The pane's sort must not shuffle them: the
+  // order the relay answered in is the tie-break, and it is stable.
+  it("keeps the relay's order between exports of the same second", async () => {
+    const first = await seed(fakePng(100, 50), "A.xlsx");
+    const second = await seed(fakePng(200, 100), "B.xlsx");
+    expect(relay.now).toBe(1_000_000);
+
+    click("refresh-inbox");
+    await settle();
+
+    expect(inboxButtons().map((one) => one.getAttribute("aria-label"))).toEqual(
+      [`Insert ${first.label}`, `Insert ${second.label}`],
+    );
+    click("paste-latest-linked");
+    await settle();
+    expect(toastText()).toBe(`Inserted ${first.label}.`);
+  });
+
+  // The only route below PowerPointApi 1.8: the picture goes in through the
+  // Office selection API. A host that refuses it must leave the pane usable
+  // and the export still waiting.
+  it("inserts through the selection below 1.8, and clears busy when it fails", async () => {
+    helpers.setSupported(
+      (set, version) => set === "PowerPointApi" && Number(version) <= 1.5,
+    );
+    await seed();
+    click("refresh-inbox");
+    await settle();
+
+    helpers.failNextSelectionInsert("the host is out of memory");
+    inboxButtons()[0]!.click();
+    await settle();
+
+    expect(toastText()).toBe("insert Model!B4:F12: the host is out of memory");
+    expect(isError()).toBe(true);
+    expect(button("refresh-inbox").disabled).toBe(false);
+    expect(inboxButtons()).toHaveLength(1);
+    expect(inboxButtons()[0]!.disabled).toBe(false);
+
+    inboxButtons()[0]!.click();
+    await settle();
+    expect(toastText()).toBe("Inserted Model!B4:F12.");
+    expect(presentation.slides[0]!.shapes[0]!.type).toBe("Image");
   });
 });
