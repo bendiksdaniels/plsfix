@@ -47,14 +47,30 @@ function matchBracket(body: string, open: number): number {
   return body.length;
 }
 
+// What a sheet name behind a workbook bracket is made of, quotes and spaces
+// included: '[Budget.xlsx]Model plan'!$B$4.
+const SHEET_CHAR = /[A-Za-z0-9_.$' ]/;
+
+// A workbook bracket is always followed by its sheet and a "!". A structured
+// reference outside a table name ([@Amount], [Amount], [@[Unit price]]) is
+// followed by an operator, a bracket or nothing, never by a sheet name.
+function sheetFollows(body: string, close: number): boolean {
+  let index = close + 1;
+  while (SHEET_CHAR.test(body[index] ?? "")) index += 1;
+  return body[index] === "!";
+}
+
 // A bracket is another workbook - '[Budget.xlsx]Model'!$B$4, [1]Sheet1!A1 - only
-// where a reference may start. Behind a name it is this workbook's own table,
-// which is neither a link nor anything to warn about.
+// where a reference may start and a sheet name follows it. Behind a name it is
+// this workbook's own table, which is neither a link nor anything to warn about.
 function hasWorkbookReference(body: string): boolean {
   for (let index = 0; index < body.length; index += 1) {
     if (body[index] !== "[") continue;
-    if (!NAME_CHAR.test(body[index - 1] ?? "")) return true;
-    index = matchBracket(body, index);
+    const close = matchBracket(body, index);
+    if (!NAME_CHAR.test(body[index - 1] ?? "") && sheetFollows(body, close)) {
+      return true;
+    }
+    index = close;
   }
   return false;
 }
