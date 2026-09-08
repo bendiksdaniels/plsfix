@@ -1,4 +1,89 @@
-# AUTORESUME - pls,fix (v2.6.2 LIVE 08.09 09:05, deployed from fe9b0cf)
+# AUTORESUME - pls,fix (v2.6.15 LIVE 09.09, deployed from 92bb4b5)
+
+## 09.09: the audit fleet, v2.6.3 to v2.6.15 - every feature debugged on its own
+
+- State: **v2.6.15 LIVE 09.09** (92bb4b5, manual d6315ed after it; SERVER IN SYNC, `/version`
+  2.6.15, healthz 200), 1810 vitest / 156 files, ux:check 0/72, ux:sweep 0/124, cargo green.
+  Plan `~/.claude-accounts/work/plans/lucky-brewing-journal.md` (its approval was the budget).
+- Shape: ten worktree slices by file ownership (A formatting, B formulas, C charts/templates/
+  reconcile, D workbook/brand/model check/find/share, E1 Excel links, E2 relay, F PowerPoint
+  links, G slide charts, H object tools, I pane shell + the new `ux:sweep` gate) plus J
+  (deadline on every PowerPoint batch); opus on the Office.js adapters, sonnet on H, I, J; five
+  opus reviewers; one patch per reviewed merge (B, C, E1, E2, D, A, G, F, H, J and three
+  controller rounds); subagent trailers stripped before each merge. Spend about 7M tokens
+  (agents 4.6M, reviews 0.9M, controller about 1.5M): the top of the 4.3-7.4M estimate, because
+  the account session limit killed the fleet once and H and I ran twice.
+- Fixed, per slice (mechanism -> file; every fix has a test that fails on 0b330ee):
+  - A: cap checked before the undo capture (`format-cycles.ts`); presets, eraser, cycles, Undo,
+    row/column sizes and paint slots end on `syncWrite` so a protected sheet gets our sentence;
+    `Range.cellCount` answers -1 above 2^31-1, which bypassed every cap and OOM-killed the worker
+    on Ctrl+A (`internal.ts` overCap, `areas.ts`, `selection.ts`, `pickScannableSheets`);
+    `roundedCorners` 1.9 guard; `parsePalette` null on a non-palette object.
+  - B: paste/fill/CAGR/rounding protected-sheet sentences; Fast fill anchored on the selection's
+    corner (an upward or leftward drag filled unselected rows); a "[" no longer means external
+    (structured refs; `hasWorkbookReference` needs a sheet name and "!"); corrupt overlay JSON
+    at boot; caps before loading grids (autocolor, CAGR, paste exact); the overlay owns only
+    fills it striped; `fill-store` snapshot shape check.
+  - C: chartex surface writes in their own tolerated batch; cap before loading values (waterfall,
+    tornado); `chart-place` null row/column sizes -> 15/48 pt; `showConnectorLines` 1.9 guard;
+    pie `showLeaderLines` (1.19, not 1.8) dropped from the restyle; reconcile select 1.9 guard,
+    stale result line and hint cleared; protected-sheet sentences for templates and tornado.
+  - D: brand JSON import of a non-palette file refused (new `src/pane/brand-io.ts`); an
+    unreadable file -> sentence; no `setAutocolorOnEdit` before a host; lv/ru separators compare
+    U+00A0; model check keeps its other seven kinds when the styles read is refused.
+  - E1: the boot touch is awaited before the tab is wired (relay down = half-wired tab); the
+    highlight keeps its fills on a protected sheet; ExcelApi 1.9 floor on the push path (Excel
+    2019); 413 -> "That export is too big to send. Export a smaller range."
+  - E2: inbox delete 404 = done (a working insert reported failed, duplicate inserts); weak ETag
+    compare behind Cloudflare; no dotfile (nor its %2e/%2f forms) served on the bypass path.
+  - F: `updateLinks` no longer skips rows whose cached status said current (the core loop showed
+    "N up to date" after a push); `saveKey` reads before redrawing the inbox; mid-insert buttons
+    disabled; change source across kinds refused (`sameFamily`, "Nothing waiting in the Inbox
+    fits this link..."); hidden source columns 48 pt; chart refresh reasons surface; a dead relay
+    fails rows once (network kind, no deferral).
+  - G: THE HANG: every draw sync under `SYNC_TIMEOUT_MS` 60 000 (`withSyncDeadline`,
+    `ChartDrawTimeout`) -> cleanup of the confirmed shapes, picture fallback, note "PowerPoint
+    stopped answering while drawing the shapes"; placement reads under it; a swallowed refresh
+    becomes a picture at the same corner; legend band, waterfall closing total below zero,
+    negative bar label drift, a tall chart at top -255 (`onSlide`).
+  - H: Smart Painter no longer writes a captured null line colour over a target's own.
+  - I: controls wired before host detection (a no-host pane was dead); `cycle-row-height`
+    shadowed by the prefix branch; `lastUndoSkipped` drained in `finally`; overlay restore
+    toast; `probeExcelHost` loaded a property Excel has not got (the degraded boot never fired);
+    tab strip keyboard navigation; `openShortcutCard` without `displayDialogAsync`;
+    `registerCommands` at module top level; gate `npm run ux:sweep` (reaction only; routing
+    stays `src/pane/dispatch.test.ts`).
+  - J: picture, text, table, placement, shape scan, object tools and the group scan under the
+    deadline with their own wording; `paintBatch` fails a hung batch once, not row by row;
+    `refreshChartGroup` returns the silent note.
+  - Controller, v2.6.15 from the rig: table cells written `CELLS_PER_SYNC` 8 per round trip
+    (the tag with the last chunk; an insert whose format chunk fails takes the table down).
+    On PowerPoint for the web a formatted cell cost about 0.4 s per property (24 cells: 0.7 s
+    text-only, 28 s formatted); a 6x4 repaint in one batch ran past 60 s and every batch after
+    it queued behind the abandoned one. Proof: Update all 256 s with four deadline hits at
+    v2.6.14 -> 128 s, 6 updated, 2 up to date, no deadline at v2.6.15.
+- Refuted suspects (the audit tests hold the evidence): the cross-sheet auto-push burst pushes
+  once; registry read-modify-write interleavings; touch chunking is client-side; a table push
+  below 1.9 already falls back to the plain grid; `renderChartPlain` await-fold; every `.value`
+  read across the 23 load sites follows its sync; `hostSupports` stays fail-open (18 call sites
+  degrade on false, only `requireImageApi` throws).
+- Host-only suspicions the fakes cannot answer: appended to `tasks/launch-check.md` (09.09
+  section, Excel and PowerPoint rows) for Daniel's desktop pass.
+- Web rig proof 09.09 (Office for the web, NDUS tenant, scratch Chrome): both panes v2.6.015,
+  registration, exports, pairing, three inserts (native table, two pictures with their reasons),
+  push 6 / 2 missing, Update all as above; rig torn down, ports 9222/3001/3000 free, the link
+  key deleted. Two quirks in `tasks/lessons.md` (anchor-named charts, background tab).
+- Follow-ups, not done: pie leader lines via `ChartSeries.showLeaderLines` (1.9); a
+  `fastFillAuto` cell cap; Super Find / share caps 5 000 / 20 000 against model check's
+  200 000; the names scrubber ignores `worksheet.names`; relay `created_at` in whole seconds;
+  a relay client request timeout (AbortSignal.timeout is unsafe on old webviews); `model.ts`
+  refusing a picture payload on a bad chart; tab strip roving tabindex + `refreshSheets` on
+  arrow; `onSlide` below MIN_SIZE; bar-kind label overflow drift; the chart picker listing
+  anchor names (UX call); `shortcuts.json` pane-only actions; `src/ppt/host.ts` 424 and
+  `links.ts` 440 lines over the cap (launch week, no restructuring).
+- Daniel's gates: the desktop launch check with the appended rows, the Windows pass, the M365
+  centralized upload (the manifest did not change in this wave), the Cloudflare rate-limit rule
+  on `/modelis/api/*`.
 
 ## 08.09: "does the Excel -> PowerPoint mover work?" - desktop back on prod, v2.6.2 says why a chart stays a picture
 

@@ -46,7 +46,7 @@ demo:build` if missing) and a blank deck.
 Same list; the point is the ribbon icons, the shared runtime commands and the chart groups on
 a second platform. Note the Office build (File > Account) with the result.
 
-## Added by the 09.09 audit wave (v2.6.3 to v2.6.14): only a real Office can show these
+## Added by the 09.09 audit wave (v2.6.3 to v2.6.15): only a real Office can show these
 
 The fakes proved every fix; these are the behaviours the agents could not make a fake
 refuse or answer. Same rule: a wrong one gets the toast's **Copy details** pasted back.
@@ -104,3 +104,7 @@ PowerPoint
 - [ ] Smart Painter: Capture from a solid shape, Apply onto a native table's outer border
       and onto an empty content placeholder: paints, or refuses in a sentence, never a raw
       error. Ribbon > Objects > Object tools when the pane cannot open: nothing is said.
+- [ ] Update a formatted table link (the demo P&L, 6x4) after a source edit: "1 updated" and
+      the row "Up to date" within about 15 s on desktop, under a minute on the web, never
+      "stopped answering while repainting the table" (cells go eight per round trip now; on
+      the web a formatted cell cost about 0.4 s per property on 09.09).

@@ -199,3 +199,27 @@ code: the sync first, the `.value` after, never inside one expression.
   tripped vitest's 5 s timeout once inside a full `npm run check` while two agents ran their
   own suites on the machine; it passes alone. If it recurs, give its settle loop fewer steps
   or the test a longer timeout, never a retry.
+
+## 2026-09-09: the web rig at v2.6.14, what the new deadline showed
+
+- The deadline is a symptom detector, not a cure: with every PowerPoint sync under 60 s,
+  Update all on the web took 256 s and four batches "stopped answering" - both table
+  repaints and both chart-group redraws. Timing the host by hand explained it: a formatted
+  table cell cost about 0.4 s per property write on PowerPoint for the web that day (24 cells
+  text-only 0.7 s, text + bold + fill + alignment 28 s), so a whole 6x4 repaint was about 120
+  writes and 60 s in one batch. Fix: `CELLS_PER_SYNC` 8 in `src/ppt/tables.ts`. Same proof
+  afterwards: 128 s, 6 updated, 2 up to date, no deadline anywhere.
+- An abandoned batch does not stop: the host keeps working the timed-out request and every
+  later batch queues behind it, so one slow table turned the chart redraws after it into
+  deadline hits too (the cascade). Size the batches so no healthy one can reach the deadline;
+  a hit means a batch is too big, not that the constant is too tight.
+- The rig drives the host with its tab in front (`page.bringToFront()`): a background tab's
+  `PowerPoint.run` never returns, and the pane frame's `document.visibilityState` is no
+  usable signal for it.
+- Exports by chart name failed on the rig because the 08.09 session had renamed the demo
+  charts to their `PLSFIX_LINK_` anchor names; the picker now lists those names. Not a
+  regression, a UX call for Daniel (E1 flagged it) - and a snippet that names a chart must
+  read the picker first.
+- The link key is a secret: the rig copied it by intercepting `navigator.clipboard.writeText`
+  under the Copy button, kept it in the session scratchpad only and deleted it at teardown.
+  Never print it, never commit it.
