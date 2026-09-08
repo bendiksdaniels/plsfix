@@ -7,6 +7,7 @@
 // in the pure src/cycles.ts, and the presets in selection.ts.
 
 import { activeArea, cappedAreas, selectedAreas } from "./areas";
+import { syncWrite } from "./protection";
 import { captureUndoAreas } from "./undo";
 import {
   BORDER_EDGE_NAMES,
@@ -100,7 +101,7 @@ export async function applyNumberCycle(
     for (const area of areas) {
       area.numberFormat = makeFormatGrid(area.rowCount, area.columnCount, next);
     }
-    await context.sync();
+    await syncWrite(context, "Format cycling");
   });
 }
 
@@ -132,7 +133,7 @@ export async function applyRowStyleCycle(kind: RowStyleKind): Promise<void> {
     await captureUndoAreas(context, areas);
 
     if (next) for (const area of areas) paintRowStyle(area, next);
-    await context.sync();
+    await syncWrite(context, "Row styles");
   });
 }
 
@@ -164,7 +165,7 @@ export async function applyFillCycle(): Promise<void> {
       else area.format.fill.color = next;
     }
 
-    await context.sync();
+    await syncWrite(context, "Fill cycling");
   });
 }
 
@@ -182,7 +183,7 @@ export async function applyFontColorCycle(): Promise<void> {
     await captureUndoAreas(context, areas);
 
     for (const area of areas) area.format.font.color = next;
-    await context.sync();
+    await syncWrite(context, "Font colour cycling");
   });
 }
 
@@ -278,6 +279,6 @@ export async function applyBorderCycle(): Promise<void> {
     await captureUndoAreas(context, areas);
 
     if (next) for (const edges of handles) writeEdges(edges, next);
-    await context.sync();
+    await syncWrite(context, "Border cycling");
   });
 }

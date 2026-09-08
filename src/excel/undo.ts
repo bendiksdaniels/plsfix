@@ -4,6 +4,7 @@
 // safety net for its last few actions.
 
 import { SELECTION_CELL_CAP } from "./internal";
+import { syncWrite } from "./protection";
 import { parseAddress } from "./shared";
 import { pushCapped } from "./undo-stack";
 
@@ -153,10 +154,12 @@ export async function undoLastAction(): Promise<string> {
         block.formats as Excel.SettableCellProperties[][],
       );
     });
-    await context.sync();
+    // A sheet protected since the action ran refuses the restore: it comes
+    // back named, the way every other write into a locked sheet does.
+    await syncWrite(context, "Undo");
 
     // Only a restore that landed consumes the entry; a failed one stays
-    // retryable (this line is unreached when context.sync() above throws).
+    // retryable (this line is unreached when the write above throws).
     undoStack = undoStack.slice(1);
     return undoneMessage(top.label);
   });

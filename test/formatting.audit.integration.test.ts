@@ -1,7 +1,7 @@
 // Audit of the selection formatters against the strict fake host: what a
-// refused row-style cycle does to pls,fix Undo, the pre-1.9 single-area
-// fallback, a brand other than the shipped one, and the promise that
-// formatting never depends on local storage or on the Links tab.
+// protected sheet says, what a refused row-style cycle does to pls,fix Undo,
+// the pre-1.9 single-area fallback, and the promise that formatting never
+// depends on local storage or on the Links tab having been opened.
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
@@ -87,6 +87,75 @@ describe("a refused row-style cycle", () => {
     expect(helpers.font("Model!A500").color).toBe(
       brand.deriveTheme(brand.DEFAULT_SETTINGS).formulaFont,
     );
+  });
+});
+
+// ---------------------------------------------------------------------------
+
+describe("formatting a protected sheet", () => {
+  beforeEach(() => {
+    helpers.seed("Model!A1", [
+      [1, 2],
+      [3, 4],
+    ]);
+    helpers.select("Model!A1:B2");
+    helpers.protectSheet("Model");
+  });
+
+  // Every one of these used to travel as office.js's own "The worksheet Model
+  // is protected." - no stage, nothing the modeller can act on.
+  const refusals: [string, string][] = [
+    ["Formatting", "preset"],
+    ["Clearing formats", "eraser"],
+    ["Fill cycling", "fill cycle"],
+    ["Font colour cycling", "font cycle"],
+    ["Border cycling", "border cycle"],
+    ["Row styles", "row style cycle"],
+    ["Format cycling", "number cycle"],
+  ];
+
+  function run(what: string): Promise<unknown> {
+    switch (what) {
+      case "preset":
+        return smt.applyPreset("title");
+      case "eraser":
+        return smt.clearFormats();
+      case "fill cycle":
+        return smt.applyFillCycle();
+      case "font cycle":
+        return smt.applyFontColorCycle();
+      case "border cycle":
+        return smt.applyBorderCycle();
+      case "row style cycle":
+        return smt.applyRowStyleCycle("title");
+      default:
+        return smt.applyNumberCycle("general");
+    }
+  }
+
+  for (const [stage, what] of refusals) {
+    it(`names itself when the ${what} is refused`, async () => {
+      const before = helpers.cellMap("Model");
+      expect(await rejects(() => run(what))).toBe(
+        `${stage}: this sheet is protected, nothing was changed`,
+      );
+      expect(helpers.cellMap("Model")).toEqual(before);
+    });
+  }
+});
+
+describe("undo into a sheet that was protected afterwards", () => {
+  it("names itself instead of handing back Excel's string", async () => {
+    helpers.seed("Model!A1", [[1]]);
+    helpers.select("Model!A1");
+    await smt.applyPreset("input");
+    helpers.protectSheet("Model");
+
+    expect(await rejects(() => smt.undoLastAction())).toBe(
+      "Undo: this sheet is protected, nothing was changed",
+    );
+    // A failed restore stays retryable, so the entry is still there.
+    expect(smt.undoTarget()).toBe("Model!A1");
   });
 });
 

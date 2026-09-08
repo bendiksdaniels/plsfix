@@ -108,7 +108,7 @@ export async function applyPreset(name: PresetName): Promise<void> {
     const areas = await selectedAreas(context, "Formatting");
     await captureUndoAreas(context, areas);
     for (const area of areas) paintPreset(area, name);
-    await context.sync();
+    await syncWrite(context, "Formatting");
   });
 }
 
@@ -117,7 +117,7 @@ export async function clearFormats(): Promise<void> {
     const areas = await selectedAreas(context, "Clearing formats");
     await captureUndoAreas(context, areas);
     for (const area of areas) area.clear(Excel.ClearApplyTo.formats);
-    await context.sync();
+    await syncWrite(context, "Clearing formats");
   });
 }
 
