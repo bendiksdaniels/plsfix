@@ -301,18 +301,22 @@ export async function refreshChartGroup(
   found: FoundLink,
   payload: PicturePayload,
   tag: LinkTag,
-): Promise<void> {
+): Promise<string | undefined> {
   const plan = chartPlan(payload);
+  let silent = false;
   if (plan !== null && declineReason(plan) === null) {
     try {
       await refreshChart(found, plan, tag);
-      return;
+      return undefined;
     } catch (error) {
       // A host that swallowed the redraw keeps the group it already had: the
       // picture replaces it at the same corner and width, so the link is
       // still a link. Anything else is the host's own refusal, unchanged.
       if (!isDrawTimeout(error)) throw error;
+      silent = true;
     }
   }
   await replaceGroupWithPicture(found, payload, tag);
+  // The reason travels back so "Update all" can say why a group is a picture.
+  return silent ? pictureNote(CHART_HOST_SILENT) : undefined;
 }
