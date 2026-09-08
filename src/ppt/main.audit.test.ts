@@ -1,9 +1,9 @@
 // @vitest-environment jsdom
-// The PowerPoint pane as the user drives it: every button in pptpane.html
-// clicked against the fake deck and a fake relay, so the wiring, the toast
-// sentence and the busy flag are covered rather than only the flows below
-// them. The relay client is replaced by the in-memory FakeRelay every other
-// ppt.* suite runs against; nothing else is mocked.
+// The PowerPoint pane's Links and Tools tabs as the user drives them: every
+// button in pptpane.html clicked against the fake deck and a fake relay, so
+// the wiring, the toast sentence and the busy flag are covered rather than
+// only the flows below them. Only the relay client is replaced by the
+// in-memory FakeRelay every other ppt.* suite runs against.
 
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -117,9 +117,9 @@ async function seed(
   return item;
 }
 
-// The pane boots on import, so the markup, the deck and the stored pairing key
-// all go in first. `paired` is what a deck that has never seen a key models.
-async function boot(paired = true): Promise<void> {
+// The pane boots on import, so the markup, the deck and the pairing key in
+// storage all go in first.
+async function boot(): Promise<void> {
   vi.resetModules();
   uninstallFakePpt();
   relay = new FakeRelay();
@@ -132,8 +132,7 @@ async function boot(paired = true): Promise<void> {
     join(process.cwd(), "pptpane.html"),
     "utf8",
   );
-  const storage = new Map<string, string>();
-  if (paired) storage.set(WORKSPACE_STORAGE_KEY, workspace.exportKey);
+  const storage = new Map([[WORKSPACE_STORAGE_KEY, workspace.exportKey]]);
   const host = installFakePpt({ slides: 3, storage });
   presentation = host.presentation;
   helpers = host.helpers;
@@ -144,6 +143,14 @@ async function boot(paired = true): Promise<void> {
 
 function click(id: string): void {
   document.querySelector<HTMLButtonElement>(`#${id}`)?.click();
+}
+
+function button(id: string): HTMLButtonElement {
+  return document.getElementById(id) as HTMLButtonElement;
+}
+
+function select(id: string): HTMLSelectElement {
+  return document.getElementById(id) as HTMLSelectElement;
 }
 
 async function settle(rounds = 12): Promise<void> {
@@ -187,16 +194,15 @@ async function insertOne(item?: InboxItem): Promise<InboxItem> {
   return waiting;
 }
 
+beforeEach(async () => {
+  await boot();
+});
 afterEach(() => {
   uninstallFakePpt();
   vi.restoreAllMocks();
 });
 
 describe("the Links tab", () => {
-  beforeEach(async () => {
-    await boot();
-  });
-
   it("lists the deck's links, ticks one and reports the update", async () => {
     const item = await insertOne();
     expect(toastText()).toBe("Inserted Model!B4:F12.");
@@ -278,9 +284,7 @@ describe("the Links tab", () => {
     expect(linkRows()).toHaveLength(2);
 
     tickRow(0);
-    const filter = document.getElementById(
-      "link-source-filter",
-    ) as HTMLSelectElement;
+    const filter = select("link-source-filter");
     expect([...filter.options].map((option) => option.value)).toEqual([
       "all",
       "Model_v4.xlsx",
@@ -320,14 +324,74 @@ describe("the Links tab", () => {
     await insertOne();
     click("refresh-links");
     await settle();
-    const status = document.getElementById(
-      "link-status-filter",
-    ) as HTMLSelectElement;
+    const status = select("link-status-filter");
     status.value = "missing";
     status.dispatchEvent(new Event("change"));
 
     expect(linkRows()).toHaveLength(0);
     expect(document.getElementById("links-filtered-empty")?.hidden).toBe(false);
     expect(document.getElementById("links-empty")?.hidden).toBe(true);
+  });
+
+  // A pitch book's worth of rows: the two selects are rebuilt on every render,
+  // so a duplicated option would pile up one per redraw.
+  it("draws two hundred rows and one option per slide", async () => {
+    await insertOne();
+    const original = presentation.slides[0]!.shapes[0]!;
+    for (let copy = 1; copy < 200; copy += 1) {
+      presentation.copyShape(original.id, presentation.slides[copy % 3]!.id);
+    }
+    click("refresh-links");
+    await settle();
+
+    expect(toastText()).toBe("200 linked objects.");
+    expect(linkRows()).toHaveLength(200);
+    const slides = select("link-slide-filter");
+    const sources = select("link-source-filter");
+    expect([...slides.options].map((one) => one.value)).toEqual([
+      "all",
+      "1",
+      "2",
+      "3",
+    ]);
+    expect([...sources.options].map((one) => one.value)).toEqual([
+      "all",
+      "Model_v4.xlsx",
+    ]);
+
+    slides.value = "2";
+    slides.dispatchEvent(new Event("change"));
+    const shown = linkRows();
+    expect(shown.length).toBeGreaterThan(0);
+    expect(shown.length).toBeLessThan(200);
+    expect(
+      shown.every(
+        (row) => row.querySelector(".link-slide")?.textContent === "2",
+      ),
+    ).toBe(true);
+  });
+});
+
+describe("the Tools tab", () => {
+  // Every button here is a dispatch entry of its own, and with nothing selected
+  // each has to say what it needs - never a raw "undefined" from a dead case.
+  it("wires every object tool to a sentence, and hands the pane back", async () => {
+    const ids = [
+      "align-objects",
+      "distribute-objects",
+      "match-size",
+      "select-similar",
+      "swap-objects",
+      "capture-object-style",
+      "apply-object-style",
+    ];
+
+    for (const id of ids) {
+      click(id);
+      await settle();
+      expect(toastText()).not.toBe("");
+      expect(toastText()).not.toContain("undefined");
+      expect(button(id).disabled).toBe(false);
+    }
   });
 });
