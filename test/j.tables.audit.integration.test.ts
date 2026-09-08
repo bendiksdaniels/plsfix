@@ -120,7 +120,7 @@ describe("a table insert whose format round trip stops answering", () => {
   it("leaves no table behind, and the next insert lands", async () => {
     const ws = await createWorkspace(memoryStore());
     const bold = grid("a").map((row) =>
-      row.map((cell) => ({ ...cell, b: true })),
+      row.map((cell) => ({ ...cell, b: true as const })),
     );
     const item = await seedTable(bold, WIDTHS);
     const before = helpers.syncCount();
