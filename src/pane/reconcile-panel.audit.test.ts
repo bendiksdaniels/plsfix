@@ -126,4 +126,25 @@ describe("the reconcile panel", () => {
     // Nothing ran, so the standing hint is untouched.
     expect(resultLine()).toBe(HINT);
   });
+
+  it("clears the old answer even when a box is not a number", async () => {
+    field("reconcile-target").value = "100";
+    vi.mocked(reconcileSelection).mockResolvedValue({
+      addresses: ["A1", "A2"],
+      count: 2,
+      difference: 0,
+      sum: 100,
+      values: [60, 40],
+    });
+    await runReconciliation();
+    expect(resultLine()).toContain("2 cells selected");
+
+    // The refusal comes before any search: the line still may not keep naming
+    // cells that answered an earlier target.
+    field("reconcile-target").value = "hundred";
+    expect(await rejects(() => runReconciliation())).toBe(
+      "Target must be a number.",
+    );
+    expect(resultLine()).toBe(HINT);
+  });
 });

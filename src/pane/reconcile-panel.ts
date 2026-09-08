@@ -21,15 +21,15 @@ function numberFrom(id: string, label: string): number {
 }
 
 export async function runReconciliation(): Promise<string> {
+  // The answer goes away before anything is read: a refused search, a box
+  // that is not a number included, leaves the sheet selected on the cells the
+  // old line names, which is not the answer to what was just asked.
+  const line = getElement("reconcile-result");
+  line.textContent = HINT;
+
   const target = numberFrom("reconcile-target", "Target");
   const tolerance = numberFrom("reconcile-tolerance", "Tolerance");
   if (tolerance < 0) throw new Error("Tolerance must be zero or greater.");
-
-  // The answer goes away before the search runs: a refused one leaves the
-  // sheet selected on the cells the old line names, which is not the answer to
-  // what was just asked.
-  const line = getElement("reconcile-result");
-  line.textContent = HINT;
 
   const result = await reconcileSelection(target, tolerance);
   line.textContent = reconcileSummary(result, getActiveSettings().language);
