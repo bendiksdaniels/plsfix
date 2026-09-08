@@ -6,6 +6,7 @@
 
 import { numberFormat, requireEmptyBlock, writeRuns } from "./internal";
 import { applyPresetFormat, type PresetLook } from "./presets";
+import { syncWrite } from "./protection";
 import { captureUndo } from "./undo";
 import { buildNumberCycles } from "../cycles";
 import { getActiveSettings } from "../settings";
@@ -77,14 +78,16 @@ export async function insertTemplate(id: string): Promise<string> {
     block.formulas = template.cells.map((row) =>
       row.map((cell) => cellContent(cell, origin)),
     );
-    await context.sync();
+    // A locked sheet refuses the write with a host string that names neither
+    // the sheet nor the way out; the flow says both itself.
+    await syncWrite(context, "Templates");
 
     block.numberFormat = template.cells.map((row) =>
       row.map((cell) => cellNumberFormat(cell.format)),
     );
     styleBlock(block, template);
     block.select();
-    await context.sync();
+    await syncWrite(context, "Templates");
 
     return `Template written: ${template.name} (${template.rows}x${template.cols})`;
   });

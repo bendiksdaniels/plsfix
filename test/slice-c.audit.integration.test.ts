@@ -266,6 +266,32 @@ describe("an Excel build below the chart APIs", () => {
 
 // ---------------------------------------------------------------------------
 
+describe("a block written onto a protected sheet", () => {
+  // Office.js answers a locked write with AccessDenied and a string that names
+  // neither the sheet nor the way out; every editing flow says it itself.
+  it("names the template refusal instead of Excel's own string", async () => {
+    helpers.setActiveCell("Model!B2");
+    helpers.protectSheet("Model");
+
+    expect(await rejects(() => smt.insertTemplate("working-capital"))).toBe(
+      "Templates: this sheet is protected, nothing was changed",
+    );
+    expect(helpers.value("Model!B2")).toBe("");
+  });
+
+  it("names the tornado refusal too", async () => {
+    seedDrivers();
+    helpers.protectSheet("Model");
+
+    expect(await rejects(() => smt.insertTornado())).toBe(
+      "tornado: this sheet is protected, nothing was changed",
+    );
+    expect(workbook.charts).toHaveLength(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+
 describe("the CAGR callout on what a modeller selects", () => {
   it("refuses a block and a single cell by name", async () => {
     helpers.seed("Model!A1", [

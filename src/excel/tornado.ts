@@ -14,6 +14,7 @@ import {
   styleChartShell,
   withinCap,
 } from "./internal";
+import { syncWrite } from "./protection";
 import { captureUndo } from "./undo";
 import { type TornadoDriver, tornadoSeries } from "../chartmath";
 import { type CellValue } from "../model";
@@ -178,7 +179,9 @@ export async function insertTornado(): Promise<string> {
       ]),
     ];
     block.numberFormat = blockFormats(format, series.labels.length);
-    await context.sync();
+    // A locked sheet refuses the helper block by name, before a chart is added
+    // over a block that never landed.
+    await syncWrite(context, "tornado");
 
     const chart = sheet.charts.add(
       Excel.ChartType.barClustered,
