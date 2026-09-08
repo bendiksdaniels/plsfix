@@ -164,6 +164,8 @@ describe("language", () => {
       "ru",
     );
     expect(parsePalette(JSON.stringify({ language: "de" }))).toBeNull();
-    expect(parsePalette("{}")?.language).toBe("lv");
+    // A palette that names something else keeps the default language; one
+    // naming nothing at all is not a palette (see settings.audit.test.ts).
+    expect(parsePalette('{"primary":"#14213D"}')?.language).toBe("lv");
   });
 });

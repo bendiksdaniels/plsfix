@@ -9,21 +9,30 @@ describe("a brand file that is not one", () => {
     expect(parsePalette("null")).toBeNull();
   });
 
-  // Pinned by src/settings.test.ts: an object with no palette key in it reads
-  // as the shipped palette rather than as a refusal. That is also what the
-  // Brand tab's importer does with the wrong .json - it reports "Palette
-  // imported" and the brand becomes the default one.
-  it("reads any other object as the shipped palette", () => {
-    expect(parsePalette("{}")).toEqual(DEFAULT_SETTINGS);
-    expect(parsePalette('["#14213D"]')).toEqual(DEFAULT_SETTINGS);
-    expect(parsePalette('{"name":"plsfix","version":"2.6.2"}')).toEqual(
-      DEFAULT_SETTINGS,
-    );
+  // A file, a localStorage value or a workbook setting carrying none of the
+  // palette's own keys is not a partial palette, it is the wrong content: it
+  // used to read as the shipped defaults, so the wrong .json imported as
+  // "Palette imported" and a corrupted stored value silently replaced a brand.
+  it("refuses an object carrying none of the palette's keys", () => {
+    expect(parsePalette("{}")).toBeNull();
+    expect(parsePalette('["#14213D"]')).toBeNull();
+    expect(parsePalette('{"name":"plsfix","version":"2.6.2"}')).toBeNull();
+  });
+
+  it("still takes a palette that names only one of them", () => {
     // One known key is a partial palette: the rest fall back to the defaults.
     expect(parsePalette('{"accent":"#B27E54"}')).toEqual({
       ...DEFAULT_SETTINGS,
       accent: "#B27E54",
     });
+    expect(parsePalette('{"autocolorOnEdit":true}')).toEqual({
+      ...DEFAULT_SETTINGS,
+      autocolorOnEdit: true,
+    });
+    // Unknown keys beside a known one are still ignored.
+    expect(parsePalette('{"primary":"b27e54","unknown":1}')?.primary).toBe(
+      "#B27E54",
+    );
   });
 
   it("refuses a colour that is not a string", () => {
@@ -42,9 +51,11 @@ describe("a brand file that is not one", () => {
   });
 
   // The pane boots on the shipped palette rather than on nothing when the
-  // machine's stored copy is missing or unreadable.
+  // machine's stored copy is missing, unreadable or foreign. A refusal is a
+  // fallback here and a sentence in the Brand tab's importer - never a throw.
   it("falls back to the shipped palette", () => {
     expect(readStoredSettings(null)).toEqual(DEFAULT_SETTINGS);
     expect(readStoredSettings("not json")).toEqual(DEFAULT_SETTINGS);
+    expect(readStoredSettings('{"theme":"dark"}')).toEqual(DEFAULT_SETTINGS);
   });
 });
