@@ -12,7 +12,7 @@ import {
   type RegistryEntry,
 } from "../link/model";
 import { pictureNote } from "../link/chart-model";
-import type { RelayApi } from "../link/relay";
+import { isRelayError, type RelayApi } from "../link/relay";
 import type { Workspace } from "../link/workspace";
 import { hostSupports } from "./internal";
 import {
@@ -35,6 +35,11 @@ import type { ExportResult } from "./link-export";
 import { renderAnchored, renderSource } from "./link-render";
 import { exclusive } from "./link-lock";
 import { publish, pushPayload, type NewLink } from "./link-record";
+
+// The one relay refusal a modeller can act on: the sealed export is past the
+// relay's body limit (413), so a smaller range is the way out.
+const TOO_BIG_TO_SEND =
+  "That export is too big to send. Export a smaller range.";
 
 export { workbookName };
 export * from "./link-export";
@@ -244,7 +249,14 @@ async function pushOne(
     entry.lastPushedAt = new Date().toISOString();
     summary.pushed += 1;
   } catch (error) {
-    const reason = error instanceof Error ? error.message : String(error);
+    // A 413 is the one relay refusal a modeller can act on: the sealed
+    // export is past the relay's body limit, so a smaller range is the way.
+    const reason =
+      isRelayError(error) && error.kind === "tooLarge"
+        ? TOO_BIG_TO_SEND
+        : error instanceof Error
+          ? error.message
+          : String(error);
     summary.failed += 1;
     summary.failures.push(`${entry.label}: ${reason}`);
   }
