@@ -116,6 +116,20 @@ describe("a draw batch the host never answers", () => {
     expect(placed.shapeId).toBe(picture.id);
   });
 
+  it("fails rather than waits when the placement read is the swallowed one", async () => {
+    const ws = await createWorkspace(memoryStore());
+    const item = await seedChart(COLUMN, PNG);
+    // The very first round trip - which slide is selected - never answers, so
+    // there is not even a box to put a picture in: the insert has to end.
+    helpers.hangNextSync();
+    vi.useFakeTimers();
+
+    await expect(
+      settle(links.insertFromInbox(item, ws, relay)),
+    ).rejects.toThrow(/stopped answering/);
+    expect(shapes()).toHaveLength(0);
+  });
+
   it("draws the next chart normally: one hung batch is not a jammed pane", async () => {
     const ws = await createWorkspace(memoryStore());
     const first = await seedChart(COLUMN, PNG);

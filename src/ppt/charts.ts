@@ -211,8 +211,13 @@ export async function insertChart(
   let where: { slideId: string; box: Box; overlapping: boolean } | undefined;
   try {
     return await PowerPoint.run(async (context) => {
-      const slideId = await selectedSlideId(context, stage);
-      const placed = await placeOnSlide(context, slideId, plan.size);
+      // The reads that decide where the chart goes are round trips like any
+      // other, and a host that swallows one of them would leave the pane
+      // waiting for ever: they get the draw's own deadline.
+      const slideId = await withSyncDeadline(selectedSlideId(context, stage));
+      const placed = await withSyncDeadline(
+        placeOnSlide(context, slideId, plan.size),
+      );
       where = { slideId, ...placed };
       const shapes = context.presentation.slides.getItem(slideId).shapes;
       const shapeId = await drawGroup(context, shapes, {
