@@ -118,6 +118,49 @@ describe("an edit on a protected sheet", () => {
   });
 });
 
+describe("the audit overlay over a block with no formulas", () => {
+  // An overlay that owns fills it never painted reads as "On" with nothing on
+  // the sheet, saves a snapshot in the file and locks the linked-cell highlight
+  // out until it is toggled off again.
+  it("stays off and says why on a blank cell", async () => {
+    helpers.select("Model!F9");
+
+    expect(await smt.toggleAuditOverlay()).toBe(false);
+    expect(smt.lastAuditNote()).toBe("no formula here to stripe");
+    expect(smt.auditOverlayOn()).toBe(false);
+    expect(helpers.setting("smtAuditOverlay")).toBeNull();
+  });
+
+  it("stays off over a block of typed numbers", async () => {
+    helpers.seed("Model!A1", [
+      [1, 2],
+      [3, 4],
+    ]);
+    const before = helpers.cellMap("Model");
+    helpers.select("Model!A1:B2");
+
+    expect(await smt.toggleAuditOverlay()).toBe(false);
+    expect(smt.auditOverlayOn()).toBe(false);
+    expect(helpers.cellMap("Model")).toEqual(before);
+  });
+
+  it("still takes the fills back off a block it did stripe", async () => {
+    helpers.seed("Model!A1", [
+      [
+        { formula: "=B1*2", r1c1: "=RC[1]*2", value: 2 },
+        { formula: "=C1*2", r1c1: "=RC[1]*2", value: 4 },
+      ],
+    ]);
+    const before = helpers.cellMap("Model");
+    helpers.select("Model!A1:B1");
+
+    expect(await smt.toggleAuditOverlay()).toBe(true);
+    expect(smt.lastAuditNote()).toBeNull();
+    expect(await smt.toggleAuditOverlay()).toBe(false);
+    expect(helpers.cellMap("Model")).toEqual(before);
+  });
+});
+
 describe("a whole-column click", () => {
   // Excel hands a million cells to anything that asks for their grid, so a flow
   // that reads one says how many it takes first - the way the bridge, the

@@ -133,15 +133,21 @@ export async function toggleAuditOverlay(): Promise<boolean> {
     await restoreFills(context);
     if (wasOn) return false;
 
+    const patternColor = tint(getActiveSettings().primary, 0.55);
+    const keys = auditGrid(target.formulasR1C1 as CellValue[][]).map((row) =>
+      row.map((mark) => overlayKey(mark, patternColor)),
+    );
+    // Nothing to stripe is nothing to own: taking the fills anyway would leave
+    // the overlay reading "on" over a block with no stripes on it, save a
+    // snapshot in the file for nothing, and lock the linked-cell highlight out
+    // until the modeller toggled an overlay they cannot see.
+    if (keys.every((row) => row.every((key) => key === null))) {
+      overlayNote = "no formula here to stripe";
+      return false;
+    }
     await snapshotFills(context, target);
 
-    const patternColor = tint(getActiveSettings().primary, 0.55);
-    const marks = auditGrid(target.formulasR1C1 as CellValue[][]);
-    writeRuns(
-      target,
-      marks.map((row) => row.map((mark) => overlayKey(mark, patternColor))),
-      applyFillKey,
-    );
+    writeRuns(target, keys, applyFillKey);
     overlay.persist(context);
     await context.sync();
     return true;
