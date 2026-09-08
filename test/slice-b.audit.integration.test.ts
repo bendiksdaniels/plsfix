@@ -212,6 +212,22 @@ describe("autocolor over a structured table reference", () => {
     helpers.select("Model!A1");
     expect(await smt.autocolorSelection()).toBe("Autocolor: 1 cell");
   });
+
+  it("refuses a whole column by its cell count, on any host", async () => {
+    helpers.select("Model!A:A");
+    expect(await rejects(() => smt.autocolorSelection())).toBe(
+      "Autocolor supports up to 5,000 selected cells at once.",
+    );
+
+    // Below ExcelApi 1.9 there are no RangeAreas, so the count comes off the
+    // one selected block instead - and still before any grid is asked for.
+    await boot();
+    helpers.setSupported((_set, version) => version !== "1.9");
+    helpers.select("Model!A:A");
+    expect(await rejects(() => smt.autocolorSelection())).toBe(
+      "Autocolor supports up to 5,000 selected cells at once.",
+    );
+  });
 });
 
 describe("autocolor on edit", () => {

@@ -2,8 +2,8 @@
 // font color accordingly, plus the color-key legend and the opt-in onChanged
 // handler that recolors edited cells live. The handler is off by default.
 
-import { activeArea, selectedAreas } from "./areas";
-import { EDIT_CELL_CAP, SELECTION_CELL_CAP, writeRuns } from "./internal";
+import { activeArea, cappedAreas } from "./areas";
+import { EDIT_CELL_CAP, writeRuns } from "./internal";
 import { paintSync, protectedNote, sheetProtected } from "./protection";
 import { captureUndo, captureUndoAreas } from "./undo";
 import { type CellClass, classifyCell } from "../classify";
@@ -60,7 +60,10 @@ const AUTOCOLOR = "Autocolor";
 
 export async function autocolorSelection(): Promise<string> {
   return Excel.run(async (context) => {
-    const areas = await selectedAreas(context, AUTOCOLOR);
+    // The cell count first, in a batch of its own: a whole-column click asks
+    // the host for a million cells, and a load() has already crossed the bridge
+    // by the time a count read off the same batch could refuse it.
+    const areas = await cappedAreas(context, AUTOCOLOR);
     for (const area of areas) area.load("rowCount,columnCount,formulas,values");
     await context.sync();
 
@@ -68,9 +71,6 @@ export async function autocolorSelection(): Promise<string> {
       (total, area) => total + area.rowCount * area.columnCount,
       0,
     );
-    if (cells > SELECTION_CELL_CAP) {
-      throw new Error("Autocolor supports up to 5,000 selected cells at once.");
-    }
     // A protected sheet refuses every one of these writes. Colouring is a
     // reading aid, not an edit worth an error dialog, so it is skipped instead
     // and the undo slot is left holding the previous action.
