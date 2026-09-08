@@ -273,12 +273,18 @@ async fn get_link(
 }
 
 /// `ETag: "<rev>"`, so a pane that already holds the newest rev gets a 304.
+/// Compared weakly (RFC 7232 §3.2): Cloudflare hands the webview `W/"3"`
+/// whenever it compresses the body, and that is the tag the webview sends back.
 fn link_response(headers: &HeaderMap, found: Found) -> Response {
     let etag = format!("\"{}\"", found.rev);
     let known = headers
         .get(header::IF_NONE_MATCH)
         .and_then(|value| value.to_str().ok())
-        .is_some_and(|value| value.split(',').any(|tag| tag.trim() == etag));
+        .is_some_and(|value| {
+            value
+                .split(',')
+                .any(|tag| tag.trim().trim_start_matches("W/") == etag)
+        });
     if known {
         return (StatusCode::NOT_MODIFIED, [(header::ETAG, etag)]).into_response();
     }
