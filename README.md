@@ -126,6 +126,7 @@ npm test
 npm run build
 npm run validate
 npm run ux:check  # needs `npm run dev` running first: both panes at 320/360/420px, screenshots + defect list
+npm run ux:sweep  # both panes with no Office host at all: every control clicked, dead ones and broken tab or help states fail
 ```
 
 ## Deploy
@@ -152,7 +153,7 @@ Export a range or a chart from Excel and keep it fresh in a deck without re-past
   *Export as text* sends one cell's displayed text as a text box that keeps its place, size and
   font when it refreshes (up to 500 characters). A column, bar, line, waterfall or pie
   chart lands as a group of editable shapes with value labels (PowerPoint 2504/16.96 and newer; pie wedges 2601/16.105), a
-  picture elsewhere or past 40 points, 3 series or 12 slices. *Push all* re-renders every link through
+  picture elsewhere or past 40 points, 6 series or 12 slices. *Push all* re-renders every link through
   its anchor. Generate the **link key** once under Links > Settings and paste it into
   PowerPoint once. **Auto-push on edit** (a tick box under the list) re-pushes a link
   three seconds after the last edit inside it, so a deck's *Update all* always finds the
@@ -165,7 +166,9 @@ Export a range or a chart from Excel and keep it fresh in a deck without re-past
   **Links** list shows every tracked picture in the deck (slide, source, status), can be
   searched and filtered by status, source workbook and slide, and
   *Update selected / slide / all* repaints them in place: position and size are kept, only
-  the height follows when the picture's aspect ratio changed. *Revert last update* puts the
+  the height follows when the picture's aspect ratio changed. A round trip PowerPoint never
+  answers ends after a minute with a sentence naming what stopped, and a chart insert or
+  refresh that stops mid-draw becomes the picture with the reason under *Update all*. *Revert last update* puts the
   ticked rows back to the previous render, the one revision the relay still holds. *Change
   source* points the one ticked picture at another export waiting in the Inbox - the same table
   from a newer workbook, say - keeping its slide, position and size. *Break
