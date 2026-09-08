@@ -1,7 +1,7 @@
 // The brand dashboard: the palette, font, currency and language settings,
 // persisted to localStorage and to the workbook (the workbook copy wins at
-// boot over the machine one), plus the logo color picker and JSON
-// import/export. Office.js only reaches here through ../excel.
+// boot over the machine one), plus the logo color picker and the two JSON
+// import/export controls ./brand-io backs. Office.js only through ../excel.
 
 import {
   type ExcelSeparators,
@@ -30,6 +30,7 @@ import {
   serializeSettings,
   setActiveSettings,
 } from "../settings";
+import { copyPaletteJson, readPaletteFile } from "./brand-io";
 import { getElement } from "../ui/dom";
 import { describeError } from "../ui/report";
 import { APP_VERSION, errorMessage, isExcelReady, toast } from "./shared";
@@ -177,8 +178,11 @@ function renderSeparatorsNote(settings: BrandSettings): void {
   note.hidden = false;
 }
 
-// Excel is only there when the pane runs inside the host; the toast reports the rest.
+// There is no workbook to hang the edit handler on until boot confirms one, so
+// a palette change before that must not become a red toast about a missing
+// host. Boot calls this itself once connected, so nothing is lost.
 export function syncAutocolorOnEdit(): void {
+  if (!isExcelReady()) return;
   setAutocolorOnEdit(getActiveSettings().autocolorOnEdit).catch((error) => {
     toast.show(errorMessage(error), "error");
   });
@@ -257,25 +261,6 @@ function extractLogoColors(file: File): void {
     toast.show("That file is not a readable image.", "error");
   };
   image.src = url;
-}
-
-async function copyPaletteJson(): Promise<void> {
-  const json = serializeSettings(getActiveSettings());
-  try {
-    await navigator.clipboard.writeText(json);
-    toast.show("Palette JSON copied");
-  } catch {
-    const area = document.createElement("textarea");
-    area.value = json;
-    document.body.append(area);
-    area.select();
-    const copied = document.execCommand("copy");
-    area.remove();
-    toast.show(
-      copied ? "Palette JSON copied" : "Copy failed",
-      copied ? "success" : "error",
-    );
-  }
 }
 
 export function wireBrand(): void {
@@ -364,7 +349,13 @@ export function wireBrand(): void {
       const file = input.files?.[0];
       input.value = "";
       if (!file) return;
-      const parsed = parsePalette(await file.text());
+      // A file the webview cannot open is one sentence, not a rejection.
+      const json = await file.text().catch(() => null);
+      if (json === null) {
+        toast.show("That file could not be read.", "error");
+        return;
+      }
+      const parsed = readPaletteFile(json);
       if (!parsed) {
         toast.show("That file is not a valid palette JSON.", "error");
         return;

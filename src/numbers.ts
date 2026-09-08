@@ -78,6 +78,18 @@ export function separatorSample(decimal: string, thousands: string): string {
   return `1${thousands}094${thousands}417${decimal}5`;
 }
 
+// Excel reports the separators the operating system's locale data holds, not
+// the ones a keyboard types: the Latvian and Russian locales spell their
+// thousands separator as U+00A0 NO-BREAK SPACE, and other locales use the
+// narrow (U+202F) or thin (U+2009) one. All of them show as the gap the house
+// style asks for, so both sides are canonicalised before they are compared -
+// state Excel gives back is never exact-matched.
+const SPACES = /[\u00A0\u202F\u2009\u2007]/g;
+
+function canonical(separator: string): string {
+  return separator.replace(SPACES, " ");
+}
+
 /** Whether Excel's separators already show this language's house style. */
 export function separatorsMatch(
   decimal: string,
@@ -85,5 +97,8 @@ export function separatorsMatch(
   language: Language,
 ): boolean {
   const style = numberStyle(language);
-  return decimal === style.decimal && thousands === style.grouping;
+  return (
+    canonical(decimal) === style.decimal &&
+    canonical(thousands) === style.grouping
+  );
 }
