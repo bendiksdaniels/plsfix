@@ -96,36 +96,29 @@ renderModelCheck();
 // side: two floating promises could interleave, and the one that lands second
 // would write its snapshot - which is the other one's tint - over cells that
 // had just been handed their originals back.
+const OVERLAY_RESTORE_FAILED_MESSAGE =
+  "Last session's audit overlay could not be put back: toggle it once to clear the stripes.";
+
 async function restoreOverlayFills(): Promise<void> {
   try {
     if (await restorePersistedOverlay()) {
       toast.show("Audit overlay fills from the last session were restored.");
     }
   } catch {
-    return;
+    // A host refusing workbook settings, or a corrupt snapshot, leaves last
+    // session's stripes on the sheet with no way back to plain fills except
+    // the toggle - said once, rather than swallowed, so that is discoverable.
+    toast.show(OVERLAY_RESTORE_FAILED_MESSAGE, "error");
   }
 }
 
-async function boot(host: Office.HostType, degraded: boolean): Promise<void> {
-  if (host === Office.HostType.PowerPoint) {
-    location.replace("pptpane.html");
-    return;
-  }
-
-  if (host !== Office.HostType.Excel) {
-    connectionStatus.textContent = "Excel required";
-    connectionStatus.className = "connection error";
-    return;
-  }
-
-  // The manifest no longer guarantees ExcelApi 1.9 at the top level now that
-  // PowerPoint is a second host, so the pane checks for itself.
-  if (!Office.context.requirements.isSetSupported("ExcelApi", "1.9")) {
-    connectionStatus.textContent = "Excel 2021 / Microsoft 365 required";
-    connectionStatus.className = "connection error";
-    return;
-  }
-
+// Everything here needs a live, supported Excel: the workbook-scoped setup
+// that only makes sense once boot() has confirmed the host, in the order the
+// tabs depend on. Returns the Links tab handle so boot() can wire the
+// selection-changed listener that feeds it.
+async function connectExcel(
+  degraded: boolean,
+): Promise<ReturnType<typeof installLinksTab>> {
   connectionStatus.textContent = "Excel connected";
   connectionStatus.className = "connection ready";
   setExcelReady(true);
@@ -146,14 +139,20 @@ async function boot(host: Office.HostType, degraded: boolean): Promise<void> {
   // decides whose paint the modeller is left with.
   await restoreOverlayFills();
 
-  const linksTab = installLinksTab({
+  return installLinksTab({
     guard,
     toast,
     relay: new RelayClient(relayBaseUrl(document.baseURI)),
     keyStore: officeKeyStore(),
     root: document,
   });
+}
 
+// Wired regardless of host state: dispatch() and every named handler below
+// already refuse with one sentence (via isExcelReady()) when Excel is not
+// connected, so a rejected or absent host still gets a pane that switches
+// tabs, searches and answers every click instead of leaving buttons dead.
+function wireControls(): void {
   for (const button of actionButtons) {
     button.addEventListener("click", () => {
       const action = button.dataset.action;
@@ -215,24 +214,54 @@ async function boot(host: Office.HostType, degraded: boolean): Promise<void> {
       void guard(() => dispatch("styles-delete"), "styles-delete");
     },
   );
+}
 
-  // Debounced: dragging a selection fires the event continuously.
-  let selectionTimer: number | undefined;
-  Office.context.document.addHandlerAsync(
-    Office.EventType.DocumentSelectionChanged,
-    () => {
-      window.clearTimeout(selectionTimer);
-      selectionTimer = window.setTimeout(() => {
-        void refreshSelection();
-        void linksTab.sheetChanged();
-      }, 150);
-    },
-  );
+async function boot(host: Office.HostType, degraded: boolean): Promise<void> {
+  if (host === Office.HostType.PowerPoint) {
+    location.replace("pptpane.html");
+    return;
+  }
+
+  // The manifest no longer guarantees ExcelApi 1.9 at the top level now that
+  // PowerPoint is a second host, so the pane checks for itself. Whichever
+  // way this comes out, wireControls() below still runs: a host that is not
+  // Excel, or too old a one, must not leave every button and the search box
+  // dead - each one already refuses gracefully without a connected workbook.
+  const excelConnected =
+    host === Office.HostType.Excel &&
+    Office.context.requirements.isSetSupported("ExcelApi", "1.9");
+
+  if (host !== Office.HostType.Excel) {
+    connectionStatus.textContent = "Excel required";
+    connectionStatus.className = "connection error";
+  } else if (!excelConnected) {
+    connectionStatus.textContent = "Excel 2021 / Microsoft 365 required";
+    connectionStatus.className = "connection error";
+  }
+
+  const linksTab = excelConnected ? await connectExcel(degraded) : null;
+
+  wireControls();
+
+  if (excelConnected) {
+    // Debounced: dragging a selection fires the event continuously.
+    let selectionTimer: number | undefined;
+    Office.context.document.addHandlerAsync(
+      Office.EventType.DocumentSelectionChanged,
+      () => {
+        window.clearTimeout(selectionTimer);
+        selectionTimer = window.setTimeout(() => {
+          void refreshSelection();
+          void linksTab?.sheetChanged();
+        }, 150);
+      },
+    );
+  }
 
   // Last: the catalogue it builds needs every other tab already wired.
   installToolSearch(document);
 
-  await refreshSelection();
+  if (excelConnected) await refreshSelection();
 }
 
 // Office.onReady is the ready signal. On Excel for the web the custom-functions
