@@ -18,6 +18,7 @@ import {
   type Payload,
   type PicturePayload,
 } from "../link/model";
+import { pictureNote } from "../link/chart-model";
 import { base64ToBytes, pngSize } from "../link/png";
 import { aspectChanged, fitToSlide } from "../link/status";
 import {
@@ -195,9 +196,11 @@ export async function insertLink(
   if (payload.kind === "text") {
     return insertText(stage, item, payload, tag);
   }
-  // A chart this host can draw lands as shapes; the rest take the picture.
+  // A chart this host can draw lands as shapes; the rest take the picture,
+  // with the reason when there is one.
   const plan = chartPlan(payload);
-  const note = plan === null ? undefined : (declineReason(plan) ?? undefined);
+  const note =
+    plan === null ? issueNote(payload) : (declineReason(plan) ?? undefined);
   if (plan !== null && note === undefined) {
     return insertChart(stage, item, plan, tag);
   }
@@ -233,6 +236,14 @@ export async function insertLink(
     await context.sync();
     return { slideId, shapeId: shape.id, overlapping, note };
   });
+}
+
+// Why Excel shipped a chart link with no chart data: the picture is certain,
+// and the pane says so the way it says a decline of this host's own.
+export function issueNote(payload: PicturePayload): string | undefined {
+  return payload.chartIssue === undefined
+    ? undefined
+    : pictureNote(payload.chartIssue);
 }
 
 // The one geometry a refresh is allowed to write: a picture whose aspect ratio

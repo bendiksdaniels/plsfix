@@ -84,6 +84,9 @@ async function payloadOf(src: Source, render: Render): Promise<Payload> {
     pushedAt,
     hash: await sha256Hex(render.png),
     ...(render.chart ? { chart: render.chart } : {}),
+    ...(render.chartIssue === undefined
+      ? {}
+      : { chartIssue: render.chartIssue }),
   };
 }
 

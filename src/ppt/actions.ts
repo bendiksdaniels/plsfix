@@ -117,11 +117,13 @@ export function requireSelection(
 }
 
 // The toast says how many did what; the details say which ones and why - a
-// failure line per link, then every workbook a link now points at instead.
+// failure line per link, then every workbook a link now points at instead,
+// then every chart the deck holds as a picture and the reason.
 export function updateDetails(summary: UpdateSummary): string | undefined {
   const lines = [
     ...summary.failures,
     ...summary.sourceChanges.map((change) => `Source changed: ${change}`),
+    ...summary.notes,
   ];
   return lines.length > 0 ? lines.join("\n") : undefined;
 }

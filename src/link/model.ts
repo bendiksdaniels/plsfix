@@ -53,6 +53,9 @@ export interface PicturePayload {
   // A chart link also ships what the chart shows, so a slide that can draw
   // native shapes does; the picture stays the fallback for every other host.
   chart?: ChartData;
+  // Or, when Excel could not describe the chart, why not: the sentence the
+  // slide shows beside the picture it inserts instead.
+  chartIssue?: string;
 }
 
 // One cell of a table, as small as it can be said: `t` is the text Excel
@@ -226,7 +229,8 @@ function isPicturePayload(value: unknown): value is PicturePayload {
     isSource(value.src) &&
     typeof value.pushedAt === "string" &&
     typeof value.hash === "string" &&
-    isOptional(value.chart, isChartData)
+    isOptional(value.chart, isChartData) &&
+    isOptional(value.chartIssue, (entry) => typeof entry === "string")
   );
 }
 

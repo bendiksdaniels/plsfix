@@ -13,7 +13,11 @@ import {
   type ResolvedChart,
   type ResolvedSource,
 } from "./link-anchors";
-import { readChartData } from "./link-chart";
+import {
+  readChartData,
+  SERIES_READ_REFUSED,
+  type ChartRead,
+} from "./link-chart";
 import { renderTable, type TableRender } from "./link-table";
 
 // Charts are laid out in points; rendering at twice that keeps the slide
@@ -21,7 +25,7 @@ import { renderTable, type TableRender } from "./link-table";
 const CHART_PIXEL_SCALE = 2;
 
 export type Render =
-  | { kind: "picture"; png: string; chart?: ChartData }
+  | { kind: "picture"; png: string; chart?: ChartData; chartIssue?: string }
   | { kind: "text"; text: string }
   | ({ kind: "table" } & TableRender);
 
@@ -92,8 +96,10 @@ async function renderChart(
       Math.round(resolved.height * CHART_PIXEL_SCALE),
       Excel.ImageFittingMode.fit,
     );
-    const chart = await readChartData(context, resolved.chart);
-    return picture(image.value, chart);
+    // The read commits the batch the picture rides in; only after that sync
+    // is there a picture to take.
+    const read = await readChartData(context, resolved.chart);
+    return picture(image.value, read);
   } catch (sharp) {
     return renderChartPlain(context, resolved, sharp);
   }
@@ -123,16 +129,21 @@ async function renderChartPlain(
 async function tryChartData(
   context: Excel.RequestContext,
   chart: Excel.Chart,
-): Promise<ChartData | null> {
+): Promise<ChartRead> {
   try {
     return await readChartData(context, chart);
   } catch {
-    return null;
+    return { chart: null, issue: SERIES_READ_REFUSED };
   }
 }
 
 // One shape for both attempts: the chart key is left out entirely rather than
-// sent as null, because that is what the payload codec reads as "no chart".
-function picture(png: string, chart: ChartData | null): Render {
-  return { kind: "picture", png, ...(chart ? { chart } : {}) };
+// sent as null, because that is what the payload codec reads as "no chart",
+// and the reason rides in its place.
+function picture(png: string, read: ChartRead): Render {
+  return {
+    kind: "picture",
+    png,
+    ...(read.chart ? { chart: read.chart } : { chartIssue: read.issue }),
+  };
 }

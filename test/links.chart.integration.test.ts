@@ -214,3 +214,68 @@ describe("exportActiveChart: the chart data beside the picture", () => {
     ]);
   });
 });
+
+// What travels when the chart is one the slide cannot draw: the picture, and
+// the reason in the words the PowerPoint pane will show beside it.
+describe("exportActiveChart: why a chart ships as the picture alone", () => {
+  function manySeries(count: number) {
+    return Array.from({ length: count }, (_, index) => ({
+      name: `S${String(index)}`,
+      categories: CATEGORIES,
+      values: VALUES,
+    }));
+  }
+
+  it("names a chart type the slide does not draw", async () => {
+    const chart = helpers.addChart("Model", {
+      name: "Mix",
+      chartType: "Doughnut",
+      title: "Mix",
+      series: manySeries(1),
+    });
+    helpers.setActiveChart(chart);
+
+    const result = await links.exportActiveChart(ws, relay);
+    const payload = await pictureOf(result.id);
+    expect(payload.png).not.toBe("");
+    expect(payload.chart).toBeUndefined();
+    expect(payload.chartIssue).toBe("Doughnut charts are not drawn as shapes");
+    expect(result.note).toBe(
+      "as a picture: Doughnut charts are not drawn as shapes",
+    );
+  });
+
+  it("counts the series past the cap", async () => {
+    const chart = helpers.addChart("Model", {
+      name: "Seven",
+      chartType: "ColumnClustered",
+      title: "Seven",
+      series: manySeries(7),
+    });
+    helpers.setActiveChart(chart);
+
+    const result = await links.exportActiveChart(ws, relay);
+    const payload = await pictureOf(result.id);
+    expect(payload.chart).toBeUndefined();
+    expect(payload.chartIssue).toBe("7 series; shapes draw up to 6");
+    expect(result.note).toBe("as a picture: 7 series; shapes draw up to 6");
+  });
+
+  it("ships the data of a four-series chart, one the palette can paint", async () => {
+    const chart = helpers.addChart("Model", {
+      name: "Four",
+      chartType: "ColumnClustered",
+      title: "Four",
+      series: manySeries(4),
+    });
+    helpers.setActiveChart(chart);
+
+    const result = await links.exportActiveChart(ws, relay);
+    const payload = await pictureOf(result.id);
+    expect(payload.chartIssue).toBeUndefined();
+    expect(result.note).toBeUndefined();
+    expect(payload.chart?.series).toHaveLength(4);
+    const colors = payload.chart?.series.map((one) => one.colors[0]) ?? [];
+    expect(new Set(colors).size).toBe(4);
+  });
+});

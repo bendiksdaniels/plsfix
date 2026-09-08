@@ -27,9 +27,16 @@ import {
 } from "../link/status";
 import type { Workspace } from "../link/workspace";
 import { chunk, planBatches, REPAINT_BUDGET_BYTES } from "./batching";
+import { chartPlan, declineReason } from "./charts";
+import { GROUP_TYPE } from "./shapes";
 import { fetchUpdates } from "./fetch";
 import * as realHost from "./host";
-import type { FoundLink, InsertResult, RefreshRequest } from "./host";
+import {
+  issueNote,
+  type FoundLink,
+  type InsertResult,
+  type RefreshRequest,
+} from "./host";
 
 // refreshLinks is optional: a stub host is a handful of functions, and without
 // it every row is simply refreshed on its own - what a host below
@@ -59,6 +66,9 @@ export interface UpdateSummary {
   failed: number;
   sourceChanges: string[];
   failures: string[];
+  // A chart the deck now holds as a picture, and why: Excel's reason when it
+  // shipped no chart data, this host's when it cannot draw the chart it did.
+  notes: string[];
 }
 
 interface Keyed {
@@ -156,6 +166,7 @@ export async function updateLinks(
     failed: 0,
     sourceChanges: [],
     failures: [],
+    notes: [],
   };
   const wanted = rows.filter((row) => {
     if (row.status === "updateAvailable") return true;
@@ -172,10 +183,36 @@ export async function updateLinks(
   for (const entry of fetched.batch) {
     noteSourceChange(summary, entry.found, entry.payload);
   }
+  const failed = new Set<string>();
   summary.updated += await applyBatch(fetched.batch, host, (found, error) => {
+    failed.add(shapeKey(found));
     countFailure(summary, found, error);
   });
+  for (const entry of fetched.batch) {
+    if (!failed.has(shapeKey(entry.found))) {
+      noteChartFallback(summary, entry.found, entry.payload);
+    }
+  }
   return summary;
+}
+
+function shapeKey(found: FoundLink): string {
+  return `${found.slideId}/${found.shapeId}`;
+}
+
+// A chart group the repaint has just turned into a picture, or kept as one,
+// says why under the counts, the way an insert says it beside "Inserted".
+function noteChartFallback(
+  summary: UpdateSummary,
+  found: FoundLink,
+  payload: Payload,
+): void {
+  if (found.type !== GROUP_TYPE || payload.kind !== "picture") return;
+  const plan = chartPlan(payload);
+  const note =
+    plan === null ? (issueNote(payload) ?? null) : declineReason(plan);
+  if (note === null) return;
+  summary.notes.push(`${sourceLabel(found.tag.src, found.tag.kind)} ${note}`);
 }
 
 // Every picture a run has something to paint, and the count of the ones that

@@ -2,7 +2,13 @@
 // refuse, and how an angle is brought onto the range PowerPoint reads back.
 
 import { describe, expect, it } from "vitest";
-import { isChartData, normalizeAngle, type ChartData } from "./chart-model";
+import {
+  chartCapIssue,
+  CHART_MAX_SERIES,
+  isChartData,
+  normalizeAngle,
+  type ChartData,
+} from "./chart-model";
 
 const column: ChartData = {
   v: 1,
@@ -123,5 +129,45 @@ describe("normalizeAngle", () => {
     expect(normalizeAngle(180)).toBe(180);
     expect(normalizeAngle(-180)).toBe(180);
     expect(normalizeAngle(0)).toBe(0);
+  });
+});
+
+// Six series is what the palette paints; a seventh has no colour of its own.
+describe("series cap", () => {
+  it("accepts six series and refuses a seventh", () => {
+    const six = Array.from({ length: 6 }, (_, index) => ({
+      ...series,
+      name: `s${String(index)}`,
+    }));
+    expect(CHART_MAX_SERIES).toBe(6);
+    expect(isChartData({ ...column, series: six })).toBe(true);
+    expect(isChartData({ ...column, series: [...six, series] })).toBe(false);
+  });
+});
+
+// The sentence the panes show after "as a picture": the first cap the chart
+// is outside of, counted the way the modeller sees the chart.
+describe("chartCapIssue", () => {
+  it("is null for a chart inside every cap", () => {
+    expect(chartCapIssue("column", 2, 1)).toBeNull();
+    expect(chartCapIssue("pie", 12, 1)).toBeNull();
+    expect(chartCapIssue("line", 40, 6)).toBeNull();
+  });
+
+  it("names the series, point and slice caps", () => {
+    expect(chartCapIssue("column", 2, 0)).toBe("no series");
+    expect(chartCapIssue("column", 2, 7)).toBe("7 series; shapes draw up to 6");
+    expect(chartCapIssue("column", 1, 1)).toBe(
+      "1 point; shapes need at least 2",
+    );
+    expect(chartCapIssue("column", 41, 1)).toBe(
+      "41 points; shapes draw up to 40",
+    );
+    expect(chartCapIssue("pie", 3, 2)).toBe(
+      "a pie with 2 series; pie shapes draw one",
+    );
+    expect(chartCapIssue("pie", 13, 1)).toBe(
+      "13 slices; pie shapes draw up to 12",
+    );
   });
 });

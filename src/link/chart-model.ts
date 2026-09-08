@@ -1,6 +1,7 @@
 // The chart data a picture link may carry: the kinds a slide can draw, the
-// caps past which the picture is the honest answer, the validator every
-// decoder runs, and the angle rule PowerPoint's pie adjustments follow.
+// caps past which the picture is the honest answer and the words that say so,
+// the validator every decoder runs, and the angle rule PowerPoint's pie
+// adjustments follow.
 // Pure: no Office.js, nothing from src/excel or src/ppt.
 
 export type ChartKind =
@@ -34,7 +35,7 @@ export interface ChartData {
 }
 
 export const CHART_MAX_POINTS = 40;
-export const CHART_MAX_SERIES = 3;
+export const CHART_MAX_SERIES = 6;
 export const CHART_MAX_SLICES = 12;
 export const CHART_MIN_POINTS = 2;
 export const CHART_TITLE_MAX = 80;
@@ -112,4 +113,44 @@ export function normalizeAngle(degrees: number): number {
   const wrapped =
     ((((degrees + HALF_TURN) % FULL_TURN) + FULL_TURN) % FULL_TURN) - HALF_TURN;
   return wrapped === -HALF_TURN ? HALF_TURN : wrapped;
+}
+
+// The reason a picture link has no chart data, in the words the panes show
+// after "as a picture": the first cap the chart is outside of, counted the way
+// the modeller sees the chart.
+export function seriesCountIssue(count: number): string | null {
+  if (count < 1) return "no series";
+  if (count > CHART_MAX_SERIES) {
+    return `${String(count)} series; shapes draw up to ${String(CHART_MAX_SERIES)}`;
+  }
+  return null;
+}
+
+export function chartCapIssue(
+  kind: ChartKind,
+  points: number,
+  seriesCount: number,
+): string | null {
+  const series = seriesCountIssue(seriesCount);
+  if (series !== null) return series;
+  if (points < CHART_MIN_POINTS) {
+    const noun = points === 1 ? "point" : "points";
+    return `${String(points)} ${noun}; shapes need at least ${String(CHART_MIN_POINTS)}`;
+  }
+  if (points > CHART_MAX_POINTS) {
+    return `${String(points)} points; shapes draw up to ${String(CHART_MAX_POINTS)}`;
+  }
+  if (kind === "pie" && seriesCount !== 1) {
+    return `a pie with ${String(seriesCount)} series; pie shapes draw one`;
+  }
+  if (kind === "pie" && points > CHART_MAX_SLICES) {
+    return `${String(points)} slices; pie shapes draw up to ${String(CHART_MAX_SLICES)}`;
+  }
+  return null;
+}
+
+// The sentence both panes show for a chart that stays a picture: the insert
+// note in PowerPoint and the export line in Excel repeat it word for word.
+export function pictureNote(issue: string): string {
+  return `as a picture: ${issue}`;
 }

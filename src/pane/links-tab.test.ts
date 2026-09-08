@@ -7,6 +7,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  exportActiveChart,
   exportSelection,
   exportSelectionAsTable,
   exportSelectionAsText,
@@ -408,5 +409,30 @@ describe("chart list", () => {
       "",
       "Revenue chart",
     ]);
+  });
+});
+
+// A chart Excel could not describe still leaves as a picture; the toast says
+// so in the sentence PowerPoint will repeat beside the inserted picture.
+describe("chart export", () => {
+  it("passes on why the chart will arrive as a picture", async () => {
+    vi.mocked(exportActiveChart).mockResolvedValue({
+      id: ID_B,
+      label: "Model!Revenue chart",
+      note: "as a picture: 7 series; shapes draw up to 6",
+    });
+    const h = harness();
+    install(h);
+    await settle(h);
+    click("generate-key");
+    await settle(h);
+
+    click("export-chart");
+    await settle(h);
+
+    expect(exportActiveChart).toHaveBeenCalledTimes(1);
+    expect(h.messages).toContain(
+      "Sent to PowerPoint: Model!Revenue chart (as a picture: 7 series; shapes draw up to 6)",
+    );
   });
 });

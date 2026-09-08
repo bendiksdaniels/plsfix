@@ -272,7 +272,14 @@ function sender(kind: ExportKind): typeof exportSelection {
 async function exportRange(tab: Tab, kind: ExportKind): Promise<string> {
   const result = await sender(kind)(requireWorkspace(tab), tab.deps.relay);
   await refresh(tab);
-  return `Sent to PowerPoint: ${result.label}`;
+  return sentLine(result);
+}
+
+// The toast: the label, and for a chart Excel could not describe the
+// sentence PowerPoint will repeat beside the picture.
+function sentLine(result: { label: string; note?: string }): string {
+  const note = result.note === undefined ? "" : ` (${result.note})`;
+  return `Sent to PowerPoint: ${result.label}${note}`;
 }
 
 async function exportChart(tab: Tab): Promise<string> {
@@ -283,7 +290,7 @@ async function exportChart(tab: Tab): Promise<string> {
     pick,
   );
   await refresh(tab);
-  return `Sent to PowerPoint: ${result.label}`;
+  return sentLine(result);
 }
 
 // pushLinks reports rather than throws, so a partial failure arrives as a

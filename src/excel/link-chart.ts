@@ -2,12 +2,14 @@
 // title, every series' values, the label text the model itself shows and the
 // brand colour of each point. Owns the Excel-to-ChartData mapping, and decides
 // every string, so the slide side never formats a number. Invariant: a chart it
-// cannot read whole is no chart at all, and the picture beside it is the deck's.
+// cannot read whole is no chart at all: the picture beside it is the deck's, and
+// the reason travels with it in the words the panes show.
 
 import { pieColors, seriesPalette, waterfallColors } from "../chart-colors";
 import {
-  CHART_MAX_SERIES,
+  chartCapIssue,
   isChartData,
+  seriesCountIssue,
   type ChartData,
   type ChartKind,
   type ChartSeries,
@@ -22,6 +24,12 @@ import { parseAddress } from "./shared";
 
 // getDimensionValues: below it a chart link is the picture alone.
 const DIMENSION_API = "1.12";
+export const CHARTS_NEED_EXCEL_1_12 =
+  "shape charts need Excel 2008/16.40 or newer";
+export const SERIES_READ_REFUSED = "Excel refused the series read";
+const OVERLAPPING_COLUMNS = "overlapping columns are not drawn as shapes";
+const NOT_ALL_NUMBERS = "the series are not all numbers";
+const OUTSIDE_LIMITS = "the chart is outside the shape limits";
 // getDimensionDataSourceString: which cells the values were read from.
 const SOURCE_API = "1.15";
 // ChartSeries.overlap: what tells a tornado from a plain clustered bar.
@@ -86,49 +94,67 @@ export function valuesOf(raw: (string | number)[]): number[] | null {
   return values;
 }
 
-// What a chart link ships beside its picture, or null when the slide has no
-// way to draw it. Always commits at least one sync: the caller queues the
-// picture into the same batch, so a chart nothing can be read from costs
-// exactly the round trip a chart link costs today.
+// What a read answers with: the data a slide draws as shapes, or the reason it
+// has none, in the words the panes show after "as a picture".
+export type ChartRead =
+  { chart: ChartData; issue?: undefined } | { chart: null; issue: string };
+
+function noChart(issue: string): ChartRead {
+  return { chart: null, issue };
+}
+
+// What a chart link ships beside its picture, or the reason it ships nothing.
+// Always commits at least one sync: the caller queues the picture into the
+// same batch, so a chart nothing can be read from costs exactly the round trip
+// a chart link costs today.
 export async function readChartData(
   context: Excel.RequestContext,
   chart: Excel.Chart,
-): Promise<ChartData | null> {
+): Promise<ChartRead> {
   if (!hostSupports(DIMENSION_API)) {
     await context.sync();
-    return null;
+    return noChart(CHARTS_NEED_EXCEL_1_12);
   }
   const head = await readHead(context, chart);
-  if (head === null) return null;
+  if (typeof head === "string") return noChart(head);
   try {
     return await readBody(context, chart, head);
   } catch {
     // A chart office.js will not describe - a type whose series refuse the
     // dimension reads, a source range that has gone - is one the deck draws
     // as the picture it already has.
-    return null;
+    return noChart(SERIES_READ_REFUSED);
   }
 }
 
 // Sync one, shared with the picture: the type, the title and the series names.
 // The overlap waits for the next batch, so a chart type that refuses to answer
-// for it can never cost the picture its own round trip.
+// for it can never cost the picture its own round trip. A string is the reason
+// there is no head to read on.
 async function readHead(
   context: Excel.RequestContext,
   chart: Excel.Chart,
-): Promise<Head | null> {
+): Promise<Head | string> {
   chart.load("chartType");
   chart.title.load("text");
   chart.series.load("items/name");
   await context.sync();
 
   const names = chart.series.items.map((one) => String(one.name ?? ""));
-  if (names.length < 1 || names.length > CHART_MAX_SERIES) return null;
+  const count = seriesCountIssue(names.length);
+  if (count !== null) return count;
   const chartType = String(chart.chartType);
   const kind = chartKind(chartType, null);
-  if (kind === null) return null;
+  if (kind === null) return unsupportedType(chartType);
   const text = String(chart.title.text ?? "").trim();
   return { chartType, kind, title: text === "" ? null : text, names };
+}
+
+// A type the slide has no shapes for, named the way Excel names it.
+function unsupportedType(chartType: string): string {
+  return chartType === ""
+    ? "this chart type is not drawn as shapes"
+    : `${chartType} charts are not drawn as shapes`;
 }
 
 // Syncs two and three: every series' categories and values, the cells they came
@@ -138,7 +164,7 @@ async function readBody(
   context: Excel.RequestContext,
   chart: Excel.Chart,
   head: Head,
-): Promise<ChartData | null> {
+): Promise<ChartRead> {
   const wantsOverlap =
     hostSupports(OVERLAP_API) &&
     (head.kind === "column" || head.kind === "bar");
@@ -150,18 +176,21 @@ async function readBody(
     ? chart.series.items.map((one) => Number(one.overlap))
     : [];
   const kind = chartKind(head.chartType, overlaps[0] ?? null);
-  if (kind === null) return null;
+  if (kind === null) return noChart(OVERLAPPING_COLUMNS);
   const dimensions = results.map((one, index) =>
     readSeries(one, head.names[index] ?? ""),
   );
-  if (dimensions.some((one) => one === null)) return null;
+  if (dimensions.some((one) => one === null)) return noChart(NOT_ALL_NUMBERS);
   const read = dimensions as Dimensions[];
   const labels = await readLabels(context, read);
   const tornado =
     kind === "bar" &&
     overlaps.length > 0 &&
     overlaps.every((one) => one === FULL_OVERLAP);
-  return assemble(kind, head.title, read, labels, tornado);
+  const data = assemble(kind, head.title, read, labels, tornado);
+  if (data !== null) return { chart: data };
+  const points = read[0]?.values.length ?? 0;
+  return noChart(chartCapIssue(kind, points, read.length) ?? OUTSIDE_LIMITS);
 }
 
 // One series' three reads, queued together; the source string only on a host

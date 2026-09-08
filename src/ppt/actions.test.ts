@@ -59,6 +59,7 @@ const emptySummary: UpdateSummary = {
   failed: 0,
   sourceChanges: [],
   failures: [],
+  notes: [],
 };
 
 describe("selection", () => {
@@ -170,6 +171,25 @@ describe("updateDetails", () => {
     ).toBe(
       "Model!B4:F12: relay GET /api/links/x: 500\n" +
         "Source changed: Model_v4.xlsx -> Model_v5.xlsx",
+    );
+  });
+});
+
+// A chart that arrived as a picture, on insert or on update, says why under
+// the counts, after the failures and the source changes.
+describe("updateDetails: charts that arrived as pictures", () => {
+  it("lists the notes last", () => {
+    expect(
+      updateDetails({
+        ...emptySummary,
+        sourceChanges: ["Model_v4.xlsx -> Model_v5.xlsx"],
+        notes: [
+          "Model!Revenue chart as a picture: 7 series; shapes draw up to 6",
+        ],
+      }),
+    ).toBe(
+      "Source changed: Model_v4.xlsx -> Model_v5.xlsx\n" +
+        "Model!Revenue chart as a picture: 7 series; shapes draw up to 6",
     );
   });
 });

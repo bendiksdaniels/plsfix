@@ -34,6 +34,9 @@ import { parseAddress } from "./shared";
 export interface ExportResult {
   id: string;
   label: string;
+  // What the toast adds after the label: for a chart Excel could not
+  // describe, the sentence PowerPoint will repeat beside the picture.
+  note?: string;
 }
 
 // What the selection is asked to become. A picture is what every host can

@@ -11,6 +11,7 @@ import {
   sourceLabel,
   type RegistryEntry,
 } from "../link/model";
+import { pictureNote } from "../link/chart-model";
 import type { RelayApi } from "../link/relay";
 import type { Workspace } from "../link/workspace";
 import { hostSupports } from "./internal";
@@ -155,7 +156,15 @@ export async function exportActiveChart(
 
       const link: NewLink = { entry, src, render, registry, release };
       await publish(context, link, ws, relay);
-      return { id, label: entry.label };
+      const note =
+        render.kind === "picture" && render.chartIssue !== undefined
+          ? pictureNote(render.chartIssue)
+          : undefined;
+      return {
+        id,
+        label: entry.label,
+        ...(note === undefined ? {} : { note }),
+      };
     }),
   );
 }

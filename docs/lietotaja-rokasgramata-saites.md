@@ -1,6 +1,6 @@
 # Excel un PowerPoint saistītie objekti (v2.1)
 
-pls,fix ļauj eksportēt Excel šūnu apgabalu vai diagrammu uz PowerPoint kā saistītu attēlu. Attēlu pēc tam var atjaunināt vietā, nemainot tā pozīciju un izmēru, arī tad, kad avota dati Excel darbgrāmatā ir mainījušies. Šī rokasgrāmata apraksta eksportu, ievietošanu, atjaunināšanu, saites atslēgas iestatīšanu, drošības prasības un biežākās kļūdas.
+pls,fix ļauj eksportēt Excel šūnu apgabalu vai diagrammu uz PowerPoint kā saistītu attēlu, rediģējamu tabulu vai diagrammu (figūru grupu). Objektu pēc tam var atjaunināt vietā, nemainot tā pozīciju un izmēru, arī tad, kad avota dati Excel darbgrāmatā ir mainījušies. Šī rokasgrāmata apraksta eksportu, ievietošanu, atjaunināšanu, saites atslēgas iestatīšanu, drošības prasības un biežākās kļūdas.
 
 ## Pirms sākt
 
@@ -65,5 +65,5 @@ Relejs glabā eksportētos attēlus tikai šifrētā veidā un ne ilgāk kā 30 
 ## Ierobežojumi
 
 - Ctrl+Z neatceļ pievienojumprogrammas veiktās izmaiņas, tāpēc pēc "Update all" atzīmētās rindas var atgriezt uz iepriekšējo versiju ar pogu "Revert last update", taču relejs glabā tikai vienu iepriekšējo versiju, tāpēc tālāk atpakaļ atgriezties nav iespējams.
-- PowerPoint tabulas vēl netiek atbalstītas: saitē var būt tikai attēls.
+- Tabula nonāk kā rediģējama PowerPoint tabula (līdz 60 rindām un 20 kolonnām), diagramma kā figūru grupa. Diagramma, ko figūras neatveido (vairāk nekā 6 sērijas, vairāk nekā 40 punkti vai 12 sektori, neatbalstīts diagrammas tips), nonāk kā attēls, un abi paneļi pasaka iemeslu.
 - Darbgrāmatas versiju maiņa notiek tikai caur cilni "Inbox": vispirms jaunā darbgrāmata jāeksportē no Excel, un tikai pēc tam saiti var pārvirzīt uz to.

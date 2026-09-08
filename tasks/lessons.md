@@ -135,3 +135,21 @@ Office error `code` and `debugInfo`), and automated verification stays on Office
 through `scripts/rig/` (a scratch Chrome he signs into). After any such stop: kill the
 tooling, restore the prod manifest (`scripts/wef-restore-prod.sh`), verify both `wef/`
 folders, drop the branch.
+
+## 2026-09-08: `npm start` without `npm stop` left the desktop on localhost for a week
+
+Codex's 01.09 `npm start` / `start:ppt` put the DEV manifest (v2.4.9, `https://localhost:3000`)
+into both wef folders and left two vite processes alive for six days; Daniel's desktop add-in
+worked only through that orphan, with the old ribbon, while production sat unused. Rules:
+- A sideload session ends with `npm stop` (its poststop runs `scripts/wef-restore-prod.sh`);
+  if the tooling is gone, run the restore script by hand and `pgrep -fl vite` for leftovers.
+- Proof of the restore is `cmp` of each wef manifest against `manifest.prod.xml`, and
+  `lsof -nP -iTCP:3000 -sTCP:LISTEN` empty. Office reloads the manifest only on relaunch.
+
+## 2026-09-08: never fold an `await` into an argument list after a `.value` read
+
+`picture(image.value, await readChartData(...))` reads the client result BEFORE the awaited
+call commits the batch that loads it: the strict fake threw ValueNotLoaded on the sharp path,
+the plain retry ran, and a "no extra round trip" test counted one more sync. The two-statement
+form (`const read = await ...; return picture(image.value, read);`) is the rule for office.js
+code: the sync first, the `.value` after, never inside one expression.

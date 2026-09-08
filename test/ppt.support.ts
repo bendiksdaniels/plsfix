@@ -213,6 +213,7 @@ function chartPayload(
   chart: ChartData | null,
   png: string,
   hash: string,
+  chartIssue?: string,
 ): PicturePayload {
   const size = pngSize(base64ToBytes(png));
   return {
@@ -226,16 +227,18 @@ function chartPayload(
     pushedAt: new Date().toISOString(),
     hash,
     ...(chart === null ? {} : { chart }),
+    ...(chartIssue === undefined ? {} : { chartIssue }),
   };
 }
 
 export async function seedChart(
-  chart: ChartData,
+  chart: ChartData | null,
   png: string,
+  chartIssue?: string,
 ): Promise<InboxItem> {
   const id = newId();
   const token = newToken();
-  const payload = chartPayload(chart, png, "0".repeat(64));
+  const payload = chartPayload(chart, png, "0".repeat(64), chartIssue);
   await publish(id, token, payload);
   return {
     id,
@@ -253,8 +256,13 @@ export async function pushChart(
   item: InboxItem,
   chart: ChartData | null,
   png: string,
+  chartIssue?: string,
 ): Promise<void> {
-  await publish(item.id, item.token, chartPayload(chart, png, "1".repeat(64)));
+  await publish(
+    item.id,
+    item.token,
+    chartPayload(chart, png, "1".repeat(64), chartIssue),
+  );
 }
 
 export async function pushAgain(
