@@ -71,7 +71,15 @@ export const guard = makeGuard({
   after: refreshSelection,
   decorate: (message) =>
     lastUndoSkipped() ? `${message} (too large for undo)` : message,
-  finally: renderActionState,
+  // decorate only runs on the success path, so a failed action that had
+  // already skipped its undo capture would leave the flag armed for
+  // whatever succeeds next; finally runs either way and drains it for good
+  // (src/pane/commands.ts drains the same flag in its own finally, for the
+  // ribbon's promise chain).
+  finally: () => {
+    lastUndoSkipped();
+    renderActionState();
+  },
 });
 
 // True once boot() confirms a live Excel connection; read by any tab whose

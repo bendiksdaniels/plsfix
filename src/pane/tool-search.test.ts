@@ -152,6 +152,61 @@ describe("installToolSearch", () => {
     expect(hint.hidden).toBe(true);
   });
 
+  it("ArrowDown/ArrowUp move the active row, clamped at both ends", async () => {
+    const { installToolSearch } = await load();
+    installToolSearch(document);
+
+    // "waterfall" matches the Waterfall button by label and the EBITDA
+    // bridge template by its help sentence, giving more than one row.
+    type("waterfall");
+    const rows = () => Array.from(results().querySelectorAll("li"));
+    expect(rows().length).toBeGreaterThan(1);
+    expect(rows()[0]!.getAttribute("aria-selected")).toBe("true");
+
+    press("ArrowDown");
+    expect(rows()[0]!.getAttribute("aria-selected")).toBe("false");
+    expect(rows()[1]!.getAttribute("aria-selected")).toBe("true");
+    expect(input().getAttribute("aria-activedescendant")).toBe(rows()[1]!.id);
+
+    press("ArrowUp");
+    expect(rows()[0]!.getAttribute("aria-selected")).toBe("true");
+
+    // Clamped, not wrapped: one more ArrowUp at the top stays put.
+    press("ArrowUp");
+    expect(rows()[0]!.getAttribute("aria-selected")).toBe("true");
+
+    for (let i = 0; i < rows().length + 2; i += 1) press("ArrowDown");
+    const last = rows().length - 1;
+    expect(rows()[last]!.getAttribute("aria-selected")).toBe("true");
+  });
+
+  it("Enter with an arrow-selected row runs that row, not the first match", async () => {
+    const { installToolSearch } = await load();
+    installToolSearch(document);
+
+    type("waterfall");
+    const targetAction =
+      results().querySelectorAll("li")[1]!.dataset.toolAction!;
+    const targetButton = document.querySelector<HTMLButtonElement>(
+      `[data-action="${targetAction}"]`,
+    )!;
+    const firstAction =
+      results().querySelectorAll("li")[0]!.dataset.toolAction!;
+    const firstButton = document.querySelector<HTMLButtonElement>(
+      `[data-action="${firstAction}"]`,
+    )!;
+    const onTargetClick = vi.fn();
+    const onFirstClick = vi.fn();
+    targetButton.addEventListener("click", onTargetClick);
+    firstButton.addEventListener("click", onFirstClick);
+
+    press("ArrowDown");
+    press("Enter");
+
+    expect(onTargetClick).toHaveBeenCalledTimes(1);
+    expect(onFirstClick).not.toHaveBeenCalled();
+  });
+
   it('"/" focuses the box from elsewhere in the pane, but not from a field', async () => {
     const { installToolSearch } = await load();
     installToolSearch(document);

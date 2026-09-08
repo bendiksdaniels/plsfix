@@ -107,6 +107,14 @@ describe("rankTools", () => {
     expect(results.map((r) => r.action)).toEqual(["chart-waterfall"]);
   });
 
+  // hitOf's last fallback (a token buried mid-word in the sentence, not a
+  // word-prefix anywhere): "codes" is not a prefix of any label or sentence
+  // word, but it is a plain substring of "hardcodes" in autocolor's sentence.
+  it('a token mid-word in a sentence ("codes" inside "hardcodes") still counts as a sentence hit', () => {
+    const results = rankTools("codes", TOOLS);
+    expect(results.map((r) => r.action)).toEqual(["autocolor"]);
+  });
+
   it("keeps ties in the input order", () => {
     const tied: ToolEntry[] = [
       {

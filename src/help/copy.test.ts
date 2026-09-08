@@ -118,3 +118,34 @@ describe("help copy", () => {
     expect(bad).toEqual([]);
   });
 });
+
+// The real panes never hit these branches (every section has a heading and a
+// key, every button carries a data-action or a real id), so they are
+// exercised over hand-built markup instead.
+describe("helpSections: defensive branches hand-built markup exercises", () => {
+  function parse(html: string): Document {
+    return new DOMParser().parseFromString(html, "text/html");
+  }
+
+  it("skips a section with no heading to hang the toggle on", () => {
+    const doc = parse(
+      '<section data-help="x"><p>No heading here.</p></section>',
+    );
+    expect(helpSections(doc)).toEqual([]);
+  });
+
+  it("skips a section with a heading but no data-help or aria-labelledby", () => {
+    const doc = parse(
+      '<section><div class="section-heading"><h2>Untitled</h2></div></section>',
+    );
+    expect(helpSections(doc)).toEqual([]);
+  });
+
+  it("leaves out a button with neither data-action nor a real id", () => {
+    const doc = parse(
+      '<section data-help="x"><div class="section-heading"><h2>X</h2></div>' +
+        '<button id="named"></button><button></button></section>',
+    );
+    expect(helpSections(doc)[0]!.buttons.map((b) => b.key)).toEqual(["named"]);
+  });
+});

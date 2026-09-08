@@ -54,4 +54,19 @@ describe("placeInFreeSpace", () => {
     expect(placement.overlapping).toBe(true);
     expect(placement.box).toMatchObject({ left: 330, top: 170 });
   });
+
+  // scanGrid's own early return: the object is too big for the canvas even
+  // at minScale, before a single grid cell is even tried - not the "every
+  // cell is blocked" path the test above covers.
+  it("centres and flags an object too big for the canvas at any scale", () => {
+    const huge = { width: 3000, height: 3000 };
+    const speck = { left: 0, top: 0, width: 1, height: 1 };
+    const placement = placeInFreeSpace(huge, [speck], slide, 36, 12);
+    expect(placement.overlapping).toBe(true);
+    expect(placement.scale).toBe(1);
+    expect(placement.box).toMatchObject({
+      left: (960 - 3000) / 2,
+      top: (540 - 3000) / 2,
+    });
+  });
 });

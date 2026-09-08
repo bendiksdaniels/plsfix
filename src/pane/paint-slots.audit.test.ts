@@ -62,6 +62,8 @@ async function boot(): Promise<void> {
   helpers = installFakeHost({ sheets: ["Model", "Data"] }).helpers;
   smt = await import("../excel");
   shared = await import("./shared");
+  // The dispatch refuses every action until the pane says Excel is there.
+  shared.setExcelReady(true);
   slots = await import("./paint-slots");
 }
 
