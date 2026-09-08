@@ -377,6 +377,10 @@ async function saveKey(): Promise<string> {
   workspace = await pairWith(key);
   // The key is the secret itself: it is stored, never echoed back.
   workspaceKey.value = "";
+  // The exports on screen were sealed with the key that was there before, and
+  // their Insert buttons still work: they go with it, whether or not the read
+  // below reaches the relay.
+  inboxItems = [];
   // Paired is drawn before the inbox is read, so a relay that is down leaves an
   // empty list rather than a pane that still claims to be unpaired.
   renderPairing();
