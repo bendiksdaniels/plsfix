@@ -26,13 +26,25 @@ function snapshotKey(sheetId: string, address: string): string {
   return `${sheetId}!${address}`;
 }
 
+// A list entry is a snapshot only with all three parts in place: a bare number
+// or a half-written object would reach worksheet.getRange with no address.
+function isSnapshot(entry: unknown): entry is FillSnapshot {
+  if (typeof entry !== "object" || entry === null) return false;
+  const snapshot = entry as Partial<FillSnapshot>;
+  return (
+    typeof snapshot.sheetId === "string" &&
+    typeof snapshot.address === "string" &&
+    Array.isArray(snapshot.cells)
+  );
+}
+
 // Nothing but a list of snapshots is worth restoring, and neither half of a
 // corrupt setting may throw: the boot restore is the only thing that can take
 // last session's stripes off, and its caller swallows what it throws.
 function parseSnapshots(raw: string): FillSnapshot[] {
   try {
     const parsed: unknown = JSON.parse(raw);
-    return Array.isArray(parsed) ? (parsed as FillSnapshot[]) : [];
+    return Array.isArray(parsed) ? parsed.filter(isSnapshot) : [];
   } catch {
     return [];
   }

@@ -182,6 +182,19 @@ describe("a corrupt audit overlay snapshot in the file", () => {
     expect(await smt.restorePersistedOverlay()).toBe(false);
     expect(helpers.setting("smtAuditOverlay")).toBe("");
   });
+
+  it("keeps only the well-formed entries of a list", async () => {
+    helpers.setSetting(
+      "smtAuditOverlay",
+      '[1, {"address":"A1:C3"}, {"sheetId":"nowhere","address":"A1","cells":[]}]',
+    );
+
+    // A number and a half-written object are dropped before any range is
+    // asked for; the one snapshot with all three parts is restored or, its
+    // sheet gone, discarded like any stale entry. Nothing throws.
+    await expect(smt.restorePersistedOverlay()).resolves.not.toThrow();
+    expect(helpers.setting("smtAuditOverlay")).toBe("");
+  });
 });
 
 // ---------------------------------------------------------------------------
