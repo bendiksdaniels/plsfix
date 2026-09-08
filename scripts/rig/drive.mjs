@@ -16,9 +16,12 @@ if (!codeArg) {
   );
   process.exit(2);
 }
-const code = codeArg.startsWith("@")
+const raw = codeArg.startsWith("@")
   ? readFileSync(codeArg.slice(1), "utf8")
   : codeArg;
+// A snippet file ends the way prettier leaves it, with a semicolon after the
+// arrow function; wrapped in parentheses that is a syntax error, so it goes.
+const code = raw.trim().replace(/;$/, "");
 const { chromium } = loadPlaywright();
 const browser = await chromium.connectOverCDP(CDP).catch((error) => {
   console.error(

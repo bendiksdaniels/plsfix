@@ -18,6 +18,8 @@ it needs a signed-in browser and a live document.
    `demo/out/pls,fix Demo Model.xlsx` to OneDrive) and a deck.
 5. `npm run rig:manifests` in a second terminal: serves `manifest.prod.xml`
    on `https://127.0.0.1:3001` with CORS, which is what the registration needs.
+   Never pipe it through `head` or another short-lived reader: it logs every
+   request, and the first write after the reader closes kills it (08.09).
 6. Register the add-in: append to the document URL
    `&wdaddindevserverport=3001&wdaddinmanifestfile=manifest.prod.xml&wdaddinmanifestguid=FF1B34D8-DD7D-4B39-8FA9-6248CA09DB6E`
    and run `HOST_KIND=x npm run rig -- @scripts/rig/snippets/sideload.js`
@@ -42,6 +44,22 @@ it needs a signed-in browser and a live document.
   `PowerPoint.run`, not from screenshots.
 
 ## Rules the web taught us
+
+- The "Enable Developer Mode" dialog carries an opt-in checkbox (Excel
+  `#WACDialogOptInCheckbox-input`, PowerPoint `#optInCheckbox`); OK without
+  the tick only dismisses it. The tick counts on the NEXT load of the same
+  URL: reload and run `sideload.js` again until the pls,fix tab shows.
+- The pane's tab strip can sit outside the frame's viewport in a narrow
+  window: click pane buttons with a DOM click (`el.click()` in
+  `frame.evaluate`), not Playwright's actionability click, and widen the
+  window over CDP (`Browser.setWindowBounds`) so the ribbon is not
+  collapsed behind its chevron when reading the tabs.
+- A pane toast can be the previous action's: wait on the busy flag AND a
+  toast text that differs from the one read before the click.
+- Panes on the same site share localStorage, but the PowerPoint pane still
+  reports "unpaired" until the key is saved in its Settings (or it reloads).
+- The OneDrive "Create or upload" menu stays open across snippets: press
+  Escape first.
 
 - Keep the host tab in FRONT while its pane is busy: a `PowerPoint.run` in a
   background tab never returns. Switch tabs only when the pane is idle.

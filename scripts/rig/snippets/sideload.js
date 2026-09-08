@@ -1,6 +1,9 @@
 // Register the add-in in an open Excel (HOST_KIND=x) or PowerPoint (HOST_KIND=p) document
-// whose URL carries the wdaddin* parameters: grants local-network access over CDP, clicks
-// the two registration dialogs, then reports the ribbon tabs. NAV_URL navigates first.
+// whose URL carries the wdaddin* parameters: grants local-network access over CDP, ticks
+// the "Enable Developer Mode now" opt-in (a checkbox since 09.2025; its id differs per
+// host) before OK, answers the manifest registration with Yes, and reports the ribbon
+// tabs. NAV_URL navigates first. The opt-in takes effect on the next load: when no
+// pls,fix tab shows, reload the same URL and run this again (08.09: two passes).
 async (page, ctx, pages, shot) => {
   const kind = process.env.HOST_KIND; // "x" excel, "p" powerpoint
   const target = ctx
@@ -40,6 +43,20 @@ async (page, ctx, pages, shot) => {
           acted = true;
         }
       } else if (/Enable Developer Mode/i.test(t)) {
+        const cb = f
+          .locator("#optInCheckbox, #WACDialogOptInCheckbox-input")
+          .first();
+        for (
+          let k = 0;
+          (await cb.count()) && k < 3 && !(await cb.isChecked());
+          k++
+        ) {
+          const label = f.getByText(/Enable Developer Mode now/i).first();
+          if (await label.count()) await label.click({ force: true });
+          else await cb.click({ force: true });
+          await target.waitForTimeout(400);
+        }
+        if (await cb.count()) log.push("opt-in " + (await cb.isChecked()));
         const b = f.getByRole("button", { name: /^OK$/ }).first();
         if (await b.count()) {
           await b.click();
