@@ -1,8 +1,8 @@
-// Slice F audit, the link flows below the pane: a group the user pulled
-// apart under a link, the per-row GET the deferred path falls back to, a
+// Slice F audit, the link flows below the pane: a group the user pulled apart
+// under a link, an export inserted twice, the per-row GET behind the batch, a
 // change of source whose rollback fails too, a host that rejects with
-// something that is not an Error, and the column widths a table with no
-// widths at all is built with. Over the shared fake deck and fake relay.
+// something that is not an Error, a table with no column widths at all, a
+// chart refresh with a reason of its own and a 413. Over the shared fakes.
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { sourceLabel, TAG_LINK, type PicturePayload } from "../link/model";
@@ -101,6 +101,32 @@ describe("a group the user pulled apart", () => {
   });
 });
 
+describe("an export inserted a second time", () => {
+  // The inbox row is only the announcement; the picture lives under the link.
+  // A row another deck already consumed still inserts, as a second tracked
+  // copy, and the two update together afterwards.
+  it("lands a second tracked copy and updates both", async () => {
+    const ws = await createWorkspace(memoryStore());
+    const item = await seedLink(fakePng(800, 400));
+    await links.insertFromInbox(item, ws, relay);
+    expect(await relay.listInbox(ws.id, ws.auth)).toHaveLength(0);
+
+    await links.insertFromInbox(item, ws, relay);
+
+    expect(presentation.slides[0]!.shapes).toHaveLength(2);
+    await pushAgain(item, fakePng(1600, 800));
+    const summary = await links.updateLinks(
+      await links.listLinks(relay),
+      relay,
+    );
+    expect(summary).toMatchObject({ updated: 2, failed: 0 });
+    expect(presentation.slides[0]!.shapes.map((one) => one.fillImage)).toEqual([
+      fakePng(1600, 800),
+      fakePng(1600, 800),
+    ]);
+  });
+});
+
 describe("the per-row GET behind the batch", () => {
   it("counts a row the relay calls unchanged without repainting it", async () => {
     const ws = await createWorkspace(memoryStore());
@@ -121,9 +147,8 @@ describe("the per-row GET behind the batch", () => {
   });
 
   it("paints nothing at all for an empty batch", async () => {
-    const host = await import("./host");
     const before = helpers.syncCount();
-    expect(await host.refreshLinks([])).toBe(true);
+    expect(await (await import("./host")).refreshLinks([])).toBe(true);
     expect(helpers.syncCount()).toBe(before);
   });
 });
