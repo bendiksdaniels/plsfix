@@ -13,6 +13,7 @@ import {
   type LinkTag,
   type TextPayload,
 } from "../link/model";
+import { withSyncDeadline } from "./chart-draw";
 import type { FoundLink, InsertResult } from "./host";
 import { CONTENT_WIDTH, placeOnSlide, selectedSlideId } from "./placement";
 import { shapeAt } from "./shapes";
@@ -55,7 +56,10 @@ export async function insertText(
     shape.tags.add(TAG_LINK, encodeTag(tag));
     shape.tags.add(TAG_KEY, item.token);
     shape.load("id");
-    await context.sync();
+    // The text box's id is only known once this sync answers; a host that
+    // swallows it never confirms one, so there is nothing here for a
+    // cleanup to delete.
+    await withSyncDeadline(context.sync(), "inserting the text");
     return { slideId, shapeId: shape.id, overlapping: placed.overlapping };
   });
 }
@@ -73,7 +77,7 @@ export async function refreshText(
     const shape = shapeAt(context, found);
     shape.textFrame.textRange.text = payload.text;
     shape.tags.add(TAG_LINK, encodeTag(tag));
-    await context.sync();
+    await withSyncDeadline(context.sync(), "refreshing the text");
   }).catch((error: unknown) => {
     const reason = error instanceof Error ? error.message : String(error);
     throw new Error(`${stage}: ${reason}`);

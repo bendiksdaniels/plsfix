@@ -15,6 +15,7 @@ import {
   type TableCell,
   type TablePayload,
 } from "../link/model";
+import { withSyncDeadline } from "./chart-draw";
 import type { FoundLink, InsertResult } from "./host";
 import { CONTENT_WIDTH, placeOnSlide, selectedSlideId } from "./placement";
 import { hasPowerPointApi, isGrouped, shapeAt } from "./shapes";
@@ -70,7 +71,10 @@ export async function insertTable(
     shape.tags.add(TAG_LINK, encodeTag(tag));
     shape.tags.add(TAG_KEY, item.token);
     shape.load("id");
-    await context.sync();
+    // The table's id is only known once this sync answers; a host that
+    // swallows it never confirms one, so there is nothing here for a
+    // cleanup to delete.
+    await withSyncDeadline(context.sync(), "inserting the table");
     return { slideId, shapeId: shape.id, overlapping: placed.overlapping };
   });
 }
@@ -89,14 +93,14 @@ export async function refreshTable(
     const shape = shapeAt(context, found);
     const table = shape.getTable();
     table.load("rowCount,columnCount");
-    await context.sync();
+    await withSyncDeadline(context.sync(), "reading the table");
     if (table.rowCount === payload.rows && table.columnCount === payload.cols) {
       writeCells(table, payload, true);
       shape.tags.add(TAG_LINK, encodeTag(tag));
     } else {
       recreate(context, shape, found, payload, tag, stage);
     }
-    await context.sync();
+    await withSyncDeadline(context.sync(), "repainting the table");
   });
 }
 
