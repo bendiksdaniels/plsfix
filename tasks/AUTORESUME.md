@@ -1,4 +1,38 @@
-# AUTORESUME - pls,fix (v2.6.1 LIVE 02.09 01:50, deployed from 0c82932)
+# AUTORESUME - pls,fix (v2.6.2 LIVE 08.09 09:05, deployed from fe9b0cf)
+
+## 08.09: "does the Excel -> PowerPoint mover work?" - desktop back on prod, v2.6.2 says why a chart stays a picture
+
+- Finding 1 (environment): both wef folders held the DEV manifest v2.4.9 (`https://localhost:3000`)
+  since Codex's `npm start` on 01.09 14:34; two vite processes (PIDs 24071 :3000, 25672 :3131) ran
+  for 6 d 17 h and were what the desktop add-in loaded from, with the old ribbon. Fixed:
+  `scripts/wef-restore-prod.sh` (v2.6.2 prod manifest in both wef folders, `cmp` proven), both
+  processes killed, :3000 free. Daniel must quit + reopen Excel and PowerPoint. The durable fix
+  stays his M365 centralized upload.
+- Finding 2 (product): the mover recreates natively by design: a table as `addTable`
+  (PowerPointApi 1.8), a chart as a tagged group of native shapes (1.8, pie 1.10; shape budget
+  desktop 200, web 30). A true chart object is impossible in Office.js (PowerPointApi 1.10 is the
+  latest set, no chart API; `insertSlidesFromBase64` = a new slide, unlinked, no refresh). Daniel's
+  Mac runs 16.107.2, above every gate. The defect: a chart Excel could not describe (more than 3
+  series, an unsupported type, over 40 points, overlapping columns, a refused read) became a
+  picture SILENTLY. v2.6.2: `chartIssue` on the picture payload (`readChartData` -> `ChartRead`),
+  `chartCapIssue` / `seriesCountIssue` / `pictureNote` in `src/link/chart-model.ts`, the Excel
+  toast "(as a picture: ...)", the PowerPoint insert note and `UpdateSummary.notes` under Update
+  all; series cap 3 -> 6 (the palette's count). 1152 vitest / 104 files, ux:check green, manual
+  v2.6.002 regenerated, stale `docs/lietotaja-rokasgramata-saites.md` corrected. Web budget
+  measured: column 5x2 = 31 shapes, 6x2 = 36, line 8x1 = 33 (all pictures on the web, with the note).
+- Deploy detour: `db contracts` failed because `the bond tool's Desktop repo` had been parked by
+  the iCloud Desktop toggle (07.09 23:24) in `~/Desktop/Desktop - Dāniels’s MacBook Pro/`; moved
+  back with a same-volume rename (repo clean, target.nosync intact), the empty folder to Trash.
+- Git: main is 206 commits ahead of origin (last push v2.1.20, 29.08); the global post-commit hook
+  would push on any commit, so every commit here ran with GIT_AUTO_PUSH=0. Daniel decides whether
+  plsfix joins "main always on GitHub".
+- NEXT: (1) web-rig proof once Daniel signs in to the scratch Chrome (`scripts/rig/README.md`
+  steps 2-4; profile `~/.cache/plsfix-rig-chrome` does not exist yet): `proof-charts-excel.js` +
+  `proof-charts-ppt.js` + a table read-back (`type === "Table"`); (2) Daniel's desktop pass:
+  `tasks/launch-check.md` Links rows + a 4-series chart (expect a shape group now) + a doughnut
+  (expect the reason in both toasts); (3) follow-ups not done: drop value labels before the web
+  falls back to a picture; more chart kinds; an unlinked editable chart on a new slide.
+
 
 ## 02.09 morning: VM parked ("I did not finish building it"; no computer use for now); real-host pass = Daniel's own
 
