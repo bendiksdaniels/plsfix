@@ -290,3 +290,72 @@ describe("a host without the shape APIs", () => {
     expect(shapes()[0]!.setImageCalls).toBe(2);
   });
 });
+
+// A chart the layout has to squeeze, and one whose last bar hangs below the
+// baseline: both used to reach the host with a negative width or height,
+// which PowerPoint refuses outright (the fake's size guard throws the same
+// InvalidArgument), so the insert failed and left the drawn chunks behind.
+describe("shapes the host would refuse", () => {
+  // 200 x 100 pixels are 150 x 75 points, which chartSize lifts to its own
+  // minimum of 200 x 120: the smallest box a chart is ever drawn in.
+  const SMALL_PNG = fakePng(200, 100);
+
+  function seriesOf(values: number[], name: string) {
+    return {
+      name,
+      values,
+      labels: values.map(String),
+      colors: values.map(() => "#B27E54"),
+    };
+  }
+
+  it("draws a six-series chart in the smallest box a chart gets", async () => {
+    const data: ChartData = {
+      ...COLUMN,
+      title: "Revenue by segment",
+      categories: ["2024A", "2025E", "2026E"],
+      series: [0, 1, 2, 3, 4, 5].map((j) =>
+        seriesOf([10 + j, 20 + j, 30 + j], `Segment number ${String(j)}`),
+      ),
+    };
+    const ws = await createWorkspace(memoryStore());
+    const item = await seedChart(data, SMALL_PNG);
+    const placed = await links.insertFromInbox(item, ws, relay);
+
+    expect(placed.note).toBeUndefined();
+    const group = shapes()[0]!;
+    expect(group.type).toBe("Group");
+    const children = group.group!.shapes;
+    expect(children.every((one) => one.width >= 0 && one.height >= 0)).toBe(
+      true,
+    );
+    // The group is the union of its children, so its box staying inside the
+    // 200 x 120 the placement reserved (centred at 380, 210) is the proof
+    // that nothing was laid out past it.
+    expect(group.left).toBeGreaterThanOrEqual(380);
+    expect(group.top).toBeGreaterThanOrEqual(210);
+    expect(group.left + group.width).toBeLessThanOrEqual(580.01);
+    expect(group.top + group.height).toBeLessThanOrEqual(330.01);
+  });
+
+  it("draws a waterfall whose closing total is below zero", async () => {
+    const data: ChartData = {
+      ...COLUMN,
+      kind: "waterfall",
+      title: "Bridge",
+      categories: ["Open", "Cost", "Close"],
+      series: [seriesOf([100, -150, -50], "Bridge")],
+    };
+    const ws = await createWorkspace(memoryStore());
+    const item = await seedChart(data, PNG);
+    const placed = await links.insertFromInbox(item, ws, relay);
+
+    expect(placed.note).toBeUndefined();
+    const group = shapes()[0]!;
+    expect(group.type).toBe("Group");
+    expect(box(group)).toEqual(BOX);
+    expect(
+      group.group!.shapes.every((one) => one.width >= 0 && one.height >= 0),
+    ).toBe(true);
+  });
+});

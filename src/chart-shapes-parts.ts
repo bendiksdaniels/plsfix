@@ -4,6 +4,7 @@
 // under the line cap. Pure: no Office.js, nothing from src/excel or src/ppt.
 // Invariant: every primitive lies inside the box it was given.
 
+import type { BridgeSeries } from "./chartmath";
 import type { Box } from "./layout";
 import {
   normalizeAngle,
@@ -161,6 +162,23 @@ export function barRange(
   return stackSegment(cursor, value);
 }
 
+// A waterfall bar's value range, and which side of it the label belongs on.
+// The range is ordered low to high because a bar that ends below where it
+// started - a closing total under zero - otherwise comes out with a negative
+// height, which PowerPoint refuses outright.
+export function bridgeRange(
+  bridge: BridgeSeries,
+  i: number,
+): { lo: number; hi: number; below: boolean } {
+  const from = bridge.base[i]!;
+  const to = from + bridge.rise[i]! + bridge.fall[i]!;
+  return {
+    lo: Math.min(from, to),
+    hi: Math.max(from, to),
+    below: bridge.fall[i]! > 0 || to < from,
+  };
+}
+
 export function rowOrder(
   series: ChartSeries[],
   i: number,
@@ -255,7 +273,12 @@ function colorOf(data: ChartData, i: number): string {
 // "bar", which is how a reader tells the two apart.
 export function legend(data: ChartData, band: Box): Primitive[] {
   const items = legendItems(data);
-  const rows = packLegendRows(items, band.width);
+  // Only the rows the band was actually given: in a box too small to hold
+  // every entry the legend is cut short rather than drawn past the chart.
+  const rows = packLegendRows(items, band.width).slice(
+    0,
+    Math.floor(band.height / LEGEND_BAND),
+  );
   const out: Primitive[] = [];
   rows.forEach((row, rowIndex) => {
     let x = band.left;
