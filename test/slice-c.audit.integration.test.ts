@@ -355,6 +355,41 @@ describe("unpivot on the tables a modeller has", () => {
       "unpivot: need a header row, a key column and one column of values",
     );
   });
+
+  it("stops naming new sheets at ninety-nine", async () => {
+    // The first is "Unpivot", then "Unpivot 2" to "Unpivot 99"; the hundredth
+    // has no name left to take.
+    const taken = [
+      "Model",
+      "Unpivot",
+      ...Array.from(
+        { length: 98 },
+        (_unused, index) => `Unpivot ${String(index + 2)}`,
+      ),
+    ];
+    await boot({ sheets: taken });
+    helpers.seed("Model!A1", [
+      ["", "H1"],
+      ["Row", 1],
+    ]);
+    helpers.select("Model!A1:B2");
+
+    expect(await rejects(() => smt.unpivotSelection())).toBe(
+      "unpivot: this workbook already holds 99 Unpivot sheets",
+    );
+  });
+
+  it("takes the next free name beside a sheet already called unpivot", async () => {
+    await boot({ sheets: ["Model", "unpivot"] });
+    helpers.seed("Model!A1", [
+      ["", "H1"],
+      ["Row", 1],
+    ]);
+    helpers.select("Model!A1:B2");
+
+    // Sheet names are case-insensitive in Excel, so "unpivot" is taken.
+    expect(await smt.unpivotSelection()).toBe("Unpivot: 1 rows on Unpivot 2");
+  });
 });
 
 // ---------------------------------------------------------------------------
