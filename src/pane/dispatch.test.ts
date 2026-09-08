@@ -178,6 +178,32 @@ describe("dispatch: without Excel connected", () => {
     expect(opened).toHaveBeenCalledTimes(1);
     vi.unstubAllGlobals();
   });
+
+  it("also falls back to a plain tab when displayDialogAsync itself reports Failed", async () => {
+    Object.assign(globalThis, {
+      Office: {
+        context: {
+          ui: {
+            displayDialogAsync: vi.fn(
+              (
+                _url: string,
+                _options: unknown,
+                callback: (result: { status: string }) => void,
+              ) => callback({ status: "failed" }),
+            ),
+          },
+        },
+        AsyncResultStatus: { Succeeded: "succeeded", Failed: "failed" },
+      },
+    });
+    const opened = vi.fn();
+    vi.stubGlobal("open", opened);
+    await expect(dispatch("shortcut-card")).resolves.toBe(
+      "Shortcut card opened",
+    );
+    expect(opened).toHaveBeenCalledTimes(1);
+    vi.unstubAllGlobals();
+  });
 });
 
 describe("dispatch: unknown action", () => {

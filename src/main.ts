@@ -288,8 +288,13 @@ function sleep(ms: number): Promise<void> {
 async function probeExcelHost(): Promise<Office.HostType | null> {
   try {
     if (Office.context.host !== Office.HostType.Excel) return null;
+    // The active worksheet's name, not the workbook's own: any real,
+    // trivial round trip proves the host is genuinely there, and this one
+    // is the pattern every other adapter already uses (unlike
+    // Workbook.load, which nothing else in this codebase ever calls).
     await Excel.run(async (context) => {
-      context.workbook.load("name");
+      const sheet = context.workbook.worksheets.getActiveWorksheet();
+      sheet.load("name");
       await context.sync();
     });
     return Office.HostType.Excel;

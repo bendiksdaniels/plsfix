@@ -206,6 +206,41 @@ describe("a fully connected Excel host", () => {
     await settle();
     expect(toastText()).toBe("There is no pls,fix action to undo yet.");
   });
+
+  // Both delete confirms are wired directly in main.ts (not through
+  // dispatch()'s data-action loop): the first click only arms the button,
+  // the second runs the real delete through the guard.
+  it("arms delete-names on the first click, runs it on the second", async () => {
+    await boot();
+    click("delete-names");
+    await settle();
+    expect(
+      document.getElementById("delete-names")?.classList.contains("armed"),
+    ).toBe(true);
+
+    click("delete-names");
+    await settle();
+    expect(toastText()).toMatch(/^Deleted \d+ broken names?$/);
+    expect(
+      document.getElementById("delete-names")?.classList.contains("armed"),
+    ).toBe(false);
+  });
+
+  it("arms styles-delete on the first click, runs it on the second", async () => {
+    await boot();
+    click("styles-delete");
+    await settle();
+    expect(
+      document.getElementById("styles-delete")?.classList.contains("armed"),
+    ).toBe(true);
+
+    click("styles-delete");
+    await settle();
+    expect(toastText()).toMatch(/^Deleted \d+ unused styles?$/);
+    expect(
+      document.getElementById("styles-delete")?.classList.contains("armed"),
+    ).toBe(false);
+  });
 });
 
 describe("restoreOverlayFills (B's finding: a silent catch left no trace)", () => {
@@ -300,5 +335,94 @@ describe("ribbon commands (H's finding: registered too late)", () => {
 
     expect(completed).toBe(true);
     expect(toastText()).toBe("There is no pls,fix action to undo yet.");
+  });
+});
+
+describe("PowerPoint host: redirects instead of booting the Excel pane", () => {
+  it("replaces the page with pptpane.html", async () => {
+    // jsdom's own location.replace is not configurable in place (navigation
+    // is not implemented), so the whole global is swapped for a plain stub.
+    const replaceSpy = vi.fn();
+    vi.stubGlobal("location", { ...window.location, replace: replaceSpy });
+    await boot({ hostOverride: "PowerPoint" });
+    expect(replaceSpy).toHaveBeenCalledWith("pptpane.html");
+    vi.unstubAllGlobals();
+  });
+});
+
+describe("degraded boot: Office.onReady never settles but Excel answers a real probe", () => {
+  it("boots connected via the probe, with the degraded-boot toast", async () => {
+    vi.resetModules();
+    uninstallFakeHost();
+    pane();
+    installFakeHost();
+    const office = (
+      globalThis as unknown as {
+        Office: {
+          onReady: () => Promise<never>;
+          context: { host?: string };
+          HostType: { Excel: string };
+        };
+      }
+    ).Office;
+    // Never settles: the exact case src/host-ready.ts's probe exists for
+    // (Excel for the web, custom-functions init stuck) - Excel.run still
+    // answers underneath it, once asked. test/fakehost.ts's Office.context
+    // carries no host field at all (nothing has driven probeExcelHost()
+    // through it before), so it is set here too, the same local-workaround
+    // way as the onReady style above.
+    office.onReady = () => new Promise(() => undefined);
+    office.context.host = office.HostType.Excel;
+
+    vi.useFakeTimers();
+    await import("../src/main");
+    // HOST_HEAD_START_MS (4000) then the first probe attempt.
+    await vi.advanceTimersByTimeAsync(4_100);
+    vi.useRealTimers();
+    await drain();
+
+    expect(document.getElementById("connection-status")?.textContent).toBe(
+      "Excel connected",
+    );
+    expect(toastText()).toBe(
+      "Excel answered but never reported the add-in ready: =PLSFIX.ROUND may need the workbook reopened.",
+    );
+  });
+
+  it("retries after a probe attempt that genuinely fails", async () => {
+    vi.resetModules();
+    uninstallFakeHost();
+    pane();
+    const { helpers } = installFakeHost();
+    const office = (
+      globalThis as unknown as {
+        Office: {
+          onReady: () => Promise<never>;
+          context: { host?: string };
+          HostType: { Excel: string };
+        };
+      }
+    ).Office;
+    office.onReady = () => new Promise(() => undefined);
+    office.context.host = office.HostType.Excel;
+    // The first probe's own Excel.run rejects for a real reason (not "no
+    // host") - probeExcelHost's catch must still answer null and let
+    // src/host-ready.ts's loop try again, rather than getting stuck.
+    helpers.failNextSync();
+
+    vi.useFakeTimers();
+    await import("../src/main");
+    await vi.advanceTimersByTimeAsync(4_100);
+    expect(document.getElementById("connection-status")?.textContent).toBe(
+      "Connecting",
+    );
+    // HOST_PROBE_EVERY_MS (1000) to the second, unobstructed attempt.
+    await vi.advanceTimersByTimeAsync(1_100);
+    vi.useRealTimers();
+    await drain();
+
+    expect(document.getElementById("connection-status")?.textContent).toBe(
+      "Excel connected",
+    );
   });
 });

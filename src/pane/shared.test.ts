@@ -100,6 +100,16 @@ describe("refreshSelection", () => {
     expect(toastText()).toBe("boom");
     expect(toastClass()).toContain("error");
   });
+
+  // errorMessage()'s own fallback: a rejection that is not an Error instance
+  // at all (a thrown string, say) still reads as a plain sentence, not
+  // "undefined" or a raw dump of whatever was thrown.
+  it("falls back to a plain sentence when the rejection is not an Error", async () => {
+    vi.mocked(inspectSelection).mockRejectedValueOnce("not an Error object");
+    const { refreshSelection } = await load();
+    await expect(refreshSelection()).resolves.toBeUndefined();
+    expect(toastText()).toBe("Excel could not complete that action.");
+  });
 });
 
 describe("renderActionState", () => {
