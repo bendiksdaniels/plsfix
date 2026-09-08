@@ -26,9 +26,13 @@ function snapshotKey(sheetId: string, address: string): string {
   return `${sheetId}!${address}`;
 }
 
+// Nothing but a list of snapshots is worth restoring, and neither half of a
+// corrupt setting may throw: the boot restore is the only thing that can take
+// last session's stripes off, and its caller swallows what it throws.
 function parseSnapshots(raw: string): FillSnapshot[] {
   try {
-    return JSON.parse(raw) as FillSnapshot[];
+    const parsed: unknown = JSON.parse(raw);
+    return Array.isArray(parsed) ? (parsed as FillSnapshot[]) : [];
   } catch {
     return [];
   }

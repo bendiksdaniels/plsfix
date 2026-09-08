@@ -18,6 +18,7 @@ import type * as SettingsModule from "../src/settings";
 enableStrictLoadSemantics();
 
 let helpers: FakeHelpers;
+let workbook: FakeWorkbook;
 let smt: typeof ExcelModule;
 let theme: ReturnType<(typeof SettingsModule)["deriveTheme"]>;
 
@@ -26,9 +27,19 @@ async function boot(options: FakeHostOptions = {}): Promise<void> {
   uninstallFakeHost();
   const host = installFakeHost({ sheets: ["Model", "Data"], ...options });
   helpers = host.helpers;
+  workbook = host.workbook;
   smt = await import("../src/excel");
   const brand = await import("../src/settings");
   theme = brand.deriveTheme(brand.DEFAULT_SETTINGS);
+}
+
+// Reopening the file: same workbook model, brand new runtime and module state.
+async function reopen(): Promise<void> {
+  vi.resetModules();
+  uninstallFakeHost();
+  const host = installFakeHost({ workbook });
+  helpers = host.helpers;
+  smt = await import("../src/excel");
 }
 
 async function rejects(run: () => Promise<unknown>): Promise<string> {
@@ -221,5 +232,98 @@ describe("autocolor on edit", () => {
       helpers.fireChanged("Data", "A1"),
     ]);
     expect(helpers.font("Data!A1").color).toBe(theme.inputFont);
+  });
+});
+
+// ---------------------------------------------------------------------------
+
+describe("a corrupt audit overlay snapshot in the file", () => {
+  // The boot restore is the only thing that can take last session's stripes
+  // off, and src/main.ts swallows whatever it throws: a snapshot it cannot read
+  // has to be dropped, or the model stays striped on every reopen.
+  it("drops a snapshot that is not JSON at all", async () => {
+    helpers.setSetting("smtAuditOverlay", "not json at all");
+
+    expect(await smt.restorePersistedOverlay()).toBe(false);
+    expect(helpers.setting("smtAuditOverlay")).toBe("");
+  });
+
+  it("drops a snapshot that is JSON but not a list", async () => {
+    helpers.setSetting("smtAuditOverlay", '{"address":"A1:C3"}');
+
+    expect(await smt.restorePersistedOverlay()).toBe(false);
+    expect(helpers.setting("smtAuditOverlay")).toBe("");
+  });
+});
+
+// ---------------------------------------------------------------------------
+
+// The pane reloads mid-overlay: the map dies with the runtime while the stripes
+// were saved with the file, so the copy in workbook.settings is the only way
+// back to the modeller's own fills. src/main.ts calls restorePersistedOverlay
+// at boot; this is the store side of that, end to end.
+describe("the audit overlay across a pane reload", () => {
+  function seedBlock(): void {
+    helpers.seed("Model!A1", [
+      [
+        { formula: "=B1*2", r1c1: "=RC[1]*2", value: 2 },
+        { formula: "=C1*2", r1c1: "=RC[1]*2", value: 4 },
+      ],
+      [
+        { formula: "=B2*2", r1c1: "=RC[1]*2", value: 6 },
+        { formula: "=X9", r1c1: "=X9", value: 1 },
+      ],
+    ]);
+  }
+
+  it("puts the modeller's own fills back and forgets the snapshot", async () => {
+    seedBlock();
+    helpers.setFill("Model!A1", {
+      color: "#EEDDCC",
+      pattern: "LightUp",
+      patternColor: "#0057B8",
+    });
+    const before = helpers.cellMap("Model");
+
+    helpers.select("Model!A1:B2");
+    expect(await smt.toggleAuditOverlay()).toBe(true);
+    expect(smt.auditOverlayOn()).toBe(true);
+    expect(helpers.fill("Model!A1").pattern).not.toBe("LightUp");
+
+    await reopen();
+    expect(smt.auditOverlayOn()).toBe(false);
+    expect(await smt.restorePersistedOverlay()).toBe(true);
+    expect(helpers.cellMap("Model")).toEqual(before);
+    expect(helpers.setting("smtAuditOverlay")).toBe("");
+
+    // Nothing is owned any more, so the next toggle is a first toggle: it
+    // snapshots the modeller's fills, not the stripes it put there before.
+    helpers.select("Model!A1:B2");
+    expect(await smt.toggleAuditOverlay()).toBe(true);
+    expect(await smt.toggleAuditOverlay()).toBe(false);
+    expect(helpers.cellMap("Model")).toEqual(before);
+  });
+
+  it("has nothing left to restore on the boot after that", async () => {
+    seedBlock();
+    helpers.select("Model!A1:B2");
+    await smt.toggleAuditOverlay();
+
+    await reopen();
+    expect(await smt.restorePersistedOverlay()).toBe(true);
+    await reopen();
+    expect(await smt.restorePersistedOverlay()).toBe(false);
+  });
+
+  it("drops a snapshot whose sheet was deleted in between", async () => {
+    seedBlock();
+    helpers.select("Model!A1:B2");
+    await smt.toggleAuditOverlay();
+
+    helpers.deleteSheet("Model");
+    await reopen();
+    expect(await smt.restorePersistedOverlay()).toBe(false);
+    expect(helpers.setting("smtAuditOverlay")).toBe("");
+    expect(workbook.sheets.length).toBe(1);
   });
 });
