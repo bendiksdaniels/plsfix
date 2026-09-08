@@ -309,10 +309,21 @@ function countFailure(
   }
 }
 
+// The one refusal the user can do something about, said in words. A 413 is
+// the relay's 4 MiB link route or an nginx or Cloudflare hop in front of it,
+// and "413 payload too large" tells a modeller nothing they can act on.
+export const TOO_LARGE =
+  "That export is too big to send. Export a smaller range from Excel.";
+
+function tooLarge(error: unknown): boolean {
+  return isRelayError(error) && error.kind === "tooLarge";
+}
+
 // Every failure names its link. The host already stages its own errors as
 // "refresh <label>: ...", so the label is not stuttered back onto those.
 export function failureLine(found: FoundLink, error: unknown): string {
   const label = sourceLabel(found.tag.src, found.tag.kind);
+  if (tooLarge(error)) return `${label}: ${TOO_LARGE}`;
   const message = error instanceof Error ? error.message : String(error);
   return message.includes(label) ? message : `${label}: ${message}`;
 }
@@ -374,10 +385,16 @@ export async function insertFromInbox(
   relay: RelayApi,
   host: PptHost = realHost,
 ): Promise<InsertResult> {
+  const stage = `insert ${item.label}`;
   const keys = await deriveLinkKeys(item.token);
-  const result = await relay.getLink(item.id, keys.auth);
+  const result = await relay.getLink(item.id, keys.auth).catch((error) => {
+    // The toast is the whole report on an insert, so the refusal the user can
+    // act on is reworded here; anything else travels as the relay said it.
+    if (tooLarge(error)) throw new Error(`${stage}: ${TOO_LARGE}`);
+    throw error as Error;
+  });
   if (result === "unchanged") {
-    throw new Error(`insert ${item.label}: the relay returned no picture.`);
+    throw new Error(`${stage}: the relay returned no picture.`);
   }
   const payload = decodePayload(await open(keys.enc, item.id, result.blob));
   const placed = await host.insertLink(item, payload, result.rev);

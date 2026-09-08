@@ -6,6 +6,7 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { TAG_LINK } from "../link/model";
+import { RelayError } from "../link/relay";
 import { createWorkspace } from "../link/workspace";
 import type { FakeRelay } from "../../test/fakerelay";
 import { fakePng } from "../../test/fakepng";
@@ -243,5 +244,60 @@ describe("update all with one row failing", () => {
         (one) => (JSON.parse(one.tags.get(TAG_LINK)!) as { rev: number }).rev,
       );
     expect(revs).toEqual([2, 2]);
+  });
+});
+
+// Found by slice E2: "tooLarge" was the one RelayErrorKind with no consumer,
+// so a 413 - the relay's own 4 MiB link route, or an nginx or Cloudflare hop
+// in front of it - reached the user as a status line nobody can act on.
+describe("a refusal because the export is too big", () => {
+  const TOO_BIG =
+    "That export is too big to send. Export a smaller range from Excel.";
+  const refused = (): RelayError =>
+    new RelayError(
+      "tooLarge",
+      "relay GET /api/links/aaaa: 413 payload too large",
+      413,
+    );
+
+  it("says so in words in the update summary", async () => {
+    const ws = await createWorkspace(memoryStore());
+    const item = await seedLink(fakePng(800, 400));
+    await links.insertFromInbox(item, ws, relay);
+    await pushAgain(item, fakePng(1600, 800));
+    const rows = await links.listLinks(relay);
+    vi.spyOn(relay, "fetchLinks").mockRejectedValue(refused());
+    vi.spyOn(relay, "getLink").mockRejectedValue(refused());
+
+    const summary = await links.updateLinks(rows, relay);
+
+    expect(summary).toMatchObject({ updated: 0, failed: 1 });
+    expect(summary.failures).toEqual([`Model!B4:F12: ${TOO_BIG}`]);
+  });
+
+  it("says so in words on an insert", async () => {
+    const ws = await createWorkspace(memoryStore());
+    const item = await seedLink(fakePng(800, 400));
+    vi.spyOn(relay, "getLink").mockRejectedValue(refused());
+
+    await expect(links.insertFromInbox(item, ws, relay)).rejects.toThrow(
+      `insert Model!B4:F12: ${TOO_BIG}`,
+    );
+  });
+
+  it("says so in words on a revert", async () => {
+    const revert = await import("./revert");
+    const ws = await createWorkspace(memoryStore());
+    const item = await seedLink(fakePng(800, 400));
+    await links.insertFromInbox(item, ws, relay);
+    await pushAgain(item, fakePng(1600, 800));
+    await links.updateLinks(await links.listLinks(relay), relay);
+    const rows = await links.listLinks(relay);
+    vi.spyOn(relay, "getLinkRev").mockRejectedValue(refused());
+
+    const summary = await revert.revertLinks(rows, relay);
+
+    expect(summary).toMatchObject({ reverted: 0, failed: 1 });
+    expect(summary.failures).toEqual([`Model!B4:F12: ${TOO_BIG}`]);
   });
 });

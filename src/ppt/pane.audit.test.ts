@@ -126,7 +126,13 @@ async function plant(): Promise<void> {
   shape.tags.set(TAG_KEY, token);
 }
 
-async function boot(paired = true): Promise<void> {
+// `prepare` runs with the deck and the relay in place but before the pane
+// boots, which is the only window in which the boot sequence itself can be
+// given something to trip over.
+async function boot(
+  paired = true,
+  prepare?: () => Promise<void> | void,
+): Promise<void> {
   vi.resetModules();
   uninstallFakePpt();
   relay = new FakeRelay();
@@ -141,6 +147,7 @@ async function boot(paired = true): Promise<void> {
   presentation = host.presentation;
   helpers = host.helpers;
   helpers.selectSlide(presentation.slides[0]!.id);
+  await prepare?.();
   await import("./main");
   await settle();
 }
@@ -293,5 +300,95 @@ describe("the relay unreachable", () => {
     expect(toastText()).toBe("The add-in could not complete that action.");
     expect(button("refresh-links").disabled).toBe(false);
     expect(button("break-selected").disabled).toBe(false);
+  });
+});
+
+describe("the boot itself", () => {
+  // Boot never blanks the pane: a step that fails reports itself and the next
+  // one still runs, so a relay that is down leaves empty lists and a working
+  // pane rather than nothing at all.
+  it("reports a relay that is down and still finishes booting", async () => {
+    await boot(true, () => {
+      vi.spyOn(relay, "status").mockRejectedValue(
+        new RelayError(
+          "network",
+          "relay POST /api/links/status: network error",
+        ),
+      );
+      vi.spyOn(relay, "listInbox").mockRejectedValue(
+        new RelayError("network", "relay GET /api/inbox: network error"),
+      );
+      return plant();
+    });
+
+    expect(toastText()).toBe("relay GET /api/inbox: network error");
+    expect(button("refresh-links").disabled).toBe(false);
+    expect(document.getElementById("workspace-state")?.textContent).toBe(
+      "Paired",
+    );
+    expect(linkRows()).toHaveLength(0);
+
+    // And once the relay answers, the same button fills the list.
+    vi.restoreAllMocks();
+    click("refresh-links");
+    await settle();
+    expect(toastText()).toBe("1 linked object.");
+    expect(linkRows()).toHaveLength(1);
+  });
+
+  it("says which host it needs when Office reports another one", async () => {
+    await boot(true, () => {
+      const scope = globalThis as unknown as {
+        Office: { onReady: unknown };
+      };
+      scope.Office.onReady = (
+        callback?: (info: { host: string }) => unknown,
+      ) => {
+        const info = { host: "Excel" };
+        callback?.(info);
+        return Promise.resolve(info);
+      };
+    });
+
+    expect(document.getElementById("connection-status")?.textContent).toBe(
+      "PowerPoint required",
+    );
+    click("refresh-links");
+    await settle();
+    expect(toastText()).toBe("PowerPoint is not connected.");
+  });
+
+  it("turns a stray window error into a toast", async () => {
+    await boot();
+
+    window.dispatchEvent(
+      new ErrorEvent("error", { error: new Error("something threw") }),
+    );
+
+    expect(toastText()).toBe("something threw");
+    expect(document.getElementById("toast")?.className).toContain("error");
+  });
+
+  it("keeps the key in the field when storage refuses to hold it", async () => {
+    await boot(false);
+    const scope = globalThis as unknown as {
+      OfficeRuntime: { storage: { setItem: unknown } };
+    };
+    scope.OfficeRuntime.storage.setItem = () =>
+      Promise.reject(new Error("this webview has storage turned off"));
+    const field = document.getElementById("workspace-key") as HTMLInputElement;
+    field.value = workspace.exportKey;
+
+    click("save-key");
+    await settle();
+
+    expect(toastText()).toBe("this webview has storage turned off");
+    // Not reworded as a bad key, and not swallowed: the paste is still there
+    // to try again with.
+    expect(field.value).toBe(workspace.exportKey);
+    expect(document.getElementById("workspace-state")?.textContent).toContain(
+      "Not paired",
+    );
+    expect(button("save-key").disabled).toBe(false);
   });
 });
