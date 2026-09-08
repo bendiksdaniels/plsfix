@@ -126,7 +126,7 @@ npm test
 npm run build
 npm run validate
 npm run ux:check  # needs `npm run dev` running first: both panes at 320/360/420px, screenshots + defect list
-npm run ux:sweep  # both panes with no Office host at all: every control clicked, dead ones and broken tab or help states fail
+npm run ux:sweep  # both panes with no Office host at all: every control clicked, dead ones and broken tab or help states fail (reaction only; routing is the dispatch tests)
 ```
 
 ## Deploy
