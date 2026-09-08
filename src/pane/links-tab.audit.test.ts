@@ -7,6 +7,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  listActiveSheetCharts,
   listWorkbookLinks,
   pushLinks,
   restoreAutoPush,
@@ -121,6 +122,7 @@ beforeEach(() => {
   vi.mocked(restoreAutoPush).mockResolvedValue(false);
   vi.mocked(restoreLinkHighlight).mockResolvedValue(false);
   vi.mocked(touchWorkbookLinks).mockResolvedValue(0);
+  vi.mocked(listActiveSheetCharts).mockResolvedValue([]);
   vi.mocked(pushLinks).mockResolvedValue({
     pushed: 1,
     missing: 0,
@@ -268,6 +270,67 @@ describe("the link table across a refresh", () => {
       expect(body.textContent).toBe("No linked objects in this workbook yet.");
     });
     expect(body.querySelectorAll("tr[data-link-id]")).toHaveLength(0);
+  });
+});
+
+// The picker only exists to name a chart when none is selected. A host that
+// refuses the read is the same as a sheet with no charts: it hides, and the
+// export button says what it says.
+describe("the chart picker when the host refuses the read", () => {
+  it("hides rather than reporting, and the rest of boot still happens", async () => {
+    vi.mocked(listActiveSheetCharts).mockRejectedValue(
+      new Error("charts unavailable"),
+    );
+    const h = harness();
+    install(h);
+    await settle(h);
+
+    const pick =
+      document.querySelector<HTMLSelectElement>("#export-chart-pick")!;
+    expect(pick.hidden).toBe(true);
+    expect(h.toasts).toEqual([]);
+    expect(h.errors).toEqual([]);
+    expect(vi.mocked(watchWorksheetEdits)).toHaveBeenCalled();
+  });
+
+  it("shows the sheet's charts and hides again when the next sheet has none", async () => {
+    vi.mocked(listActiveSheetCharts).mockResolvedValue(["Revenue bridge"]);
+    const h = harness();
+    install(h);
+    await settle(h);
+
+    const pick =
+      document.querySelector<HTMLSelectElement>("#export-chart-pick")!;
+    expect(pick.hidden).toBe(false);
+    expect([...pick.options].map((option) => option.value)).toEqual([
+      "",
+      "Revenue bridge",
+    ]);
+
+    vi.mocked(listActiveSheetCharts).mockResolvedValue([]);
+    click("tab-links");
+    await vi.waitFor(() => {
+      expect(pick.hidden).toBe(true);
+    });
+    expect([...pick.options].map((option) => option.value)).toEqual([""]);
+  });
+});
+
+// installLinksTab is the only thing main.ts adds for the tab: a renamed id has
+// to fail loudly at boot rather than leave a dead button in the pane.
+describe("markup the tab cannot work with", () => {
+  it("names the element that is missing", () => {
+    document.body.innerHTML = "<div></div>";
+    const h = harness();
+    expect(() =>
+      installLinksTab({
+        guard: h.guard,
+        toast: h.toast,
+        relay: h.relay,
+        keyStore: h.keyStore,
+        root: document,
+      }),
+    ).toThrow("Missing element #export-chart-pick");
   });
 });
 

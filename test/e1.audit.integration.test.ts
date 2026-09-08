@@ -79,6 +79,15 @@ beforeEach(async () => {
 });
 afterEach(() => uninstallFakeHost());
 
+async function payloadSource(id: string): Promise<unknown> {
+  const entry = JSON.parse(
+    String(helpers.setting(REGISTRY_SETTING)),
+  ).links.find((link: { id: string }) => link.id === id);
+  const keys = await deriveLinkKeys(entry.token);
+  const stored = relay.links.get(id)!;
+  return decodePayload(await open(keys.enc, id, stored.blob)).src;
+}
+
 async function chartLink(): Promise<string> {
   helpers.addChart("Model", {
     name: "Revenue bridge",
@@ -412,6 +421,110 @@ describe("what the host refuses before anything is anchored", () => {
     await expect(links.pushLinks([stranger], relay)).rejects.toThrow(
       "push " + stranger + ": not in this workbook",
     );
+  });
+});
+
+// The workbook name travels in every payload and is what the deck's source
+// filter groups by. It comes from the Common API, not Excel's: a host that
+// carries no document surface, and an unsaved workbook, both read as "".
+describe("the name of the workbook a link came from", () => {
+  it("is empty when the host offers no file properties", async () => {
+    const office = Office as unknown as { context: { document: unknown } };
+    const document = office.context.document;
+    office.context.document = { addHandlerAsync: () => undefined };
+    try {
+      const { id } = await links.exportSelection(ws, relay);
+      expect(await payloadSource(id)).toMatchObject({ workbook: "" });
+    } finally {
+      office.context.document = document;
+    }
+  });
+
+  it("is empty for a workbook that was never saved", async () => {
+    workbook.fileUrl = "";
+    const { id } = await links.exportSelection(ws, relay);
+    expect(await payloadSource(id)).toMatchObject({
+      workbook: "",
+      sheet: "Model",
+      ref: "B4:F5",
+    });
+  });
+});
+
+// The anchor is a hidden name, and the Name Manager can delete one. That is
+// not the same as a name Excel broke to #REF!, and it has to read the same
+// way: the source is gone, and Remove still cleans up after it.
+describe("a hidden name the modeller deleted", () => {
+  it("lists the link as missing and still removes it", async () => {
+    const { id } = await links.exportSelection(ws, relay);
+    workbook.names.length = 0;
+
+    expect((await links.listWorkbookLinks())[0]!.source).toBe("missing");
+    expect(await links.pushLinks("all", relay)).toMatchObject({
+      pushed: 0,
+      missing: 1,
+      failed: 0,
+    });
+    await expect(links.goToSource(id)).rejects.toThrow(/source missing/);
+
+    await links.removeLink(id, relay);
+    expect(JSON.parse(String(helpers.setting(REGISTRY_SETTING))).links).toEqual(
+      [],
+    );
+    expect(relay.links.has(id)).toBe(false);
+  });
+});
+
+// Nothing may throw out of the event: the window runs from a timer, where a
+// rejection has no caller to reach.
+describe("what an auto-push window does with a workbook it cannot read", () => {
+  it("reports the reason through notify instead of throwing", async () => {
+    await links.exportSelection(ws, relay);
+    await watch.setAutoPush(true, relay, note, { clock });
+    helpers.setSetting(REGISTRY_SETTING, '{"v":9,"links":"nope"');
+
+    await helpers.fireChanged("Model", "C5");
+    clock.advance(watch.AUTOPUSH_DELAY_MS);
+    await vi.waitFor(() => {
+      expect(notes).toEqual([
+        "Auto-push failed: registry PLSFIX_LINKS: unreadable, not overwriting",
+      ]);
+    });
+  });
+
+  // Off means off, even for a window that had already fallen due and was
+  // queued behind a push that was still uploading.
+  it("drops a window queued behind a slow push once it is switched off", async () => {
+    const { id } = await links.exportSelection(ws, relay);
+    await watch.setAutoPush(true, relay, note, { clock });
+
+    const held = relay.holdNextPut();
+    const pushing = links.pushLinks("all", relay);
+    await held.started;
+    await helpers.fireChanged("Model", "C5");
+    clock.advance(watch.AUTOPUSH_DELAY_MS);
+    await settle();
+
+    await watch.setAutoPush(false, relay, note, { clock });
+    held.release();
+    await pushing;
+    await settle();
+
+    expect(relay.links.get(id)!.rev).toBe(2);
+    expect(notes).toEqual([]);
+  });
+
+  it("skips a link whose source went away inside the window", async () => {
+    const { id } = await links.exportSelection(ws, relay);
+    await watch.setAutoPush(true, relay, note, { clock });
+
+    await helpers.fireChanged("Model", "C5");
+    helpers.breakName(anchorName(id));
+    clock.advance(watch.AUTOPUSH_DELAY_MS);
+    await settle();
+
+    expect(relay.links.get(id)!.rev).toBe(1);
+    expect(notes).toEqual([]);
   });
 });
 
