@@ -33,16 +33,14 @@ export interface StatusQuery {
   auth: string;
 }
 
-// One link a workbook still holds, for the boot-time TTL refresh. Same pair as
-// a status query, named apart because the two routes answer different things.
+// A status pair for the boot-time TTL refresh, named apart: the routes differ.
 export interface TouchQuery {
   id: string;
   auth: string;
 }
 
-// The deck's side of one link in a batch fetch: which link, the key that opens
-// it, and the revision the deck already holds. Without `knownRev` the relay
-// always answers with a blob.
+// The deck's side of one link in a batch fetch: the link, the key that opens
+// it and the revision it holds; without `knownRev` the relay always sends a blob.
 export interface FetchQuery {
   id: string;
   auth: string;
@@ -387,11 +385,16 @@ export class RelayClient implements RelayApi {
     }
   }
 
+  // 404 counts as done. The relay answers it both for a row that is already
+  // gone - taken, or past its seven-day TTL under a deck that stayed open -
+  // and for one this key never wrote, and it will not tell the two apart. The
+  // deck calls this after the shape is on the slide, so a rejection would
+  // report a failure for an insert that worked and invite a second one.
   async deleteInbox(ws: string, auth: string, id: string): Promise<void> {
     await this.request(
       `inbox/${ws}/${id}`,
       { method: "DELETE", headers: { Authorization: bearer(auth) } },
-      [200, 204],
+      [200, 204, 404],
     );
   }
 }
