@@ -8,11 +8,13 @@ import { join } from "node:path";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   listWorkbookLinks,
+  pushLinks,
   restoreAutoPush,
   restoreLinkHighlight,
   touchWorkbookLinks,
   watchActiveSheet,
   watchWorksheetEdits,
+  type WorkbookLinkRow,
 } from "../excel";
 import type { RelayApi } from "../link/relay";
 import type { KeyStore } from "../link/workspace";
@@ -119,6 +121,12 @@ beforeEach(() => {
   vi.mocked(restoreAutoPush).mockResolvedValue(false);
   vi.mocked(restoreLinkHighlight).mockResolvedValue(false);
   vi.mocked(touchWorkbookLinks).mockResolvedValue(0);
+  vi.mocked(pushLinks).mockResolvedValue({
+    pushed: 1,
+    missing: 0,
+    failed: 0,
+    failures: [],
+  });
 });
 
 // The TTL touch is one HTTP call with no timeout of its own: a relay behind a
@@ -186,6 +194,80 @@ describe("a link list the workbook refuses", () => {
     expect(document.getElementById("workbook-links")!.textContent).toBe(
       "This workbook's links could not be read: unknown error",
     );
+  });
+});
+
+function row(id: string, source: "ok" | "missing" = "ok"): WorkbookLinkRow {
+  return {
+    entry: {
+      id,
+      kind: "range",
+      anchor: `PLSFIX_LINK_${id.slice(0, 8)}`,
+      label: `Model!B${id.slice(0, 2)}`,
+      token: "token",
+      createdAt: "2026-08-29T11:00:00.000Z",
+      lastPushedAt: "2026-08-29T11:58:00.000Z",
+      rev: 3,
+    },
+    source,
+  };
+}
+
+function ticks(): HTMLInputElement[] {
+  return [
+    ...document.querySelectorAll<HTMLInputElement>(
+      "#workbook-links input[type=checkbox]",
+    ),
+  ];
+}
+
+// The list is re-read on every settled edit and after every action, and the
+// ticks live beside it: a tick left over from a link that is gone must never
+// reach the adapter, and one whose row is still there must survive the paint.
+describe("the link table across a refresh", () => {
+  it("drops a tick whose link is gone and keeps the rest", async () => {
+    const ids = ["a", "b", "c"].map((letter) => letter.repeat(32));
+    vi.mocked(listWorkbookLinks).mockResolvedValue(ids.map((id) => row(id)));
+    const h = harness();
+    install(h);
+    await settle(h);
+
+    ticks()[0]!.click();
+    ticks()[2]!.click();
+    vi.mocked(listWorkbookLinks).mockResolvedValue([
+      row(ids[1]!),
+      row(ids[2]!),
+    ]);
+    click("tab-links");
+    await vi.waitFor(() => {
+      expect(ticks()).toHaveLength(2);
+    });
+
+    expect(ticks().map((box) => box.checked)).toEqual([false, true]);
+    click("push-selected");
+    await settle(h);
+    expect(vi.mocked(pushLinks)).toHaveBeenCalledWith([ids[2]], h.relay);
+  });
+
+  it("draws two hundred links, badges the broken ones and empties again", async () => {
+    const many = Array.from({ length: 200 }, (_unused, index) =>
+      row(String(index).padStart(32, "0"), index % 20 === 0 ? "missing" : "ok"),
+    );
+    vi.mocked(listWorkbookLinks).mockResolvedValue(many);
+    const h = harness();
+    install(h);
+    await settle(h);
+
+    const body = document.getElementById("workbook-links")!;
+    expect(body.querySelectorAll("tr[data-link-id]")).toHaveLength(200);
+    expect(body.querySelectorAll(".wl-badge")).toHaveLength(10);
+
+    vi.mocked(listWorkbookLinks).mockResolvedValue([]);
+    click("tab-links");
+    await vi.waitFor(() => {
+      expect(body.textContent).toBe("No linked objects in this workbook yet.");
+    });
+    expect(body.querySelectorAll("tr[data-link-id]")).toHaveLength(0);
   });
 });
 

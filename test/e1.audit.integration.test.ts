@@ -6,7 +6,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type * as LinksModule from "../src/excel/links";
 import type * as WatchModule from "../src/excel/link-watch";
-import { anchorName, REGISTRY_SETTING } from "../src/link/model";
+import { deriveLinkKeys, open } from "../src/link/crypto";
+import { anchorName, decodePayload, REGISTRY_SETTING } from "../src/link/model";
 import {
   createWorkspace,
   type KeyStore,
@@ -411,6 +412,60 @@ describe("what the host refuses before anything is anchored", () => {
     await expect(links.pushLinks([stranger], relay)).rejects.toThrow(
       "push " + stranger + ": not in this workbook",
     );
+  });
+});
+
+// The selections a modeller really makes, at the edges the caps name.
+describe("edge selections", () => {
+  it("refuses a merged block as text and takes it as a picture", async () => {
+    helpers.merge("Model!B4:C5");
+    helpers.select("Model!B4:C5");
+
+    await expect(links.exportSelectionAsText(ws, relay)).rejects.toThrow(
+      "Select one cell for a text link (merged cells: export as a picture).",
+    );
+    expect(workbook.names).toEqual([]);
+
+    const picture = await links.exportSelection(ws, relay);
+    expect(picture.label).toBe("Model!B4:C5");
+  });
+
+  it("carries unicode and a five-hundredth character through a text link", async () => {
+    const text = `€ ${"ā".repeat(200)} ${"→".repeat(200)}`;
+    helpers.seed("Model!H2", [[text]]);
+    helpers.select("Model!H2");
+
+    const { id } = await links.exportSelectionAsText(ws, relay);
+    const entry = JSON.parse(String(helpers.setting(REGISTRY_SETTING)))
+      .links[0];
+    const keys = await deriveLinkKeys(entry.token);
+    const stored = relay.links.get(id)!;
+    const payload = decodePayload(await open(keys.enc, id, stored.blob));
+    expect(payload.kind === "text" && payload.text).toBe(text);
+  });
+
+  it("takes a single cell as a picture and refuses a whole column", async () => {
+    helpers.select("Model!B4");
+    expect((await links.exportSelection(ws, relay)).label).toBe("Model!B4");
+
+    helpers.select("Model!A:A");
+    await expect(links.exportSelection(ws, relay)).rejects.toThrow(
+      "Export supports up to 5,000 selected cells at once.",
+    );
+    expect(workbook.names).toHaveLength(1);
+  });
+
+  it("keeps a link on a hidden sheet listed but refuses the jump", async () => {
+    helpers.addSheet("Calc");
+    helpers.seed("Calc!A1", [[1, 2]]);
+    helpers.select("Calc!A1:B1");
+    const { id } = await links.exportSelection(ws, relay);
+    helpers.sheet("Calc").visibility = "Hidden";
+
+    const rows = await links.listWorkbookLinks();
+    expect(rows[0]!.source).toBe("ok");
+    expect(await links.pushLinks("all", relay)).toMatchObject({ pushed: 1 });
+    await expect(links.goToSource(id)).rejects.toThrow(/is hidden/);
   });
 });
 
