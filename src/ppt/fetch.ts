@@ -21,6 +21,7 @@
 import { deriveLinkKeys, open, type LinkKeys } from "../link/crypto";
 import { decodePayload } from "../link/model";
 import {
+  isRelayError,
   MAX_FETCH_ITEMS,
   type FetchedLink,
   type FetchQuery,
@@ -179,11 +180,20 @@ async function fetchBatch(
   let answer: FetchResult;
   try {
     answer = await relay.fetchLinks(batch.map(query));
-  } catch {
-    // A batch the relay refused says nothing about any one link - an older
-    // relay does not know the route at all - so every row falls back to the
-    // GET it would have made, which reports its own reason if the relay
-    // really is unreachable.
+  } catch (error) {
+    // A relay that cannot be reached answers no row on its own either: every
+    // row fails with that one reason, rather than one GET per row to say it
+    // again. A batch refused for any other cause says nothing about any one
+    // link - an older relay does not know the route at all - so every row
+    // falls back to the GET it would have made, which reports its own reason.
+    if (isRelayError(error) && error.kind === "network") {
+      for (const group of batch) {
+        for (const row of group.rows) {
+          outcome.failures.push({ found: row.found, error });
+        }
+      }
+      return;
+    }
     deferred.push(...batch);
     return;
   }

@@ -1,7 +1,8 @@
 // "Change source": point a tracked picture at a different export - usually the
 // same table exported again from a newer workbook - keeping its slide, its
-// position and its size. A text link only ever re-points at another text
-// export, because a text box cannot take a picture's payload in place. The deck's tags are rewritten and the picture is
+// position and its size. A link only re-points at an export of its own kind:
+// a text box or a table cannot take a picture's payload in place, nor the
+// other way round. The deck's tags are rewritten and the picture is
 // repainted through the ordinary refresh path; nothing moves in Excel, and the
 // link the shape used to hold stays on the relay untouched, so any other deck
 // still tracking it carries on. No Office.js: the host and the relay are
@@ -24,7 +25,7 @@ import { applyBatch, type LinkRow, type PptHost } from "./links";
 
 const ONE_ROW = "Tick exactly one link to change its source.";
 const NO_CANDIDATES =
-  "Nothing waiting in the Inbox. Export the range again from Excel first.";
+  "Nothing waiting in the Inbox fits this link. Export the same kind of object again from Excel first.";
 const NO_CHOICE = "Choose an export from the list.";
 
 // Excel upper-cases refs and treats sheet names case-insensitively, and a

@@ -235,7 +235,7 @@ describe("the Change source picker", () => {
     click("change-source");
     await settle();
     expect(toastText()).toBe(
-      "Nothing waiting in the Inbox. Export the range again from Excel first.",
+      "Nothing waiting in the Inbox fits this link. Export the same kind of object again from Excel first.",
     );
     expect(document.getElementById("change-source-chooser")?.hidden).toBe(true);
 

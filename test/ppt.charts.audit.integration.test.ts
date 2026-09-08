@@ -183,6 +183,9 @@ describe("a draw batch the host never answers", () => {
     const summary = await settle(links.updateLinks(rows, relay));
 
     expect(summary).toMatchObject({ updated: 1, failed: 0 });
+    // The reason reaches the summary now that the refresh hands it back.
+    expect(summary.notes).toHaveLength(1);
+    expect(summary.notes[0]).toMatch(/stopped answering/);
     expect(shapes()).toHaveLength(1);
     const picture = shapes()[0]!;
     expect(picture.type).not.toBe("Group");

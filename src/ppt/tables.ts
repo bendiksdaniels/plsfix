@@ -24,6 +24,10 @@ const TABLE_API = "1.8";
 export const TABLES_NEED_1_8 = "Tables need PowerPoint 2021 or Microsoft 365.";
 // A floor, not a promise: PowerPoint grows a row to fit what is in it.
 const ROW_HEIGHT = 18;
+// Excel's own default column width, in points: what a hidden column (which
+// Excel reports as zero) takes beside visible ones, so it neither vanishes
+// nor squeezes the others.
+const HIDDEN_COLUMN_WIDTH = 48;
 const ALIGNMENT = { l: "Left", c: "Center", r: "Right" } as const;
 
 export function requireTableApi(): void {
@@ -35,8 +39,16 @@ export function requireTableApi(): void {
 // hidden adds up to nothing: that takes the content width instead, because a
 // table zero points wide cannot be seen or picked up again. columnWidths
 // divides it evenly, the same way it already refuses to divide by zero.
+// The widths a table is built from: a source with every column hidden stays
+// as it is (the content width in even columns), one with a hidden column
+// beside visible ones gives that column Excel's default width.
+function sourceWidths(payload: TablePayload): number[] {
+  if (!payload.widths.some((one) => one > 0)) return payload.widths;
+  return payload.widths.map((one) => (one > 0 ? one : HIDDEN_COLUMN_WIDTH));
+}
+
 export function tableSize(payload: TablePayload): Size {
-  const width = payload.widths.reduce((total, one) => total + one, 0);
+  const width = sourceWidths(payload).reduce((total, one) => total + one, 0);
   return {
     width: width > 0 ? Math.min(width, CONTENT_WIDTH) : CONTENT_WIDTH,
     height: payload.rows * ROW_HEIGHT,
@@ -139,15 +151,14 @@ function addTable(
 // width: PowerPoint would otherwise divide the width evenly and wrap the
 // label column into five lines.
 export function columnWidths(payload: TablePayload, width: number): number[] {
-  const total = payload.widths.reduce((sum, one) => sum + one, 0);
+  const source = sourceWidths(payload);
+  const total = source.reduce((sum, one) => sum + one, 0);
   if (total <= 0) return payload.widths.map(() => width / payload.cols);
   // Whole points only: PowerPoint for the web refuses a fractional width.
   // The widest column absorbs the rounding remainder, so the columns still
   // add up to the table and no narrow one is squeezed to nothing.
   const scale = width / total;
-  const widths = payload.widths.map((one) =>
-    Math.max(1, Math.round(one * scale)),
-  );
+  const widths = source.map((one) => Math.max(1, Math.round(one * scale)));
   const remainder =
     Math.round(width) - widths.reduce((sum, one) => sum + one, 0);
   const widest = widths.indexOf(Math.max(...widths));
