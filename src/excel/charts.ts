@@ -189,7 +189,10 @@ export async function formatSelectedChart(): Promise<void> {
 
     const type = String(chart.chartType);
     const axisFree = AXIS_FREE_CHARTS.includes(type);
-    styleChartShell(chart, null, !axisFree);
+    // The surface stays out of this batch: Excel for the web refuses the font
+    // and the corners on a chartex chart (a waterfall, a treemap), and the
+    // branding must not go down with a refusal that is only cosmetic.
+    styleChartShell(chart, null, !axisFree, false);
     styleChartLabels(chart.dataLabels, labelPosition(type));
     // A pie's labels sit outside the slices, tied back by leader lines (1.8).
     if (leaderLines(type) && hostSupports("1.8")) {
@@ -206,6 +209,10 @@ export async function formatSelectedChart(): Promise<void> {
     chart.legend.visible = chart.series.count > 1 || axisFree;
 
     await context.sync();
+
+    // Its own batch, tolerated the way the waterfall's own surface is.
+    styleChartSurface(chart);
+    await syncTolerating(context, Excel.ErrorCodes.unsupportedOperation);
   });
 }
 

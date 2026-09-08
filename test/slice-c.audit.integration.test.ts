@@ -65,6 +65,52 @@ beforeEach(async () => {
 
 // ---------------------------------------------------------------------------
 
+describe("restyling a chart the host refuses a surface on", () => {
+  // Excel for the web answers UnsupportedOperation to chart.format.font and
+  // roundedCorners on chartex charts (a waterfall, a treemap, a funnel), the
+  // same refusal the insert already tolerates. Restyling one must not lose the
+  // branding with it.
+  it("brands an existing waterfall instead of failing whole", async () => {
+    await boot({ chartSurfaceUnsupported: true });
+    seedBridge();
+    await smt.insertWaterfall();
+    const chart = workbook.charts[0];
+    if (!chart) throw new Error("no chart");
+    chart.seriesCount = 1;
+    helpers.setActiveChart(chart);
+
+    await smt.formatSelectedChart();
+
+    // The surface went down with the host; everything the restyle is for
+    // landed anyway.
+    expect(chart.font).toEqual({});
+    expect(chart.roundedCorners).toBeUndefined();
+    expect(chart.borderLineStyle).toBe("None");
+    expect(chart.legend.position).toBe("Bottom");
+    expect(chart.dataLabels).toMatchObject({
+      showValue: true,
+      showCategoryName: false,
+      showSeriesName: false,
+    });
+    expect(chart.series[0]?.fillColor).toBeDefined();
+  });
+
+  it("still paints the surface where the host takes it", async () => {
+    seedBridge();
+    await smt.insertWaterfall();
+    const chart = workbook.charts[0];
+    if (!chart) throw new Error("no chart");
+    chart.seriesCount = 1;
+    helpers.setActiveChart(chart);
+
+    await smt.formatSelectedChart();
+    expect(chart.roundedCorners).toBe(false);
+    expect(chart.font.name).toBeDefined();
+  });
+});
+
+// ---------------------------------------------------------------------------
+
 describe("a clicked column header", () => {
   // The cap answers before a single value is read: two whole columns are two
   // million cells, and the shape rules only run after the read.
