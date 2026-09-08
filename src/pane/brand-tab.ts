@@ -1,7 +1,7 @@
 // The brand dashboard: the palette, font, currency and language settings,
 // persisted to localStorage and to the workbook (the workbook copy wins at
-// boot over the machine one), plus the logo color picker and JSON
-// import/export. Office.js only reaches here through ../excel.
+// boot over the machine one), plus the logo color picker and the two JSON
+// import/export controls ./brand-io backs. Office.js only through ../excel.
 
 import {
   type ExcelSeparators,
@@ -30,6 +30,7 @@ import {
   serializeSettings,
   setActiveSettings,
 } from "../settings";
+import { copyPaletteJson, readPaletteFile } from "./brand-io";
 import { getElement } from "../ui/dom";
 import { describeError } from "../ui/report";
 import { APP_VERSION, errorMessage, isExcelReady, toast } from "./shared";
@@ -47,29 +48,6 @@ const PALETTE_SLOTS = [
   "partial",
 ] as const;
 type PaletteSlot = (typeof PALETTE_SLOTS)[number];
-
-// Everything a palette file may carry. A JSON file holding none of them parses
-// into the shipped defaults, so importing somebody else's file - a package.json,
-// an export from another tool - would wipe the modeller's colours under a
-// "Palette imported" toast. A palette file has to say something about a palette.
-const BRAND_KEYS: readonly string[] = [
-  ...PALETTE_SLOTS,
-  "font",
-  "language",
-  "currency",
-  "autocolorOnEdit",
-];
-
-function isPaletteFile(json: string): boolean {
-  let raw: unknown;
-  try {
-    raw = JSON.parse(json);
-  } catch {
-    return false;
-  }
-  if (typeof raw !== "object" || raw === null) return false;
-  return BRAND_KEYS.some((key) => key in raw);
-}
 
 // Boot calls this once readSeparators resolves: the note redraws with
 // whatever Excel reports rather than staying hidden past that point.
@@ -200,10 +178,9 @@ function renderSeparatorsNote(settings: BrandSettings): void {
   note.hidden = false;
 }
 
-// Excel is only there when the pane runs inside the host, and there is no
-// workbook to hang the edit handler on before boot confirms one: a palette
-// change made until then must not become a red toast about a missing host.
-// Boot calls this itself once the connection is up, so nothing is lost.
+// There is no workbook to hang the edit handler on until boot confirms one, so
+// a palette change before that must not become a red toast about a missing
+// host. Boot calls this itself once connected, so nothing is lost.
 export function syncAutocolorOnEdit(): void {
   if (!isExcelReady()) return;
   setAutocolorOnEdit(getActiveSettings().autocolorOnEdit).catch((error) => {
@@ -284,25 +261,6 @@ function extractLogoColors(file: File): void {
     toast.show("That file is not a readable image.", "error");
   };
   image.src = url;
-}
-
-async function copyPaletteJson(): Promise<void> {
-  const json = serializeSettings(getActiveSettings());
-  try {
-    await navigator.clipboard.writeText(json);
-    toast.show("Palette JSON copied");
-  } catch {
-    const area = document.createElement("textarea");
-    area.value = json;
-    document.body.append(area);
-    area.select();
-    const copied = document.execCommand("copy");
-    area.remove();
-    toast.show(
-      copied ? "Palette JSON copied" : "Copy failed",
-      copied ? "success" : "error",
-    );
-  }
 }
 
 export function wireBrand(): void {
@@ -391,16 +349,13 @@ export function wireBrand(): void {
       const file = input.files?.[0];
       input.value = "";
       if (!file) return;
-      // A file the webview cannot open is one sentence here rather than a
-      // rejection nobody in this handler is waiting for.
-      let json: string;
-      try {
-        json = await file.text();
-      } catch {
+      // A file the webview cannot open is one sentence, not a rejection.
+      const json = await file.text().catch(() => null);
+      if (json === null) {
         toast.show("That file could not be read.", "error");
         return;
       }
-      const parsed = isPaletteFile(json) ? parsePalette(json) : null;
+      const parsed = readPaletteFile(json);
       if (!parsed) {
         toast.show("That file is not a valid palette JSON.", "error");
         return;

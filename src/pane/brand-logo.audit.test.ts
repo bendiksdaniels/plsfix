@@ -315,25 +315,32 @@ describe("the separators note", () => {
   });
 });
 
-describe("palette export", () => {
-  it("copies the palette as the JSON the import reads back", async () => {
-    const written: string[] = [];
-    vi.stubGlobal("navigator", {
-      ...navigator,
-      clipboard: {
-        writeText: async (value: string) => {
-          written.push(value);
-        },
-      },
-    });
+describe("the colour pickers", () => {
+  it("applies a swatch dragged in the native picker", async () => {
     const { settings } = await load();
+    const picker = document.querySelector<HTMLInputElement>(
+      '[data-slot-color="link"]',
+    ) as HTMLInputElement;
 
-    (document.getElementById("export-brand") as HTMLButtonElement).click();
+    picker.value = "#abcdef";
+    picker.dispatchEvent(new Event("input"));
+
+    expect(settings.getActiveSettings().link).toBe("#ABCDEF");
+    expect(
+      document.querySelector<HTMLInputElement>('[data-slot-hex="link"]')?.value,
+    ).toBe("#ABCDEF");
+  });
+
+  it("reports a host that refuses the autocolor handler in one sentence", async () => {
+    const { shared, tab } = await load();
+    shared.setExcelReady(true);
+    vi.mocked(setAutocolorOnEdit).mockRejectedValue(
+      new Error("Excel is busy with something else."),
+    );
+
+    tab.syncAutocolorOnEdit();
     await settle();
 
-    expect(toastText()).toBe("Palette JSON copied");
-    expect(JSON.parse(written[0] ?? "{}")).toEqual(
-      settings.getActiveSettings(),
-    );
+    expect(toastText()).toBe("Excel is busy with something else.");
   });
 });

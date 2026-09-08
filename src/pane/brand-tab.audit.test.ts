@@ -235,6 +235,59 @@ describe("brand tab", () => {
   });
 });
 
+// The Map's precedence rule, from the winning side: a palette saved in the
+// file replaces the machine default the pane booted with.
+describe("the workbook's own palette", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    store = new Map();
+    vi.stubGlobal("localStorage", workingStorage());
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("replaces the machine palette and repaints every field", async () => {
+    const { tab, shared, settings } = await load();
+    shared.setExcelReady(true);
+    tab.loadSettings();
+    tab.wireBrand();
+    tab.renderBrand();
+    hex("accent").value = "#111111";
+    hex("accent").dispatchEvent(new Event("change"));
+    await settle();
+
+    vi.mocked(readWorkbookBrand).mockResolvedValue(
+      JSON.stringify({ accent: "#00FF00", font: "Georgia" }),
+    );
+    await tab.adoptWorkbookBrand();
+
+    expect(settings.getActiveSettings().accent).toBe("#00FF00");
+    expect(hex("accent").value).toBe("#00FF00");
+    expect(
+      (document.getElementById("setting-font") as HTMLSelectElement).value,
+    ).toBe("Georgia");
+    expect(setAutocolorOnEdit).toHaveBeenCalled();
+  });
+
+  // A workbook that never carried a brand keeps the machine's, not the
+  // shipped colours.
+  it("keeps the machine palette when the workbook carries none", async () => {
+    vi.mocked(readWorkbookBrand).mockResolvedValue(null);
+    const { tab, settings } = await load();
+    tab.wireBrand();
+    tab.renderBrand();
+    hex("accent").value = "#111111";
+    hex("accent").dispatchEvent(new Event("change"));
+    await settle();
+
+    await tab.adoptWorkbookBrand();
+
+    expect(settings.getActiveSettings().accent).toBe("#111111");
+  });
+});
+
 // The Map's rule: the workbook wins over localStorage, which is only the
 // default a new workbook starts from. Both refusing is a webview in a private
 // session on a read-only file, and the tab still has to work.
