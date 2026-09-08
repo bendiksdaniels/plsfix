@@ -168,12 +168,14 @@ export async function updateLinks(
     failures: [],
     notes: [],
   };
-  const wanted = rows.filter((row) => {
-    if (row.status === "updateAvailable") return true;
-    countSkipped(summary, row.status);
-    return false;
-  });
-  const fetched = await fetchUpdates(wanted, relay);
+  // Every row is asked about, not only the ones the last poll called stale.
+  // The list on screen is a snapshot, Excel pushes while this pane sits open,
+  // and the fetch route answers "unchanged" from one head read - so deciding
+  // here from a cached status is what used to report a deck that had just been
+  // re-exported as up to date, repainting nothing until the user pressed the
+  // refresh arrow first. What is current, missing or wrongly keyed is now the
+  // relay's answer, in the same round trip that carries the pictures.
+  const fetched = await fetchUpdates(rows, relay);
   summary.current += fetched.current;
   summary.missing += fetched.missing;
   summary.wrongKey += fetched.wrongKey;
@@ -274,12 +276,6 @@ async function paintBatch(
     }
   }
   return painted;
-}
-
-function countSkipped(summary: UpdateSummary, status: LinkStatus): void {
-  if (status === "current") summary.current += 1;
-  else if (status === "missing") summary.missing += 1;
-  else if (status === "wrongKey") summary.wrongKey += 1;
 }
 
 // A link whose workbook changed still refreshes: the user is told which one,
