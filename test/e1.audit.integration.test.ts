@@ -376,6 +376,14 @@ describe("the highlight over a protected sheet", () => {
     // Nothing for the next open to put back either.
     expect(helpers.setting("PLSFIX_LINK_HIGHLIGHT")).toBe("");
     // The other overlay is free to paint: nothing is standing in its way.
+    // Since slice B the overlay owns only fills it striped, so the block gets
+    // a consistent formula row to stripe.
+    helpers.seed("Data!A1", [
+      [
+        { formula: "=C1*2", r1c1: "=RC[2]*2", value: 2 },
+        { formula: "=D1*2", r1c1: "=RC[2]*2", value: 4 },
+      ],
+    ]);
     helpers.select("Data!A1:B2");
     expect(await excel.toggleAuditOverlay()).toBe(true);
   });
