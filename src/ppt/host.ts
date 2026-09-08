@@ -21,6 +21,7 @@ import {
 import { pictureNote } from "../link/chart-model";
 import { base64ToBytes, pngSize } from "../link/png";
 import { aspectChanged, fitToSlide } from "../link/status";
+import { withSyncDeadline } from "./chart-draw";
 import {
   chartPlan,
   declineReason,
@@ -79,13 +80,13 @@ export async function scanLinks(): Promise<FoundLink[]> {
   return PowerPoint.run(async (context) => {
     const slides = context.presentation.slides;
     slides.load("items/id");
-    await context.sync();
+    await withSyncDeadline(context.sync(), "reading the links");
     const sets = slides.items.map((slide, slideIndex) => {
       const shapes = slide.shapes;
       shapes.load(SHAPE_PROPERTIES);
       return { slideId: slide.id, slideIndex, shapes };
     });
-    await context.sync();
+    await withSyncDeadline(context.sync(), "reading the links");
     const placed = sets.flatMap((set) =>
       set.shapes.items.map((shape): PlacedShape => ({
         slideId: set.slideId,
@@ -101,7 +102,7 @@ export async function scanLinks(): Promise<FoundLink[]> {
         return { ...entry, tags };
       },
     );
-    await context.sync();
+    await withSyncDeadline(context.sync(), "reading the links");
     return tagged
       .map(toFoundLink)
       .filter((link): link is FoundLink => link !== null);
@@ -165,7 +166,7 @@ async function writeTags(
       .shapes.getItem(shapeId);
     shape.tags.add(TAG_LINK, encodeTag(tag));
     shape.tags.add(TAG_KEY, token);
-    await context.sync();
+    await withSyncDeadline(context.sync(), "tagging the picture");
   });
 }
 
@@ -233,7 +234,10 @@ export async function insertLink(
     shape.tags.add(TAG_LINK, encodeTag(tag));
     shape.tags.add(TAG_KEY, item.token);
     shape.load("id");
-    await context.sync();
+    // The picture's id is only known once this sync answers; a host that
+    // swallows it never confirms one, so there is nothing here for a
+    // cleanup to delete.
+    await withSyncDeadline(context.sync(), "inserting the picture");
     return { slideId, shapeId: shape.id, overlapping, note };
   });
 }
@@ -336,7 +340,7 @@ export async function refreshLinks(batch: RefreshRequest[]): Promise<boolean> {
   if (batch.length === 0) return true;
   await PowerPoint.run(async (context) => {
     for (const entry of batch) queueRefresh(context, entry);
-    await context.sync();
+    await withSyncDeadline(context.sync(), "repainting the links");
   });
   return true;
 }
@@ -381,7 +385,7 @@ async function reinsertLink(
       .getItem(found.slideId)
       .shapes.getItem(found.shapeId)
       .delete();
-    await context.sync();
+    await withSyncDeadline(context.sync(), "removing the old picture");
   });
 }
 
@@ -397,7 +401,7 @@ export async function retagLink(
     const tags = shapeAt(context, found).tags;
     tags.add(TAG_LINK, encodeTag(tag));
     tags.add(TAG_KEY, token);
-    await context.sync();
+    await withSyncDeadline(context.sync(), "retagging the link");
   });
 }
 
@@ -408,13 +412,13 @@ export async function breakLink(found: FoundLink): Promise<void> {
     const tags = shapeAt(context, found).tags;
     tags.delete(TAG_LINK);
     tags.delete(TAG_KEY);
-    await context.sync();
+    await withSyncDeadline(context.sync(), "breaking the link");
   });
 }
 
 export async function goToSlide(slideId: string): Promise<void> {
   await PowerPoint.run(async (context) => {
     context.presentation.setSelectedSlides([slideId]);
-    await context.sync();
+    await withSyncDeadline(context.sync(), "going to the slide");
   });
 }

@@ -24,10 +24,12 @@ export const SHAPES_PER_SYNC = 12;
 export const SYNC_TIMEOUT_MS = 60_000;
 
 // What a round trip that never came back rejects with, so the caller can tell
-// a host that stopped answering from one that refused the shapes.
+// a host that stopped answering from one that refused the shapes. `what`
+// names the round trip that stopped, so the sentence is true wherever this
+// runs, not only for a chart's own draw.
 export class ChartDrawTimeout extends Error {
-  constructor() {
-    super("PowerPoint stopped answering while drawing the chart");
+  constructor(what: string) {
+    super(`PowerPoint stopped answering while ${what}`);
     this.name = "ChartDrawTimeout";
   }
 }
@@ -39,11 +41,17 @@ export function isDrawTimeout(error: unknown): boolean {
 // One piece of host work under that deadline: whatever it answers, unless it
 // answers nothing at all. The race keeps a handler on the abandoned promise,
 // so a batch that rejects long afterwards is still nobody's unhandled error.
-export async function withSyncDeadline<T>(work: Promise<T>): Promise<T> {
+// Every PowerPoint.run sync in the pane goes through here now, not only a
+// chart's own draw, so `what` defaults to that call's own wording and every
+// other caller names its own round trip.
+export async function withSyncDeadline<T>(
+  work: Promise<T>,
+  what = "drawing the chart",
+): Promise<T> {
   let timer: ReturnType<typeof setTimeout> | undefined;
   const deadline = new Promise<never>((_resolve, reject) => {
     timer = setTimeout(() => {
-      reject(new ChartDrawTimeout());
+      reject(new ChartDrawTimeout(what));
     }, SYNC_TIMEOUT_MS);
   });
   try {

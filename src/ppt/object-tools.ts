@@ -12,6 +12,7 @@ import {
   type ObjectBox,
   type ObjectMove,
 } from "./object-math";
+import { withSyncDeadline } from "./chart-draw";
 import { hasPowerPointApi } from "./shapes";
 
 const GEOMETRY =
@@ -86,11 +87,11 @@ async function transform(
   return PowerPoint.run(async (context) => {
     const selected = context.presentation.getSelectedShapes();
     selected.load(GEOMETRY);
-    await context.sync();
+    await withSyncDeadline(context.sync(), "reading the selection");
     requireCount(selected.items.length, minimum, message, maximum);
     const moves = make(boxesOf(selected.items));
     writeMoves(selected.items, moves);
-    await context.sync();
+    await withSyncDeadline(context.sync(), "moving the shapes");
     return selected.items.length;
   });
 }
@@ -134,18 +135,18 @@ export async function selectSimilar(): Promise<string> {
   return PowerPoint.run(async (context) => {
     const selected = context.presentation.getSelectedShapes();
     selected.load(GEOMETRY);
-    await context.sync();
+    await withSyncDeadline(context.sync(), "reading the selection");
     requireCount(selected.items.length, 1, "Select one reference object.", 1);
     const source = selected.items[0]!;
     const slide = source.getParentSlide();
     const shapes = slide.shapes;
     shapes.load(GEOMETRY);
-    await context.sync();
+    await withSyncDeadline(context.sync(), "reading the slide's shapes");
     const ids = shapes.items
       .filter((shape) => sameKindAndSize(source, shape))
       .map((shape) => shape.id);
     slide.setSelectedShapes(ids);
-    await context.sync();
+    await withSyncDeadline(context.sync(), "selecting the similar shapes");
     return `Selected ${String(ids.length)} similar object${ids.length === 1 ? "" : "s"}.`;
   });
 }
@@ -155,12 +156,12 @@ export async function captureObjectStyle(): Promise<string> {
   return PowerPoint.run(async (context) => {
     const selected = context.presentation.getSelectedShapes();
     selected.load("items/id");
-    await context.sync();
+    await withSyncDeadline(context.sync(), "reading the selection");
     requireCount(selected.items.length, 1, "Select one object to capture.", 1);
     const shape = selected.items[0]!;
     shape.fill.load("type,foregroundColor,transparency");
     shape.lineFormat.load("visible,color,transparency,weight,dashStyle,style");
-    await context.sync();
+    await withSyncDeadline(context.sync(), "reading the style");
     // The whitelist refuses every other ShapeFillType uniformly - Gradient,
     // Pattern, PictureAndTexture, SlideBackground - so a picture and a
     // gradient meet the same refusal, not two different code paths.
@@ -232,14 +233,14 @@ export async function applyObjectStyle(): Promise<string> {
   return PowerPoint.run(async (context) => {
     const selected = context.presentation.getSelectedShapes();
     selected.load("items/id");
-    await context.sync();
+    await withSyncDeadline(context.sync(), "reading the selection");
     requireCount(
       selected.items.length,
       1,
       "Select at least one target object.",
     );
     for (const shape of selected.items) paintShape(shape, style);
-    await context.sync();
+    await withSyncDeadline(context.sync(), "painting the style");
     const count = selected.items.length;
     return `Painted ${String(count)} object${count === 1 ? "" : "s"}.`;
   });

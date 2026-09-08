@@ -12,6 +12,7 @@ import {
   type Size,
 } from "../layout";
 import { SLIDE_16_9 } from "../link/status";
+import { withSyncDeadline } from "./chart-draw";
 import { SHAPE_PROPERTIES } from "./shapes";
 
 // Half an inch of margin, the same one fitToSlide keeps, and a gap wide enough
@@ -32,7 +33,7 @@ export async function readSelectedSlideId(
 ): Promise<string | null> {
   const selected = context.presentation.getSelectedSlides();
   selected.load("items/id");
-  await context.sync();
+  await withSyncDeadline(context.sync(), "reading the slide");
   return selected.items[0]?.id ?? null;
 }
 
@@ -63,7 +64,7 @@ async function occupiedBoxes(
 ): Promise<Box[]> {
   const shapes = context.presentation.slides.getItem(slideId).shapes;
   shapes.load(SHAPE_PROPERTIES);
-  await context.sync();
+  await withSyncDeadline(context.sync(), "reading the slide's shapes");
   const empty = await emptyPlaceholders(context, shapes.items);
   return shapes.items
     .filter((shape) => !empty.has(shape.id))
@@ -80,7 +81,7 @@ async function emptyPlaceholders(
   const placeholders = shapes.filter((shape) => shape.type === PLACEHOLDER);
   if (placeholders.length === 0) return new Set();
   for (const shape of placeholders) shape.textFrame.load("hasText");
-  await context.sync();
+  await withSyncDeadline(context.sync(), "reading the placeholders");
   return new Set(
     placeholders
       .filter((shape) => !shape.textFrame.hasText)
