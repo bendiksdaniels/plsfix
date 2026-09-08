@@ -1527,8 +1527,17 @@ class RangeProxy {
     return this.rect.colCount;
   }
 
-  get cellCount(): number {
+  // A audit: Excel answers -1 once the count runs past 2^31-1, which a
+  // whole-sheet (Ctrl+A) selection does at 17.2e9 cells, so a cap that only
+  // asks "> cap" waves it through.
+  // https://learn.microsoft.com/en-us/javascript/api/excel/excel.range#excel-excel-range-cellcount-member
+  private get rawCellCount(): number {
     return this.rect.rowCount * this.rect.colCount;
+  }
+
+  get cellCount(): number {
+    const cells = this.rawCellCount;
+    return cells > 2_147_483_647 ? -1 : cells;
   }
 
   get left(): number {
@@ -1562,9 +1571,11 @@ class RangeProxy {
   // A guard rather than a hang: an accidental whole-column grid read is a
   // production regression worth failing loudly on.
   private guard(what: string): void {
-    if (this.cellCount > this.runtime.maxCells) {
+    // The raw count, not the -1 Excel reports past 2^31-1: this guard is here
+    // to catch a grid read the caps let through.
+    if (this.rawCellCount > this.runtime.maxCells) {
       throw new Error(
-        `fake host refused a ${this.cellCount}-cell ${what} (${this.address})`,
+        `fake host refused a ${this.rawCellCount}-cell ${what} (${this.address})`,
       );
     }
   }
@@ -2184,6 +2195,10 @@ class RangeFormatProxy {
   }
 
   set rowHeight(value: number) {
+    // A audit review: a protected sheet refuses a row height unless
+    // allowFormatRows was granted, which protect() does not by default:
+    // https://learn.microsoft.com/en-us/javascript/api/excel/excel.worksheetprotectionoptions
+    if (refuseProtected(this.ctx, this.sheet, this.rect)) return;
     const rows = this.band(this.rect.rowCount, "row");
     for (let r = 0; r < rows; r += 1) {
       this.sheet.rowHeights.set(this.rect.row + r, value);
@@ -2195,6 +2210,8 @@ class RangeFormatProxy {
   }
 
   set columnWidth(value: number) {
+    // A audit review: the same refusal for a column width (allowFormatColumns).
+    if (refuseProtected(this.ctx, this.sheet, this.rect)) return;
     const columns = this.band(this.rect.colCount, "column");
     for (let c = 0; c < columns; c += 1) {
       this.sheet.columnWidths.set(this.rect.col + c, value);

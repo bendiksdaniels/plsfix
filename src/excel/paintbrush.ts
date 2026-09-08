@@ -6,6 +6,7 @@
 // and never written.
 
 import { BASE_WHITE, selectedSingleRange, withinCap } from "./internal";
+import { syncWrite } from "./protection";
 import { captureUndo } from "./undo";
 import { makeFormatGrid } from "../model";
 import {
@@ -216,6 +217,6 @@ export async function applySlot(
       slot.numberFormat,
     );
     range.setCellProperties(propertyGrid(rowCount, columnCount, slot));
-    await context.sync();
+    await syncWrite(context, STAGE);
   });
 }

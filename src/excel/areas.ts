@@ -9,6 +9,7 @@
 
 import {
   hostSupports,
+  overCap,
   SELECTION_CELL_CAP,
   selectionWithinCap,
 } from "./internal";
@@ -80,8 +81,13 @@ export async function cappedAreas(
   for (const range of ranges) range.load("cellCount");
   await context.sync();
 
-  const cells = ranges.reduce((total, range) => total + range.cellCount, 0);
-  if (cells > SELECTION_CELL_CAP) {
+  // One area answering -1 (over 2^31-1 cells) would otherwise pull the total
+  // below the cap rather than past it.
+  const counts = ranges.map((range) => range.cellCount);
+  const cells = counts.some((count) => count < 0)
+    ? -1
+    : counts.reduce((total, count) => total + count, 0);
+  if (overCap(cells)) {
     throw new Error(
       `${what} supports up to ${SELECTION_CELL_CAP.toLocaleString()} selected cells at once.`,
     );

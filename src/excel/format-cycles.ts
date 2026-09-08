@@ -7,6 +7,7 @@
 // in the pure src/cycles.ts, and the presets in selection.ts.
 
 import { activeArea, cappedAreas, selectedAreas } from "./areas";
+import { syncWrite } from "./protection";
 import { captureUndoAreas } from "./undo";
 import {
   BORDER_EDGE_NAMES,
@@ -100,7 +101,7 @@ export async function applyNumberCycle(
     for (const area of areas) {
       area.numberFormat = makeFormatGrid(area.rowCount, area.columnCount, next);
     }
-    await context.sync();
+    await syncWrite(context, "Format cycling");
   });
 }
 
@@ -114,23 +115,25 @@ export async function applyRowStyleCycle(kind: RowStyleKind): Promise<void> {
     );
     await context.sync();
 
+    // Edge borders target the whole range, which would leave interior rows
+    // bare in a multi-row selection; row styles are per-row by definition.
+    // Refuse absurd heights instead of silently degrading to edge borders -
+    // before the capture, so a refusal that writes nothing neither spends an
+    // undo slot nor drops the stack for being over the capture's cell cap.
+    const rows = areas.reduce((total, area) => total + area.rowCount, 0);
+    if (rows > ROW_STYLE_ROW_CAP) {
+      throw new Error(
+        `Row styles support up to ${ROW_STYLE_ROW_CAP} rows at once.`,
+      );
+    }
+
     const variants = buildRowStyleCycles(getActiveSettings())[kind];
     const index = matchStyleIndex(readCellStyle(active), variants);
     const next = variants[(index + 1) % variants.length];
     await captureUndoAreas(context, areas);
 
-    // Edge borders target the whole range, which would leave interior rows
-    // bare in a multi-row selection; row styles are per-row by definition.
-    // Refuse absurd heights instead of silently degrading to edge borders.
-    const rows = areas.reduce((total, area) => total + area.rowCount, 0);
-    if (next && rows > ROW_STYLE_ROW_CAP) {
-      throw new Error(
-        `Row styles support up to ${ROW_STYLE_ROW_CAP} rows at once.`,
-      );
-    }
     if (next) for (const area of areas) paintRowStyle(area, next);
-
-    await context.sync();
+    await syncWrite(context, "Row styles");
   });
 }
 
@@ -162,7 +165,7 @@ export async function applyFillCycle(): Promise<void> {
       else area.format.fill.color = next;
     }
 
-    await context.sync();
+    await syncWrite(context, "Fill cycling");
   });
 }
 
@@ -180,7 +183,7 @@ export async function applyFontColorCycle(): Promise<void> {
     await captureUndoAreas(context, areas);
 
     for (const area of areas) area.format.font.color = next;
-    await context.sync();
+    await syncWrite(context, "Font colour cycling");
   });
 }
 
@@ -276,6 +279,6 @@ export async function applyBorderCycle(): Promise<void> {
     await captureUndoAreas(context, areas);
 
     if (next) for (const edges of handles) writeEdges(edges, next);
-    await context.sync();
+    await syncWrite(context, "Border cycling");
   });
 }

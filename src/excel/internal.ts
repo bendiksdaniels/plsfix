@@ -45,6 +45,12 @@ export const BASE_WHITE = "#FFFFFF";
 
 // A whole-column click selects a million cells; reading or writing their grids
 // would freeze the pane or overflow the request payload.
+export function overCap(cells: number): boolean {
+  // Excel answers -1 for a count past 2^31-1, which a whole-sheet Ctrl+A is:
+  // read as a number that is the largest selection there is, not the smallest.
+  return cells < 0 || cells > SELECTION_CELL_CAP;
+}
+
 export async function withinCap(
   context: Excel.RequestContext,
   range: Excel.Range,
@@ -52,7 +58,7 @@ export async function withinCap(
 ): Promise<Excel.Range> {
   range.load("cellCount");
   await context.sync();
-  if (range.cellCount > SELECTION_CELL_CAP) {
+  if (overCap(range.cellCount)) {
     throw new Error(
       `${what} supports up to ${SELECTION_CELL_CAP.toLocaleString()} selected cells at once.`,
     );
@@ -198,11 +204,13 @@ export function pickScannableSheets(
   ranges.forEach((range, index) => {
     const name = items[index]?.name ?? "";
     if (range.isNullObject) return;
-    if (range.cellCount > cap || total + range.cellCount > totalCap) {
+    // A count past 2^31-1 comes back as -1: the biggest sheet there is.
+    const cells = range.cellCount;
+    if (cells < 0 || cells > cap || total + cells > totalCap) {
       skippedSheets.push(name);
       return;
     }
-    total += range.cellCount;
+    total += cells;
     scanned.push({ index, name, range });
   });
 
@@ -247,7 +255,11 @@ export function styleChartSurface(chart: Excel.Chart): void {
   chart.format.font.name = settings.font;
   chart.format.font.size = CHART_TEXT_SIZE;
   chart.format.font.color = activeTheme().formulaFont;
-  chart.format.roundedCorners = false;
+  // ChartAreaFormat.font is ExcelApi 1.1 but roundedCorners is 1.9, and an
+  // older host rejects the whole batch over that one line - a rejection the
+  // waterfall's tolerated batch does not forgive, since it is not
+  // UnsupportedOperation.
+  if (hostSupports("1.9")) chart.format.roundedCorners = false;
 }
 
 export function styleChartShell(

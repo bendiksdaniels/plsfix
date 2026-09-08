@@ -136,7 +136,14 @@ export function parsePalette(json: string): BrandSettings | null {
   }
   if (typeof raw !== "object" || raw === null) return null;
 
+  // An object naming none of the palette's own keys is not a partial palette,
+  // it is the wrong content: a foreign .json, or a corrupted stored value. Read
+  // as a palette it would silently replace a brand with the shipped one, so the
+  // callers are told there is nothing here instead (each falls back or says so).
   const source = raw as Record<string, unknown>;
+  if (!Object.keys(DEFAULT_SETTINGS).some((key) => source[key] !== undefined)) {
+    return null;
+  }
   const settings: BrandSettings = { ...DEFAULT_SETTINGS };
 
   for (const key of COLOR_KEYS) {
