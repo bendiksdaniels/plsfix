@@ -67,6 +67,9 @@ describe("an object tool whose round trip the host swallows", () => {
       height: 30,
     });
     helpers.selectShapes([a.id, b.id]);
+    // One ordinary round trip first: the fake confirms seeded shapes on a
+    // successful sync, and a hung one rolls back whatever is still pending.
+    await tools.alignSelected("top");
 
     helpers.hangNextSync();
     vi.useFakeTimers();
@@ -77,6 +80,7 @@ describe("an object tool whose round trip the host swallows", () => {
 
     await tools.alignSelected("left");
     expect(b.left).toBe(10);
+    expect(b.top).toBe(20);
   });
 });
 
@@ -104,8 +108,8 @@ describe("a grouped deck whose group-opening read the host swallows", () => {
     });
     presentation.groupShapes([picture.id, caption.id], slide.id);
 
-    // The scan's first sync reads the slides; the second opens the group.
-    helpers.hangNextSync(1);
+    // The scan reads the slides, then their shapes, then opens the groups.
+    helpers.hangNextSync(2);
     vi.useFakeTimers();
     await expect(settle(links.listLinks(relay))).rejects.toThrow(
       /stopped answering while reading the groups/,
