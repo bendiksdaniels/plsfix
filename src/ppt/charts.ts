@@ -24,7 +24,12 @@ import {
 import { base64ToBytes, pngSize } from "../link/png";
 import { drawGroup, isDrawTimeout, withSyncDeadline } from "./chart-draw";
 import type { FoundLink, InsertResult } from "./host";
-import { CONTENT_WIDTH, placeOnSlide, selectedSlideId } from "./placement";
+import {
+  CONTENT_WIDTH,
+  placeOnSlide,
+  selectedSlideId,
+  SLIDE,
+} from "./placement";
 import { hasPowerPointApi, isGrouped } from "./shapes";
 
 export { SHAPES_PER_SYNC } from "./chart-draw";
@@ -46,6 +51,10 @@ export const SHAPE_BUDGET_DESKTOP = 200;
 
 // A picture's pixels are 96 to the inch and a slide's points are 72.
 const PNG_TO_POINTS = 0.75;
+// The same margin CONTENT_WIDTH keeps, on the other side: a chart taller than
+// this is scaled down to it, exactly as fitToSlide scales the picture, or the
+// group hangs off the top and the bottom of the slide.
+const CONTENT_HEIGHT = SLIDE.height - (SLIDE.width - CONTENT_WIDTH);
 
 export function shapeBudget(): number {
   return Office.context?.platform === Office.PlatformType.OfficeOnline
@@ -68,17 +77,27 @@ export interface ChartPlan {
   png: string;
 }
 
+// chartSize caps the width alone, because how tall a chart may be is the
+// slide's business and not the layout's: a chart the sheet made taller than
+// the slide is scaled back, aspect kept, before anything is laid out in it.
+function onSlide(size: Size): Size {
+  const scale = Math.min(1, CONTENT_HEIGHT / size.height);
+  return { width: size.width * scale, height: size.height * scale };
+}
+
 // Null for every payload with no chart data at all: a table, a plain range,
 // and a chart type Excel could not describe, which are pictures and stay so.
 export function chartPlan(payload: Payload): ChartPlan | null {
   if (payload.kind !== "picture" || payload.chart === undefined) return null;
   const data = payload.chart;
-  const size = chartSize(
-    {
-      width: payload.width * PNG_TO_POINTS,
-      height: payload.height * PNG_TO_POINTS,
-    },
-    CONTENT_WIDTH,
+  const size = onSlide(
+    chartSize(
+      {
+        width: payload.width * PNG_TO_POINTS,
+        height: payload.height * PNG_TO_POINTS,
+      },
+      CONTENT_WIDTH,
+    ),
   );
   return {
     data,

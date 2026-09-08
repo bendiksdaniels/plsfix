@@ -359,3 +359,23 @@ describe("shapes the host would refuse", () => {
     ).toBe(true);
   });
 });
+
+// A chart taller than the slide: the picture route fits one to the slide
+// before it places it (fitToSlide), and a drawn chart has to do the same or
+// the group hangs off the top and bottom of the slide.
+describe("a chart taller than the slide", () => {
+  it("fits the group to the slide, as the picture would have been", async () => {
+    const ws = await createWorkspace(memoryStore());
+    // 400 x 1400 pixels are 300 x 1050 points on a 540 pt slide.
+    const item = await seedChart(COLUMN, fakePng(400, 1400));
+    const placed = await links.insertFromInbox(item, ws, relay);
+
+    expect(placed.note).toBeUndefined();
+    const group = shapes()[0]!;
+    expect(group.type).toBe("Group");
+    // Inside the slide, margin and all, with the chart's own aspect kept.
+    expect(group.top).toBeGreaterThanOrEqual(36);
+    expect(group.top + group.height).toBeLessThanOrEqual(504);
+    expect(group.height / group.width).toBeCloseTo(3.5, 1);
+  });
+});
