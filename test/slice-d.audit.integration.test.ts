@@ -174,6 +174,22 @@ describe("super find, the corners", () => {
     );
     expect(workbook.activeSheetId).toBe(helpers.sheet("Model").id);
   });
+
+  // What a modeller types is what Excel shows: an error text, a number, a
+  // Latvian word in whatever casing came to hand.
+  it("finds an error value, a boolean and a word with diacritics", async () => {
+    helpers.seed("Model!A1", [["#N/A", true, "Ieņēmumi"]]);
+
+    expect((await smt.findInWorkbook("#N/A", LOOSE)).hits[0]?.address).toBe(
+      "A1",
+    );
+    expect((await smt.findInWorkbook("true", LOOSE)).hits[0]?.text).toBe(
+      "TRUE",
+    );
+    expect((await smt.findInWorkbook("IEŅĒMUMI", LOOSE)).hits[0]?.text).toBe(
+      "Ieņēmumi",
+    );
+  });
 });
 
 describe("prepare for sharing, the corners", () => {
@@ -205,5 +221,67 @@ describe("prepare for sharing, the corners", () => {
     const { report } = await smt.prepareForSharing();
 
     expect(report.filter((issue) => issue.kind === "linkTokens")).toEqual([]);
+  });
+
+  // The report is built from three reading phases and only then is a single
+  // sheet touched: a host that refuses the read leaves the workbook exactly
+  // where the modeller had it, not half tidied.
+  it("moves nothing when the read the report is built from is refused", async () => {
+    helpers.seed("Data!C5", [["Working here"]]);
+    helpers.select("Data!C5");
+    await smt.activateSheet("Data");
+    const before = workbook.selection;
+    helpers.failNextSync();
+
+    expect(await rejects(() => smt.prepareForSharing())).toBe(
+      "The sync failed.",
+    );
+
+    expect(workbook.activeSheetId).toBe(helpers.sheet("Data").id);
+    expect(workbook.selection).toEqual(before);
+  });
+});
+
+describe("the style scrubber, the corners", () => {
+  // A back-room sheet nobody can open from Excel's UI still dresses its cells.
+  it("counts a style worn only on a very hidden sheet as in use", async () => {
+    helpers.addStyle("Assumption");
+    helpers.seed("Data!B2", [["Growth"]]);
+    helpers.setStyle("Data!B2", "Assumption");
+    helpers.sheet("Data").visibility = "VeryHidden";
+
+    expect(await smt.listUnusedStyles()).toEqual({
+      unused: [],
+      total: 2,
+      skippedSheets: [],
+    });
+  });
+});
+
+describe("the model check, the corners", () => {
+  // A cell holding an error text with no formula behind it is still a cell a
+  // reviewer has to look at, and the line carries the error Excel shows.
+  it("flags an error value with no formula and names the error", async () => {
+    helpers.seed("Model!C7", [["#N/A"]]);
+
+    const { findings } = await smt.runModelCheck();
+
+    expect(of(findings, "formulaError")).toEqual([
+      {
+        kind: "formulaError",
+        sheet: "Model",
+        ref: "C7",
+        count: 1,
+        note: "#N/A",
+      },
+    ]);
+  });
+
+  it("leaves a text cell that only looks like an error alone", async () => {
+    helpers.seed("Model!C7", [["not #N/A really"]]);
+
+    expect(of((await smt.runModelCheck()).findings, "formulaError")).toEqual(
+      [],
+    );
   });
 });
