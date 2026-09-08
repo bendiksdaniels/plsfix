@@ -2,6 +2,11 @@
 // hands their boxes here, then writes back only the properties each action
 // changes. Keeping the layout rules host-free makes the exact result testable.
 
+// PowerPoint.Shape.left/top/width/height always describe the shape's
+// unrotated frame - rotation is a separate property this module never reads
+// or writes - so every tool below aligns, distributes, sizes and swaps on
+// that unrotated box, the same frame a rotated shape's own left/top/width/
+// height already report.
 export interface ObjectBox {
   id: string;
   left: number;
@@ -86,6 +91,13 @@ export function matchSize(boxes: ObjectBox[]): ObjectMove[] {
   }));
 }
 
+// Swaps top-left corners, not centres, and each box keeps its own width and
+// height: two equal-size shapes trade places exactly, but with unequal sizes
+// the far (right/bottom) edge of the larger box lands wherever the smaller
+// box's corner was, which can run past where that box's own far edge sat.
+// Nothing in this module clamps to the slide - align and distribute size
+// nothing to the selection's own bounding box either - so this is consistent
+// with the rest of the file rather than a swap-specific gap.
 export function swapBoxes(boxes: ObjectBox[]): ObjectMove[] {
   if (boxes.length !== 2) return [];
   const [first, second] = boxes as [ObjectBox, ObjectBox];

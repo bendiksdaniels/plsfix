@@ -32,7 +32,10 @@ interface CapturedStyle {
   fill: { type: string; color: string; transparency: number | null };
   line: {
     visible: boolean;
-    color: string;
+    // Like weight/dashStyle/style below, the host answers null for a line
+    // that was never given its own explicit color (still inheriting the
+    // theme's), independently of whether the line is visible.
+    color: string | null;
     transparency: number | null;
     weight: number | null;
     dashStyle: string | null;
@@ -158,6 +161,9 @@ export async function captureObjectStyle(): Promise<string> {
     shape.fill.load("type,foregroundColor,transparency");
     shape.lineFormat.load("visible,color,transparency,weight,dashStyle,style");
     await context.sync();
+    // The whitelist refuses every other ShapeFillType uniformly - Gradient,
+    // Pattern, PictureAndTexture, SlideBackground - so a picture and a
+    // gradient meet the same refusal, not two different code paths.
     if (!(["Solid", "NoFill"] as string[]).includes(String(shape.fill.type))) {
       throw new Error(
         "Smart Painter currently supports solid or no-fill objects.",
@@ -201,7 +207,11 @@ function paintShape(shape: PowerPoint.Shape, style: CapturedStyle): void {
   }
   shape.lineFormat.visible = style.line.visible;
   if (!style.line.visible) return;
-  shape.lineFormat.color = style.line.color;
+  // A visible line whose color was never explicitly set (still the theme
+  // default) answers null here, same as an unset weight/dashStyle/style
+  // below: writing it back unguarded would paint a literal null onto the
+  // target's color the way lessons/2026-09-08 already fixed for its siblings.
+  if (style.line.color !== null) shape.lineFormat.color = style.line.color;
   if (style.line.transparency !== null) {
     shape.lineFormat.transparency = style.line.transparency;
   }
