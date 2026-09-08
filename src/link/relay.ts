@@ -33,16 +33,14 @@ export interface StatusQuery {
   auth: string;
 }
 
-// One link a workbook still holds, for the boot-time TTL refresh. Same pair as
-// a status query, named apart because the two routes answer different things.
+// A status pair for the boot-time TTL refresh, named apart: the routes differ.
 export interface TouchQuery {
   id: string;
   auth: string;
 }
 
-// The deck's side of one link in a batch fetch: which link, the key that opens
-// it, and the revision the deck already holds. Without `knownRev` the relay
-// always answers with a blob.
+// The deck's side of one link in a batch fetch: the link, the key that opens
+// it and the revision it holds; without `knownRev` the relay always sends a blob.
 export interface FetchQuery {
   id: string;
   auth: string;
