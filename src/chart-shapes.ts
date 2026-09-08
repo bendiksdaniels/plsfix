@@ -10,6 +10,7 @@ import type { ChartData, ChartKind } from "./link/chart-model";
 import {
   barRange,
   boxAt,
+  bridgeRange,
   label,
   legend,
   legendItems,
@@ -67,7 +68,7 @@ export const LABEL_SIZE = 9;
 export const TITLE_SIZE = 12;
 export const TITLE_BAND = 18;
 export const LEGEND_BAND = 16;
-export const CATEGORY_BAND = 14;
+export const CATEGORY_BAND = 18;
 export const BAR_FILL = 0.6;
 export const LABEL_HEIGHT = 18;
 export const LABEL_PAD = 7;
@@ -80,6 +81,7 @@ export const BAR_LABEL_COLUMN = 0.28;
 export const MIN_SEGMENT = 12;
 export const MIN_SIZE: Size = { width: 200, height: 120 };
 
+const BAND_SHARE = 0.5;
 const LUMINANCE_R = 0.299;
 const LUMINANCE_G = 0.587;
 const LUMINANCE_B = 0.114;
@@ -125,31 +127,32 @@ function bands(data: ChartData, box: Box): Bands {
   const barLike = data.kind === "bar" || data.kind === "stackedBar";
   const isPie = data.kind === "pie";
   const title = boxAt(box.left, box.top, box.width, TITLE_BAND);
+  const plotTop = box.top + TITLE_BAND;
   let bottom = box.top + box.height;
+  // What the bands under the plot may take between them: at most half of the
+  // room below the title, so a chart in a box too small for its legend still
+  // has a plot and no primitive is ever laid out at a negative size.
+  let room = Math.max(0, (bottom - plotTop) * BAND_SHARE);
 
   let legendBand: Box | null = null;
   if (data.series.length > 1 || isPie) {
     const rows = packLegendRows(legendItems(data), box.width).length;
-    const height = rows * LEGEND_BAND;
+    const height = Math.min(rows * LEGEND_BAND, room);
     legendBand = boxAt(box.left, bottom - height, box.width, height);
     bottom -= height;
+    room -= height;
   }
 
   let categoryBand: Box | null = null;
   let left = box.left;
   let width = box.width;
   if (!barLike && !isPie) {
-    categoryBand = boxAt(
-      box.left,
-      bottom - CATEGORY_BAND,
-      box.width,
-      CATEGORY_BAND,
-    );
-    bottom -= CATEGORY_BAND;
+    const height = Math.min(CATEGORY_BAND, room);
+    categoryBand = boxAt(box.left, bottom - height, box.width, height);
+    bottom -= height;
   }
 
   let labelColumn: Box | null = null;
-  const plotTop = box.top + TITLE_BAND;
   if (barLike) {
     const colWidth = box.width * BAR_LABEL_COLUMN;
     labelColumn = boxAt(box.left, plotTop, colWidth, bottom - plotTop);
@@ -311,14 +314,12 @@ function waterfallBars(
   const out: Primitive[] = [];
   const runningLevel: number[] = [];
   data.categories.forEach((_, i) => {
-    const lo = bridge.base[i]!;
-    const hi = lo + bridge.rise[i]! + bridge.fall[i]!;
+    const { lo, hi, below } = bridgeRange(bridge, i);
     const left = plot.left + i * slot + (slot - barWidth) / 2;
     const top = valueY(hi, scale, plot);
     const box = boxAt(left, top, barWidth, valueY(lo, scale, plot) - top);
     out.push(rect(box, series.colors[i]!, `bar 0.${i}`));
-    const isFall = bridge.fall[i]! > 0;
-    const labelTop = isFall ? box.top + box.height : box.top - LABEL_HEIGHT;
+    const labelTop = below ? box.top + box.height : box.top - LABEL_HEIGHT;
     const labelBox = boxAt(left, labelTop, barWidth, LABEL_HEIGHT);
     out.push(label(labelBox, series.labels[i]!, data.ink, "c", `label 0.${i}`));
     runningLevel.push(valueY(bridge.base[i]! + bridge.rise[i]!, scale, plot));
@@ -370,8 +371,6 @@ export function layoutChart(data: ChartData, box: Box): Primitive[] {
         ...columnBars(data, plot, scale),
         baselineLine(data.kind, data, plot, scale),
       );
-      if (categoryBand)
-        out.push(...categoryLabels(data, plot, categoryBand, false));
     } else if (data.kind === "bar" || data.kind === "stackedBar") {
       out.push(
         ...barBars(data, plot, scale),
@@ -384,16 +383,16 @@ export function layoutChart(data: ChartData, box: Box): Primitive[] {
         ...lineSeries(data, plot, scale),
         baselineLine(data.kind, data, plot, scale),
       );
-      if (categoryBand)
-        out.push(...categoryLabels(data, plot, categoryBand, false));
     } else {
       out.push(
         ...waterfallBars(data, plot, scale),
         baselineLine(data.kind, data, plot, scale),
       );
-      if (categoryBand)
-        out.push(...categoryLabels(data, plot, categoryBand, false));
     }
+    // Every kind but the bar family labels its categories under the plot; the
+    // bar family has none, so this is skipped rather than repeated per kind.
+    if (categoryBand)
+      out.push(...categoryLabels(data, plot, categoryBand, false));
   }
   if (legendBand) out.push(...legend(data, legendBand));
   return out;

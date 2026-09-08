@@ -6,7 +6,11 @@
 
 import { chartSize, layoutChart, type Primitive } from "../chart-shapes";
 import type { Box, Size } from "../layout";
-import type { ChartData } from "../link/chart-model";
+import {
+  CHART_HOST_SILENT,
+  pictureNote,
+  type ChartData,
+} from "../link/chart-model";
 import {
   encodeTag,
   sourceLabel,
@@ -18,9 +22,14 @@ import {
   type PicturePayload,
 } from "../link/model";
 import { base64ToBytes, pngSize } from "../link/png";
-import { drawGroup } from "./chart-draw";
+import { drawGroup, isDrawTimeout, withSyncDeadline } from "./chart-draw";
 import type { FoundLink, InsertResult } from "./host";
-import { CONTENT_WIDTH, placeOnSlide, selectedSlideId } from "./placement";
+import {
+  CONTENT_WIDTH,
+  placeOnSlide,
+  selectedSlideId,
+  SLIDE,
+} from "./placement";
 import { hasPowerPointApi, isGrouped } from "./shapes";
 
 export { SHAPES_PER_SYNC } from "./chart-draw";
@@ -42,6 +51,10 @@ export const SHAPE_BUDGET_DESKTOP = 200;
 
 // A picture's pixels are 96 to the inch and a slide's points are 72.
 const PNG_TO_POINTS = 0.75;
+// The same margin CONTENT_WIDTH keeps, on the other side: a chart taller than
+// this is scaled down to it, exactly as fitToSlide scales the picture, or the
+// group hangs off the top and the bottom of the slide.
+const CONTENT_HEIGHT = SLIDE.height - (SLIDE.width - CONTENT_WIDTH);
 
 export function shapeBudget(): number {
   return Office.context?.platform === Office.PlatformType.OfficeOnline
@@ -59,6 +72,17 @@ export interface ChartPlan {
   data: ChartData;
   size: Size;
   primitives: Primitive[];
+  // The picture that travelled beside the data: what goes on the slide when
+  // the host turns out not to be able to draw the shapes after all.
+  png: string;
+}
+
+// chartSize caps the width alone, because how tall a chart may be is the
+// slide's business and not the layout's: a chart the sheet made taller than
+// the slide is scaled back, aspect kept, before anything is laid out in it.
+function onSlide(size: Size): Size {
+  const scale = Math.min(1, CONTENT_HEIGHT / size.height);
+  return { width: size.width * scale, height: size.height * scale };
 }
 
 // Null for every payload with no chart data at all: a table, a plain range,
@@ -66,17 +90,20 @@ export interface ChartPlan {
 export function chartPlan(payload: Payload): ChartPlan | null {
   if (payload.kind !== "picture" || payload.chart === undefined) return null;
   const data = payload.chart;
-  const size = chartSize(
-    {
-      width: payload.width * PNG_TO_POINTS,
-      height: payload.height * PNG_TO_POINTS,
-    },
-    CONTENT_WIDTH,
+  const size = onSlide(
+    chartSize(
+      {
+        width: payload.width * PNG_TO_POINTS,
+        height: payload.height * PNG_TO_POINTS,
+      },
+      CONTENT_WIDTH,
+    ),
   );
   return {
     data,
     size,
     primitives: layoutChart(data, { left: 0, top: 0, ...size }),
+    png: payload.png,
   };
 }
 
@@ -131,27 +158,89 @@ function requireUngrouped(found: FoundLink, stage: string): void {
   }
 }
 
+// The linked picture as one shape: the rectangle every fallback lands, image
+// filled and carrying both tags, so a chart that could not be drawn is still
+// a link the deck updates.
+function addPicture(
+  shapes: PowerPoint.ShapeCollection,
+  box: Box,
+  label: string,
+  png: string,
+  identity: { tag: LinkTag; token: string },
+): PowerPoint.Shape {
+  const shape = shapes.addGeometricShape(
+    PowerPoint.GeometricShapeType.rectangle,
+    box,
+  );
+  shape.name = `pls,fix link ${label}`;
+  shape.lineFormat.visible = false;
+  shape.fill.setImage(png);
+  shape.tags.add(TAG_LINK, encodeTag(identity.tag));
+  shape.tags.add(TAG_KEY, identity.token);
+  return shape;
+}
+
+// The host swallowed the draw: the shapes it had taken are already deleted
+// (chart-draw.ts), so the picture goes in the space the chart was placed in,
+// in a fresh batch and under the same deadline. A host that has stopped
+// answering altogether rejects here instead, which still frees the pane.
+async function pictureInstead(
+  where: { slideId: string; box: Box },
+  item: InboxItem,
+  png: string,
+  tag: LinkTag,
+): Promise<string> {
+  return PowerPoint.run(async (context) => {
+    const shapes = context.presentation.slides.getItem(where.slideId).shapes;
+    const shape = addPicture(shapes, where.box, item.label, png, {
+      tag,
+      token: item.token,
+    });
+    shape.load("id");
+    await withSyncDeadline(context.sync());
+    return shape.id;
+  });
+}
+
 export async function insertChart(
   stage: string,
   item: InboxItem,
   plan: ChartPlan,
   tag: LinkTag,
 ): Promise<InsertResult> {
-  return PowerPoint.run(async (context) => {
-    const slideId = await selectedSlideId(context, stage);
-    const placed = await placeOnSlide(context, slideId, plan.size);
-    const shapes = context.presentation.slides.getItem(slideId).shapes;
-    const shapeId = await drawGroup(context, shapes, {
-      primitives: primitivesAt(plan, placed.box),
-      box: placed.box,
-      font: plan.data.font,
-      name: `pls,fix chart ${item.label}`,
-      tag,
-      token: item.token,
-      slideId,
+  let where: { slideId: string; box: Box; overlapping: boolean } | undefined;
+  try {
+    return await PowerPoint.run(async (context) => {
+      // The reads that decide where the chart goes are round trips like any
+      // other, and a host that swallows one of them would leave the pane
+      // waiting for ever: they get the draw's own deadline.
+      const slideId = await withSyncDeadline(selectedSlideId(context, stage));
+      const placed = await withSyncDeadline(
+        placeOnSlide(context, slideId, plan.size),
+      );
+      where = { slideId, ...placed };
+      const shapes = context.presentation.slides.getItem(slideId).shapes;
+      const shapeId = await drawGroup(context, shapes, {
+        primitives: primitivesAt(plan, placed.box),
+        box: placed.box,
+        font: plan.data.font,
+        name: `pls,fix chart ${item.label}`,
+        tag,
+        token: item.token,
+        slideId,
+      });
+      return { slideId, shapeId, overlapping: placed.overlapping };
     });
-    return { slideId, shapeId, overlapping: placed.overlapping };
-  });
+  } catch (error) {
+    const placed = where;
+    if (!isDrawTimeout(error) || placed === undefined) throw error;
+    return {
+      slideId: placed.slideId,
+      shapeId: await pictureInstead(placed, item, plan.png, tag),
+      overlapping: placed.overlapping,
+      note: pictureNote(CHART_HOST_SILENT),
+    };
+  }
 }
 
 // The chart drawn again where it sits. The new group is built first and the
@@ -200,17 +289,9 @@ export async function replaceGroupWithPicture(
   await PowerPoint.run(async (context) => {
     const shapes = context.presentation.slides.getItem(found.slideId).shapes;
     const old = shapes.getItem(found.shapeId);
-    const shape = shapes.addGeometricShape(
-      PowerPoint.GeometricShapeType.rectangle,
-      box,
-    );
-    shape.name = `pls,fix link ${label}`;
-    shape.lineFormat.visible = false;
-    shape.fill.setImage(payload.png);
-    shape.tags.add(TAG_LINK, encodeTag(tag));
-    shape.tags.add(TAG_KEY, found.token);
+    addPicture(shapes, box, label, payload.png, { tag, token: found.token });
     old.delete();
-    await context.sync();
+    await withSyncDeadline(context.sync());
   });
 }
 
@@ -220,11 +301,22 @@ export async function refreshChartGroup(
   found: FoundLink,
   payload: PicturePayload,
   tag: LinkTag,
-): Promise<void> {
+): Promise<string | undefined> {
   const plan = chartPlan(payload);
+  let silent = false;
   if (plan !== null && declineReason(plan) === null) {
-    await refreshChart(found, plan, tag);
-    return;
+    try {
+      await refreshChart(found, plan, tag);
+      return undefined;
+    } catch (error) {
+      // A host that swallowed the redraw keeps the group it already had: the
+      // picture replaces it at the same corner and width, so the link is
+      // still a link. Anything else is the host's own refusal, unchanged.
+      if (!isDrawTimeout(error)) throw error;
+      silent = true;
+    }
   }
   await replaceGroupWithPicture(found, payload, tag);
+  // The reason travels back so "Update all" can say why a group is a picture.
+  return silent ? pictureNote(CHART_HOST_SILENT) : undefined;
 }
