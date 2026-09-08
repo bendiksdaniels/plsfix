@@ -177,6 +177,12 @@ function renderInboxView(): void {
   renderInbox(inboxList, inboxItems, (item) => {
     act(() => insertItem(item), "insert-link");
   });
+  // An insert redraws this list halfway through - the row it consumed has to
+  // leave - so the Insert buttons that redraw creates are ones setBusy has
+  // never seen. Without this a second insert is clickable mid-flight.
+  for (const insert of inboxList.querySelectorAll("button")) {
+    insert.disabled = isBusy;
+  }
   inboxList.hidden = workspace === null;
   inboxUnpaired.hidden = workspace !== null;
 }
@@ -203,7 +209,12 @@ function noteFailure(error: unknown, what: string): void {
   noteDetail(`${what}: ${describeError(error, REPORT_CONTEXT).message}`);
 }
 
+// What setBusy last wrote: a list redrawn while an action is still running
+// has to come back as disabled as the buttons it replaced.
+let isBusy = false;
+
 function setBusy(busy: boolean): void {
+  isBusy = busy;
   const buttons =
     document.querySelectorAll<HTMLButtonElement>(".app-shell button");
   for (const button of buttons) button.disabled = busy;
@@ -377,6 +388,10 @@ async function saveKey(): Promise<string> {
   workspace = await pairWith(key);
   // The key is the secret itself: it is stored, never echoed back.
   workspaceKey.value = "";
+  // The exports on screen were sealed with the key that was there before, and
+  // their Insert buttons still work: they go with it, whether or not the read
+  // below reaches the relay.
+  inboxItems = [];
   // Paired is drawn before the inbox is read, so a relay that is down leaves an
   // empty list rather than a pane that still claims to be unpaired.
   renderPairing();

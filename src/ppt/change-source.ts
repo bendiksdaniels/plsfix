@@ -1,7 +1,8 @@
 // "Change source": point a tracked picture at a different export - usually the
 // same table exported again from a newer workbook - keeping its slide, its
-// position and its size. A text link only ever re-points at another text
-// export, because a text box cannot take a picture's payload in place. The deck's tags are rewritten and the picture is
+// position and its size. A link only re-points at an export of its own kind:
+// a text box or a table cannot take a picture's payload in place, nor the
+// other way round. The deck's tags are rewritten and the picture is
 // repainted through the ordinary refresh path; nothing moves in Excel, and the
 // link the shape used to hold stays on the relay untouched, so any other deck
 // still tracking it carries on. No Office.js: the host and the relay are
@@ -12,6 +13,7 @@ import {
   decodePayload,
   sourceLabel,
   type InboxItem,
+  type LinkKind,
   type LinkTag,
   type Payload,
 } from "../link/model";
@@ -23,7 +25,7 @@ import { applyBatch, type LinkRow, type PptHost } from "./links";
 
 const ONE_ROW = "Tick exactly one link to change its source.";
 const NO_CANDIDATES =
-  "Nothing waiting in the Inbox. Export the range again from Excel first.";
+  "Nothing waiting in the Inbox fits this link. Export the same kind of object again from Excel first.";
 const NO_CHOICE = "Choose an export from the list.";
 
 // Excel upper-cases refs and treats sheet names case-insensitively, and a
@@ -49,11 +51,21 @@ function rank(row: LinkRow, item: InboxItem): number {
   return 2;
 }
 
-// A text box cannot become a picture in place, nor the other way round: the
-// candidates stay on the row's side of that line. Picture and table still mix,
-// as before (kindWarning says so when they do).
+// What a shape can hold: a text box its text, a native table its cells, and a
+// rectangle a picture - a range and a chart being the same rectangle, which is
+// why they are the one pair that mixes.
+function family(kind: LinkKind): LinkKind | "picture" {
+  return kind === "text" || kind === "table" ? kind : "picture";
+}
+
+// No shape can take another family's payload in place. A table handed a
+// picture kept its old cells and grew the new render behind them - a source
+// changed, a row reading "up to date" and a slide still showing the previous
+// workbook's numbers - and a rectangle handed a table's cells answers
+// GeneralException, because getTable refuses it. Candidates stay on the row's
+// side of both lines; kindWarning covers the range/chart pair that is left.
 function sameFamily(row: LinkRow, item: InboxItem): boolean {
-  return (row.found.tag.kind === "text") === (item.kind === "text");
+  return family(row.found.tag.kind) === family(item.kind);
 }
 
 // Pure, and stable inside a tier: the inbox's own order (newest first) decides

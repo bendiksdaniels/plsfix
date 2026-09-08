@@ -127,9 +127,11 @@ describe("candidatesFor", () => {
       await seedTable([[{ t: "Revenue" }]], [80]),
     ];
 
+    // A table export is hidden from a picture link too: a picture-filled
+    // rectangle is no table, and getTable answers GeneralException on it.
     expect(
       changeSource.candidatesFor(row, inbox).map((item) => item.kind),
-    ).toEqual(["range", "table"]);
+    ).toEqual(["range"]);
   });
 
   // The label can change when a table is re-exported over a moved range, so the

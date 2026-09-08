@@ -168,12 +168,14 @@ export async function updateLinks(
     failures: [],
     notes: [],
   };
-  const wanted = rows.filter((row) => {
-    if (row.status === "updateAvailable") return true;
-    countSkipped(summary, row.status);
-    return false;
-  });
-  const fetched = await fetchUpdates(wanted, relay);
+  // Every row is asked about, not only the ones the last poll called stale.
+  // The list on screen is a snapshot, Excel pushes while this pane sits open,
+  // and the fetch route answers "unchanged" from one head read - so deciding
+  // here from a cached status is what used to report a deck that had just been
+  // re-exported as up to date, repainting nothing until the user pressed the
+  // refresh arrow first. What is current, missing or wrongly keyed is now the
+  // relay's answer, in the same round trip that carries the pictures.
+  const fetched = await fetchUpdates(rows, relay);
   summary.current += fetched.current;
   summary.missing += fetched.missing;
   summary.wrongKey += fetched.wrongKey;
@@ -184,12 +186,26 @@ export async function updateLinks(
     noteSourceChange(summary, entry.found, entry.payload);
   }
   const failed = new Set<string>();
-  summary.updated += await applyBatch(fetched.batch, host, (found, error) => {
-    failed.add(shapeKey(found));
-    countFailure(summary, found, error);
-  });
+  const spoken = new Set<string>();
+  summary.updated += await applyBatch(
+    fetched.batch,
+    host,
+    (found, error) => {
+      failed.add(shapeKey(found));
+      countFailure(summary, found, error);
+    },
+    (found, note) => {
+      // The repaint knows what it actually painted, so its reason wins over
+      // the one the payload alone would have suggested - and never doubles it.
+      spoken.add(shapeKey(found));
+      summary.notes.push(
+        `${sourceLabel(found.tag.src, found.tag.kind)} ${note}`,
+      );
+    },
+  );
   for (const entry of fetched.batch) {
-    if (!failed.has(shapeKey(entry.found))) {
+    const key = shapeKey(entry.found);
+    if (!failed.has(key) && !spoken.has(key)) {
       noteChartFallback(summary, entry.found, entry.payload);
     }
   }
@@ -224,10 +240,14 @@ export async function applyBatch(
   batch: RefreshRequest[],
   host: PptHost,
   onFailure: (found: FoundLink, error: unknown) => void,
+  // What a repaint had to say about what it painted: a chart group the host
+  // could not draw any more comes back as a picture and says so. Revert and
+  // change source have nowhere to show it, so they leave it out.
+  onNote?: (found: FoundLink, note: string) => void,
 ): Promise<number> {
   let painted = 0;
   for (const part of splitByBytes(batch)) {
-    painted += await paintBatch(part, host, onFailure);
+    painted += await paintBatch(part, host, onFailure, onNote);
   }
   return painted;
 }
@@ -256,9 +276,12 @@ async function paintBatch(
   batch: RefreshRequest[],
   host: PptHost,
   onFailure: (found: FoundLink, error: unknown) => void,
+  onNote?: (found: FoundLink, note: string) => void,
 ): Promise<number> {
   if (host.refreshLinks) {
     try {
+      // The batch route paints pictures alone, and a picture has nothing to
+      // say: only the row-by-row path below can answer with a note.
       if (await host.refreshLinks(batch)) return batch.length;
     } catch {
       // One shape in the batch; the rows below name it.
@@ -267,19 +290,18 @@ async function paintBatch(
   let painted = 0;
   for (const entry of batch) {
     try {
-      await host.refreshLink(entry.found, entry.payload, entry.rev);
+      const note = await host.refreshLink(
+        entry.found,
+        entry.payload,
+        entry.rev,
+      );
       painted += 1;
+      if (note !== undefined) onNote?.(entry.found, note);
     } catch (error) {
       onFailure(entry.found, error);
     }
   }
   return painted;
-}
-
-function countSkipped(summary: UpdateSummary, status: LinkStatus): void {
-  if (status === "current") summary.current += 1;
-  else if (status === "missing") summary.missing += 1;
-  else if (status === "wrongKey") summary.wrongKey += 1;
 }
 
 // A link whose workbook changed still refreshes: the user is told which one,
@@ -313,10 +335,21 @@ function countFailure(
   }
 }
 
+// The one refusal the user can do something about, said in words. A 413 is
+// the relay's 4 MiB link route or an nginx or Cloudflare hop in front of it,
+// and "413 payload too large" tells a modeller nothing they can act on.
+export const TOO_LARGE =
+  "That export is too big to send. Export a smaller range from Excel.";
+
+function tooLarge(error: unknown): boolean {
+  return isRelayError(error) && error.kind === "tooLarge";
+}
+
 // Every failure names its link. The host already stages its own errors as
 // "refresh <label>: ...", so the label is not stuttered back onto those.
 export function failureLine(found: FoundLink, error: unknown): string {
   const label = sourceLabel(found.tag.src, found.tag.kind);
+  if (tooLarge(error)) return `${label}: ${TOO_LARGE}`;
   const message = error instanceof Error ? error.message : String(error);
   return message.includes(label) ? message : `${label}: ${message}`;
 }
@@ -378,10 +411,16 @@ export async function insertFromInbox(
   relay: RelayApi,
   host: PptHost = realHost,
 ): Promise<InsertResult> {
+  const stage = `insert ${item.label}`;
   const keys = await deriveLinkKeys(item.token);
-  const result = await relay.getLink(item.id, keys.auth);
+  const result = await relay.getLink(item.id, keys.auth).catch((error) => {
+    // The toast is the whole report on an insert, so the refusal the user can
+    // act on is reworded here; anything else travels as the relay said it.
+    if (tooLarge(error)) throw new Error(`${stage}: ${TOO_LARGE}`);
+    throw error as Error;
+  });
   if (result === "unchanged") {
-    throw new Error(`insert ${item.label}: the relay returned no picture.`);
+    throw new Error(`${stage}: the relay returned no picture.`);
   }
   const payload = decodePayload(await open(keys.enc, item.id, result.blob));
   const placed = await host.insertLink(item, payload, result.rev);
