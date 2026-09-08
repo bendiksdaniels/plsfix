@@ -142,6 +142,79 @@ describe("a clicked column header", () => {
 
 // ---------------------------------------------------------------------------
 
+describe("a chart anchored on rows the host cannot size", () => {
+  // Excel.RangeFormat.rowHeight and columnWidth answer null when the rows or
+  // columns of the range are not all the same size, which a label column
+  // beside a value column always is
+  // (learn.microsoft.com/javascript/api/excel/excel.rangeformat).
+  it("places it beside the table rather than under the whole sheet", async () => {
+    seedBridge();
+    // Outside the eight columns and twenty rows the chart really covers, well
+    // inside the block a size of one point computes: a chart sized off a null
+    // row height reads this block as occupied and drops under the sheet.
+    helpers.seed("Model!M30", [[1]]);
+    const place = await import("../src/excel/chart-place");
+
+    await Excel.run(async (context) => {
+      const sheet = context.workbook.worksheets.getItem("Model");
+      const anchor = sheet.getRange("A2:B5");
+      const chart = sheet.charts.add(
+        Excel.ChartType.columnClustered,
+        anchor,
+        Excel.ChartSeriesBy.auto,
+      );
+      await context.sync();
+
+      // The same range, with the host answering null for both sizes.
+      const mixed = new Proxy(anchor, {
+        get(target, property, receiver) {
+          if (property === "format") {
+            return { rowHeight: null, columnWidth: null };
+          }
+          const value = Reflect.get(target, property, receiver) as unknown;
+          return typeof value === "function" ? value.bind(target) : value;
+        },
+      });
+
+      expect(await place.placeChartBeside(context, sheet, chart, mixed)).toBe(
+        true,
+      );
+      await context.sync();
+    });
+
+    // Column D, the table's own first row: the block right of the anchor.
+    const placed = workbook.charts[workbook.charts.length - 1];
+    expect({ left: placed?.left, top: placed?.top }).toEqual({
+      left: 3 * 64,
+      top: 1 * 15,
+    });
+  });
+});
+
+describe("a sheet with no free block at all", () => {
+  it("steps the chart under the chart in the way", async () => {
+    seedBridge();
+    // Right of the table and below it both hold values, so the only candidate
+    // left is the block under the used range - and a chart is sitting on it.
+    helpers.seed("Model!E3", [[1]]);
+    helpers.seed("Model!C10", [[1]]);
+    helpers.addChart("Model", {
+      name: "Existing",
+      left: 0,
+      top: 11 * 15,
+      width: 200,
+      height: 40,
+    });
+
+    await smt.insertWaterfall();
+    const chart = workbook.charts[workbook.charts.length - 1];
+    // Dropped under the chart that blocked the last candidate, gap and all.
+    expect(chart?.top).toBe(11 * 15 + 40 + 12);
+  });
+});
+
+// ---------------------------------------------------------------------------
+
 describe("the CAGR callout on what a modeller selects", () => {
   it("refuses a block and a single cell by name", async () => {
     helpers.seed("Model!A1", [

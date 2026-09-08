@@ -20,6 +20,17 @@ const GAP_COLUMNS = 1;
 // modeller knows the chart landed wherever Excel dropped it.
 export const UNPLACED_NOTE = "; Excel placed it";
 
+// Excel's own defaults, in points. RangeFormat.rowHeight and columnWidth
+// answer null when the range's rows or columns are not all one size - a label
+// column beside a value column never is - and the office.js types say number,
+// so the null arrives untyped and would size the block at one point per cell.
+const DEFAULT_ROW_HEIGHT = 15;
+const DEFAULT_COLUMN_WIDTH = 48;
+
+function sizeOr(value: number | null, fallback: number): number {
+  return typeof value === "number" && value > 0 ? value : fallback;
+}
+
 interface Corner {
   row: number;
   column: number;
@@ -90,8 +101,8 @@ async function readPlan(
   used.load("isNullObject,rowIndex,rowCount");
   await context.sync();
 
-  const rowHeight = Math.max(1, anchor.format.rowHeight);
-  const columnWidth = Math.max(1, anchor.format.columnWidth);
+  const rowHeight = sizeOr(anchor.format.rowHeight, DEFAULT_ROW_HEIGHT);
+  const columnWidth = sizeOr(anchor.format.columnWidth, DEFAULT_COLUMN_WIDTH);
   const rows = Math.max(1, Math.ceil(chart.height / rowHeight));
   const columns = Math.max(1, Math.ceil(chart.width / columnWidth));
   const bottom = used.isNullObject
