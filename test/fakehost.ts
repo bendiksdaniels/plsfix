@@ -745,7 +745,12 @@ interface Shape {
 // surfaces: a property named nowhere here would slip through unpoliced, so the
 // scalar lists carry the office.js properties even where nothing reads them yet.
 const SHAPES: Record<string, Shape> = {
-  context: { children: { workbook: "workbook" } },
+  // D audit review: context.application is policed like every other object,
+  // so the separators read (ExcelApi 1.11) needs its load like any scalar.
+  context: {
+    children: { workbook: "workbook", application: "application" },
+  },
+  application: { scalars: ["decimalSeparator", "thousandsSeparator"] },
   workbook: {
     children: {
       worksheets: "worksheets",
