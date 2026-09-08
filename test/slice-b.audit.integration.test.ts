@@ -118,6 +118,29 @@ describe("an edit on a protected sheet", () => {
   });
 });
 
+describe("a whole-column click", () => {
+  // Excel hands a million cells to anything that asks for their grid, so a flow
+  // that reads one says how many it takes first - the way the bridge, the
+  // unpivot and the audit overlay already do.
+  it("is refused by name before the CAGR reads the values", async () => {
+    helpers.select("Model!A:A");
+    expect(await rejects(() => smt.insertCagr())).toBe(
+      "CAGR supports up to 5,000 selected cells at once.",
+    );
+  });
+
+  it("is refused by name before an exact paste reads the formulas", async () => {
+    helpers.select("Data!A:A");
+    await smt.markCopySource();
+    helpers.select("Model!B2");
+
+    expect(await rejects(() => smt.pastePreserveFormulas())).toBe(
+      "Paste supports up to 5,000 selected cells at once.",
+    );
+    expect(helpers.formula("Model!B2")).toBe("");
+  });
+});
+
 describe("a paste that cuts a merged cell", () => {
   it("says what to do instead of handing back Excel's string", async () => {
     helpers.seed("Data!A1", [[{ formula: "=Z1+1", value: 2 }], [7]]);

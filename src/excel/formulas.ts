@@ -10,6 +10,7 @@ import {
   selectedSingleRange,
   SHEET_COLUMNS,
   SHEET_ROWS,
+  withinCap,
 } from "./internal";
 import { syncWrite } from "./protection";
 import { parseAddress } from "./shared";
@@ -164,7 +165,10 @@ export async function applyDecimalStep(delta: 1 | -1): Promise<void> {
 
 export async function insertCagr(): Promise<void> {
   await Excel.run(async (context) => {
-    const range = await selectedSingleRange(context, CAGR);
+    // How many cells before their values: a whole-column click would otherwise
+    // ship a million of them across the bridge to find two periods in.
+    const selected = await selectedSingleRange(context, CAGR);
+    const range = await withinCap(context, selected, CAGR);
     range.load("rowCount,columnCount,values");
     await context.sync();
 
