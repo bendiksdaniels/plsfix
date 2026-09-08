@@ -275,9 +275,12 @@ export function legend(data: ChartData, band: Box): Primitive[] {
   const items = legendItems(data);
   // Only the rows the band was actually given: in a box too small to hold
   // every entry the legend is cut short rather than drawn past the chart.
+  // Never to nothing, though - packLegendRows keeps one row for the same
+  // reason: a chart that laid out as no shapes at all cannot be grouped
+  // (addGroup([]) is InvalidArgument on the host).
   const rows = packLegendRows(items, band.width).slice(
     0,
-    Math.floor(band.height / LEGEND_BAND),
+    Math.max(1, Math.floor(band.height / LEGEND_BAND)),
   );
   const out: Primitive[] = [];
   rows.forEach((row, rowIndex) => {

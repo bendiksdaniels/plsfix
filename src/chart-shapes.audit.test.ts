@@ -347,3 +347,37 @@ describe("a pie whose slices are not all positive", () => {
     ).toEqual(["North", "South", "West"]);
   });
 });
+
+describe("a chart the placement had to shrink", () => {
+  // A slide with no room left scales an insert down to 0.4: a 200 x 120
+  // chart becomes 80 x 48, which is less than the bands alone want.
+  const CRAMPED: Box = { left: 0, top: 0, width: 80, height: 48 };
+
+  it("never lays a chart out as no shapes at all", () => {
+    // addGroup([]) is InvalidArgument on the host (spike, 30.08), so a
+    // layout that came back empty would fail the insert outright.
+    const nothing: ChartData = {
+      ...base,
+      kind: "pie",
+      title: null,
+      categories: ["A", "B"],
+      series: [series([0, 0])],
+    };
+    const out = layoutChart(nothing, CRAMPED);
+    expect(out.length).toBeGreaterThan(0);
+    expect(refused(out)).toEqual([]);
+  });
+
+  it("still draws the bars of a column chart at that size", () => {
+    const small: ChartData = {
+      ...base,
+      kind: "column",
+      title: "Revenue",
+      categories: ["A", "B"],
+      series: [series([100, 200])],
+    };
+    const out = layoutChart(small, CRAMPED);
+    expect(refused(out)).toEqual([]);
+    expect(out.filter((one) => one.name.startsWith("bar "))).toHaveLength(2);
+  });
+});
