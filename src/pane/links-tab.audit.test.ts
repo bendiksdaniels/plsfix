@@ -10,6 +10,7 @@ import {
   listActiveSheetCharts,
   listWorkbookLinks,
   pushLinks,
+  removeLink,
   restoreAutoPush,
   restoreLinkHighlight,
   touchWorkbookLinks,
@@ -249,6 +250,25 @@ describe("the link table across a refresh", () => {
     click("push-selected");
     await settle(h);
     expect(vi.mocked(pushLinks)).toHaveBeenCalledWith([ids[2]], h.relay);
+  });
+
+  it("forgets a row the modeller unticked and removes the two that are left", async () => {
+    const ids = ["a", "b", "c"].map((letter) => letter.repeat(32));
+    vi.mocked(listWorkbookLinks).mockResolvedValue(ids.map((id) => row(id)));
+    const h = harness();
+    install(h);
+    await settle(h);
+
+    for (const box of ticks()) box.click();
+    ticks()[0]!.click();
+
+    click("remove-link");
+    await settle(h);
+    expect(vi.mocked(removeLink).mock.calls.map((call) => call[0])).toEqual([
+      ids[1],
+      ids[2],
+    ]);
+    expect(h.messages).toContain("Removed 2 links");
   });
 
   it("draws two hundred links, badges the broken ones and empties again", async () => {

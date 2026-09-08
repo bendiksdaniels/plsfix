@@ -727,3 +727,111 @@ describe("an inbox note the relay refuses", () => {
     ]);
   });
 });
+
+// A defined name is workbook state, not sheet state, and a picture is a read:
+// protecting the sheet a model lives on is normal, and it must not stop the
+// modeller sending a picture of it.
+describe("a source on a protected sheet", () => {
+  it("exports, lists, pushes and removes like any other", async () => {
+    helpers.protectSheet("Model");
+
+    const { id } = await links.exportSelection(ws, relay);
+    expect(workbook.names.map((name) => name.name)).toEqual([anchorName(id)]);
+    expect((await links.listWorkbookLinks())[0]!.source).toBe("ok");
+    expect(await links.pushLinks("all", relay)).toMatchObject({ pushed: 1 });
+
+    await links.removeLink(id, relay);
+    expect(workbook.names).toEqual([]);
+  });
+});
+
+// Every flow that rewrites the registry queues on the one lock. The race
+// suite covers auto-push against export and remove; these are the two the
+// Links tab's own buttons can start on top of each other.
+describe("two of the tab's own flows at once", () => {
+  it("keeps a link removed while an export was still uploading", async () => {
+    const first = await links.exportSelection(ws, relay);
+    helpers.seed("Model!H2", [[11, 12]]);
+    helpers.select("Model!H2:I2");
+
+    const held = relay.holdNextPut();
+    const exporting = links.exportSelection(ws, relay);
+    await held.started;
+    const removing = links.removeLink(first.id, relay);
+    await settle();
+    // Queued behind the export: the removal has not read the registry yet.
+    expect(
+      JSON.parse(String(helpers.setting(REGISTRY_SETTING))).links,
+    ).toHaveLength(1);
+
+    held.release();
+    const second = await exporting;
+    await removing;
+
+    const rows = await links.listWorkbookLinks();
+    expect(rows.map((row) => row.entry.id)).toEqual([second.id]);
+    expect(relay.links.has(first.id)).toBe(false);
+    expect(relay.links.has(second.id)).toBe(true);
+  });
+
+  it("keeps a push's new revision when an export lands on top of it", async () => {
+    const first = await links.exportSelection(ws, relay);
+    helpers.seed("Model!H2", [[11, 12]]);
+    helpers.select("Model!H2:I2");
+
+    const held = relay.holdNextPut();
+    const pushing = links.pushLinks("all", relay);
+    await held.started;
+    const exporting = links.exportSelection(ws, relay);
+    await settle();
+
+    held.release();
+    expect(await pushing).toMatchObject({ pushed: 1, failed: 0 });
+    const second = await exporting;
+
+    const rows = await links.listWorkbookLinks();
+    expect(rows.map((row) => row.entry.id).sort()).toEqual(
+      [first.id, second.id].sort(),
+    );
+    // The push's revision survived the export writing the registry back.
+    const pushed = rows.find((row) => row.entry.id === first.id)!.entry;
+    expect(pushed.rev).toBe(2);
+    expect(relay.links.get(first.id)!.rev).toBe(2);
+  });
+});
+
+describe("the reads that answer nothing", () => {
+  it("takes the empty string when the host cannot say what the file is", async () => {
+    const office = Office as unknown as {
+      context: { document: { getFilePropertiesAsync: unknown } };
+    };
+    const succeeded = office.context.document.getFilePropertiesAsync;
+    office.context.document.getFilePropertiesAsync = (
+      callback: (result: { status: string; value: { url: string } }) => void,
+    ) => {
+      callback({ status: "failed", value: { url: "" } });
+    };
+    try {
+      const { id } = await links.exportSelection(ws, relay);
+      expect(await payloadSource(id)).toMatchObject({ workbook: "" });
+    } finally {
+      office.context.document.getFilePropertiesAsync = succeeded;
+    }
+  });
+
+  it("pushes an emptied cell as empty text rather than refusing", async () => {
+    helpers.seed("Model!H2", [["Revenue"]]);
+    helpers.select("Model!H2");
+    const { id } = await links.exportSelectionAsText(ws, relay);
+    helpers.seed("Model!H2", [[""]]);
+
+    expect(await links.pushLinks("all", relay)).toMatchObject({ pushed: 1 });
+    const entry = JSON.parse(String(helpers.setting(REGISTRY_SETTING)))
+      .links[0];
+    const keys = await deriveLinkKeys(entry.token);
+    const payload = decodePayload(
+      await open(keys.enc, id, relay.links.get(id)!.blob),
+    );
+    expect(payload.kind === "text" && payload.text).toBe("");
+  });
+});
