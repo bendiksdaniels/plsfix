@@ -204,11 +204,13 @@ export function pickScannableSheets(
   ranges.forEach((range, index) => {
     const name = items[index]?.name ?? "";
     if (range.isNullObject) return;
-    if (range.cellCount > cap || total + range.cellCount > totalCap) {
+    // A count past 2^31-1 comes back as -1: the biggest sheet there is.
+    const cells = range.cellCount;
+    if (cells < 0 || cells > cap || total + cells > totalCap) {
       skippedSheets.push(name);
       return;
     }
-    total += range.cellCount;
+    total += cells;
     scanned.push({ index, name, range });
   });
 

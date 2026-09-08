@@ -2195,6 +2195,10 @@ class RangeFormatProxy {
   }
 
   set rowHeight(value: number) {
+    // A audit review: a protected sheet refuses a row height unless
+    // allowFormatRows was granted, which protect() does not by default:
+    // https://learn.microsoft.com/en-us/javascript/api/excel/excel.worksheetprotectionoptions
+    if (refuseProtected(this.ctx, this.sheet, this.rect)) return;
     const rows = this.band(this.rect.rowCount, "row");
     for (let r = 0; r < rows; r += 1) {
       this.sheet.rowHeights.set(this.rect.row + r, value);
@@ -2206,6 +2210,8 @@ class RangeFormatProxy {
   }
 
   set columnWidth(value: number) {
+    // A audit review: the same refusal for a column width (allowFormatColumns).
+    if (refuseProtected(this.ctx, this.sheet, this.rect)) return;
     const columns = this.band(this.rect.colCount, "column");
     for (let c = 0; c < columns; c += 1) {
       this.sheet.columnWidths.set(this.rect.col + c, value);

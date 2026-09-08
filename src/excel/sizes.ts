@@ -12,6 +12,7 @@
 //     still applies: `getSelectedRange` throws on a ctrl-clicked selection.
 
 import { selectedSingleRange } from "./internal";
+import { syncWrite } from "./protection";
 import { buildSizeCycles, nextSize } from "../cycles";
 
 // The first row of the selection carries the cycle state, the way the active
@@ -28,7 +29,7 @@ export async function applyRowHeightCycle(): Promise<void> {
     // The whole rows the selection touches, not the selected cells: a height
     // belongs to the row, and Excel would widen the band on its own anyway.
     range.getEntireRow().format.rowHeight = next;
-    await context.sync();
+    await syncWrite(context, "row height");
   });
 }
 
@@ -44,6 +45,6 @@ export async function applyColumnWidthCycle(): Promise<void> {
       buildSizeCycles().columnWidth,
     );
     range.getEntireColumn().format.columnWidth = next;
-    await context.sync();
+    await syncWrite(context, "column width");
   });
 }
