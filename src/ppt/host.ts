@@ -271,27 +271,35 @@ function isPicture(entry: RefreshRequest): entry is PictureRequest {
 }
 
 // One link repainted: the batch of one on a host with fill.setImage, and the
-// reinsertion fallback below it.
+// reinsertion fallback below it. Answers with a note when the repaint has
+// something to say about what it painted - a chart group that had to become a
+// picture is the only one that does - and with nothing when it has not.
 export async function refreshLink(
   found: FoundLink,
   payload: Payload,
   rev: number,
-): Promise<void> {
+): Promise<string | undefined> {
   if (payload.kind === "table") {
     await refreshTable(found, payload, tagFor(found.tag, payload, rev));
-    return;
+    return undefined;
   }
   if (payload.kind === "text") {
     await refreshText(found, payload, tagFor(found.tag, payload, rev));
-    return;
+    return undefined;
   }
   if (found.type === GROUP_TYPE) {
-    await refreshChartGroup(found, payload, tagFor(found.tag, payload, rev));
-    return;
+    // charts.ts owns the reason; a version of it with none to give simply
+    // answers nothing, and the summary then falls back to its own.
+    const note: unknown = await refreshChartGroup(
+      found,
+      payload,
+      tagFor(found.tag, payload, rev),
+    );
+    return typeof note === "string" ? note : undefined;
   }
   if (supportsInPlaceRefresh()) {
     await refreshLinks([{ found, payload, rev }]);
-    return;
+    return undefined;
   }
   const stage = `refresh ${sourceLabel(found.tag.src, found.tag.kind)}`;
   // Reinsertion drops the picture on the slide, not back into its group, so
@@ -310,6 +318,7 @@ export async function refreshLink(
     tag,
     refreshedHeight(found, size),
   );
+  return undefined;
 }
 
 // Every in-place repaint of an "Update all" in one round trip: the pictures,

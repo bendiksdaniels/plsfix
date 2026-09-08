@@ -5,7 +5,7 @@
 // widths at all is built with. Over the shared fake deck and fake relay.
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { TAG_LINK } from "../link/model";
+import { sourceLabel, TAG_LINK, type PicturePayload } from "../link/model";
 import { RelayError } from "../link/relay";
 import { createWorkspace } from "../link/workspace";
 import type { FakeRelay } from "../../test/fakerelay";
@@ -19,12 +19,16 @@ import {
 } from "../../test/fakeppt";
 import {
   bootPpt,
+  columnChart,
   memoryStore,
   pushAgain,
+  pushChart,
   pushText,
+  seedChart,
   seedLink,
   seedTable,
   seedText,
+  src,
 } from "../../test/ppt.support";
 import { CONTENT_WIDTH } from "./placement";
 import { columnWidths, tableSize } from "./tables";
@@ -244,6 +248,74 @@ describe("update all with one row failing", () => {
         (one) => (JSON.parse(one.tags.get(TAG_LINK)!) as { rev: number }).rev,
       );
     expect(revs).toEqual([2, 2]);
+  });
+});
+
+// Found by slice G: a chart group that had to become a picture during a
+// refresh had no way to say why. The insert path says it beside "Inserted";
+// the repaint's own reason is whatever charts.ts hands back, and it has to
+// reach summary.notes the same way.
+describe("a chart that became a picture on the way through", () => {
+  const NOTE = "arrived as a picture: this PowerPoint cannot group shapes";
+  const stub = (note: string | undefined): LinksModule.PptHost => ({
+    scanLinks: () => Promise.resolve([]),
+    insertLink: () => Promise.reject(new Error("unused")),
+    refreshLink: () => Promise.resolve(note),
+    retagLink: () => Promise.resolve(),
+    breakLink: () => Promise.resolve(),
+    goToSlide: () => Promise.resolve(),
+  });
+
+  it("puts the host's own reason in the update summary", async () => {
+    const ws = await createWorkspace(memoryStore());
+    const item = await seedLink(fakePng(800, 400));
+    await links.insertFromInbox(item, ws, relay);
+    await pushAgain(item, fakePng(1600, 800));
+    const rows = await links.listLinks(relay);
+
+    const summary = await links.updateLinks(rows, relay, stub(NOTE));
+
+    expect(summary).toMatchObject({ updated: 1, failed: 0 });
+    expect(summary.notes).toEqual([`Model!B4:F12 ${NOTE}`]);
+    // A repaint with nothing to say adds nothing.
+    const quiet = await links.updateLinks(rows, relay, stub(undefined));
+    expect(quiet.notes).toEqual([]);
+  });
+
+  it("says it once, not beside the reason the payload would have earned", async () => {
+    const ws = await createWorkspace(memoryStore());
+    const chart = await seedChart(columnChart(6), fakePng(800, 400));
+    await links.insertFromInbox(chart, ws, relay);
+    expect(shape().type).toBe("Group");
+    // The next push carries no chart data at all, so the repaint would have
+    // computed a reason of its own on top of the host's.
+    await pushChart(chart, null, fakePng(800, 400), "the source is a map");
+    const rows = await links.listLinks(relay);
+
+    const summary = await links.updateLinks(rows, relay, stub(NOTE));
+
+    expect(summary.notes).toEqual([`${sourceLabel(src, "chart")} ${NOTE}`]);
+  });
+
+  it("invents nothing while the real chart refresh has none to give", async () => {
+    const host = await import("./host");
+    const ws = await createWorkspace(memoryStore());
+    const chart = await seedChart(columnChart(6), fakePng(800, 400));
+    await links.insertFromInbox(chart, ws, relay);
+    const row = (await links.listLinks(relay))[0]!;
+    const payload: PicturePayload = {
+      v: 1,
+      kind: "picture",
+      mime: "image/png",
+      width: 800,
+      height: 400,
+      png: fakePng(800, 400),
+      src,
+      pushedAt: new Date().toISOString(),
+      hash: "1".repeat(64),
+    };
+
+    expect(await host.refreshLink(row.found, payload, 2)).toBeUndefined();
   });
 });
 

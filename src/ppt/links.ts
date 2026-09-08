@@ -186,12 +186,26 @@ export async function updateLinks(
     noteSourceChange(summary, entry.found, entry.payload);
   }
   const failed = new Set<string>();
-  summary.updated += await applyBatch(fetched.batch, host, (found, error) => {
-    failed.add(shapeKey(found));
-    countFailure(summary, found, error);
-  });
+  const spoken = new Set<string>();
+  summary.updated += await applyBatch(
+    fetched.batch,
+    host,
+    (found, error) => {
+      failed.add(shapeKey(found));
+      countFailure(summary, found, error);
+    },
+    (found, note) => {
+      // The repaint knows what it actually painted, so its reason wins over
+      // the one the payload alone would have suggested - and never doubles it.
+      spoken.add(shapeKey(found));
+      summary.notes.push(
+        `${sourceLabel(found.tag.src, found.tag.kind)} ${note}`,
+      );
+    },
+  );
   for (const entry of fetched.batch) {
-    if (!failed.has(shapeKey(entry.found))) {
+    const key = shapeKey(entry.found);
+    if (!failed.has(key) && !spoken.has(key)) {
       noteChartFallback(summary, entry.found, entry.payload);
     }
   }
@@ -226,10 +240,14 @@ export async function applyBatch(
   batch: RefreshRequest[],
   host: PptHost,
   onFailure: (found: FoundLink, error: unknown) => void,
+  // What a repaint had to say about what it painted: a chart group the host
+  // could not draw any more comes back as a picture and says so. Revert and
+  // change source have nowhere to show it, so they leave it out.
+  onNote?: (found: FoundLink, note: string) => void,
 ): Promise<number> {
   let painted = 0;
   for (const part of splitByBytes(batch)) {
-    painted += await paintBatch(part, host, onFailure);
+    painted += await paintBatch(part, host, onFailure, onNote);
   }
   return painted;
 }
@@ -258,9 +276,12 @@ async function paintBatch(
   batch: RefreshRequest[],
   host: PptHost,
   onFailure: (found: FoundLink, error: unknown) => void,
+  onNote?: (found: FoundLink, note: string) => void,
 ): Promise<number> {
   if (host.refreshLinks) {
     try {
+      // The batch route paints pictures alone, and a picture has nothing to
+      // say: only the row-by-row path below can answer with a note.
       if (await host.refreshLinks(batch)) return batch.length;
     } catch {
       // One shape in the batch; the rows below name it.
@@ -269,8 +290,13 @@ async function paintBatch(
   let painted = 0;
   for (const entry of batch) {
     try {
-      await host.refreshLink(entry.found, entry.payload, entry.rev);
+      const note = await host.refreshLink(
+        entry.found,
+        entry.payload,
+        entry.rev,
+      );
       painted += 1;
+      if (note !== undefined) onNote?.(entry.found, note);
     } catch (error) {
       onFailure(entry.found, error);
     }
