@@ -14,6 +14,56 @@ import { cleanupShapes } from "./chart-cleanup";
 // already holding other objects still answers in seconds.
 export const SHAPES_PER_SYNC = 12;
 
+// A write batch on PowerPoint for the web can be swallowed whole: it neither
+// applies nor rejects, the shapes of the chunks before it stay on the slide
+// and the pane waits for ever (lessons, 08.09: a 21-shape pie stopped after
+// its first chunk of twelve). Every round trip of a draw therefore has a
+// deadline. It is deliberately generous - the web measured twelve rectangles
+// in 1.7 s on a clean slide and twenty-four in 15 s at 45 shapes - so only a
+// host that has genuinely stopped answering ever reaches it.
+export const SYNC_TIMEOUT_MS = 60_000;
+
+// What a round trip that never came back rejects with, so the caller can tell
+// a host that stopped answering from one that refused the shapes.
+export class ChartDrawTimeout extends Error {
+  constructor() {
+    super("PowerPoint stopped answering while drawing the chart");
+    this.name = "ChartDrawTimeout";
+  }
+}
+
+export function isDrawTimeout(error: unknown): boolean {
+  return error instanceof ChartDrawTimeout;
+}
+
+// One piece of host work under that deadline: whatever it answers, unless it
+// answers nothing at all. The race keeps a handler on the abandoned promise,
+// so a batch that rejects long afterwards is still nobody's unhandled error.
+export async function withSyncDeadline<T>(work: Promise<T>): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const deadline = new Promise<never>((_resolve, reject) => {
+    timer = setTimeout(() => {
+      reject(new ChartDrawTimeout());
+    }, SYNC_TIMEOUT_MS);
+  });
+  try {
+    return await Promise.race([work, deadline]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+// The teardown runs on the host that has just stopped answering, so it gets
+// the same deadline and no more: a cleanup that hangs too would hold the
+// pane's busy flag open exactly as the draw did.
+async function cleanupWithin(slideId: string, ids: string[]): Promise<void> {
+  try {
+    await withSyncDeadline(cleanupShapes(slideId, ids));
+  } catch {
+    // Best effort, the same swallow cleanupShapes makes of its own errors.
+  }
+}
+
 const ALIGNMENT = { l: "Left", c: "Center", r: "Right" } as const;
 // A pie's two adjustment points: the angle it starts at and the one it ends
 // at, both degrees clockwise from 3 o'clock.
@@ -167,6 +217,8 @@ function shapeWedges(added: Added[]): void {
 // prior sync confirmed and, on any later rejection, deletes them itself
 // (chart-cleanup.ts) before rethrowing the rejection unchanged. A rejection
 // on the very first sync has nothing recorded yet, so nothing is cleaned.
+// A round trip the host swallows without answering reaches the same path
+// through its deadline, as a ChartDrawTimeout the caller falls back on.
 export async function drawGroup(
   context: PowerPoint.RequestContext,
   shapes: PowerPoint.ShapeCollection,
@@ -181,7 +233,7 @@ export async function drawGroup(
         shape.load("id");
         return { shape, primitive };
       });
-      await context.sync();
+      await withSyncDeadline(context.sync());
       ids.push(...added.map((one) => one.shape.id));
       shapeWedges(added);
     }
@@ -191,10 +243,10 @@ export async function drawGroup(
     group.tags.add(TAG_KEY, spec.token);
     group.load("id");
     spec.before?.();
-    await context.sync();
+    await withSyncDeadline(context.sync());
     return group.id;
   } catch (err) {
-    if (ids.length > 0) await cleanupShapes(spec.slideId, ids);
+    if (ids.length > 0) await cleanupWithin(spec.slideId, ids);
     throw err;
   }
 }

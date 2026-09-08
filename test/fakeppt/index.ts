@@ -67,6 +67,11 @@ export interface FakePptHelpers {
   // future sync can be armed to fail. Whichever sync it lands on takes back
   // off the deck everything added since the sync before it.
   failNextSync(error?: Error, afterSyncs?: number): void;
+  // G audit: makes a future context.sync() never settle - neither applying
+  // its batch nor rejecting it - the way PowerPoint for the web swallowed a
+  // chart draw's second chunk (tasks/lessons.md, 2026-09-08). Same ordinal
+  // rule as failNextSync; the shapes of that batch never reach the deck.
+  hangNextSync(afterSyncs?: number): void;
 }
 
 let strictByDefault = false;

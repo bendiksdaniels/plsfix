@@ -149,6 +149,12 @@ export function chartCapIssue(
   return null;
 }
 
+// The one host reason that is not a capability or a cap: PowerPoint took the
+// draw batch and never answered it, so the shapes it had already taken were
+// deleted again and the picture went where the chart would have been.
+export const CHART_HOST_SILENT =
+  "PowerPoint stopped answering while drawing the shapes";
+
 // The sentence both panes show for a chart that stays a picture: the insert
 // note in PowerPoint and the export line in Excel repeat it word for word.
 export function pictureNote(issue: string): string {

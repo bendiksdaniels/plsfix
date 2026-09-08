@@ -1,0 +1,292 @@
+// Audit suite for native slide charts: what happens when the host takes a
+// draw batch and never answers it, what the shape budget does exactly at its
+// edge, and what a host without the group or pie APIs inserts instead.
+// Strict load semantics are on.
+
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { ChartData } from "../src/link/chart-model";
+import { TAG_KEY, TAG_LINK, type InboxItem } from "../src/link/model";
+import { createWorkspace } from "../src/link/workspace";
+import { SYNC_TIMEOUT_MS } from "../src/ppt/chart-draw";
+import type { InsertResult } from "../src/ppt/host";
+import type { FakeRelay } from "./fakerelay";
+import { fakePng } from "./fakepng";
+import {
+  enableStrictLoadSemantics,
+  uninstallFakePpt,
+  type FakePptHelpers,
+  type FakePptShape,
+  type FakePresentation,
+} from "./fakeppt";
+import {
+  bootPpt,
+  columnChart,
+  memoryStore,
+  pushChart,
+  seedChart,
+} from "./ppt.support";
+import type * as LinksModule from "../src/ppt/links";
+
+enableStrictLoadSemantics();
+
+const PNG = fakePng(800, 400);
+const SIZE = { width: 600, height: 300 };
+const BOX = { left: 180, top: 120, ...SIZE };
+const COLUMN = columnChart(6);
+// The insert's syncs: 1 the selected slide, 2 the boxes already on it, 3 the
+// first chunk of twelve, 4 the second chunk of eight, 5 the group.
+const SECOND_CHUNK_SYNC = 3;
+const SILENT_NOTE =
+  "as a picture: PowerPoint stopped answering while drawing the shapes";
+
+let links: typeof LinksModule;
+let presentation: FakePresentation;
+let helpers: FakePptHelpers;
+let relay: FakeRelay;
+
+beforeEach(async () => {
+  ({ links, presentation, helpers, relay } = await bootPpt());
+});
+afterEach(() => {
+  vi.useRealTimers();
+  uninstallFakePpt();
+});
+
+function shapes(): FakePptShape[] {
+  return presentation.slides[0]!.shapes;
+}
+
+function box(one: FakePptShape) {
+  return { left: one.left, top: one.top, width: one.width, height: one.height };
+}
+
+// Drives the fake clock until the work under test settles, so a per-sync
+// deadline can be proven without the test waiting a real minute. A promise
+// that never settles leaves this loop and fails on vitest's own timeout,
+// which is exactly what a pane stuck busy for ever looks like.
+async function settle<T>(work: Promise<T>): Promise<T> {
+  let done = false;
+  void work.then(
+    () => (done = true),
+    () => (done = true),
+  );
+  for (let step = 0; step < 10 && !done; step += 1) {
+    await vi.advanceTimersByTimeAsync(SYNC_TIMEOUT_MS);
+  }
+  return work;
+}
+
+async function insert(
+  data: ChartData = COLUMN,
+): Promise<{ item: InboxItem; placed: InsertResult }> {
+  const ws = await createWorkspace(memoryStore());
+  const item = await seedChart(data, PNG);
+  const placed = await links.insertFromInbox(item, ws, relay);
+  return { item, placed };
+}
+
+describe("a draw batch the host never answers", () => {
+  it("cleans up, lands the picture and says why, instead of leaving the pane busy", async () => {
+    const ws = await createWorkspace(memoryStore());
+    const item = await seedChart(COLUMN, PNG);
+    helpers.hangNextSync(SECOND_CHUNK_SYNC);
+    vi.useFakeTimers();
+
+    const placed = await settle(links.insertFromInbox(item, ws, relay));
+
+    // One shape on the slide: the picture. The twelve shapes the first chunk
+    // had already committed are gone, and no half-built group survived.
+    expect(shapes()).toHaveLength(1);
+    const picture = shapes()[0]!;
+    expect(picture.type).not.toBe("Group");
+    expect(picture.fillImage).toBe(PNG);
+    expect(box(picture)).toEqual(BOX);
+    expect(picture.tags.get(TAG_KEY)).toBe(item.token);
+    expect(JSON.parse(picture.tags.get(TAG_LINK)!)).toMatchObject({
+      id: item.id,
+      kind: "chart",
+      rev: 1,
+    });
+    expect(placed.note).toBe(SILENT_NOTE);
+    expect(placed.shapeId).toBe(picture.id);
+  });
+
+  it("draws the next chart normally: one hung batch is not a jammed pane", async () => {
+    const ws = await createWorkspace(memoryStore());
+    const first = await seedChart(COLUMN, PNG);
+    helpers.hangNextSync(SECOND_CHUNK_SYNC);
+    vi.useFakeTimers();
+    await settle(links.insertFromInbox(first, ws, relay));
+    vi.useRealTimers();
+
+    helpers.selectSlide(presentation.slides[1]!.id);
+    const second = await seedChart(COLUMN, PNG);
+    const placed = await links.insertFromInbox(second, ws, relay);
+
+    const drawn = presentation.slides[1]!.shapes;
+    expect(drawn).toHaveLength(1);
+    expect(drawn[0]!.type).toBe("Group");
+    expect(placed.note).toBeUndefined();
+  });
+
+  it("fails the insert when the picture batch stops answering too", async () => {
+    const ws = await createWorkspace(memoryStore());
+    const item = await seedChart(COLUMN, PNG);
+    // The draw's second chunk, then the cleanup's two syncs, then the one the
+    // picture fallback spends: a host that has stopped answering altogether.
+    helpers.hangNextSync(SECOND_CHUNK_SYNC);
+    helpers.hangNextSync(SECOND_CHUNK_SYNC + 1);
+    helpers.hangNextSync(SECOND_CHUNK_SYNC + 2);
+    vi.useFakeTimers();
+
+    // Settling with a rejection is still settling: the pane's guard releases
+    // the busy flag and the row says the host stopped answering.
+    await expect(
+      settle(links.insertFromInbox(item, ws, relay)),
+    ).rejects.toThrow(/stopped answering/);
+  });
+
+  it("puts the picture where the group was when a refresh stops answering", async () => {
+    const { item } = await insert();
+    const group = shapes()[0]!;
+    group.left = 80;
+    group.top = 320;
+    group.width = 380;
+    group.height = 190;
+    await pushChart(item, columnChart(7), PNG);
+    const rows = await links.listLinks(relay);
+
+    // A group leaves the batched repaint before it spends a round trip, so
+    // the update's own first sync is the draw's first chunk of twelve and its
+    // second is the chunk of eleven that the host swallows.
+    helpers.hangNextSync(1);
+    vi.useFakeTimers();
+    const summary = await settle(links.updateLinks(rows, relay));
+
+    expect(summary).toMatchObject({ updated: 1, failed: 0 });
+    expect(shapes()).toHaveLength(1);
+    const picture = shapes()[0]!;
+    expect(picture.type).not.toBe("Group");
+    expect(picture.fillImage).toBe(PNG);
+    expect(box(picture)).toEqual({
+      left: 80,
+      top: 320,
+      width: 380,
+      height: 190,
+    });
+    expect(JSON.parse(picture.tags.get(TAG_LINK)!).rev).toBe(2);
+  });
+});
+
+describe("the host's shape budget at its edge", () => {
+  // Two series over five categories with no title: ten bars, ten value
+  // labels, a baseline, five category labels and a two-item legend of four -
+  // thirty shapes exactly, the web's whole budget.
+  function twoSeries(points: number): ChartData {
+    const categories = Array.from({ length: points }, (_, i) =>
+      String(2021 + i),
+    );
+    return {
+      v: 1,
+      kind: "column",
+      title: null,
+      categories,
+      series: [0, 1].map((j) => {
+        const values = categories.map((_, i) => 100 + 10 * i + j);
+        return {
+          name: `S${String(j)}`,
+          values,
+          labels: values.map(String),
+          colors: values.map(() => "#B27E54"),
+        };
+      }),
+      font: "Aptos Narrow",
+      ink: "#282623",
+      titleColor: "#14213D",
+    };
+  }
+
+  it("draws a chart that spends the budget exactly and refuses the one past it", async () => {
+    helpers.setPlatform("OfficeOnline");
+    const { placed } = await insert(twoSeries(5));
+    expect(placed.note).toBeUndefined();
+    expect(shapes()[0]!.type).toBe("Group");
+    expect(shapes()[0]!.group!.shapes).toHaveLength(30);
+
+    helpers.selectSlide(presentation.slides[1]!.id);
+    const over = await insert(twoSeries(6));
+    expect(over.placed.note).toBe(
+      "as a picture: 35 shapes is over this host's budget of 30",
+    );
+    expect(presentation.slides[1]!.shapes[0]!.type).not.toBe("Group");
+  });
+});
+
+describe("a host without the shape APIs", () => {
+  it("inserts the picture and says shape charts need a newer PowerPoint", async () => {
+    helpers.setSupported((_set, version) => version !== "1.8");
+    const { item, placed } = await insert();
+
+    expect(placed.note).toBe(
+      "as a picture: shape charts need PowerPoint 2504/16.96 or newer",
+    );
+    expect(shapes()).toHaveLength(1);
+    // Below 1.8 there is no fill.setImage: the picture goes in through the
+    // selection API and the tags are written to it afterwards.
+    const inserted = helpers.insertedViaSelection();
+    expect(inserted).toHaveLength(1);
+    expect(inserted[0]!.png).toBe(PNG);
+    expect(shapes()[0]!.tags.get(TAG_KEY)).toBe(item.token);
+  });
+
+  it("repaints that picture in place on the next update", async () => {
+    helpers.setSupported((_set, version) => version !== "1.8");
+    const { item } = await insert();
+    const first = shapes()[0]!;
+    const geometry = box(first);
+    await pushChart(item, columnChart(7), PNG);
+
+    const summary = await links.updateLinks(
+      await links.listLinks(relay),
+      relay,
+    );
+    expect(summary).toMatchObject({ updated: 1, failed: 0 });
+    expect(shapes()).toHaveLength(1);
+    // Reinserted at the same box, still carrying both tags at the new rev.
+    expect(box(shapes()[0]!)).toEqual(geometry);
+    expect(shapes()[0]!.tags.get(TAG_KEY)).toBe(item.token);
+    expect(JSON.parse(shapes()[0]!.tags.get(TAG_LINK)!).rev).toBe(2);
+  });
+
+  it("repaints a pie that stayed a picture below 1.10 in place", async () => {
+    helpers.setSupported((_set, version) => version !== "1.10");
+    const pie: ChartData = {
+      ...COLUMN,
+      kind: "pie",
+      categories: ["North", "South", "West"],
+      series: [
+        {
+          name: "Mix",
+          values: [1, 1, 2],
+          labels: ["1", "1", "2"],
+          colors: ["#14213D", "#2EC4B6", "#B27E54"],
+        },
+      ],
+    };
+    const { item, placed } = await insert(pie);
+    expect(placed.note).toMatch(/pie shapes need PowerPoint/);
+    const first = shapes()[0]!;
+    expect(first.type).not.toBe("Group");
+    await pushChart(item, pie, PNG);
+
+    const summary = await links.updateLinks(
+      await links.listLinks(relay),
+      relay,
+    );
+    expect(summary).toMatchObject({ updated: 1, failed: 0 });
+    // The same shape, repainted where it stands: a picture stays a picture.
+    expect(shapes()).toHaveLength(1);
+    expect(shapes()[0]!.id).toBe(first.id);
+    expect(shapes()[0]!.setImageCalls).toBe(2);
+  });
+});

@@ -52,6 +52,11 @@ class FakeRuntime {
   // Every context.sync() this host served: one round trip to PowerPoint, and
   // the only cost a deck's size is allowed to multiply.
   syncs = 0;
+  // G audit: PowerPoint for the web can take a write batch and never answer at
+  // all - a 21-shape pie stopped after its first chunk of twelve and the pane
+  // stayed busy for ever (tasks/lessons.md, 2026-09-08). Armed by
+  // helpers.hangNextSync(): the sync ordinals whose promise never settles.
+  hangSyncs: number[] = [];
 
   constructor(
     public presentation: FakePresentation,
@@ -83,6 +88,16 @@ class FakeContext extends Loadable {
   sync(): Promise<void> {
     this.runtime.syncs += 1;
     const at = this.runtime.syncs;
+    // G audit: a batch the host swallowed - neither applied nor refused. The
+    // slide kept only the chunks before it (lessons 08.09: a 21-shape pie
+    // left its first twelve behind), so its own adds come back off the deck
+    // exactly as a rejection's do; the promise simply never settles.
+    if (this.runtime.hangSyncs.includes(at)) {
+      this.runtime.presentation.rollbackPending();
+      this.runtime.strict?.drop();
+      // A promise with no settle path at all: the executor takes none.
+      return new Promise<void>(() => undefined);
+    }
     const index = this.runtime.syncFailures.findIndex(
       (failure) => failure.at === at,
     );
@@ -307,6 +322,10 @@ function makeHelpers(runtime: FakeRuntime): FakePptHelpers {
         ...insert,
         box: { ...insert.box },
       })),
+    // G audit: the web host that takes a batch and never answers.
+    hangNextSync(afterSyncs = 0) {
+      runtime.hangSyncs.push(runtime.syncs + afterSyncs + 1);
+    },
   };
 }
 
