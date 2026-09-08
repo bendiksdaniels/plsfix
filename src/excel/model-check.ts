@@ -124,10 +124,13 @@ function hiddenSheetFindings(sheets: Excel.Worksheet[]): Finding[] {
 
 // The style table is the scrubber's own scan, caps and all. A sheet it could
 // not read could be wearing any of these styles, so the whole kind is dropped
-// rather than reported half right: the Styles section says so on its own.
+// rather than reported half right: the Styles section says so on its own. A
+// host that refuses the read outright gets the same answer - getCellProperties
+// is the one call of this pass a host can say no to, and one style kind is not
+// worth the other seven and the whole check with them.
 async function unusedStyleFindings(): Promise<Finding[]> {
-  const scan = await listUnusedStyles();
-  if (scan.skippedSheets.length > 0) return [];
+  const scan = await listUnusedStyles().catch(() => null);
+  if (scan === null || scan.skippedSheets.length > 0) return [];
   return scan.unused.map((name) =>
     finding("unusedStyle", null, null, name, scan.unused.length),
   );
