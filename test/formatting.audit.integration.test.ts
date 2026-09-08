@@ -8,6 +8,7 @@ import {
   enableStrictLoadSemantics,
   type FakeHelpers,
   type FakeHostOptions,
+  hostError,
   installFakeHost,
   uninstallFakeHost,
 } from "./fakehost";
@@ -161,6 +162,77 @@ describe("undo into a sheet that was protected afterwards", () => {
 
 // ---------------------------------------------------------------------------
 
+// protection.ts is the one place a refusal is translated. Everything else has
+// to travel untouched, or a broken host would read as a locked sheet.
+describe("the write guard itself", () => {
+  it("passes an unrelated failure through both wrappers", async () => {
+    const { paintSync, syncWrite } = await import("../src/excel/protection");
+
+    helpers.failNextSync(hostError("GeneralException", "Something broke."));
+    await expect(
+      Excel.run((context) => syncWrite(context, "Formatting")),
+    ).rejects.toThrow("Something broke.");
+
+    helpers.failNextSync(hostError("GeneralException", "Something broke."));
+    await expect(
+      Excel.run((context) => paintSync(context, "Autocolor", "done")),
+    ).rejects.toThrow("Something broke.");
+  });
+
+  it("reports a paint refusal as the note and a clean batch as done", async () => {
+    const { paintSync } = await import("../src/excel/protection");
+
+    helpers.failNextSync(
+      hostError("AccessDenied", "The worksheet Model is protected."),
+    );
+    await expect(
+      Excel.run((context) => paintSync(context, "Autocolor", "done")),
+    ).resolves.toBe("Autocolor: this sheet is protected, nothing was changed");
+
+    await expect(
+      Excel.run((context) => paintSync(context, "Autocolor", "done")),
+    ).resolves.toBe("done");
+  });
+
+  // The waterfall's surface batch: Excel for the web rejects it whole, and the
+  // chart has to survive that one refusal without swallowing anything else.
+  it("tolerates one named code and nothing else", async () => {
+    const { syncTolerating } = await import("../src/excel/internal");
+
+    helpers.failNextSync(hostError("UnsupportedOperation", "not here"));
+    await expect(
+      Excel.run((context) => syncTolerating(context, "UnsupportedOperation")),
+    ).resolves.toBe(false);
+
+    await expect(
+      Excel.run((context) => syncTolerating(context, "UnsupportedOperation")),
+    ).resolves.toBe(true);
+
+    helpers.failNextSync(hostError("GeneralException", "Something broke."));
+    await expect(
+      Excel.run((context) => syncTolerating(context, "UnsupportedOperation")),
+    ).rejects.toThrow("Something broke.");
+  });
+
+  // Excel.WorksheetProtection is ExcelApi 1.2. A host too old to be asked
+  // answers false, and the write itself is what finds out.
+  it("answers false on a host that cannot be asked", async () => {
+    await boot({
+      isSetSupported: (set, version) =>
+        !(set === "ExcelApi" && version === "1.2"),
+    });
+    const { sheetProtected } = await import("../src/excel/protection");
+    helpers.protectSheet("Model");
+
+    const asked = await Excel.run((context) =>
+      sheetProtected(context, context.workbook.worksheets.getItem("Model")),
+    );
+    expect(asked).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+
 // getSelectedRanges is ExcelApi 1.9. Below it the adapter serves the single
 // rectangle getSelectedRange has always answered, and turns the host's bare
 // InvalidSelection into a sentence naming the flow that asked.
@@ -203,6 +275,50 @@ describe("a host below ExcelApi 1.9", () => {
     expect(await rejects(() => smt.applyNumberFormat("whole"))).toBe(
       "Number formatting supports up to 5,000 selected cells at once.",
     );
+  });
+
+  // Only InvalidSelection means "several blocks"; anything else is a host
+  // failure and has to keep its own message.
+  it("passes an unrelated host failure through untouched", async () => {
+    helpers.seed("Model!A1", [[1]]);
+    helpers.select("Model!A1");
+    helpers.failNextSync(hostError("GeneralException", "Something broke."));
+    expect(await rejects(() => smt.applyPreset("input"))).toBe(
+      "Something broke.",
+    );
+
+    helpers.failNextSync(hostError("GeneralException", "Something broke."));
+    expect(await rejects(() => smt.applyNumberFormat("whole"))).toBe(
+      "Something broke.",
+    );
+  });
+});
+
+// ---------------------------------------------------------------------------
+
+// The capture's cell cap is counted over every area together, so two blocks
+// that each fit can still be too much to hold - and the pane has to say so
+// rather than imply a safety net that is not there.
+describe("the undo budget over a ctrl-clicked selection", () => {
+  it("paints both blocks and arms the note when they are over the cap", async () => {
+    helpers.selectAreas(["Model!A1:A3000", "Model!C1:C3000"]);
+    await smt.applyPreset("input");
+
+    const theme = brand.deriveTheme(brand.DEFAULT_SETTINGS);
+    expect(helpers.font("Model!A3000").color).toBe(theme.inputFont);
+    expect(helpers.font("Model!C3000").color).toBe(theme.inputFont);
+    expect(smt.undoTarget()).toBeNull();
+    expect(smt.lastUndoSkipped()).toBe(true);
+  });
+
+  it("captures both blocks when they fit together", async () => {
+    helpers.selectAreas(["Model!A1:A2000", "Model!C1:C2000"]);
+    await smt.applyPreset("input");
+
+    expect(smt.undoTarget()).toBe("Model!A1:A2000, Model!C1:C2000");
+    expect(smt.lastUndoSkipped()).toBe(false);
+    await smt.undoLastAction();
+    expect(helpers.font("Model!C2000").color).toBe("#000000");
   });
 });
 
