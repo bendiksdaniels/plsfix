@@ -62,6 +62,20 @@ function patchOnReadyForPromiseStyle(hostOverride?: string): void {
   };
 }
 
+// links-tab.ts's own installLinksTab() fires a further, un-awaited boot chain
+// of its own (key load, list refresh, relay touch, toggle restore - each a
+// separate await), fully independent of anything main.ts's caller waits on.
+// A couple of ticks settles hostReady()/boot() itself, but leaves that inner
+// chain mid-flight; the next test's uninstallFakeHost() then pulls Office/
+// Excel out from under it, surfacing as an unrelated unhandled rejection.
+// Ten rounds of a macrotask each drains every reasonable depth of chained
+// promises without a real-time sleep.
+async function drain(rounds = 10): Promise<void> {
+  for (let i = 0; i < rounds; i += 1) {
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  }
+}
+
 // The pane boots on import (main.ts wires everything from its own top-level
 // code), so the markup and the fake host go in first, exactly like
 // test/ppt.boot.integration.test.ts does for the PowerPoint pane.
@@ -72,11 +86,7 @@ async function boot(options: BootOptions = {}): Promise<void> {
   installFakeHost({ isSetSupported: options.isSetSupported });
   patchOnReadyForPromiseStyle(options.hostOverride);
   await import("../src/main");
-  // hostReady's headStartMs/give-up timers are real (host-ready.ts is not
-  // faked here), but the "ready" race settles on a microtask once
-  // Office.onReady resolves - a couple of ticks is enough to reach boot().
-  await new Promise((resolve) => setTimeout(resolve, 0));
-  await new Promise((resolve) => setTimeout(resolve, 0));
+  await drain();
 }
 
 // Most action-list buttons carry only data-action, not an id; a few (like
@@ -90,7 +100,7 @@ function click(idOrAction: string): void {
 }
 
 async function settle(): Promise<void> {
-  await new Promise((resolve) => setTimeout(resolve, 0));
+  await drain();
 }
 
 function toastText(): string {
@@ -226,5 +236,69 @@ describe("restoreOverlayFills (B's finding: a silent catch left no trace)", () =
     await boot();
 
     expect(toastText()).toBe("");
+  });
+});
+
+describe("ribbon commands (H's finding: registered too late)", () => {
+  // Bypasses the shared boot() helper: this checks state immediately after
+  // import, before any settle tick - the whole point is that registration
+  // must not wait on hostReady()/boot() to reach a connected Excel.
+  async function importFresh(): Promise<{
+    actions: Map<string, (event?: { completed: () => void }) => void>;
+  }> {
+    vi.resetModules();
+    uninstallFakeHost();
+    pane();
+    const { helpers } = installFakeHost();
+    patchOnReadyForPromiseStyle();
+    await import("../src/main");
+    return { actions: helpers.actions() };
+  }
+
+  it("associates every PLSFIX_* command before the host probe ever settles", async () => {
+    // A quick-resolving Office.onReady is not a strong enough test here: the
+    // fake's whole hostReady -> boot -> connectExcel chain is plain
+    // Promise.resolve()s with no real macrotask boundary, so it can finish
+    // inside the same dynamic import() the assertion runs after regardless
+    // of where registerCommands() is called from. A promise this test
+    // resolves itself, once the assertion is already done, is the only way
+    // to prove registration did not wait on it.
+    vi.resetModules();
+    uninstallFakeHost();
+    pane();
+    const { helpers } = installFakeHost();
+    let resolveOnReady!: (info: { host: string }) => void;
+    const office = (
+      globalThis as unknown as {
+        Office: { onReady: () => Promise<{ host: string }> };
+      }
+    ).Office;
+    office.onReady = () => new Promise((resolve) => (resolveOnReady = resolve));
+
+    await import("../src/main");
+
+    expect(helpers.actions().has("PLSFIX_UNDO")).toBe(true);
+    expect(helpers.actions().has("PLSFIX_AUTOCOLOR")).toBe(true);
+    expect(helpers.actions().has("PLSFIX_SHOWPANE")).toBe(true);
+
+    // Let boot() proceed and fully settle so nothing is left running for the
+    // next test's fresh (or absent) fake host to trip over.
+    resolveOnReady({ host: "Excel" });
+    await drain();
+  });
+
+  it("a command fired before Excel connects reports through its own promise chain, not a crash", async () => {
+    const { actions } = await importFresh();
+    const handler = actions.get("PLSFIX_UNDO");
+    expect(handler).toBeDefined();
+
+    let completed = false;
+    expect(() =>
+      handler!({ completed: () => (completed = true) }),
+    ).not.toThrow();
+    await drain();
+
+    expect(completed).toBe(true);
+    expect(toastText()).toBe("There is no pls,fix action to undo yet.");
   });
 });

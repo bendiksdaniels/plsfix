@@ -80,6 +80,14 @@ getElement<HTMLButtonElement>("tab-workbook").addEventListener(
   // read when it comes into view rather than on every selection change.
   () => void refreshSheets(),
 );
+// Office's shared runtime can fire a ribbon button or keyboard shortcut the
+// instant the pane's script has loaded, well before hostReady() settles
+// (worst on Excel for the web, where the custom-functions init is slow) -
+// registering here, unconditionally, matches src/ppt/main.ts's own
+// module-top-level call, so Office always finds an association for the
+// FunctionName instead of a silent no-op. Each command's own promise chain
+// (src/pane/commands.ts) reports whatever Excel.run refuses at that point.
+registerCommands();
 wireBrand();
 renderBrand();
 renderPaintSlots();
@@ -130,7 +138,6 @@ async function connectExcel(
     .then(applyExcelSeparators)
     .catch(() => undefined);
 
-  registerCommands();
   syncAutocolorOnEdit();
   void adoptWorkbookBrand();
 
