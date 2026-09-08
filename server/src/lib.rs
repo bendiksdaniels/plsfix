@@ -16,9 +16,9 @@ use std::{path::PathBuf, sync::Arc};
 
 use axum::{
     extract::{Request, State},
-    http::{header, HeaderValue},
+    http::{header, HeaderValue, StatusCode},
     middleware::{self, Next},
-    response::{Json, Redirect, Response},
+    response::{IntoResponse, Json, Redirect, Response},
     routing::get,
     Router,
 };
@@ -70,6 +70,19 @@ async fn cache_control(request: Request, next: Next) -> Response {
     response
 }
 
+// No path segment of a built pane starts with a dot, and this path carries the
+// Access bypass, so a request for one is a 404 rather than content: ServeDir
+// would hand back a `.env` or a `.git` file that ever landed in the deploy.
+// The percent-encoded forms are folded first, because ServeDir decodes before
+// it opens.
+async fn no_dotfiles(request: Request, next: Next) -> Response {
+    let path = request.uri().path().replace("%2e", ".").replace("%2E", ".");
+    if path.split('/').any(|segment| segment.starts_with('.')) {
+        return StatusCode::NOT_FOUND.into_response();
+    }
+    next.run(request).await
+}
+
 /// Suite endpoints, the relay and the built panes, in that order.
 pub fn app(static_dir: PathBuf, state: Arc<AppState>) -> Router {
     Router::new()
@@ -79,5 +92,6 @@ pub fn app(static_dir: PathBuf, state: Arc<AppState>) -> Router {
         .with_state(state.clone())
         .merge(relay::routes(state))
         .fallback_service(ServeDir::new(static_dir))
+        .layer(middleware::from_fn(no_dotfiles))
         .layer(middleware::from_fn(cache_control))
 }

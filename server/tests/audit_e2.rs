@@ -151,6 +151,43 @@ async fn no_api_route_answers_with_content_without_the_key() {
     }
 }
 
+/// The pane's path carries an Access bypass, so the static host may only ever
+/// hand back what the build put in MODELIS_STATIC: no dotfile, no directory
+/// listing, and nothing a `..` (encoded or not) points at outside it.
+#[tokio::test]
+async fn the_static_host_serves_no_dotfiles_no_listing_and_nothing_above_it() {
+    let dir = static_dir("static");
+    let app = app(dir, Arc::new(AppState::new(Store::in_memory().unwrap())));
+    for path in [
+        "/.env",
+        "/%2Eenv",
+        "/%2eenv",
+        "/../outside.txt",
+        "/%2e%2e/outside.txt",
+        "/..%2foutside.txt",
+        "/assets/",
+        "/assets/../.env",
+    ] {
+        let (status, body) = send(&app, Request::get(path).body(Body::empty()).unwrap()).await;
+        assert_eq!(status, StatusCode::NOT_FOUND, "{path} answered {status}");
+        assert!(
+            !body.contains("MODELIS_SECRET"),
+            "{path} served the dotfile"
+        );
+        assert!(
+            !body.contains("not the pane"),
+            "{path} escaped the static dir"
+        );
+    }
+    // The pane itself still comes back, dots in a hashed bundle name included.
+    let (status, _) = send(
+        &app,
+        Request::get("/taskpane.html").body(Body::empty()).unwrap(),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+}
+
 /// RFC 7232 §3.2: If-None-Match compares weakly. Cloudflare hands the webview
 /// a weak tag whenever it compresses the body, so the tag that comes back can
 /// be `W/"3"` - and a deck that already holds that revision must still get a
