@@ -55,6 +55,7 @@
     "@types/custom-functions-runtime": "1.6.13",
     "@types/office-js": "1.0.606",
     "@typescript/native": "npm:typescript@7.0.2",
+    "@vitest/coverage-v8": "^4.1.11",
     "eslint": "9.39.5",
     "jsdom": "26.1.0",
     "office-addin-debugging": "6.1.2",
