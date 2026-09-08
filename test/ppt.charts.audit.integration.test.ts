@@ -4,7 +4,11 @@
 // Strict load semantics are on.
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { ChartData } from "../src/link/chart-model";
+import {
+  chartCapIssue,
+  pictureNote,
+  type ChartData,
+} from "../src/link/chart-model";
 import { TAG_KEY, TAG_LINK, type InboxItem } from "../src/link/model";
 import { createWorkspace } from "../src/link/workspace";
 import { cleanupShapes } from "../src/ppt/chart-cleanup";
@@ -206,6 +210,21 @@ describe("the host's shape budget at its edge", () => {
       titleColor: "#14213D",
     };
   }
+
+  it("draws two hundred shapes on the desktop and refuses two hundred and five", async () => {
+    // The desktop budget is 200: 39 categories over two series is exactly
+    // that, and one category more is five shapes past it.
+    const { placed } = await insert(twoSeries(39));
+    expect(placed.note).toBeUndefined();
+    expect(shapes()[0]!.group!.shapes).toHaveLength(200);
+
+    helpers.selectSlide(presentation.slides[1]!.id);
+    const over = await insert(twoSeries(40));
+    expect(over.placed.note).toBe(
+      "as a picture: 205 shapes is over this host's budget of 200",
+    );
+    expect(presentation.slides[1]!.shapes[0]!.type).not.toBe("Group");
+  });
 
   it("draws a chart that spends the budget exactly and refuses the one past it", async () => {
     helpers.setPlatform("OfficeOnline");
@@ -425,5 +444,19 @@ describe("a refresh the host refuses outright", () => {
     expect(shapes()).toHaveLength(1);
     expect(shapes()[0]!.id).toBe(before.id);
     expect(shapes()[0]!.group!.shapes).toHaveLength(20);
+  });
+});
+
+// One sentence, two panes: what Excel could not describe is repeated on the
+// slide word for word, because both sides call the same two functions.
+describe("the reason Excel sent travels to the slide unchanged", () => {
+  it("shows the pane the sentence chartCapIssue wrote in Excel", async () => {
+    const issue = chartCapIssue("column", 3, 7)!;
+    const ws = await createWorkspace(memoryStore());
+    const item = await seedChart(null, PNG, issue);
+    const placed = await links.insertFromInbox(item, ws, relay);
+
+    expect(placed.note).toBe(pictureNote(issue));
+    expect(shapes()[0]!.type).not.toBe("Group");
   });
 });

@@ -320,3 +320,30 @@ describe("values a chart can be given that have no scale of their own", () => {
     expect(labels.every((one) => one.text === "\u2026")).toBe(true);
   });
 });
+
+describe("a pie whose slices are not all positive", () => {
+  const mixed: ChartData = {
+    ...base,
+    kind: "pie",
+    title: "Mix",
+    categories: ["North", "South", "West"],
+    series: [series([3, -1, 2])],
+  };
+
+  it("skips the negative slice and closes the circle round the rest", () => {
+    const out = layoutChart(mixed, ROOMY);
+    const wedges = out.filter((one) => one.kind === "wedge");
+    expect(refused(out)).toEqual([]);
+    expect(wedges.map((one) => one.name)).toEqual(["slice 0", "slice 2"]);
+    // Three fifths and two fifths of the circle, from 12 o'clock clockwise.
+    expect(wedges.map((one) => (one.kind === "wedge" ? one.start : 0))).toEqual(
+      [-90, 126],
+    );
+    // The legend still names every category, negative slice included.
+    expect(
+      texts(out)
+        .filter((one) => one.name.startsWith("legend "))
+        .map((one) => one.text),
+    ).toEqual(["North", "South", "West"]);
+  });
+});

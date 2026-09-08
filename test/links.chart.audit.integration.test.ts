@@ -175,3 +175,25 @@ describe("the cap sentences the two panes share", () => {
     expect(result.note).toBe(pictureNote(issue));
   });
 });
+
+describe("the palette at its own edge", () => {
+  it("gives six series six colours, the whole palette and no repeat", async () => {
+    const chart = helpers.addChart("Model", {
+      name: "Six",
+      chartType: "ColumnClustered",
+      title: "Six",
+      series: Array.from({ length: 6 }, (_unused, index) => ({
+        name: `S${String(index)}`,
+        categories: CATEGORIES,
+        values: VALUES,
+      })),
+    });
+    helpers.setActiveChart(chart);
+
+    const { id } = await links.exportActiveChart(ws, relay);
+    const payload = await pictureOf(id);
+    const colors = payload.chart?.series.map((one) => one.colors[0]) ?? [];
+    expect(colors).toHaveLength(6);
+    expect(new Set(colors).size).toBe(6);
+  });
+});
