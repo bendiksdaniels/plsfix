@@ -223,6 +223,44 @@ describe("a whole-sheet selection", () => {
 
 // ---------------------------------------------------------------------------
 
+// The brand shell every chart wears. ChartAreaFormat.font is ExcelApi 1.1 but
+// roundedCorners is 1.9, and office.js rejects the whole batch over the newer
+// line - which the waterfall's tolerated batch only forgives when the host
+// answers UnsupportedOperation.
+describe("the chart surface", () => {
+  interface SurfaceDouble {
+    format: { font: Record<string, unknown>; roundedCorners?: boolean };
+  }
+
+  function chartDouble(): SurfaceDouble {
+    return { format: { font: {} } };
+  }
+
+  it("sets the corner style where the host has it", async () => {
+    const { styleChartSurface } = await import("../src/excel/internal");
+    const chart = chartDouble();
+
+    styleChartSurface(chart as unknown as Excel.Chart);
+    expect(chart.format.roundedCorners).toBe(false);
+    expect(chart.format.font.name).toBe(brand.DEFAULT_SETTINGS.font);
+  });
+
+  it("leaves it out below ExcelApi 1.9 and still writes the font", async () => {
+    await boot({
+      isSetSupported: (set, version) =>
+        set !== "ExcelApi" || Number(version) <= 1.8,
+    });
+    const { styleChartSurface } = await import("../src/excel/internal");
+    const chart = chartDouble();
+
+    styleChartSurface(chart as unknown as Excel.Chart);
+    expect("roundedCorners" in chart.format).toBe(false);
+    expect(chart.format.font.size).toBe(9);
+  });
+});
+
+// ---------------------------------------------------------------------------
+
 // protection.ts is the one place a refusal is translated. Everything else has
 // to travel untouched, or a broken host would read as a locked sheet.
 describe("the write guard itself", () => {

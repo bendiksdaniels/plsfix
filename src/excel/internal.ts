@@ -253,7 +253,11 @@ export function styleChartSurface(chart: Excel.Chart): void {
   chart.format.font.name = settings.font;
   chart.format.font.size = CHART_TEXT_SIZE;
   chart.format.font.color = activeTheme().formulaFont;
-  chart.format.roundedCorners = false;
+  // ChartAreaFormat.font is ExcelApi 1.1 but roundedCorners is 1.9, and an
+  // older host rejects the whole batch over that one line - a rejection the
+  // waterfall's tolerated batch does not forgive, since it is not
+  // UnsupportedOperation.
+  if (hostSupports("1.9")) chart.format.roundedCorners = false;
 }
 
 export function styleChartShell(
