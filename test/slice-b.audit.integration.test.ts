@@ -13,11 +13,13 @@ import {
   uninstallFakeHost,
 } from "./fakehost";
 import type * as ExcelModule from "../src/excel";
+import type * as SettingsModule from "../src/settings";
 
 enableStrictLoadSemantics();
 
 let helpers: FakeHelpers;
 let smt: typeof ExcelModule;
+let theme: ReturnType<(typeof SettingsModule)["deriveTheme"]>;
 
 async function boot(options: FakeHostOptions = {}): Promise<void> {
   vi.resetModules();
@@ -25,6 +27,8 @@ async function boot(options: FakeHostOptions = {}): Promise<void> {
   const host = installFakeHost({ sheets: ["Model", "Data"], ...options });
   helpers = host.helpers;
   smt = await import("../src/excel");
+  const brand = await import("../src/settings");
+  theme = brand.deriveTheme(brand.DEFAULT_SETTINGS);
 }
 
 async function rejects(run: () => Promise<unknown>): Promise<string> {
@@ -169,5 +173,53 @@ describe("a fast fill whose active cell is not the selection's first cell", () =
     await smt.fastFillAuto("right");
 
     expect(helpers.formula("Model!E2")).toBe("=A2*2");
+  });
+});
+
+// ---------------------------------------------------------------------------
+
+describe("autocolor over a structured table reference", () => {
+  // =SUM(Table1[Revenue]) points at a table in this workbook, not at another
+  // file: painting it as an external link tells a reviewer the model reaches
+  // outside when it does not.
+  it("paints a table reference as a formula, not an external link", async () => {
+    helpers.seed("Model!A1", [
+      [{ formula: "=SUM(Table1[Revenue])", value: 10 }],
+      [{ formula: "=SUM(Sales[[#Headers],[Amount]])", value: 4 }],
+      [{ formula: "=[Model.xlsx]Sheet1!A1", value: 1 }],
+    ]);
+    helpers.select("Model!A1:A3");
+
+    expect(await smt.autocolorSelection()).toBe("Autocolor: 3 cells");
+    expect(helpers.font("Model!A1").color).toBe(theme.formulaFont);
+    expect(helpers.font("Model!A2").color).toBe(theme.formulaFont);
+    expect(helpers.font("Model!A3").color).toBe(theme.externalFont);
+  });
+
+  it("counts one cell in the singular", async () => {
+    helpers.seed("Model!A1", [[1234]]);
+    helpers.select("Model!A1");
+    expect(await smt.autocolorSelection()).toBe("Autocolor: 1 cell");
+  });
+});
+
+describe("autocolor on edit", () => {
+  it("switching off when it was never on touches no handler", async () => {
+    await smt.setAutocolorOnEdit(false);
+    expect(helpers.changeHandlerCount()).toBe(0);
+    expect(smt.autocolorOnEditActive()).toBe(false);
+  });
+
+  it("does not recolour its own paint while one is in flight", async () => {
+    helpers.seed("Data!A1", [[42]]);
+    await smt.setAutocolorOnEdit(true);
+
+    // Both events arrive before the first has finished its round trips; the
+    // second one finds the flag set and returns without a second Excel.run.
+    await Promise.all([
+      helpers.fireChanged("Data", "A1"),
+      helpers.fireChanged("Data", "A1"),
+    ]);
+    expect(helpers.font("Data!A1").color).toBe(theme.inputFont);
   });
 });
