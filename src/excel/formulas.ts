@@ -29,6 +29,9 @@ import {
 import { ROUNDING_CELL_CAP } from "../rounding";
 
 const FILL_SCAN_LIMIT = 1_000;
+const FILL = "Fill";
+const CAGR = "CAGR";
+const ROUNDING = "Consistent rounding";
 
 // What office.js takes back: a grid of literals, never null.
 type WritableGrid = (string | number | boolean)[][];
@@ -86,7 +89,7 @@ function neighbourLines(
 // is what selecting the block said in the first place.
 export async function fastFillAuto(direction: "right" | "down"): Promise<void> {
   await Excel.run(async (context) => {
-    const selection = await selectedSingleRange(context, "Fill");
+    const selection = await selectedSingleRange(context, FILL);
     const cell = context.workbook.getActiveCell();
     const sheet = cell.worksheet;
     cell.load("rowIndex,columnIndex,formulas");
@@ -121,7 +124,7 @@ export async function fastFillAuto(direction: "right" | "down"): Promise<void> {
     await captureUndo(context, destination);
 
     destination.copyFrom(cell, Excel.RangeCopyType.formulas);
-    await context.sync();
+    await syncWrite(context, FILL);
   });
 }
 
@@ -155,7 +158,7 @@ export async function applyDecimalStep(delta: 1 | -1): Promise<void> {
 
 export async function insertCagr(): Promise<void> {
   await Excel.run(async (context) => {
-    const range = await selectedSingleRange(context, "CAGR");
+    const range = await selectedSingleRange(context, CAGR);
     range.load("rowCount,columnCount,values");
     await context.sync();
 
@@ -193,7 +196,7 @@ export async function insertCagr(): Promise<void> {
         ),
       ],
     ];
-    await context.sync();
+    await syncWrite(context, CAGR);
   });
 }
 
@@ -232,7 +235,7 @@ function requireNumbers(range: Excel.Range, count: number): void {
 // a euro or percentage block rounds the way the block reads.
 export async function insertConsistentRounding(): Promise<string> {
   return Excel.run(async (context) => {
-    const range = await selectedSingleRange(context, "Consistent rounding");
+    const range = await selectedSingleRange(context, ROUNDING);
     range.load("address,rowCount,columnCount,values,numberFormat");
     await context.sync();
 
@@ -266,8 +269,8 @@ export async function insertConsistentRounding(): Promise<string> {
 
     const formulas = roundingFormulas(reference, count, decimals);
     destination.formulas = acrossRow ? [formulas] : formulas.map((f) => [f]);
-    await context.sync();
+    await syncWrite(context, ROUNDING);
 
-    return `Consistent rounding: ${count} cells at ${decimals} decimals`;
+    return `${ROUNDING}: ${count} cells at ${decimals} decimals`;
   });
 }
