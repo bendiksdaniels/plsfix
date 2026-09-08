@@ -184,6 +184,66 @@ describe("a whole-column click", () => {
   });
 });
 
+describe("the unit and sign edits over a selection a modeller really makes", () => {
+  // A label column, numbers, a formula, a percentage, a blank and a flag in one
+  // block: only the numbers and the formula may move.
+  function seedMixedRow(): void {
+    helpers.seed("Model!A1", [
+      ["Revenue", 1500, { formula: "=B1*2", value: 3000 }, 0.42, "", true],
+    ]);
+    helpers.setNumberFormat("Model!D1", "0.0%");
+    helpers.select("Model!A1:F1");
+  }
+
+  it("scales the numbers and the formula and nothing else", async () => {
+    seedMixedRow();
+    await smt.scaleSelection(0.001);
+
+    expect(helpers.value("Model!A1")).toBe("Revenue");
+    expect(helpers.value("Model!B1")).toBe(1.5);
+    expect(helpers.formula("Model!C1")).toBe("=(B1*2)/1000");
+    expect(helpers.value("Model!D1")).toBe(0.00042);
+    // The percentage keeps its own format; only what it prints changed.
+    expect(helpers.numberFormat("Model!D1")).toBe("0.0%");
+    expect(helpers.value("Model!E1")).toBe("");
+    expect(helpers.value("Model!F1")).toBe(true);
+  });
+
+  it("flips the same cells and leaves the label and the flag alone", async () => {
+    seedMixedRow();
+    await smt.applySignFlip();
+
+    expect(helpers.value("Model!A1")).toBe("Revenue");
+    expect(helpers.value("Model!B1")).toBe(-1500);
+    expect(helpers.formula("Model!C1")).toBe("=-(B1*2)");
+    expect(helpers.value("Model!F1")).toBe(true);
+  });
+
+  it("leaves a cell holding an error value where it is", async () => {
+    helpers.seed("Model!A1", [
+      ["#REF!", { formula: "=1/0", value: "#DIV/0!" }, "#N/A"],
+    ]);
+    helpers.select("Model!A1:C1");
+
+    await smt.applySignFlip();
+    expect(helpers.formula("Model!A1")).toBe("#REF!");
+    expect(helpers.formula("Model!C1")).toBe("#N/A");
+
+    await smt.toggleIfErrorGuard();
+    expect(helpers.formula("Model!A1")).toBe("#REF!");
+    expect(helpers.formula("Model!B1")).toBe("=IFERROR(-(1/0),0)");
+  });
+});
+
+describe("a rounding group past its cap", () => {
+  it("says how many cells it takes", async () => {
+    helpers.select("Model!A1:A2000");
+    expect(await rejects(() => smt.insertConsistentRounding())).toBe(
+      "Consistent rounding groups up to 1000 cells at once.",
+    );
+  });
+});
+
 describe("a paste that cuts a merged cell", () => {
   it("says what to do instead of handing back Excel's string", async () => {
     helpers.seed("Data!A1", [[{ formula: "=Z1+1", value: 2 }], [7]]);

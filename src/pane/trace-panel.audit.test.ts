@@ -7,12 +7,12 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { TraceArea, TraceResult } from "../excel";
+import type * as ExcelShared from "../excel/shared";
 
 // trace-panel reaches ./shared, whose top-level installTabs/createToast calls
 // need #tab-bar and #toast: the markup goes in before the dynamic import.
 vi.mock("../excel", async () => {
-  const shared =
-    await vi.importActual<typeof import("../excel/shared")>("../excel/shared");
+  const shared = await vi.importActual<typeof ExcelShared>("../excel/shared");
   return {
     parseAddress: shared.parseAddress,
     lastAuditNote: vi.fn(() => null),
@@ -60,8 +60,12 @@ function chips(): HTMLButtonElement[] {
   );
 }
 
+// `hidden` is `boolean | "until-found"` in the DOM types, so it is read as the
+// attribute the pane's [hidden] reset actually keys off.
 function panelHidden(): boolean {
-  return (document.getElementById("trace-panel") as HTMLDivElement).hidden;
+  return (
+    document.getElementById("trace-panel")?.hasAttribute("hidden") ?? false
+  );
 }
 
 function text(id: string): string {
@@ -135,6 +139,17 @@ describe("the trace panel", () => {
     expect(
       (document.getElementById("trace-back") as HTMLButtonElement).disabled,
     ).toBe(true);
+  });
+
+  it("counts a whole-column precedent in the chip's own title", async () => {
+    const { excel, panel } = await load();
+    vi.mocked(excel.traceActiveCell).mockResolvedValueOnce(
+      traced([area("Model", "A:A", 1_048_576)]),
+    );
+
+    await panel.startTrace("precedents", false);
+    expect(chips()[0]?.textContent).toBe("Model!A:A");
+    expect(chips()[0]?.title).toBe("Select Model!A:A (1,048,576 cells)");
   });
 
   it("says one dependent in the singular", async () => {

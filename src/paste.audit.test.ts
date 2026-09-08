@@ -37,6 +37,10 @@ describe("the IFERROR guard", () => {
     ]);
   });
 
+  it("strips a guard whose fallback text holds a bracket of its own", () => {
+    expect(toggleIfError([['=IFERROR(A1,"a)b")']], "0")).toEqual([["=A1"]]);
+  });
+
   it("leaves an IFERROR with no fallback alone and guards it", () => {
     // No comma at depth 1: this is not the guard this button writes.
     expect(toggleIfError([["=IFERROR(A1)"]], "0")).toEqual([
