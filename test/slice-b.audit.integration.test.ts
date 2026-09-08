@@ -120,3 +120,54 @@ describe("a paste that cuts a merged cell", () => {
     expect(helpers.value("Model!A1")).toBe("Revenue bridge");
   });
 });
+
+// ---------------------------------------------------------------------------
+
+describe("a fast fill whose active cell is not the selection's first cell", () => {
+  // Dragging a selection upwards or leftwards leaves Excel's active cell at the
+  // far corner. The fill starts there, so the selection may only size it as far
+  // as its own edge - never past it, and never over cells nobody selected.
+  it("fills down to the end of the selection, not past it", async () => {
+    helpers.seed("Model!B3", [[{ formula: "=A3*2", value: 2 }]]);
+    helpers.select("Model!B1:B5");
+    helpers.setActiveCell("Model!B3");
+
+    await smt.fastFillAuto("down");
+
+    expect(helpers.formula("Model!B5")).toBe("=A3*2");
+    expect(helpers.formula("Model!B6")).toBe("");
+    expect(helpers.formula("Model!B7")).toBe("");
+  });
+
+  it("fills right to the end of the selection, not past it", async () => {
+    helpers.seed("Model!C1", [[{ formula: "=C9*2", value: 2 }]]);
+    helpers.select("Model!A1:D1");
+    helpers.setActiveCell("Model!C1");
+
+    await smt.fastFillAuto("right");
+
+    expect(helpers.formula("Model!D1")).toBe("=C9*2");
+    expect(helpers.formula("Model!E1")).toBe("");
+  });
+
+  it("refuses when the active cell sits on the selection's last row", async () => {
+    helpers.seed("Model!B5", [[{ formula: "=A5*2", value: 2 }]]);
+    helpers.select("Model!B1:B5");
+    helpers.setActiveCell("Model!B5");
+
+    expect(await rejects(() => smt.fastFillAuto("down"))).toBe(
+      "No neighbor data to size the fill.",
+    );
+    expect(helpers.formula("Model!B6")).toBe("");
+  });
+
+  it("still lets the neighbour data reach past the selection", async () => {
+    helpers.seed("Model!B1", [["Q1", "Q2", "Q3", "Q4"]]);
+    helpers.seed("Model!B2", [[{ formula: "=A2*2", value: 8 }]]);
+    helpers.select("Model!B2:C2");
+
+    await smt.fastFillAuto("right");
+
+    expect(helpers.formula("Model!E2")).toBe("=A2*2");
+  });
+});

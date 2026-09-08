@@ -93,7 +93,7 @@ export async function fastFillAuto(direction: "right" | "down"): Promise<void> {
     const cell = context.workbook.getActiveCell();
     const sheet = cell.worksheet;
     cell.load("rowIndex,columnIndex,formulas");
-    selection.load("rowCount,columnCount");
+    selection.load("rowIndex,columnIndex,rowCount,columnCount");
     await context.sync();
 
     const formula = (cell.formulas as CellValue[][])[0]?.[0] ?? null;
@@ -112,7 +112,13 @@ export async function fastFillAuto(direction: "right" | "down"): Promise<void> {
         return down ? values.map((row) => row[0] ?? null) : (values[0] ?? []);
       }),
     );
-    const own = down ? selection.rowCount : selection.columnCount;
+    // Dragging a block upwards or leftwards leaves the active cell at the far
+    // corner, so the selection can only size the fill as far as its own edge:
+    // its whole length past the active cell would write over cells nobody
+    // selected. Anchored at the corner, this is the selection's own length.
+    const own = down
+      ? selection.rowIndex + selection.rowCount - cell.rowIndex
+      : selection.columnIndex + selection.columnCount - cell.columnIndex;
     if (neighbours === 0 && own < 2) {
       throw new Error("No neighbor data to size the fill.");
     }
