@@ -370,3 +370,192 @@ describe("the highlight over a protected sheet", () => {
     expect(await excel.toggleAuditOverlay()).toBe(true);
   });
 });
+
+describe("what the host refuses before anything is anchored", () => {
+  it("refuses an export outright when the registry cannot be read", async () => {
+    helpers.failNextSync();
+    await expect(links.exportSelection(ws, relay)).rejects.toThrow();
+    expect(workbook.names).toEqual([]);
+    expect(helpers.setting(REGISTRY_SETTING)).toBeNull();
+    expect(relay.links.size).toBe(0);
+
+    helpers.failNextSync();
+    await expect(links.listWorkbookLinks()).rejects.toThrow();
+  });
+
+  it("says which chart the pick named when it is not on this sheet", async () => {
+    helpers.addChart("Model", { name: "Revenue bridge" });
+    helpers.addChart("Data", { name: "Segment pie" });
+    helpers.setActiveChart(null);
+
+    await expect(
+      links.exportActiveChart(ws, relay, "Segment pie"),
+    ).rejects.toThrow("No chart named Segment pie on this sheet.");
+    expect(workbook.names).toEqual([]);
+  });
+
+  it("reports a source that is gone when the jump is asked for", async () => {
+    const { id } = await links.exportSelection(ws, relay);
+    helpers.breakName(anchorName(id));
+
+    await expect(links.goToSource(id)).rejects.toThrow(
+      "go to source Model!B4:F5: source missing",
+    );
+  });
+
+  it("names the flow and the id for a link this workbook never had", async () => {
+    const stranger = "c".repeat(32);
+    await expect(links.removeLink(stranger, relay)).rejects.toThrow(
+      "remove " + stranger + ": not in this workbook",
+    );
+    await expect(links.pushLinks([stranger], relay)).rejects.toThrow(
+      "push " + stranger + ": not in this workbook",
+    );
+  });
+});
+
+// A model made on Microsoft 365 and opened in Excel 2019 (ExcelApi 1.8) still
+// lists its links and still offers Push. Range.getImage and the chart image
+// surface are both 1.9, so the picture kinds have to say what the export says
+// rather than reaching for a method the host does not carry.
+describe("a push from a host below the picture floor", () => {
+  it("refuses a picture link in the pane's own sentence", async () => {
+    const { id } = await links.exportSelection(ws, relay);
+    helpers.setSupported(() => false);
+
+    const summary = await links.pushLinks("all", relay);
+
+    expect(summary).toMatchObject({ pushed: 0, missing: 0, failed: 1 });
+    expect(summary.failures[0]).toMatch(/Excel 2021 \/ Microsoft 365 required/);
+    expect(relay.links.get(id)!.rev).toBe(1);
+  });
+
+  it("refuses a chart link the same way", async () => {
+    const id = await chartLink();
+    helpers.setSupported(() => false);
+
+    const summary = await links.pushLinks("all", relay);
+
+    expect(summary.failed).toBe(1);
+    expect(summary.failures[0]).toMatch(/Excel 2021 \/ Microsoft 365 required/);
+    expect(relay.links.get(id)!.rev).toBe(1);
+  });
+
+  it("still pushes a text link, which needs nothing above 1.1", async () => {
+    helpers.seed("Model!H2", [["Revenue"]]);
+    helpers.select("Model!H2");
+    const { id } = await links.exportSelectionAsText(ws, relay);
+    helpers.setSupported(() => false);
+
+    expect(await links.pushLinks("all", relay)).toMatchObject({
+      pushed: 1,
+      failed: 0,
+    });
+    expect(relay.links.get(id)!.rev).toBe(2);
+  });
+});
+
+// The flag is written only once the workbook really is watching: a failed
+// registration that still left "1" behind would re-arm on every later open of a
+// file whose handler never took.
+describe("arming auto-push against a host that refuses", () => {
+  it("stays off, keeps the flag clear and can be armed again", async () => {
+    await links.exportSelection(ws, relay);
+    helpers.failNextSync();
+
+    await expect(
+      watch.setAutoPush(true, relay, note, { clock }),
+    ).rejects.toThrow();
+    expect(watch.autoPushEnabled()).toBe(false);
+    expect(helpers.changeHandlerCount()).toBe(0);
+    expect(helpers.setting(watch.AUTOPUSH_SETTING)).toBeNull();
+
+    await watch.setAutoPush(true, relay, note, { clock });
+    expect(watch.autoPushEnabled()).toBe(true);
+    expect(helpers.setting(watch.AUTOPUSH_SETTING)).toBe("1");
+  });
+
+  it("writes the flag off for a workbook that was never watching", async () => {
+    await watch.setAutoPush(false, relay, note, { clock });
+    expect(watch.autoPushEnabled()).toBe(false);
+    expect(helpers.setting(watch.AUTOPUSH_SETTING)).toBe("");
+  });
+
+  // Two clicks in one turn: the toggles are serialized, so the handler can
+  // never be registered twice and the last click is what the workbook keeps.
+  it("ends where the last of two overlapping toggles asked", async () => {
+    const on = watch.setAutoPush(true, relay, note, { clock });
+    const off = watch.setAutoPush(false, relay, note, { clock });
+    await Promise.all([on, off]);
+
+    expect(watch.autoPushEnabled()).toBe(false);
+    expect(helpers.changeHandlerCount()).toBe(0);
+    expect(helpers.setting(watch.AUTOPUSH_SETTING)).toBe("");
+  });
+
+  it("drops a window that was already waiting when it is switched off", async () => {
+    const { id } = await links.exportSelection(ws, relay);
+    await watch.setAutoPush(true, relay, note, { clock });
+    await helpers.fireChanged("Model", "C5");
+
+    await watch.setAutoPush(false, relay, note, { clock });
+    clock.advance(watch.AUTOPUSH_DELAY_MS);
+    await settle();
+
+    expect(relay.links.get(id)!.rev).toBe(1);
+    expect(notes).toEqual([]);
+  });
+});
+
+// The list watcher has no on/off switch: a host that refuses the registration
+// leaves the caller without a live view and nothing else.
+describe("the list watcher against a host that refuses", () => {
+  it("swallows the refusal and never calls back", async () => {
+    const { watchWorksheetEdits, LIST_WATCH_DELAY_MS } =
+      await import("../src/excel/link-list-watch");
+    const settled: number[] = [];
+    helpers.failNextSync();
+
+    watchWorksheetEdits(() => settled.push(1), { clock });
+    await settle();
+    await helpers.fireChanged("Model", "C5");
+    clock.advance(LIST_WATCH_DELAY_MS);
+    await settle();
+
+    expect(settled).toEqual([]);
+    expect(helpers.changeHandlerCount()).toBe(0);
+  });
+});
+
+// The inbox note is posted after the registry is already written: a relay that
+// takes the picture and refuses the note has to leave the workbook as it was.
+describe("an inbox note the relay refuses", () => {
+  it("takes the whole export back", async () => {
+    relay.postInbox = () =>
+      Promise.reject(new RelayError("server", "inbox full", 507));
+
+    await expect(links.exportSelection(ws, relay)).rejects.toThrow(
+      /export Model!B4:F5: inbox full/,
+    );
+    expect(workbook.names).toEqual([]);
+    expect(JSON.parse(String(helpers.setting(REGISTRY_SETTING))).links).toEqual(
+      [],
+    );
+  });
+
+  it("leaves an earlier link untouched when a later export is taken back", async () => {
+    const first = await links.exportSelection(ws, relay);
+    relay.postInbox = () =>
+      Promise.reject(new RelayError("server", "inbox full", 507));
+    helpers.seed("Data!A1", [[7, 8]]);
+    helpers.select("Data!A1:B1");
+
+    await expect(links.exportSelection(ws, relay)).rejects.toThrow();
+
+    const rows = await links.listWorkbookLinks();
+    expect(rows.map((row) => row.entry.id)).toEqual([first.id]);
+    expect(workbook.names.map((name) => name.name)).toEqual([
+      anchorName(first.id),
+    ]);
+  });
+});

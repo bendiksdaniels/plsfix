@@ -9,6 +9,7 @@
 import { type ChartData } from "../link/chart-model";
 import {
   bothRefused,
+  requireImageApi,
   staged,
   type ResolvedChart,
   type ResolvedSource,
@@ -76,6 +77,13 @@ export async function renderSource(
     await context.sync();
     return { kind: "text", text: resolved.range.text[0]?.[0] ?? "" };
   }
+  // Both remaining kinds are a picture, and Range.getImage and the chart image
+  // surface both arrived in ExcelApi 1.9. The exports ask before they anchor
+  // anything, but a push does not go through them: a model made on Microsoft
+  // 365 and opened in Excel 2019 still lists its links and still offers Push,
+  // and without this the host answers a method that is not there rather than
+  // the sentence the pane owns.
+  requireImageApi();
   if (resolved.kind === "chart") return renderChart(context, resolved);
   const image = resolved.range.getImage();
   await context.sync();
