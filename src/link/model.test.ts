@@ -262,11 +262,17 @@ describe("chart data on a picture payload", () => {
     expect(decodePayload(encodePayload(picture))).toEqual(picture);
   });
 
-  it("refuses a malformed chart", () => {
+  it("drops a malformed chart and keeps the picture", () => {
+    // The chart is optional cargo: src/link/chart-guard.ts strips one the
+    // validator refuses and notes it, rather than losing a good picture.
     const broken = { ...picture, chart: { ...chart, kind: "area" } };
-    expect(() =>
-      decodePayload(new TextEncoder().encode(JSON.stringify(broken))),
-    ).toThrow();
+    const decoded = decodePayload(
+      new TextEncoder().encode(JSON.stringify(broken)),
+    );
+    expect(decoded).toEqual({
+      ...picture,
+      chartIssue: "chart data unreadable",
+    });
   });
 });
 

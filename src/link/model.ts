@@ -3,7 +3,8 @@
 // their codecs. Every decoder validates its shape before trusting it - garbage
 // in never becomes a typed value out.
 
-import { isChartData, type ChartData } from "./chart-model";
+import { guardChart } from "./chart-guard";
+import type { ChartData } from "./chart-model";
 
 export type LinkId = string; // 32 lowercase hex chars
 export type LinkKind = "range" | "chart" | "table" | "text";
@@ -229,7 +230,6 @@ function isPicturePayload(value: unknown): value is PicturePayload {
     isSource(value.src) &&
     typeof value.pushedAt === "string" &&
     typeof value.hash === "string" &&
-    isOptional(value.chart, isChartData) &&
     isOptional(value.chartIssue, (entry) => typeof entry === "string")
   );
 }
@@ -376,7 +376,7 @@ export function encodePayload(payload: Payload): Uint8Array {
 }
 
 export function decodePayload(bytes: Uint8Array): Payload {
-  const parsed = decodeJson(bytes, "decodePayload");
+  const parsed = guardChart(decodeJson(bytes, "decodePayload"));
   if (!isPayload(parsed)) throw new Error("decodePayload: not a link payload");
   return parsed;
 }
