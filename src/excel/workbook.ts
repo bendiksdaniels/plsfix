@@ -9,7 +9,12 @@
 // Every one of them ends on syncWrite with structureNote, so a workbook whose
 // structure is protected answers the pane's sentence, not Excel's own string.
 
-import { brokenIn, loadNames } from "./internal";
+import {
+  brokenEverywhere,
+  brokenIn,
+  loadNames,
+  loadSheetNames,
+} from "./internal";
 import { structureNote, structureProtected, syncWrite } from "./protection";
 import { activeTheme, getActiveSettings } from "../settings";
 import { tocRows } from "../workbook";
@@ -301,12 +306,9 @@ export async function moveSheet(direction: SheetMove): Promise<{
 
 // A name can be scoped to the workbook or to one sheet (Worksheet.names,
 // ExcelApi 1.4): the two collections are separate, so a broken name defined on
-// a sheet never showed up in workbook.names at all. Loaded the same way,
-// sheet by sheet, once the sheet list itself is in hand.
-function loadSheetNameItems(names: Excel.NamedItemCollection): void {
-  names.load("items/name,items/formula");
-}
-
+// a sheet never showed up in workbook.names at all. loadSheetNames (in
+// internal.ts, shared with share.ts and model-check.ts) loads the second sheet
+// by sheet, once the sheet list itself is in hand.
 async function loadEveryNameCollection(context: Excel.RequestContext): Promise<{
   workbook: Excel.NamedItemCollection;
   sheets: Excel.Worksheet[];
@@ -317,8 +319,7 @@ async function loadEveryNameCollection(context: Excel.RequestContext): Promise<{
   sheets.load("items/name");
   await context.sync();
 
-  const perSheet = sheets.items.map((sheet) => sheet.names);
-  for (const collection of perSheet) loadSheetNameItems(collection);
+  const perSheet = loadSheetNames(sheets.items);
   await context.sync();
 
   return { workbook, sheets: sheets.items, perSheet };
@@ -328,12 +329,12 @@ export async function listBrokenNames(): Promise<string[]> {
   return Excel.run(async (context) => {
     const { workbook, sheets, perSheet } =
       await loadEveryNameCollection(context);
-    const scoped = sheets.flatMap((sheet, index) =>
-      brokenIn(perSheet[index]!).map((name) => `${sheet.name}!${name}`),
-    );
-    return [...brokenIn(workbook), ...scoped];
+    return brokenEverywhere(workbook, sheets, perSheet);
   });
 }
+
+const STRUCTURE_PROTECTED =
+  "The workbook's structure is protected, so nothing was deleted.";
 
 // Irreversible: pls,fix Undo restores ranges, and Office.js writes never reach
 // Excel's own undo stack. The pane therefore asks twice before calling this.
@@ -357,7 +358,15 @@ export async function deleteBrokenNames(): Promise<number> {
       }
     }
 
-    await context.sync();
+    try {
+      await context.sync();
+    } catch (error) {
+      const { code } = error as { code?: string };
+      if (code === Excel.ErrorCodes.accessDenied) {
+        throw new Error(STRUCTURE_PROTECTED);
+      }
+      throw error;
+    }
     return deleted;
   });
 }

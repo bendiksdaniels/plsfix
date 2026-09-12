@@ -12,8 +12,9 @@
 import { auditOverlayOn } from "./audit";
 import { autocolorOnEditActive } from "./autocolor";
 import {
-  brokenIn,
+  brokenEverywhere,
   loadNames,
+  loadSheetNames,
   pickScannableSheets,
   type ScannedSheet,
   SHEET_SCAN_CELL_CAP,
@@ -34,8 +35,11 @@ export interface ShareOptions {
   // The used range a sheet may have before it is skipped instead of read.
   // Defaults to the sheet-scan cap; the tests use a smaller one.
   maxCells?: number;
-  // What the whole scan may read across every sheet. Defaults to the same
-  // sheet-scan cap, since each sheet is already read in its own batch.
+  // What the whole scan may read across every sheet: every scanned sheet's
+  // grid loads in the same sync (phase 3 below), never one sync per sheet, so
+  // this is what keeps that one combined request inside what the host will
+  // answer. Defaults to the same sheet-scan cap as maxCells, matching the
+  // model check's own pass.
   maxTotalCells?: number;
 }
 
@@ -43,6 +47,13 @@ export interface ShareResult {
   report: ShareIssue[];
   // Visible sheets put back at A1, which is what the summary line counts.
   touchedSheets: number;
+  // Every sheet this pass covered, an empty one included: the workbook's
+  // sheet count minus the "skippedSheet" issues in report, the same count the
+  // model check reports. The skipped count itself is already in report.
+  scannedSheets: number;
+  // The per-sheet cap actually in force (maxCells, or SHEET_SCAN_CELL_CAP by
+  // default): what the pane names when it says a sheet was too large.
+  sheetCap: number;
 }
 
 // One walk over the formulas, two answers: what points at another workbook and
@@ -115,6 +126,7 @@ function buildReport(
   sheets: Excel.Worksheet[],
   scanned: ScannedSheet[],
   names: Excel.NamedItemCollection,
+  perSheetNames: Excel.NamedItemCollection[],
   skippedSheets: string[],
   registry: Excel.Setting,
 ): ShareIssue[] {
@@ -126,7 +138,7 @@ function buildReport(
     })),
     externalLinks: formulas.external,
     addinFormulas: formulas.addin,
-    brokenNames: brokenIn(names),
+    brokenNames: brokenEverywhere(names, sheets, perSheetNames),
     skippedSheets,
     overlaysPainted: paintedOverlays(),
     linkTokens: carriesLinkTokens(registry),
@@ -157,12 +169,17 @@ export async function prepareForSharing(
     for (const range of used) {
       range.load("isNullObject,cellCount,rowIndex,columnIndex");
     }
+    // Folded into this same batch, not a sync of its own: the sheet list is
+    // already in hand, so every sheet's own names (Worksheet.names, ExcelApi
+    // 1.4) can be queued right alongside the used-range extents.
+    const perSheetNames = loadSheetNames(sheets.items);
     await context.sync();
 
+    const sheetCap = options.maxCells ?? SHEET_SCAN_CELL_CAP;
     const { scanned, skippedSheets } = pickScannableSheets(
       sheets.items,
       used,
-      options.maxCells ?? SHEET_SCAN_CELL_CAP,
+      sheetCap,
       options.maxTotalCells ?? SHEET_SCAN_CELL_CAP,
     );
     for (const sheet of scanned) sheet.range.load("formulas");
@@ -172,11 +189,17 @@ export async function prepareForSharing(
       sheets.items,
       scanned,
       names,
+      perSheetNames,
       skippedSheets,
       registry,
     );
     const touchedSheets = resetToA1(sheets.items);
     await context.sync();
-    return { report, touchedSheets };
+    return {
+      report,
+      touchedSheets,
+      scannedSheets: sheets.items.length - skippedSheets.length,
+      sheetCap,
+    };
   });
 }

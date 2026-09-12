@@ -56,6 +56,8 @@ describe("find in workbook", () => {
       ],
       skippedSheets: [],
       commentsSkipped: false,
+      scannedSheets: 2,
+      sheetCap: 200_000,
     });
   });
 
@@ -144,6 +146,8 @@ describe("find in workbook", () => {
       hits: [{ kind: "cell", sheet: "Model", address: "A1", text: "Total" }],
       skippedSheets: ["Data"],
       commentsSkipped: false,
+      scannedSheets: 1,
+      sheetCap: 3,
     });
   });
 
@@ -177,6 +181,8 @@ describe("find in workbook", () => {
       ],
       skippedSheets: ["Notes"],
       commentsSkipped: false,
+      scannedSheets: 2,
+      sheetCap: 4,
     });
   });
 
@@ -193,6 +199,8 @@ describe("find in workbook", () => {
       hits: [{ kind: "cell", sheet: "Model", address: "A1", text: "Total" }],
       skippedSheets: ["Data"],
       commentsSkipped: false,
+      scannedSheets: 1,
+      sheetCap: 200_000,
     });
   });
 
@@ -201,6 +209,8 @@ describe("find in workbook", () => {
       hits: [],
       skippedSheets: [],
       commentsSkipped: false,
+      scannedSheets: 2,
+      sheetCap: 200_000,
     });
   });
 });
@@ -264,6 +274,8 @@ describe("find in comments", () => {
       ],
       skippedSheets: ["Data"],
       commentsSkipped: false,
+      scannedSheets: 1,
+      sheetCap: 3,
     });
   });
 
@@ -272,7 +284,13 @@ describe("find in comments", () => {
 
     expect(
       await smt.findInWorkbook("margin", { ...LOOSE, inComments: false }),
-    ).toEqual({ hits: [], skippedSheets: [], commentsSkipped: false });
+    ).toEqual({
+      hits: [],
+      skippedSheets: [],
+      commentsSkipped: false,
+      scannedSheets: 2,
+      sheetCap: 200_000,
+    });
   });
 
   it("says comments were skipped on a host below ExcelApi 1.10", async () => {
@@ -283,6 +301,8 @@ describe("find in comments", () => {
       hits: [],
       skippedSheets: [],
       commentsSkipped: true,
+      scannedSheets: 2,
+      sheetCap: 200_000,
     });
   });
 });

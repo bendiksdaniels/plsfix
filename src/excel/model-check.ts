@@ -6,8 +6,9 @@
 // the names and the style table.
 
 import {
-  brokenIn,
+  brokenEverywhere,
   loadNames,
+  loadSheetNames,
   pickScannableSheets,
   type ScannedSheet,
   SHEET_SCAN_CELL_CAP,
@@ -153,6 +154,7 @@ function collect(
   scanned: ScannedSheet[],
   skipped: string[],
   names: Excel.NamedItemCollection,
+  perSheetNames: Excel.NamedItemCollection[],
 ): SheetScan {
   return {
     findings: [
@@ -167,7 +169,7 @@ function collect(
       cells: scanned.reduce((sum, sheet) => sum + sheet.range.cellCount, 0),
     },
     skipped,
-    brokenNames: brokenIn(names),
+    brokenNames: brokenEverywhere(names, sheets, perSheetNames),
   };
 }
 
@@ -190,6 +192,10 @@ async function scanSheets(
   for (const range of used) {
     range.load("isNullObject,cellCount,rowIndex,columnIndex");
   }
+  // Folded into this same batch, not a sync of its own: the sheet list is
+  // already in hand, so every sheet's own names (Worksheet.names, ExcelApi
+  // 1.4) can be queued right alongside the used-range extents.
+  const perSheetNames = loadSheetNames(sheets.items);
   await context.sync();
 
   const { scanned, skippedSheets } = pickScannableSheets(
@@ -203,7 +209,7 @@ async function scanSheets(
   }
   await context.sync();
 
-  return collect(sheets.items, scanned, skippedSheets, names);
+  return collect(sheets.items, scanned, skippedSheets, names, perSheetNames);
 }
 
 /**

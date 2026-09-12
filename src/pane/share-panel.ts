@@ -24,6 +24,23 @@ const SHARE_BADGES: Record<ShareIssue["kind"], string> = {
 const SHARE_HINT =
   "Nothing is deleted and hidden sheets are left as they are. Zoom cannot be reset by the add-in, so it stays where you left it.";
 
+function plural(count: number, word: string): string {
+  return `${String(count)} ${count === 1 ? word : `${word}s`}`;
+}
+
+// Names how many sheets were skipped and over what cap: the row list already
+// names each one (badge "Too large"), but not how many there were out of how
+// many read, or the cap that decided it.
+function skippedNote(result: ShareResult): string {
+  const skipped = result.report.filter(
+    (issue) => issue.kind === "skippedSheet",
+  );
+  if (skipped.length === 0) return "";
+  const cap = result.sheetCap.toLocaleString();
+  const names = skipped.map((issue) => issue.label).join(", ");
+  return ` Scanned ${plural(result.scannedSheets, "sheet")}, ${String(skipped.length)} skipped over ${cap} cells: ${names}.`;
+}
+
 function shareRow(issue: ShareIssue): HTMLDivElement {
   const row = document.createElement("div");
   row.className = "sheet-row";
@@ -64,7 +81,7 @@ export function renderShare(result: ShareResult | null): void {
   }
 
   getElement("share-hint").textContent =
-    `${summarizeShare(result.report, result.touchedSheets)}. ${SHARE_HINT}`;
+    `${summarizeShare(result.report, result.touchedSheets)}.${skippedNote(result)} ${SHARE_HINT}`;
 }
 
 export async function prepareShare(): Promise<string> {

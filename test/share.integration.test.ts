@@ -120,6 +120,21 @@ describe("prepare for sharing", () => {
     ]);
   });
 
+  it("reports a name broken on a sheet, listed as Sheet!Name", async () => {
+    helpers.addName("Costs", "=Model!#REF!");
+    helpers
+      .sheet("Model")
+      .names.push({ name: "TaxRate", formula: "=Model!#REF!", visible: true });
+    const before = helpers.syncCount();
+
+    const { report } = await smt.prepareForSharing();
+
+    expect(labels(report, "brokenName")).toEqual(["Costs", "Model!TaxRate"]);
+    // Sheet-scoped names ride the existing used-range-extent batch: still the
+    // four syncs the header comment promises, not a fifth for this.
+    expect(helpers.syncCount() - before).toBe(4);
+  });
+
   it("reports a sheet whose used range is too large to scan", async () => {
     helpers.seed("Model!A1", [[{ value: 1, formula: "=[Budget.xlsx]S!$A$1" }]]);
     helpers.seed("Data!A1", [
@@ -279,7 +294,12 @@ describe("prepare for sharing", () => {
 
     const result = await smt.prepareForSharing();
 
-    expect(result).toEqual({ report: [], touchedSheets: 1 });
+    expect(result).toEqual({
+      report: [],
+      touchedSheets: 1,
+      scannedSheets: 1,
+      sheetCap: 200_000,
+    });
     expect(workbook.selection).toEqual({
       sheetId: helpers.sheet("Only").id,
       rect: A1,

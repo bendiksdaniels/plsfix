@@ -115,6 +115,8 @@ describe("share panel", () => {
     vi.mocked(prepareForSharing).mockResolvedValue({
       report: [issue(), issue({ kind: "linkTokens", label: "Link registry" })],
       touchedSheets: 3,
+      scannedSheets: 3,
+      sheetCap: 200_000,
     });
     const { share } = await load();
 
@@ -131,10 +133,28 @@ describe("share panel", () => {
     expect(text("share-hint")).toContain("Zoom cannot be reset");
   });
 
+  it("names how many sheets it read, how many it skipped and over what cap", async () => {
+    vi.mocked(prepareForSharing).mockResolvedValue({
+      report: [issue({ kind: "skippedSheet", label: "Data" })],
+      touchedSheets: 7,
+      scannedSheets: 7,
+      sheetCap: 200_000,
+    });
+    const { share } = await load();
+
+    await share.prepareShare();
+
+    expect(text("share-hint")).toContain(
+      "Scanned 7 sheets, 1 skipped over 200,000 cells: Data.",
+    );
+  });
+
   it("cuts a long report off and says how much is left", async () => {
     vi.mocked(prepareForSharing).mockResolvedValue({
       report: Array.from({ length: 23 }, () => issue()),
       touchedSheets: 1,
+      scannedSheets: 1,
+      sheetCap: 200_000,
     });
     const { share } = await load();
 

@@ -7,6 +7,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   enableStrictLoadSemantics,
+  hostError,
   installFakeHost,
   uninstallFakeHost,
   type FakeHelpers,
@@ -19,6 +20,15 @@ enableStrictLoadSemantics();
 let helpers: FakeHelpers;
 let workbook: FakeWorkbook;
 let smt: typeof ExcelModule;
+
+async function rejects(run: () => Promise<unknown>): Promise<string> {
+  try {
+    await run();
+  } catch (error) {
+    return (error as Error).message;
+  }
+  throw new Error("expected a rejection");
+}
 
 beforeEach(async () => {
   vi.resetModules();
@@ -59,5 +69,22 @@ describe("sheet-scoped broken names", () => {
     expect(await smt.deleteBrokenNames()).toBe(2);
     expect(workbook.names).toEqual([]);
     expect(helpers.sheet("Model").names).toEqual([]);
+  });
+});
+
+describe("deleting broken names on a protected workbook", () => {
+  it("answers a pane sentence, not Excel's own string", async () => {
+    helpers.addName("Costs", "=Model!#REF!");
+    // deleteBrokenNames runs two loading syncs (the sheet list plus the
+    // workbook's names, then every sheet's own names) before the delete
+    // write; afterSyncs lets those two succeed and fails only the write.
+    helpers.failNextSync(
+      hostError("AccessDenied", "The workbook is protected."),
+      2,
+    );
+
+    expect(await rejects(() => smt.deleteBrokenNames())).toBe(
+      "The workbook's structure is protected, so nothing was deleted.",
+    );
   });
 });

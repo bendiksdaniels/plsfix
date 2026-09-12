@@ -50,10 +50,11 @@ export interface FindOptions extends MatchOptions {
   // The used range a sheet may have before it is skipped instead of read.
   // Defaults to the sheet-scan cap; the tests use a smaller one.
   maxCells?: number;
-  // What the whole scan may read across every sheet, so a workbook of middling
-  // sheets cannot queue one request the host refuses. Defaults to the same
-  // sheet-scan cap: each sheet is already read in its own batch, so the total
-  // only has to stop a run of many sheets adding up, not a single one.
+  // What the whole scan may read across every sheet: every scanned sheet's
+  // grid loads in the same sync (phase 3 below), never one sync per sheet, so
+  // this is what keeps that one combined request inside what the host will
+  // answer. Defaults to the same sheet-scan cap as maxCells, matching the
+  // model check's own pass.
   maxTotalCells?: number;
   // Comments are their own phase with their own host requirement, so the pane
   // can leave them out; on unless the box is unticked, as it is on screen.
@@ -68,6 +69,12 @@ export interface FindResult {
   // The search wanted comments and the host is below ExcelApi 1.10: the pane
   // says so rather than letting a modeller read "no matches" as "none there".
   commentsSkipped: boolean;
+  // Every sheet this pass covered, an empty one included: the workbook's
+  // sheet count minus skippedSheets, the same count the model check reports.
+  scannedSheets: number;
+  // The per-sheet cap actually in force (maxCells, or SHEET_SCAN_CELL_CAP by
+  // default): what the pane names when it says a sheet was too large.
+  sheetCap: number;
 }
 
 // A comment and each of its replies become one row apiece; only the adapter
@@ -283,10 +290,11 @@ export async function findInWorkbook(
     }
     await context.sync();
 
+    const sheetCap = options.maxCells ?? SHEET_SCAN_CELL_CAP;
     const { scanned, skippedSheets } = pickScannableSheets(
       sheets.items,
       used,
-      options.maxCells ?? SHEET_SCAN_CELL_CAP,
+      sheetCap,
       options.maxTotalCells ?? SHEET_SCAN_CELL_CAP,
     );
     for (const sheet of scanned) sheet.range.load("values,formulas");
@@ -302,6 +310,8 @@ export async function findInWorkbook(
       hits: rankHits(rows).map((row) => row.hit),
       skippedSheets,
       commentsSkipped: wantsComments(options) && comments === null,
+      scannedSheets: sheets.items.length - skippedSheets.length,
+      sheetCap,
     };
   });
 }

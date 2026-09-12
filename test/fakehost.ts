@@ -1483,6 +1483,10 @@ class FakeRuntime {
   // the budget tests count them the way the PowerPoint fake does.
   syncs = 0;
   failSync: Error | null = null;
+  // The sync ordinal failSync fires on; helpers.failNextSync's afterSyncs lets
+  // that many otherwise-ordinary syncs succeed first, mirroring the
+  // PowerPoint fake's own failNextSync(error, afterSyncs).
+  failSyncAt = 0;
   // Armed by helpers.failNextImage(): the next getImage queues this error, so
   // the render fails at the sync that was going to commit the anchor with it.
   // A queue rather than one slot, so a test can meet a host that refuses the
@@ -3812,7 +3816,10 @@ class FakeContext {
   // properties this batch asked for are what a sync really decides.
   async sync(): Promise<void> {
     this.runtime.syncs += 1;
-    const queued = this.error ?? this.runtime.failSync;
+    const dueSync =
+      this.runtime.failSync !== null &&
+      this.runtime.syncs >= this.runtime.failSyncAt;
+    const queued = this.error ?? (dueSync ? this.runtime.failSync : null);
     if (queued) {
       this.error = null;
       this.runtime.failSync = null;
@@ -3899,7 +3906,11 @@ export interface FakeHelpers {
   setting(key: string): string | null;
   setSetting(key: string, value: string): void;
   setSupported(check: (set: string, version: string) => boolean): void;
-  failNextSync(error?: Error): void;
+  // Makes a future context.sync() reject, the way a hung or refused round
+  // trip does: the very next one by default, or the one after skipping
+  // `afterSyncs` more that still succeed - the same ordinal rule and
+  // signature as the PowerPoint fake's failNextSync.
+  failNextSync(error?: Error, afterSyncs?: number): void;
   // Makes the next Range/Chart getImage fail, the way a chart mid-render or a
   // protected sheet does, without touching the writes queued beside it. Called
   // twice, it refuses two pictures: a render that retries meets a host that
@@ -4274,9 +4285,10 @@ export function installFakeHost(options: FakeHostOptions = {}): {
     setSupported(check) {
       runtime.supported = check;
     },
-    failNextSync(error) {
+    failNextSync(error, afterSyncs = 0) {
       runtime.failSync =
         error ?? hostError(ErrorCodes.generalException, "The sync failed.");
+      runtime.failSyncAt = runtime.syncs + afterSyncs + 1;
     },
     failNextImage(error) {
       runtime.failImages.push(

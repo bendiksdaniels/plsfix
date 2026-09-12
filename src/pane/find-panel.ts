@@ -64,13 +64,23 @@ function findRow(hit: FindHit): HTMLButtonElement {
   return row;
 }
 
+function plural(count: number, word: string): string {
+  return `${String(count)} ${count === 1 ? word : `${word}s`}`;
+}
+
+// Names which sheets were too large as well as how many and over what cap, so
+// the answer says whether it is close to complete or missing a real slice of
+// the workbook.
+function skippedNote(result: FindResult): string {
+  if (result.skippedSheets.length === 0) return "";
+  const cap = result.sheetCap.toLocaleString();
+  return ` Searched ${plural(result.scannedSheets, "sheet")}, ${String(result.skippedSheets.length)} skipped over ${cap} cells: ${result.skippedSheets.join(", ")}.`;
+}
+
 function findSummary(result: FindResult): string {
   const count = result.hits.length;
   const capped = count >= FIND_HIT_CAP ? ` (first ${FIND_HIT_CAP})` : "";
-  const skipped =
-    result.skippedSheets.length > 0
-      ? ` Too large to search: ${result.skippedSheets.join(", ")}.`
-      : "";
+  const skipped = skippedNote(result);
   // An old host has no comment collection at all, so "no matches" would read
   // as "nothing was written there" rather than "nobody looked".
   const gated = result.commentsSkipped ? " Comments need Excel 365." : "";

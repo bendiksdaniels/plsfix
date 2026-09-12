@@ -42,11 +42,13 @@ export const SHEET_COLUMNS = 16_384;
 export const SCAN_CELL_CAP = SELECTION_CELL_CAP * 4;
 // The per-sheet cap Find, prepare-for-sharing and the model check all read
 // under: a deal model's largest sheet is 50,000+ cells, well past the
-// selection cap above, so a scan that walks sheet by sheet (never loading more
-// than one sheet's grid in a batch) can afford a much higher ceiling than a
-// single-request selection can. The three moved onto one constant so they never
-// drift apart again; also the default total a Find or share pass may read
-// across every sheet, since each already reads one sheet's grid at a time.
+// selection cap above. All three load every scanned sheet's grid in ONE sync,
+// never one sync per sheet, so the same number is also their default total
+// across every sheet: it is what keeps that one combined request inside what
+// the host will answer, matched to the model check's own pass, which already
+// ships four grids per sheet (formulas, values, valueTypes, formulasR1C1)
+// under this same total. The three moved onto one constant so they never
+// drift apart again.
 export const SHEET_SCAN_CELL_CAP = 200_000;
 const NO_FILL = "none";
 export const BASE_WHITE = "#FFFFFF";
@@ -246,6 +248,34 @@ export function brokenIn(names: Excel.NamedItemCollection): string[] {
         formula: typeof item.formula === "string" ? item.formula : "",
       })),
   );
+}
+
+// Worksheet.names (ExcelApi 1.4): one collection per sheet, loaded the same
+// way loadNames loads the workbook's. Queues the load only - the caller syncs
+// whenever its own batch already does, so this never adds a sync of its own.
+export function loadSheetNames(
+  sheets: Excel.Worksheet[],
+): Excel.NamedItemCollection[] {
+  return sheets.map((sheet) => {
+    const names = sheet.names;
+    names.load("items/name,items/formula");
+    return names;
+  });
+}
+
+// Every #REF! name in the workbook, sheet-scoped ones included: a name scoped
+// to a sheet is listed as Sheet!Name, so it never reads as a workbook-scoped
+// name of the same spelling. Find, prepare-for-sharing, the model check and
+// the names scrubber all report broken names this way.
+export function brokenEverywhere(
+  workbookNames: Excel.NamedItemCollection,
+  sheets: Excel.Worksheet[],
+  perSheetNames: Excel.NamedItemCollection[],
+): string[] {
+  const scoped = sheets.flatMap((sheet, index) =>
+    brokenIn(perSheetNames[index]!).map((name) => `${sheet.name}!${name}`),
+  );
+  return [...brokenIn(workbookNames), ...scoped];
 }
 
 const CHART_TEXT_SIZE = 9;

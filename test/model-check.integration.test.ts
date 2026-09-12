@@ -104,6 +104,24 @@ describe("model check", () => {
     expect(of(findings, "hiddenSheet")[0]?.note).toBe("Hidden");
   });
 
+  it("also finds a name broken on a sheet, noted as Sheet!Name", async () => {
+    seedTheLot();
+    helpers
+      .sheet("Model")
+      .names.push({ name: "TaxRate", formula: "=Model!#REF!", visible: true });
+    const before = helpers.syncCount();
+
+    const { findings } = await smt.runModelCheck();
+
+    expect(of(findings, "brokenName").map((entry) => entry.note)).toEqual([
+      "Costs",
+      "Model!TaxRate",
+    ]);
+    // Sheet-scoped names ride scanSheets's existing used-range-extent batch:
+    // still 3 syncs there (plus the style scrubber's own 3), not a 4th here.
+    expect(helpers.syncCount() - before).toBe(6);
+  });
+
   it("lists a very hidden sheet as such, and activates nothing", async () => {
     helpers.sheet("Scratch").visibility = "VeryHidden";
     const activeBefore = workbook.activeSheetId;

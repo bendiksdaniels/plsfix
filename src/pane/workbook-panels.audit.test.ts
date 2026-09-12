@@ -78,7 +78,14 @@ function hit(over: Partial<FindHit> = {}): FindHit {
 }
 
 function found(over: Partial<FindResult> = {}): FindResult {
-  return { hits: [], skippedSheets: [], commentsSkipped: false, ...over };
+  return {
+    hits: [],
+    skippedSheets: [],
+    commentsSkipped: false,
+    scannedSheets: 2,
+    sheetCap: 200_000,
+    ...over,
+  };
 }
 
 function scan(over: Partial<StyleScan> = {}): StyleScan {
@@ -155,9 +162,14 @@ describe("super find panel", () => {
 
   // An old host has no comment collection at all, so "no matches" would read
   // as "nothing was written there" rather than "nobody looked".
-  it("says what it could not read and what the host cannot search", async () => {
+  it("says how many sheets it read, how many it skipped and over what cap", async () => {
     vi.mocked(findInWorkbook).mockResolvedValue(
-      found({ skippedSheets: ["Data", "Notes"], commentsSkipped: true }),
+      found({
+        skippedSheets: ["Data", "Notes"],
+        commentsSkipped: true,
+        scannedSheets: 1,
+        sheetCap: 200_000,
+      }),
     );
     const { find } = await load();
     (document.getElementById("find-query") as HTMLInputElement).value = "x";
@@ -165,7 +177,26 @@ describe("super find panel", () => {
     await find.runFind();
 
     expect(text("find-hint")).toBe(
-      "No matches. Too large to search: Data, Notes. Comments need Excel 365.",
+      "No matches. Searched 1 sheet, 2 skipped over 200,000 cells: Data, Notes. Comments need Excel 365.",
+    );
+  });
+
+  it("pluralizes the sheet count and formats the cap with thousands", async () => {
+    vi.mocked(findInWorkbook).mockResolvedValue(
+      found({
+        hits: [hit()],
+        skippedSheets: ["Notes"],
+        scannedSheets: 8,
+        sheetCap: 200_000,
+      }),
+    );
+    const { find } = await load();
+    (document.getElementById("find-query") as HTMLInputElement).value = "x";
+
+    await find.runFind();
+
+    expect(text("find-hint")).toBe(
+      "1 hit. Searched 8 sheets, 1 skipped over 200,000 cells: Notes.",
     );
   });
 
