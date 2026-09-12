@@ -65,6 +65,42 @@ export async function sentence(run: () => Promise<string>): Promise<string> {
 }
 
 /**
+ * What a refused flow threw, unwrapped, so a test can hand the real error to
+ * the pane's own formatter (`describeError`) instead of to its own eyes.
+ */
+export async function caught(run: () => Promise<unknown>): Promise<unknown> {
+  try {
+    await run();
+  } catch (error) {
+    return error;
+  }
+  throw new Error("expected a rejection");
+}
+
+/** What src/pane/shared.ts hands describeError in the Excel pane. */
+export const REPORT_CONTEXT = { host: "Excel", version: "v0.0.000" };
+
+/**
+ * The fake-host surface the hidden-row and filtered-range scenarios need and
+ * that test/fakehost.ts (another slice) does not have yet. The skipped tests
+ * call through this cast on purpose: taking their `.skip` off before the fake
+ * grows these helpers fails loudly on a missing function rather than passing
+ * on an empty body.
+ */
+export interface PlannedHelpers {
+  /** "Model!3:3" - the rows Excel would hide. */
+  hideRows(address: string): void;
+  /** "Model!B:B" - the columns Excel would hide. */
+  hideColumns(address: string): void;
+  /** An AutoFilter over `range`, hiding the rows `hidden` names. */
+  applyFilter(range: string, hidden: string): void;
+}
+
+export function planned(helpers: FakeHelpers): PlannedHelpers {
+  return helpers as unknown as PlannedHelpers;
+}
+
+/**
  * Every line these tools answer with - a result or a refusal - opens with the
  * tool's own name, so office.js's own string ("The worksheet 'Model' is
  * protected...") fails here instead of reaching the toast.
@@ -109,7 +145,7 @@ export function seedGrid(rig: Rig): void {
 
 /** Ctrl+A: the whole grid, which Excel counts as -1 cells. */
 export const WHOLE_SHEET = "Model!A1:XFD1048576";
-/** 5 000 cells, the selection cap exactly; 5 001 is one past it. */
+/** The selection cap is 5 000 cells: one under it, it exactly, one past it. */
+export const UNDER_CAP = "Model!A1:A4999";
 export const AT_CAP = "Model!A1:E1000";
 export const PAST_CAP = "Model!A1:C1667";
-export const UNDER_CAP = "Model!A1:E999";

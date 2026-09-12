@@ -8,14 +8,18 @@ import { enableStrictLoadSemantics } from "./fakehost";
 import {
   AT_CAP,
   boot,
+  caught,
   expectSentence,
   PAST_CAP,
+  planned,
+  REPORT_CONTEXT,
   type Rig,
   seedComps,
   sentence,
   UNDER_CAP,
   WHOLE_SHEET,
 } from "./stress.comps.support";
+import { describeError } from "../src/ui/report";
 
 vi.mock("../src/pane/shared", async () =>
   (await import("./stress.comps.support")).paneShared(),
@@ -189,6 +193,19 @@ describe("Comps stats against a host that says no", () => {
     expect(rig.helpers.value("Model!A6")).toBe("");
   });
 
+  it("refuses a protected sheet even where the block would land unlocked", async () => {
+    seedComps(rig);
+    // The six rows are an unlocked island, so the write itself would go
+    // through. The pre-check asks the sheet, not the cells - the same answer
+    // Autocolor and the audit overlay have always given.
+    rig.helpers.protectSheet("Model", ["Model!A6:C11"]);
+
+    expect(await run()).toBe(
+      "Comps stats: this sheet is protected, nothing was changed",
+    );
+    expect(rig.helpers.value("Model!A6")).toBe("");
+  });
+
   it("names the merged cell its block would cut in half", async () => {
     seedComps(rig);
     // The six rows start at row 6; a merge straddling rows 5 and 6 is cut.
@@ -263,32 +280,66 @@ describe("Comps stats pressed twice", () => {
   });
 });
 
-describe.skip("Comps stats: found here, fixed elsewhere", () => {
-  it("spends no Undo slot when the host refuses the write itself", () => {
-    // Proven by hand: with Model!A5:A6 merged, the block's write is refused
-    // (InvalidOperation) but captureUndo has already put Model!A6:C11 on the
-    // stack, pushing the modeller's fifth-oldest action off it - and that
+describe("Comps stats: found here, fixed elsewhere", () => {
+  it.skip("spends no Undo slot when the host refuses the write itself", async () => {
+    // Fails today at the last line with "Model!A6:C11": the write comes back
+    // InvalidOperation, but captureUndo has already pushed the block onto the
+    // five-deep stack, dropping the modeller's oldest entry - and that new
     // entry can never restore while the merge stands. Every writing flow in
     // src/excel does this, not just the comps tools. Fix in src/excel/undo.ts
     // (not this slice): a discardUndo() the flow calls when its write comes
     // back refused, or a captureUndo that only commits once the batch lands.
+    rig.helpers.select("Model!A1:C2");
+    await rig.dispatch("pinstripes-rows");
+    const slot = rig.smt.undoTarget();
+
+    seedComps(rig);
+    rig.helpers.merge("Model!A5:A6");
+    expectSentence(STAGE, await run());
+
+    expect(rig.smt.undoTarget()).toBe(slot);
   });
 
-  it("writes its block over hidden rows the same as visible ones", () => {
-    // Needs test/fakehost.ts (another slice): the fake has no row or column
-    // visibility, so a hidden row inside the selection cannot be modelled.
-    // Fix: rowHidden/columnHidden on FakeSheet plus helpers.hideRows(address).
+  it.skip("writes its block over hidden rows the same as visible ones", async () => {
+    // Throws today on the missing helper. Needs test/fakehost.ts (another
+    // slice): rowHidden/columnHidden on FakeSheet plus helpers.hideRows.
+    seedComps(rig);
+    planned(rig.helpers).hideRows("Model!3:3");
+
+    expect(await run()).toBe("Comps stats written: 1 column over 3 rows");
+    // The span covers the hidden row: Excel's own MIN counts it, so the block
+    // must not shrink to what the screen shows.
+    expect(rig.helpers.formula("Model!B6")).toBe("=MIN(B2:B4)");
+    expect(rig.helpers.value("Model!A6")).toBe("Min");
   });
 
-  it("writes its block under a filtered range", () => {
-    // Needs test/fakehost.ts (another slice): no AutoFilter surface at all.
-    // Fix: worksheet.autoFilter with an applied range on the fake.
+  it.skip("writes its block under a filtered range", async () => {
+    // Throws today on the missing helper. Needs test/fakehost.ts (another
+    // slice): worksheet.autoFilter with an applied range.
+    seedComps(rig);
+    planned(rig.helpers).applyFilter("Model!A1:C4", "Model!3:3");
+
+    expect(await run()).toBe("Comps stats written: 1 column over 3 rows");
+    // Under the table's last row, not under the last visible one.
+    expect(rig.helpers.value("Model!A6")).toBe("Min");
+    expect(rig.helpers.formula("Model!B6")).toBe("=MIN(B2:B4)");
   });
 
-  it("stages a host error a read sync drops", () => {
-    // Needs src/pane/shared.ts / src/ui/report.ts (not this slice): the guard
-    // hands error.message straight to the toast, so "The sync failed." reaches
-    // the modeller with no tool name on it. Fix: describeError should prefix
-    // the running action's label when the message carries no stage.
+  it.skip("stages a host error a read sync drops", async () => {
+    // Fails today with "The sync failed.": describeError hands error.message
+    // to the toast unchanged, so a dropped read batch reaches the modeller
+    // with no tool name and no way out. Every read sync in src/excel is bare
+    // by design - only write syncs go through syncWrite/paintSync - so this is
+    // a pane-wide policy, not a comps one. Fix in src/ui/report.ts (not this
+    // slice): prefix the running action's label when the message carries no
+    // stage of its own. If the wording moves to the guard in
+    // src/pane/shared.ts instead, this tripwire moves with it - the suites
+    // mock that module away, and describeError is the only pure half.
+    seedComps(rig);
+    rig.helpers.failNextSync();
+    const error = await caught(() => rig.dispatch("comps-stats"));
+
+    const { message } = describeError(error, REPORT_CONTEXT, "comps-stats");
+    expectSentence(STAGE, message);
   });
 });

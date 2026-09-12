@@ -8,14 +8,18 @@ import { enableStrictLoadSemantics } from "./fakehost";
 import {
   AT_CAP,
   boot,
+  caught,
   expectSentence,
   PAST_CAP,
+  planned,
+  REPORT_CONTEXT,
   type Rig,
   seedGrid,
   sentence,
   UNDER_CAP,
   WHOLE_SHEET,
 } from "./stress.comps.support";
+import { describeError } from "../src/ui/report";
 import { DEFAULT_SETTINGS, tint } from "../src/settings";
 
 vi.mock("../src/pane/shared", async () =>
@@ -226,26 +230,52 @@ describe("Pinstripes pressed twice", () => {
   });
 });
 
-describe.skip("Pinstripes: found here, fixed elsewhere", () => {
-  it("stages a host error a read refuses", () => {
-    // Proven by the two tests above: "The sync failed." and "The cell formats
-    // failed." reach the toast verbatim, with no tool name on them, because
-    // the guard hands error.message straight through. Every read sync in
-    // src/excel is the same. Fix in src/pane/shared.ts / src/ui/report.ts
-    // (not this slice): describeError should prefix the running action's
-    // label when the message carries no stage of its own.
+describe("Pinstripes: found here, fixed elsewhere", () => {
+  it.skip("stages a host error a read refuses", async () => {
+    // Fails today with "The cell formats failed.": describeError hands
+    // error.message to the toast unchanged, so a refused read reaches the
+    // modeller with no tool name on it - the same for "The sync failed." two
+    // tests up. Every read sync in src/excel is bare by design; only write
+    // syncs go through syncWrite/paintSync. Fix in src/ui/report.ts (not this
+    // slice): prefix the running action's label when the message carries no
+    // stage. If the wording lands in the guard in src/pane/shared.ts instead,
+    // this tripwire moves there with it - these suites mock that module away,
+    // and describeError is the only pure half of the pair.
+    seedGrid(rig);
+    rig.helpers.failNextCellProperties();
+    const error = await caught(() => rig.dispatch("pinstripes-rows"));
+
+    const { message } = describeError(error, REPORT_CONTEXT, "pinstripes-rows");
+    expectSentence(STAGE, message);
   });
 
-  it("bands a hidden row the same as a visible one", () => {
-    // Needs test/fakehost.ts (another slice): no row or column visibility, so
-    // a hidden line inside the selection cannot be modelled. Real Excel bands
-    // it, and unhiding shows the band, which is what a modeller expects.
-    // Fix: rowHidden/columnHidden on FakeSheet plus helpers.hideRows(address).
+  it.skip("bands a hidden row the same as a visible one", async () => {
+    // Throws today on the missing helper. Needs test/fakehost.ts (another
+    // slice): rowHidden/columnHidden on FakeSheet plus helpers.hideRows.
+    seedGrid(rig);
+    planned(rig.helpers).hideRows("Model!2:2");
+
+    // Excel paints the hidden row too, and unhiding must show the band.
+    expect(await rows()).toBe("Pinstripes: 2 rows banded");
+    expect(rig.helpers.fill("Model!A2").color).toBe(BAND);
+    expect(rig.helpers.fill("Model!A4").color).toBe(BAND);
   });
 
-  it("bands the rows a filter left showing", () => {
-    // Needs test/fakehost.ts (another slice): no AutoFilter surface at all.
-    // Worth a decision as well as a fake: Excel's own banded-table style
-    // follows the filter, our every-second-row does not.
+  it.skip("bands every second row the filter left showing", async () => {
+    // Throws today on the missing helper, and then fails on the fills: we
+    // band by position, so a filtered grid shows two bands touching. Needs
+    // test/fakehost.ts (another slice) for worksheet.autoFilter AND a
+    // decision - Excel's own banded-table style follows the filter. This body
+    // encodes the follow-the-filter answer; if the decision goes the other
+    // way, change the assertion, not the tool.
+    seedGrid(rig);
+    planned(rig.helpers).applyFilter("Model!A1:C5", "Model!2:2");
+
+    // Rows 1, 3, 4 and 5 are showing: the second and fourth of those band.
+    expect(await rows()).toBe("Pinstripes: 2 rows banded");
+    expect(rig.helpers.fill("Model!A3").color).toBe(BAND);
+    expect(rig.helpers.fill("Model!A5").color).toBe(BAND);
+    expect(rig.helpers.fill("Model!A2").pattern).toBe("None");
+    expect(rig.helpers.fill("Model!A4").pattern).toBe("None");
   });
 });

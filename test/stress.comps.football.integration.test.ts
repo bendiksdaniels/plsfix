@@ -10,6 +10,7 @@ import {
   boot,
   expectSentence,
   PAST_CAP,
+  planned,
   type Rig,
   seedMethods,
   sentence,
@@ -274,26 +275,45 @@ describe("the football field pressed twice", () => {
   });
 });
 
-describe.skip("the football field: found here, fixed elsewhere", () => {
-  it("adds one chart, not two, when two presses run at once", () => {
-    // Proven by the suite above: two concurrent runs both find the block
-    // empty and both add a chart, so the sheet ends with two identical
-    // stacked bars on top of each other. Not reachable from the pane today -
-    // the shared guard disables every [data-action] button while an action
-    // runs and this tool has no ribbon command or shortcut - so it is a
-    // hazard for the day it gets one. Fix in src/pane/shared.ts (not this
-    // slice): the guard should queue or drop a second run, the way
-    // src/excel/link-lock.ts exclusive() serialises the link flows.
+describe("the football field: found here, fixed elsewhere", () => {
+  it.skip("adds one chart, not two, when two presses run at once", async () => {
+    // Fails today with 2: both runs find the block empty and both add a
+    // chart, so the sheet ends with two identical stacked bars on top of each
+    // other. Not reachable from the pane - the shared guard disables every
+    // [data-action] button while an action runs and this tool has no ribbon
+    // command or shortcut - so it is a hazard for the day it gets one. Fix in
+    // src/pane/shared.ts (not this slice): the guard should queue or drop a
+    // second run, the way src/excel/link-lock.ts exclusive() serialises the
+    // link flows. Taking this .skip off also flips the toHaveLength(2) in
+    // "answers both presses with a sentence and one helper block" above.
+    seedMethods(rig);
+    await Promise.all([run(), run()]);
+
+    expect(rig.workbook.charts).toHaveLength(1);
   });
 
-  it("draws its block over hidden rows the same as visible ones", () => {
-    // Needs test/fakehost.ts (another slice): no row or column visibility on
-    // the fake, so a hidden row inside the selection cannot be modelled.
-    // Fix: rowHidden/columnHidden on FakeSheet plus helpers.hideRows(address).
+  it.skip("draws its block over hidden rows the same as visible ones", async () => {
+    // Throws today on the missing helper. Needs test/fakehost.ts (another
+    // slice): rowHidden/columnHidden on FakeSheet plus helpers.hideRows.
+    seedMethods(rig);
+    planned(rig.helpers).hideRows("Model!3:3");
+
+    expect(await run()).toBe("Football field added: 3 ranges");
+    // The hidden method still gets its bar: the block is the selection, not
+    // what the screen shows.
+    expect(rig.helpers.value("Model!D3")).toBe("Trading comps");
+    expect(rig.helpers.value("Model!E3")).toBe(100);
+    expect(rig.helpers.value("Model!F3")).toBe(20);
   });
 
-  it("draws its block from a filtered range", () => {
-    // Needs test/fakehost.ts (another slice): no AutoFilter surface at all.
-    // Fix: worksheet.autoFilter with an applied range on the fake.
+  it.skip("draws its block from a filtered range", async () => {
+    // Throws today on the missing helper. Needs test/fakehost.ts (another
+    // slice): worksheet.autoFilter with an applied range.
+    seedMethods(rig);
+    planned(rig.helpers).applyFilter("Model!A1:C4", "Model!3:3");
+
+    expect(await run()).toBe("Football field added: 3 ranges");
+    expect(rig.helpers.value("Model!D3")).toBe("Trading comps");
+    expect(rig.workbook.charts).toHaveLength(1);
   });
 });
