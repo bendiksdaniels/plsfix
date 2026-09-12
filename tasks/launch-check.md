@@ -201,3 +201,28 @@ PowerPoint
       hold inside a handler is not preemptible by `TimeoutLayer`'s `tokio::time::sleep`
       race the way an `.await`-yielding handler is. Worth a real load test before
       leaning on this for abuse protection rather than just slow-client protection.
+
+## Added by the v2.7 wave (13.09): the audit tools
+
+
+- [ ] Excel desktop: with a filled model row selected, "Select consistent region" selects exactly the
+      filled block and the toast counts it; the same on a block filled both ways.
+- [ ] Excel desktop: "Select consistent region" inside a real model sheet (used range far past 5 000
+      cells) grows normally, and only refuses when the block around the active cell is itself over
+      5 000 - and then says "Select consistent region supports up to 5,000 cells at once."
+- [ ] Excel for the web: "Precedents of selection" over ~20 formula cells answers in one visible
+      round trip (no per-cell stutter), and the union really becomes the selection.
+- [ ] Excel for the web / desktop: a selection where two or three cells are constants
+      (`=1+2`, a typed number) still answers, with the halve-then-flat retry costing seconds not
+      minutes, and the toast naming the cells with no formula.
+- [ ] Excel desktop: a precedent on another sheet is listed as a chip and clicking it jumps there,
+      while the initial select stayed on the reviewed sheet.
+- [ ] Excel 2019 (below ExcelApi 1.12): "Precedents of selection" says "Tracing needs a newer Excel
+      build." and nothing else happens.
+- [ ] Pane at a 320px dock: the two new rows and the grouped list read cleanly, group labels on their
+      own line (`.chip-group` really does break the flex row in the Office webview).
+- [ ] Excel desktop: a sheet protected with selection disabled
+      (`worksheet.protection.protect({ selectionMode: Excel.ProtectionSelectionMode.none })`) - both
+      read-only tools end on `.select()`, and the host may refuse that with a raw string instead of a
+      pls,fix sentence. Shared with `src/excel/reconcile.ts`, which selects the same way; if it does
+      refuse, all three need the same staged wording.

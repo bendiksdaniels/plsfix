@@ -66,7 +66,7 @@ not yet built.
 | Autocolor on entry/edit | both | Live coloring as you type | shipped v1.1 | P1 |
 | Autocolor legend & customization | US | Legend UI + per-type color overrides | shipped v1.1 | P1 |
 | Formula Audit / Formula Flow overlay | both | Striped fill = formula consistent with neighbors, solid = deviation | shipped v1.1 | P1 |
-| Uniformulas (select consistent region) | MB | Highlights the consistency region of active formula | Yes (same engine) | P2 |
+| Uniformulas (select consistent region) | MB | Highlights the consistency region of active formula | Yes (same engine) | shipped v2.7 (Select consistent region) |
 | Dependency Density heatmap | MB | Shade by dependent count | Yes* (getDependents per cell is slow at scale; cap range) | P3 |
 | Model Check (50+ automated checks) | MB | Error/structure/hidden-data/brand audit with fixes | shipped v2.5 (8 check kinds: formula errors, hardcodes in formulas, inconsistent formulas, volatile functions, broken names, unused styles, hidden sheets, external links) | P2 |
 
@@ -87,7 +87,7 @@ not yet built.
 | Feature | Source | What it does | Feasibility | Priority |
 |---|---|---|---|---|
 | Smart Track / Trace In-Out pane (precedents/dependents tree, keyboard nav, color trail) | both | Drill into inputs and back | shipped v1.1 | P1 |
-| Show all precedents for multiple cells | MB | Multi-cell trace | Yes* (same; cap cell count) | P2 |
+| Show all precedents for multiple cells | MB | Multi-cell trace | Yes* (same; cap cell count) | shipped v2.7 (Precedents of selection, 50 cells) |
 | Super Find (values/formulas/comments across workbook) | MB | Better Find with results pane | shipped v2.1 (this workbook only, no other open workbooks; comments and replies searched on ExcelApi 1.10, author included) | P2 |
 | Explorer (workbook/sheet tree navigator) | US | Sheet navigation pane with search | shipped v1.1 | P1 |
 | Workbook TOC sheet | both | Hyperlinked contents sheet, auto-updating | shipped v1.1 | P1 |
