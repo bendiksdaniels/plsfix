@@ -8,13 +8,15 @@ pls,fix is an Excel productivity add-in for financial modelling teams. It is a w
 
 ## Get pls,fix
 
-Free, MIT-licensed, three ways in; [docs/INSTALL.md](docs/INSTALL.md) has the click-by-click steps for Mac, Windows, the web and Microsoft 365 admins.
+Free, MIT-licensed, nothing to install but one line that tells Office where to load it from ([docs/INSTALL.md](docs/INSTALL.md) has every platform and the manual steps):
 
-1. **Use the hosted add-in** (no setup): download [`manifest.prod.xml`](https://github.com/bendiksdaniels/plsfix/releases/latest/download/manifest.prod.xml) from the latest release and sideload it into Excel and PowerPoint. The panes load from `https://dbautomatizacijas.com/modelis/`; linked objects travel through its relay encrypted end to end.
-2. **Self-host it**: `docker compose up` with the published image, then hand out `https://your.host/manifest.xml`, a manifest the server re-points at your address. See [docs/SELF-HOSTING.md](docs/SELF-HOSTING.md).
-3. **Build it**: clone, `npm install`, `npm start` sideloads the development manifest into desktop Excel. See [CONTRIBUTING.md](CONTRIBUTING.md).
+- **Windows**, in PowerShell: `irm https://github.com/bendiksdaniels/plsfix/releases/latest/download/plsfix-install-windows.ps1 | iex`
+- **Mac**, in Terminal: `curl -fsSL https://github.com/bendiksdaniels/plsfix/releases/latest/download/plsfix-install-mac.command | sh`
+- **Excel on the web**: Home > Add-ins > More Settings > Upload My Add-in, with [`manifest.prod.xml`](https://github.com/bendiksdaniels/plsfix/releases/latest/download/manifest.prod.xml).
 
-Every release also carries `pls,fix Demo Model.xlsx`, a workbook whose "Start here" sheet walks through every tool.
+Reopen Excel and PowerPoint: the **pls,fix** tab is on the ribbon, Ctrl+Shift+M opens the pane. `pls,fix Demo Model.xlsx` from the same release has a "Start here" sheet that walks through every tool. The Microsoft AppSource listing (Excel > Add-ins > search "pls,fix") is in preparation.
+
+For IT teams and developers: [docs/SELF-HOSTING.md](docs/SELF-HOSTING.md) (your own server, `docker compose up`, a manifest re-pointed at your address) and [CONTRIBUTING.md](CONTRIBUTING.md) (build from source).
 
 ## What works in v1.0
 

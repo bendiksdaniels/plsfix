@@ -66,4 +66,6 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release create "$TAG" --title "pls,fix $TAG" --generate-notes \
-            manifest.prod.xml "plsfix-pane-$TAG.zip" "demo/out/pls,fix Demo Model.xlsx"
+            manifest.prod.xml "plsfix-pane-$TAG.zip" "demo/out/pls,fix Demo Model.xlsx" \
+            deploy/install/plsfix-install-windows.ps1 deploy/install/plsfix-uninstall-windows.ps1 \
+            deploy/install/plsfix-install-mac.command deploy/install/plsfix-uninstall-mac.command
