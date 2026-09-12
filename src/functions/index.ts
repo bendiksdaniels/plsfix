@@ -1,13 +1,15 @@
-// The Excel-facing custom functions, =PLSFIX.ROUND and =PLSFIX.ROUNDSUM, and the only
-// module Office loads into the custom-functions runtime (built to dist as a
-// standalone functions.js). It imports the pure allocator and nothing else: no
-// pane code, no DOM, no Office.js object model.
+// The Excel-facing custom functions, =PLSFIX.ROUND, =PLSFIX.ROUNDSUM and
+// =PLSFIX.CAGR, and the only module Office loads into the custom-functions
+// runtime (built to dist as a standalone functions.js). It imports the pure
+// allocator and the pure chart maths and nothing else: no pane code, no DOM,
+// no Office.js object model.
 //
 // Every cell of a group passes the whole range, so Excel recalculates all of
 // them whenever any value in it changes, and each one recomputes the same
 // allocation and reads out its own slot - shared behaviour without shared state
 // (docs/research/custom-functions.md, section 4).
 
+import { cagr } from "../chartmath";
 import {
   allocateRounded,
   ROUNDING_CELL_CAP,
@@ -79,7 +81,33 @@ export function smtRound(
   return allocateRounded(values, requireDecimals(decimals))[index - 1]!;
 }
 
+// A growth rate needs a positive start, a positive end and time to run in;
+// Excel can hand a scalar text or an infinity too. All of them are the bad
+// argument the rounding functions report, so the cell shows one #VALUE!.
+function requirePositive(value: number, what: string): number {
+  if (typeof value !== "number" || !Number.isFinite(value) || value <= 0) {
+    throw valueError(`PLSFIX.CAGR: ${what} must be a positive number.`);
+  }
+  return value;
+}
+
+// The compound annual growth rate: what one period's growth would have to be
+// for `first` to reach `last` over `periods` of them.
+export function smtCagr(first: number, last: number, periods: number): number {
+  requirePositive(first, "the start value");
+  requirePositive(last, "the end value");
+  requirePositive(periods, "the number of periods");
+  try {
+    return cagr(first, last, periods);
+  } catch (error) {
+    // The pure maths refuses what the pane's own CAGR refuses - a period
+    // shorter than one - and its sentence travels in the same error kind.
+    throw valueError(`PLSFIX.CAGR: ${(error as Error).message}`);
+  }
+}
+
 // The ids match src/functions/metadata.ts; the manifest's <Namespace> makes
-// them PLSFIX.ROUND and PLSFIX.ROUNDSUM in the grid.
+// them PLSFIX.ROUND, PLSFIX.ROUNDSUM and PLSFIX.CAGR in the grid.
 CustomFunctions.associate("ROUND", smtRound);
 CustomFunctions.associate("ROUNDSUM", smtRoundSum);
+CustomFunctions.associate("CAGR", smtCagr);

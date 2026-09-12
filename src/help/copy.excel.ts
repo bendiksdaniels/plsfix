@@ -115,7 +115,7 @@ const tools: HelpCopy = {
       "insert-color-key":
         "Drops the color legend on the sheet, starting at the active cell.",
       "write-rounded":
-        "Writes =PLSFIX.ROUND beside the selected row or column, so the rounded parts add up to the rounded total.",
+        "Writes =PLSFIX.ROUND beside the selected row or column, so the rounded parts add up to the rounded total. We ship =PLSFIX.CAGR too.",
       unpivot:
         "Rewrites a cross-tab as Row, Column and Value lines on a new sheet. The source is left alone.",
       "copy-source":

@@ -4,6 +4,7 @@
       "id": "ROUND",
       "name": "ROUND",
       "description": "One cell's share of a consistently rounded group: the rounded values add up to the rounded total.",
+      "helpUrl": "https://dbautomatizacijas.com/modelis/support.html#functions",
       "result": {
         "type": "number",
         "dimensionality": "scalar"
@@ -33,6 +34,7 @@
       "id": "ROUNDSUM",
       "name": "ROUNDSUM",
       "description": "The group's total, rounded so it equals the sum of PLSFIX.ROUND over the same range.",
+      "helpUrl": "https://dbautomatizacijas.com/modelis/support.html#functions",
       "result": {
         "type": "number",
         "dimensionality": "scalar"
@@ -47,6 +49,36 @@
         {
           "name": "decimals",
           "description": "Decimal places, as in ROUND: 0 for whole numbers, negative for tens and thousands.",
+          "type": "number",
+          "dimensionality": "scalar"
+        }
+      ]
+    },
+    {
+      "id": "CAGR",
+      "name": "CAGR",
+      "description": "The compound annual growth rate from a first value to a last one over a number of periods.",
+      "helpUrl": "https://dbautomatizacijas.com/modelis/support.html#functions",
+      "result": {
+        "type": "number",
+        "dimensionality": "scalar"
+      },
+      "parameters": [
+        {
+          "name": "first",
+          "description": "The value at the start of the first period.",
+          "type": "number",
+          "dimensionality": "scalar"
+        },
+        {
+          "name": "last",
+          "description": "The value at the end of the last period.",
+          "type": "number",
+          "dimensionality": "scalar"
+        },
+        {
+          "name": "periods",
+          "description": "How many periods the growth ran over, usually years. At least one.",
           "type": "number",
           "dimensionality": "scalar"
         }

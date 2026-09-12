@@ -18,6 +18,7 @@ interface Loaded {
   associated: Map<string, unknown>;
   round: (range: number[][], index: number, decimals: number) => number;
   roundSum: (range: number[][], decimals: number) => number;
+  cagr: (first: number, last: number, periods: number) => number;
 }
 
 // A fresh module graph per test: association happens at import time, so the
@@ -37,6 +38,7 @@ async function loadFunctions(): Promise<Loaded> {
     associated,
     round: module.smtRound,
     roundSum: module.smtRoundSum,
+    cagr: module.smtCagr,
   };
 }
 
@@ -127,6 +129,48 @@ describe("custom functions", () => {
   });
 });
 
+describe("the CAGR function", () => {
+  it("compounds the growth between two values over the periods", async () => {
+    const { cagr } = await loadFunctions();
+    // 100 doubling over four periods: 2^(1/4) - 1, or 18.92 % a period.
+    expect(cagr(100, 200, 4)).toBeCloseTo(0.189207, 6);
+    expect(cagr(100, 100, 3)).toBe(0);
+    expect(cagr(200, 100, 1)).toBeCloseTo(-0.5, 10);
+  });
+
+  it("refuses a period count that is not positive", async () => {
+    const { cagr } = await loadFunctions();
+    for (const periods of [0, -4]) {
+      const error = await rejects(() => cagr(100, 200, periods));
+      expect(error.code).toBe("#VALUE!");
+      expect(error.message).toContain("PLSFIX.CAGR");
+    }
+    // Below a whole period the maths module refuses, in the same error kind.
+    expect((await rejects(() => cagr(100, 200, 0.5))).code).toBe("#VALUE!");
+  });
+
+  it("refuses a start or an end value that is not positive", async () => {
+    const { cagr } = await loadFunctions();
+    expect((await rejects(() => cagr(0, 200, 4))).code).toBe("#VALUE!");
+    expect((await rejects(() => cagr(-100, 200, 4))).message).toContain(
+      "positive",
+    );
+    expect((await rejects(() => cagr(100, 0, 4))).message).toContain(
+      "positive",
+    );
+  });
+
+  it("refuses text and infinity, which Excel can hand a scalar", async () => {
+    const { cagr } = await loadFunctions();
+    const text = "n/a" as unknown as number;
+    expect((await rejects(() => cagr(text, 200, 4))).code).toBe("#VALUE!");
+    expect((await rejects(() => cagr(100, 200, Infinity))).code).toBe(
+      "#VALUE!",
+    );
+    expect((await rejects(() => cagr(100, NaN, 4))).code).toBe("#VALUE!");
+  });
+});
+
 describe("functions metadata", () => {
   it("matches the committed public/functions.json", () => {
     const committed = readFileSync(
@@ -136,18 +180,46 @@ describe("functions metadata", () => {
     expect(functionsMetadata()).toBe(committed);
   });
 
-  it("declares the range as a matrix and the result as a scalar number", () => {
+  it("declares the result as a scalar number and points at the help page", () => {
     for (const entry of CUSTOM_FUNCTIONS) {
       expect(entry.id).toBe(entry.name);
       expect(entry.result).toEqual({
         type: "number",
         dimensionality: "scalar",
       });
+      // The store validator wants a help URL on every function.
+      expect(entry.helpUrl).toBe(
+        "https://dbautomatizacijas.com/modelis/support.html#functions",
+      );
+      expect(entry.description.length).toBeGreaterThan(0);
+    }
+  });
+
+  it("declares the rounding range as a matrix and decimals last", () => {
+    for (const entry of CUSTOM_FUNCTIONS.filter((one) =>
+      one.id.startsWith("ROUND"),
+    )) {
       expect(entry.parameters[0]).toMatchObject({
         name: "range",
         dimensionality: "matrix",
       });
       expect(entry.parameters.at(-1)).toMatchObject({ name: "decimals" });
+    }
+  });
+
+  it("declares CAGR's three scalar numbers in the order Excel asks them", () => {
+    const entry = CUSTOM_FUNCTIONS.find((one) => one.id === "CAGR");
+    expect(entry?.parameters.map((one) => one.name)).toEqual([
+      "first",
+      "last",
+      "periods",
+    ]);
+    for (const parameter of entry?.parameters ?? []) {
+      expect(parameter).toMatchObject({
+        type: "number",
+        dimensionality: "scalar",
+      });
+      expect(parameter.description.length).toBeGreaterThan(0);
     }
   });
 });

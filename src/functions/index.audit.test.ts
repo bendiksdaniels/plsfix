@@ -51,8 +51,13 @@ afterEach(() => {
 });
 
 describe("the custom-functions bundle", () => {
-  it("reaches the pure allocator and nothing else", () => {
-    expect(moduleGraph(ENTRY)).toEqual([ENTRY, "src/rounding.ts"]);
+  it("reaches the pure allocator and the pure maths, and nothing else", () => {
+    expect(moduleGraph(ENTRY).sort()).toEqual([
+      "src/chartmath.ts",
+      "src/functions/index.ts",
+      "src/model.ts",
+      "src/rounding.ts",
+    ]);
   });
 
   it("names no pane global anywhere in that graph", () => {
@@ -81,11 +86,16 @@ describe("the custom-functions bundle", () => {
     vi.resetModules();
     const module = await import("./index");
 
-    expect([...associated.keys()].sort()).toEqual(["ROUND", "ROUNDSUM"]);
+    expect([...associated.keys()].sort()).toEqual([
+      "CAGR",
+      "ROUND",
+      "ROUNDSUM",
+    ]);
     const group = [[1.005], [2.005], [3.005]];
     expect(module.smtRoundSum(group, 2)).toBe(6.02);
     expect([1, 2, 3].map((index) => module.smtRound(group, index, 2))).toEqual([
       1.01, 2.01, 3,
     ]);
+    expect(module.smtCagr(100, 200, 4)).toBeCloseTo(0.189207, 6);
   });
 });
