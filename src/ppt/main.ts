@@ -63,6 +63,7 @@ const REPORT_CONTEXT = { host: "PowerPoint", version: APP_VERSION };
 const NOT_PAIRED =
   "Not paired: paste the link key from Excel > Links > Settings";
 const PAIR_FIRST = "Paste the link key in Settings";
+const STILL_BUSY = "Wait for the last action to finish.";
 
 const connectionStatus = getElement<HTMLSpanElement>("connection-status");
 const linkRowsBody = getElement<HTMLTableSectionElement>("link-rows");
@@ -239,7 +240,16 @@ let ready = false;
 // in a deck on a PowerPoint the pane rejected - would reach PowerPoint.run and
 // toast a raw "Cannot read properties of undefined". Every handler starts here
 // instead, and the connection badge is not the only thing that says so.
+//
+// One action at a time, too: setBusy disables every button, but the link key
+// field's Enter is not a button, and a ribbon command shares this runtime - a
+// second flow starting mid-batch would re-enable every button the moment it
+// finished, with the first still in the host.
 function act(run: () => Promise<string>, action: string): void {
+  if (isBusy) {
+    toast.show(STILL_BUSY, "error");
+    return;
+  }
   void guard(async () => {
     if (!ready) throw new Error("PowerPoint is not connected.");
     return run();
