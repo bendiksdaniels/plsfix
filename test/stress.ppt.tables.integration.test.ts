@@ -24,6 +24,7 @@ import {
   type FakePresentation,
 } from "./fakeppt";
 import { bootPpt, memoryStore, pushTable, seedTable } from "./ppt.support";
+import { CELLS_PER_SYNC } from "../src/ppt/tables";
 import type * as LinksModule from "../src/ppt/links";
 
 enableStrictLoadSemantics();
@@ -102,6 +103,34 @@ describe("a table source that grows to the cap", () => {
     expect(grid.cells[59]![19]!.text).toBe("b59-19");
     expect(grid.cells[59]![19]!.font.bold).toBe(true);
     expect(await links.listLinks(relay)).toMatchObject([{ status: "current" }]);
+  });
+
+  // A characterization test, not a rule: 60 x 20 is inside the documented cap
+  // and costs 151 round trips, which on the web's bad day (0.4 s per property
+  // write, lessons 09.09) is minutes. Any change to CELLS_PER_SYNC or to the
+  // cap has to move this number on purpose.
+  it("spends one round trip per eight cells repainting at the cap", async () => {
+    const plain = (prefix: string): TableCell[][] =>
+      Array.from({ length: TABLE_MAX_ROWS }, (_row, r) =>
+        Array.from({ length: TABLE_MAX_COLS }, (_col, c) => ({
+          t: `${prefix}${String(r)}-${String(c)}`,
+        })),
+      );
+    const item = await seedTable(plain("a"), widths(TABLE_MAX_COLS));
+    await links.insertFromInbox(item, ws, relay);
+    await pushTable(item, plain("b"), widths(TABLE_MAX_COLS));
+    const rows = await links.listLinks(relay);
+
+    const before = helpers.syncCount();
+    const summary = await links.updateLinks(rows, relay);
+
+    expect(summary).toMatchObject({ updated: 1, failed: 0 });
+    const chunks = Math.ceil(
+      (TABLE_MAX_ROWS * TABLE_MAX_COLS) / CELLS_PER_SYNC,
+    );
+    expect(chunks).toBe(150);
+    // The dimension read, then the cells.
+    expect(helpers.syncCount() - before).toBe(1 + chunks);
   });
 
   it("refuses a source one row and one column past the cap, both ways", async () => {

@@ -211,7 +211,11 @@ describe("a button pressed at the wrong moment", () => {
     expect(button("update-slide").disabled).toBe(false);
   });
 
-  it("goes to a slide the deck no longer holds without a raw error", async () => {
+  // What this pins is the pane, not the host: the fake's setSelectedSlides
+  // takes any id and office.js documents no error for a slide that is gone
+  // (@types/office-js, Presentation.setSelectedSlides), so whether a real
+  // PowerPoint throws is a launch-check row, not something to guess here.
+  it("survives Go to slide on an id the deck no longer holds", async () => {
     await bootPane();
     await plant();
     click("refresh-links");
