@@ -264,6 +264,8 @@ export class FakeSheet {
   cells = new Map<string, FakeCell>();
   rowHeights = new Map<number, number>();
   columnWidths = new Map<number, number>();
+  // Row indexes the user has hidden; a hidden row keeps its height.
+  hiddenRows = new Set<number>();
   showGridlines = true;
   // The merged blocks of the sheet. Only the top-left cell of one holds a
   // value, and Excel refuses a value write that covers part of a block.
@@ -845,6 +847,7 @@ const SHAPES: Record<string, Shape> = {
       "formulasR1C1",
       "numberFormat",
       "text",
+      "rowHidden",
       "isNullObject",
     ],
     children: { worksheet: "worksheet", format: "rangeFormat" },
@@ -1568,6 +1571,24 @@ class RangeProxy {
   get cellCount(): number {
     const cells = this.rawCellCount;
     return cells > 2_147_483_647 ? -1 : cells;
+  }
+
+  // Excel answers true when every row of the range is hidden, false when none
+  // is, and null when the range covers some of each.
+  get rowHidden(): boolean | null {
+    let hidden = 0;
+    for (let row = 0; row < this.rect.rowCount; row += 1) {
+      if (this.sheet.hiddenRows.has(this.rect.row + row)) hidden += 1;
+    }
+    if (hidden === 0) return false;
+    return hidden === this.rect.rowCount ? true : null;
+  }
+
+  set rowHidden(value: boolean) {
+    for (let row = 0; row < this.rect.rowCount; row += 1) {
+      if (value) this.sheet.hiddenRows.add(this.rect.row + row);
+      else this.sheet.hiddenRows.delete(this.rect.row + row);
+    }
   }
 
   get left(): number {
@@ -3801,6 +3822,10 @@ export interface FakeHelpers {
   cellMap(sheetName: string): Record<string, FakeCell>;
   rowHeight(sheetName: string, row: number): number;
   columnWidth(sheetName: string, col: number): number;
+  // Hides every row the address covers ("Model!A2:C3" hides rows 2 and 3),
+  // the way a user's own row hide does: the heights stay, Range.rowHidden
+  // answers true.
+  hideRows(address: string): void;
   setPrecedents(address: string, config: TraceConfig): void;
   setDependents(address: string, config: TraceConfig): void;
   addChart(sheetName: string, chart?: FakeChartSeed): FakeChart;
@@ -4138,6 +4163,12 @@ export function installFakeHost(options: FakeHostOptions = {}): {
       helpers.sheet(sheetName).rowHeights.get(row) ?? DEFAULT_ROW_HEIGHT,
     columnWidth: (sheetName, col) =>
       helpers.sheet(sheetName).columnWidths.get(col) ?? DEFAULT_COLUMN_WIDTH,
+    hideRows(address) {
+      const { sheet, rect } = resolve(workbook, address);
+      for (let row = 0; row < rect.rowCount; row += 1) {
+        sheet.hiddenRows.add(rect.row + row);
+      }
+    },
     setPrecedents(address, config) {
       workbook.precedents.set(address, config);
     },
