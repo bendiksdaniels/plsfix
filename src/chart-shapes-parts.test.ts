@@ -48,12 +48,12 @@ function labelled(out: Primitive[], name: string): Text {
   return texts(out).find((one) => one.name === name)!;
 }
 
-function series(values: number[], name = "s"): ChartSeries {
+function series(values: number[], name = "s", color = "#2EC4B6"): ChartSeries {
   return {
     name,
     values,
     labels: values.map(String),
-    colors: values.map(() => "#2EC4B6"),
+    colors: values.map(() => color),
   };
 }
 
@@ -129,6 +129,38 @@ describe("a bar chart's value labels", () => {
     expect(label.box.left + label.box.width).toBeCloseTo(bar.box.left, 5);
     expect(label.align).toBe("r");
     expect(outside(out, ROOMY)).toEqual([]);
+  });
+
+  it("reads white when the clamp puts it on a dark bar", () => {
+    // The brand's first series colour is the navy the pane's own ink nearly
+    // is: charcoal printed inside that bar is unreadable, so a clamped label
+    // takes the white a dark stacked segment's label has always taken.
+    const navy: ChartData = {
+      ...base,
+      kind: "bar",
+      categories: ["A", "B"],
+      series: [series([10, 25], "s", "#14213D")],
+    };
+    const out = layoutChart(navy, ROOMY);
+    const inside = labelled(out, "label 0.1");
+    const outside = labelled(out, "label 0.0");
+    expect(inside.align).toBe("r");
+    expect(inside.color).toBe("#FFFFFF");
+    // The short bar's label still sits past its end, on the slide's ground.
+    expect(outside.align).toBe("l");
+    expect(outside.color).toBe(base.ink);
+  });
+
+  it("keeps the ink when the clamp puts it on a light bar", () => {
+    const mint: ChartData = {
+      ...base,
+      kind: "bar",
+      categories: ["A", "B"],
+      series: [series([10, 25], "s", "#2EC4B6")],
+    };
+    const label = labelled(layoutChart(mint, ROOMY), "label 0.1");
+    expect(label.align).toBe("r");
+    expect(label.color).toBe(base.ink);
   });
 
   it("gives every label the same height it always had", () => {

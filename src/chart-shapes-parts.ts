@@ -196,23 +196,25 @@ function clampTo(value: number, low: number, high: number): number {
 }
 
 // A horizontal bar's value label: past the end of the bar where the chart box
-// has the room, and inside the bar end - reading back towards it - where it
-// has not. A nine-digit number on the longest bar of a forty-row chart would
-// otherwise run past the box the group was placed in, and a group's own box is
-// the union of its children.
+// has the room, and inside the bar end - reading back towards it, white on a
+// dark fill like a stacked segment's - where it has not. A nine-digit number
+// on the longest bar of a forty-row chart would otherwise run past the box the
+// group was placed in, and a group's own box is the union of its children.
 function barLabel(
   content: string,
-  ink: string,
+  data: ChartData,
+  fill: string,
   value: number,
   bar: Box,
   chart: Box,
   name: string,
 ): Text {
+  const positive = value >= 0;
   const width = Math.min(textWidth(content, LABEL_SIZE), chart.width);
   const right = chart.left + chart.width;
-  const past = value >= 0 ? bar.left + bar.width : bar.left - width;
+  const past = positive ? bar.left + bar.width : bar.left - width;
   const crosses = past < chart.left || past + width > right;
-  const inside = value >= 0 ? bar.left + bar.width - width : bar.left;
+  const inside = positive ? bar.left + bar.width - width : bar.left;
   const box = boxAt(
     clampTo(crosses ? inside : past, chart.left, right - width),
     clampTo(
@@ -223,9 +225,9 @@ function barLabel(
     width,
     LABEL_HEIGHT,
   );
-  const outward = value >= 0 ? "l" : "r";
-  const inward = value >= 0 ? "r" : "l";
-  return label(box, content, ink, crosses ? inward : outward, name);
+  const align = positive === crosses ? "r" : "l"; // the text hugs the bar end
+  const color = crosses && darkFill(fill) ? "#FFFFFF" : data.ink;
+  return label(box, content, color, align, name);
 }
 
 // A value label outside the bar it belongs to: above a positive column bar or
@@ -263,7 +265,7 @@ export function segmentLabel(
       ),
     ];
   }
-  return [barLabel(content, data.ink, value, box, chart, name)];
+  return [barLabel(content, data, series.colors[i]!, value, box, chart, name)];
 }
 
 export function legendItems(data: ChartData): string[] {
