@@ -85,6 +85,49 @@ function neighbourLines(
     );
 }
 
+// How far the fill travels: the data beside the origin if there is any (one
+// more sync to read it), otherwise as far as the selection itself reached.
+// Dragging a block upwards or leftwards leaves the active cell at the far
+// corner, so the selection can only size the fill as far as its own edge:
+// its whole length past the active cell would write over cells nobody
+// selected. Anchored at the corner, that is the selection's own length.
+async function fillExtent(
+  context: Excel.RequestContext,
+  sheet: Excel.Worksheet,
+  cell: Excel.Range,
+  selection: Excel.Range,
+  down: boolean,
+): Promise<number> {
+  const lines = neighbourLines(sheet, cell.rowIndex, cell.columnIndex, down);
+  for (const line of lines) line.load("values");
+  await context.sync();
+
+  const neighbours = detectFillExtent(
+    lines.map((line) => {
+      const values = line.values as CellValue[][];
+      return down ? values.map((row) => row[0] ?? null) : (values[0] ?? []);
+    }),
+  );
+  const own = down
+    ? selection.rowIndex + selection.rowCount - cell.rowIndex
+    : selection.columnIndex + selection.columnCount - cell.columnIndex;
+  if (neighbours === 0 && own < 2) {
+    throw new Error("No neighbor data to size the fill.");
+  }
+  return neighbours > 0 ? neighbours : own;
+}
+
+// Counted before the destination is ever asked for: a large selection with
+// nothing beside it (fillExtent's "own" fallback) would otherwise size a fill
+// whose capture and write no cap has looked at yet.
+function guardFillExtent(extent: number): void {
+  if (extent > SELECTION_CELL_CAP) {
+    throw new Error(
+      `Fast fill supports up to ${SELECTION_CELL_CAP.toLocaleString()} cells at once.`,
+    );
+  }
+}
+
 // Macabacus-style fast fill: the data beside the origin decides how far the
 // formula travels, so nobody has to select the block first. A block with
 // nothing beside it falls back to how far the selection itself reaches, which
@@ -104,35 +147,8 @@ export async function fastFillAuto(direction: "right" | "down"): Promise<void> {
     }
 
     const down = direction === "down";
-    const lines = neighbourLines(sheet, cell.rowIndex, cell.columnIndex, down);
-    for (const line of lines) line.load("values");
-    await context.sync();
-
-    const neighbours = detectFillExtent(
-      lines.map((line) => {
-        const values = line.values as CellValue[][];
-        return down ? values.map((row) => row[0] ?? null) : (values[0] ?? []);
-      }),
-    );
-    // Dragging a block upwards or leftwards leaves the active cell at the far
-    // corner, so the selection can only size the fill as far as its own edge:
-    // its whole length past the active cell would write over cells nobody
-    // selected. Anchored at the corner, this is the selection's own length.
-    const own = down
-      ? selection.rowIndex + selection.rowCount - cell.rowIndex
-      : selection.columnIndex + selection.columnCount - cell.columnIndex;
-    if (neighbours === 0 && own < 2) {
-      throw new Error("No neighbor data to size the fill.");
-    }
-    const extent = neighbours > 0 ? neighbours : own;
-    // Counted before the destination is ever asked for: a large selection with
-    // nothing beside it (the "own" fallback) would otherwise size a fill whose
-    // capture and write no cap has looked at yet.
-    if (extent > SELECTION_CELL_CAP) {
-      throw new Error(
-        `Fast fill supports up to ${SELECTION_CELL_CAP.toLocaleString()} cells at once.`,
-      );
-    }
+    const extent = await fillExtent(context, sheet, cell, selection, down);
+    guardFillExtent(extent);
 
     const destination = down
       ? cell.getResizedRange(extent - 1, 0)

@@ -170,6 +170,29 @@ export async function insertWaterfall(): Promise<string> {
   });
 }
 
+// The series-level leader-line route: ChartSeries.showLeaderLines is ExcelApi
+// 1.9, already guaranteed by formatSelectedChart's own floor - the guard
+// there throws before any of this runs on an older host - so it reaches every
+// host the label-level property (1.19) does not, desktop 365 included.
+function applySeriesLeaderLines(chart: Excel.Chart, type: string): void {
+  if (!leaderLines(type)) return;
+  for (let index = 0; index < chart.series.count; index += 1) {
+    chart.series.getItemAt(index).showLeaderLines = true;
+  }
+}
+
+// Series fill colors from the brand palette, and the legend a chart with no
+// names on its labels still needs: every series beyond a lone one, or any
+// axis-free chart, since neither carries a category or series name at all.
+function paintSeriesAndLegend(chart: Excel.Chart, axisFree: boolean): void {
+  const colors = seriesPalette(getActiveSettings());
+  for (let index = 0; index < chart.series.count; index += 1) {
+    const color = colors[index % colors.length]!;
+    chart.series.getItemAt(index).format.fill.setSolidColor(color);
+  }
+  chart.legend.visible = chart.series.count > 1 || axisFree;
+}
+
 export async function formatSelectedChart(): Promise<void> {
   await Excel.run(async (context) => {
     const { workbook } = context;
@@ -202,30 +225,12 @@ export async function formatSelectedChart(): Promise<void> {
     if (leaderLines(type) && hostSupports("1.19")) {
       chart.dataLabels.showLeaderLines = true;
     }
-
-    const colors = seriesPalette(getActiveSettings());
-    for (let index = 0; index < chart.series.count; index += 1) {
-      const color = colors[index % colors.length]!;
-      chart.series.getItemAt(index).format.fill.setSolidColor(color);
-    }
-    // The labels carry no names, so an axis-free chart keeps its legend for the
-    // categories; a lone series elsewhere is already named by the title.
-    chart.legend.visible = chart.series.count > 1 || axisFree;
-
+    paintSeriesAndLegend(chart, axisFree);
     await context.sync();
 
     // Its own batch, tolerated the way the waterfall's own surface is.
     styleChartSurface(chart);
-    // The series-level route: ChartSeries.showLeaderLines is ExcelApi 1.9, the
-    // same floor this whole flow already requires, so it reaches every host
-    // the label-level property (1.19) does not - desktop 365 included. Riding
-    // the tolerated batch means a refusal here never drops the rest of the
-    // restyle either.
-    if (leaderLines(type) && hostSupports("1.9")) {
-      for (let index = 0; index < chart.series.count; index += 1) {
-        chart.series.getItemAt(index).showLeaderLines = true;
-      }
-    }
+    applySeriesLeaderLines(chart, type);
     await syncTolerating(context, Excel.ErrorCodes.unsupportedOperation);
   });
 }
