@@ -7,7 +7,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { TAG_LINK, type InboxItem } from "../src/link/model";
 import { createWorkspace, type Workspace } from "../src/link/workspace";
-import { SYNC_TIMEOUT_MS } from "../src/ppt/chart-draw";
+import { settleHungSync } from "./hung-sync";
 import type { FakeRelay } from "./fakerelay";
 import { fakePng } from "./fakepng";
 import {
@@ -48,20 +48,6 @@ function shape(index = 0): FakePptShape {
   return presentation.slides[0]!.shapes[index]!;
 }
 
-// See j.audit.integration.test.ts: the same clock-driven settle, copied
-// rather than shared because each audit file owns its own suite.
-async function settle<T>(work: Promise<T>): Promise<T> {
-  let done = false;
-  void work.then(
-    () => (done = true),
-    () => (done = true),
-  );
-  for (let step = 0; step < 10 && !done; step += 1) {
-    await vi.advanceTimersByTimeAsync(SYNC_TIMEOUT_MS);
-  }
-  return work;
-}
-
 describe('"Update all" over a batch the host never answers', () => {
   it("fails every row of the swallowed batch, and the update ends there", async () => {
     // The same link on two slides - "a deck can hold the same link on twenty
@@ -79,7 +65,7 @@ describe('"Update all" over a batch the host never answers', () => {
     // Two plain pictures repaint in one host batch, so one hang catches both.
     helpers.hangNextSync();
     vi.useFakeTimers();
-    const summary = await settle(links.updateLinks(rows, relay));
+    const summary = await settleHungSync(links.updateLinks(rows, relay));
 
     expect(summary).toMatchObject({ updated: 0, failed: 2 });
     expect(summary.failures).toHaveLength(2);
@@ -123,7 +109,7 @@ describe("a revert the host never answers", () => {
     helpers.hangNextSync();
     vi.useFakeTimers();
 
-    const summary = await settle(revert.revertLinks(rows, relay));
+    const summary = await settleHungSync(revert.revertLinks(rows, relay));
 
     expect(summary).toMatchObject({ reverted: 0, noPrevious: 0, failed: 1 });
     expect(summary.failures[0]).toMatch(/stopped answering/);
@@ -161,7 +147,7 @@ describe("a change of source the host never answers", () => {
     vi.useFakeTimers();
 
     await expect(
-      settle(changeSource.changeSource(row, newer, ws, relay)),
+      settleHungSync(changeSource.changeSource(row, newer, ws, relay)),
     ).rejects.toThrow(/PowerPoint stopped answering while repainting/);
 
     // The rollback's own retag is a normal sync and still lands, so the shape

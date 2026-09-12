@@ -4,7 +4,7 @@
 // what stopped, and the next action on the same pane works.
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createWorkspace } from "../src/link/workspace";
-import { SYNC_TIMEOUT_MS } from "../src/ppt/chart-draw";
+import { settleHungSync } from "./hung-sync";
 import type { FakeRelay } from "./fakerelay";
 import { fakePng } from "./fakepng";
 import {
@@ -19,19 +19,6 @@ import type * as LinksModule from "../src/ppt/links";
 import type * as ObjectToolsModule from "../src/ppt/object-tools";
 
 enableStrictLoadSemantics();
-
-// Drives the fake clock until the work settles, the way the J suites do.
-async function settle<T>(work: Promise<T>): Promise<T> {
-  let done = false;
-  void work.then(
-    () => (done = true),
-    () => (done = true),
-  );
-  for (let step = 0; step < 10 && !done; step += 1) {
-    await vi.advanceTimersByTimeAsync(SYNC_TIMEOUT_MS);
-  }
-  return work;
-}
 
 afterEach(() => {
   vi.useRealTimers();
@@ -73,7 +60,7 @@ describe("an object tool whose round trip the host swallows", () => {
 
     helpers.hangNextSync();
     vi.useFakeTimers();
-    await expect(settle(tools.alignSelected("left"))).rejects.toThrow(
+    await expect(settleHungSync(tools.alignSelected("left"))).rejects.toThrow(
       /stopped answering while reading the selection/,
     );
     vi.useRealTimers();
@@ -111,7 +98,7 @@ describe("a grouped deck whose group-opening read the host swallows", () => {
     // The scan reads the slides, then their shapes, then opens the groups.
     helpers.hangNextSync(2);
     vi.useFakeTimers();
-    await expect(settle(links.listLinks(relay))).rejects.toThrow(
+    await expect(settleHungSync(links.listLinks(relay))).rejects.toThrow(
       /stopped answering while reading the groups/,
     );
     vi.useRealTimers();

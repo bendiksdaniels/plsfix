@@ -12,7 +12,7 @@ import {
 import { TAG_KEY, TAG_LINK, type InboxItem } from "../src/link/model";
 import { createWorkspace } from "../src/link/workspace";
 import { cleanupShapes } from "../src/ppt/chart-cleanup";
-import { SYNC_TIMEOUT_MS } from "../src/ppt/chart-draw";
+import { settleHungSync } from "./hung-sync";
 import type { InsertResult } from "../src/ppt/host";
 import type { FakeRelay } from "./fakerelay";
 import { fakePng } from "./fakepng";
@@ -65,22 +65,6 @@ function box(one: FakePptShape) {
   return { left: one.left, top: one.top, width: one.width, height: one.height };
 }
 
-// Drives the fake clock until the work under test settles, so a per-sync
-// deadline can be proven without the test waiting a real minute. A promise
-// that never settles leaves this loop and fails on vitest's own timeout,
-// which is exactly what a pane stuck busy for ever looks like.
-async function settle<T>(work: Promise<T>): Promise<T> {
-  let done = false;
-  void work.then(
-    () => (done = true),
-    () => (done = true),
-  );
-  for (let step = 0; step < 10 && !done; step += 1) {
-    await vi.advanceTimersByTimeAsync(SYNC_TIMEOUT_MS);
-  }
-  return work;
-}
-
 async function insert(
   data: ChartData = COLUMN,
 ): Promise<{ item: InboxItem; placed: InsertResult }> {
@@ -97,7 +81,7 @@ describe("a draw batch the host never answers", () => {
     helpers.hangNextSync(SECOND_CHUNK_SYNC);
     vi.useFakeTimers();
 
-    const placed = await settle(links.insertFromInbox(item, ws, relay));
+    const placed = await settleHungSync(links.insertFromInbox(item, ws, relay));
 
     // One shape on the slide: the picture. The twelve shapes the first chunk
     // had already committed are gone, and no half-built group survived.
@@ -125,7 +109,7 @@ describe("a draw batch the host never answers", () => {
     vi.useFakeTimers();
 
     await expect(
-      settle(links.insertFromInbox(item, ws, relay)),
+      settleHungSync(links.insertFromInbox(item, ws, relay)),
     ).rejects.toThrow(/stopped answering/);
     expect(shapes()).toHaveLength(0);
   });
@@ -135,7 +119,7 @@ describe("a draw batch the host never answers", () => {
     const first = await seedChart(COLUMN, PNG);
     helpers.hangNextSync(SECOND_CHUNK_SYNC);
     vi.useFakeTimers();
-    await settle(links.insertFromInbox(first, ws, relay));
+    await settleHungSync(links.insertFromInbox(first, ws, relay));
     vi.useRealTimers();
 
     helpers.selectSlide(presentation.slides[1]!.id);
@@ -161,7 +145,7 @@ describe("a draw batch the host never answers", () => {
     // Settling with a rejection is still settling: the pane's guard releases
     // the busy flag and the row says the host stopped answering.
     await expect(
-      settle(links.insertFromInbox(item, ws, relay)),
+      settleHungSync(links.insertFromInbox(item, ws, relay)),
     ).rejects.toThrow(/stopped answering/);
   });
 
@@ -180,7 +164,7 @@ describe("a draw batch the host never answers", () => {
     // second is the chunk of eleven that the host swallows.
     helpers.hangNextSync(1);
     vi.useFakeTimers();
-    const summary = await settle(links.updateLinks(rows, relay));
+    const summary = await settleHungSync(links.updateLinks(rows, relay));
 
     expect(summary).toMatchObject({ updated: 1, failed: 0 });
     // The reason reaches the summary now that the refresh hands it back.

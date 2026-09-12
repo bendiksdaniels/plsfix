@@ -8,7 +8,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { type TableCell } from "../src/link/model";
 import { createWorkspace } from "../src/link/workspace";
-import { SYNC_TIMEOUT_MS } from "../src/ppt/chart-draw";
+import { settleHungSync } from "./hung-sync";
 import type { FakeRelay } from "./fakerelay";
 import { fakePng } from "./fakepng";
 import {
@@ -50,22 +50,6 @@ function shapes(): FakePptShape[] {
   return presentation.slides[0]!.shapes;
 }
 
-// Drives the fake clock until the work under test settles, so a per-sync
-// deadline can be proven without the test waiting a real minute. Copied from
-// ppt.charts.audit.integration.test.ts rather than shared, because that file
-// owns the chart-drawing suite and this one the rest of the pane.
-async function settle<T>(work: Promise<T>): Promise<T> {
-  let done = false;
-  void work.then(
-    () => (done = true),
-    () => (done = true),
-  );
-  for (let step = 0; step < 10 && !done; step += 1) {
-    await vi.advanceTimersByTimeAsync(SYNC_TIMEOUT_MS);
-  }
-  return work;
-}
-
 // An empty slide's insert is three round trips: which slide is selected, the
 // boxes already on it (no placeholders here, so no third read), then the
 // insert's own sync. Hanging the third one is the insert itself; hanging the
@@ -80,7 +64,7 @@ describe("a picture insert the host never answers", () => {
     vi.useFakeTimers();
 
     await expect(
-      settle(links.insertFromInbox(item, ws, relay)),
+      settleHungSync(links.insertFromInbox(item, ws, relay)),
     ).rejects.toThrow(
       "PowerPoint stopped answering while inserting the picture",
     );
@@ -104,7 +88,7 @@ describe("a picture insert the host never answers", () => {
     vi.useFakeTimers();
 
     await expect(
-      settle(links.insertFromInbox(item, ws, relay)),
+      settleHungSync(links.insertFromInbox(item, ws, relay)),
     ).rejects.toThrow("PowerPoint stopped answering while reading the slide");
     expect(shapes()).toHaveLength(0);
   });
@@ -118,7 +102,7 @@ describe("a table insert the host never answers", () => {
     vi.useFakeTimers();
 
     await expect(
-      settle(links.insertFromInbox(item, ws, relay)),
+      settleHungSync(links.insertFromInbox(item, ws, relay)),
     ).rejects.toThrow("PowerPoint stopped answering while inserting the table");
     expect(shapes()).toHaveLength(0);
 
@@ -137,7 +121,7 @@ describe("a text insert the host never answers", () => {
     vi.useFakeTimers();
 
     await expect(
-      settle(links.insertFromInbox(item, ws, relay)),
+      settleHungSync(links.insertFromInbox(item, ws, relay)),
     ).rejects.toThrow("PowerPoint stopped answering while inserting the text");
     expect(shapes()).toHaveLength(0);
 

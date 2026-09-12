@@ -223,3 +223,19 @@ code: the sync first, the `.value` after, never inside one expression.
 - The link key is a secret: the rig copied it by intercepting `navigator.clipboard.writeText`
   under the Copy button, kept it in the session scratchpad only and deleted it at teardown.
   Never print it, never commit it.
+
+## 2026-09-12: a fake-clock settle loop must yield real event-loop turns
+
+The five "host never answers" suites (test/j.*.audit, ppt.charts.audit) each carried a
+copy of `settle`: ten `vi.advanceTimersByTimeAsync(SYNC_TIMEOUT_MS)` steps, no real
+pause. Green on the Mac (3-40 ms per test), red on three GitHub runs in a row (5 s, then
+20 s timeouts): the decrypt or fetch before the hung sync runs on the thread pool, and on a
+slow runner it finished only after the loop had run dry, so the deadline timer it then
+armed was never advanced and the promise never settled. Proven by delaying WebCrypto 40 ms:
+old loop hangs every test, the fixed helper passes. Rules:
+- One helper, `test/hung-sync.ts` `settleHungSync`: a real 10 ms pause per step, up to
+  200 steps. Never copy a clock-driven loop into a suite again.
+- A CI-only timeout on a fake-timer test is a missing real turn, not a slow test: a longer
+  `testTimeout` changes nothing (the 09.09 note said "a longer timeout"; that was wrong).
+- Reproduce the runner locally by slowing the async work (a spy with a real delay), not by
+  loading the CPU: ten `yes` processes and `UV_THREADPOOL_SIZE=1` did not reproduce it.

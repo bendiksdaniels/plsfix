@@ -5,7 +5,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { TAG_LINK, type TableCell } from "../src/link/model";
 import { createWorkspace } from "../src/link/workspace";
-import { SYNC_TIMEOUT_MS } from "../src/ppt/chart-draw";
+import { settleHungSync } from "./hung-sync";
 import { CELLS_PER_SYNC } from "../src/ppt/tables";
 import type { FakeRelay } from "./fakerelay";
 import {
@@ -50,19 +50,6 @@ function cellText(shape: FakePptShape, row: number, col: number): string {
   return shape.table!.cells[row]![col]!.text;
 }
 
-// See j.audit.integration.test.ts: the same clock-driven settle.
-async function settle<T>(work: Promise<T>): Promise<T> {
-  let done = false;
-  void work.then(
-    () => (done = true),
-    () => (done = true),
-  );
-  for (let step = 0; step < 10 && !done; step += 1) {
-    await vi.advanceTimersByTimeAsync(SYNC_TIMEOUT_MS);
-  }
-  return work;
-}
-
 describe("a table repaint", () => {
   it("is a read and one round trip per chunk, the tag with the last", async () => {
     expect(CELLS_PER_SYNC).toBe(8);
@@ -97,7 +84,7 @@ describe("a table repaint", () => {
     // The read is the first round trip, the second chunk the third.
     helpers.hangNextSync(2);
     vi.useFakeTimers();
-    const summary = await settle(links.updateLinks(rows, relay));
+    const summary = await settleHungSync(links.updateLinks(rows, relay));
 
     expect(summary).toMatchObject({ updated: 0, failed: 1 });
     expect(summary.failures[0]).toMatch(
@@ -136,7 +123,7 @@ describe("a table insert whose format round trip stops answering", () => {
     helpers.hangNextSync(perInsert - 1);
     vi.useFakeTimers();
     await expect(
-      settle(links.insertFromInbox(second, ws, relay)),
+      settleHungSync(links.insertFromInbox(second, ws, relay)),
     ).rejects.toThrow(/stopped answering while formatting the table/);
     vi.useRealTimers();
 
