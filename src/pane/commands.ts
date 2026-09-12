@@ -48,13 +48,17 @@ interface CommandEvent {
   completed: () => void;
 }
 
-// The two ids whose whole answer is in the pane: Super Find lists what it
-// found in the Workbook tab and the style scrubber lists the unused styles
-// there, so a keystroke with the pane shut would draw where nobody is
-// looking. Everything else on the shortcut card writes to the workbook -
-// cells, formats, a chart, a sheet, or the selection the trace pair jumps -
-// and is read there with the pane open or not.
-const NEEDS_PANE = new Set(["PLSFIX_FIND", "PLSFIX_STYLES_SCAN"]);
+// The ids whose whole answer is in the pane: Super Find lists what it found
+// in the Workbook tab, the style scrubber lists the unused styles there, and
+// Prepare for sharing reports what it stripped, so firing one with the pane
+// shut would draw where nobody is looking. Everything else writes to the
+// workbook - cells, formats, a chart, a sheet, or the selection the trace
+// pair jumps - and is read there with the pane open or not.
+const NEEDS_PANE = new Set([
+  "PLSFIX_FIND",
+  "PLSFIX_STYLES_SCAN",
+  "PLSFIX_SHARE",
+]);
 
 // Office chrome, not a workbook action: a host without the API, or one that
 // refuses, still lets the action behind it run.

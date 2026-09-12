@@ -1,8 +1,7 @@
 // The chart field of a picture payload: optional cargo, never a reason to
-// throw the picture away. Owns the validation of that one field on the way
-// out of decodePayload, so model.ts's picture validator never sees it.
-// Invariant: what comes back is a picture with a chart the slide can draw, or
-// one with no chart and a chartIssue saying so - the payload's own wins.
+// throw the picture away. Owns that one field's validation on the way out of
+// decodePayload, so model.ts's picture validator never sees it. Invariant: a
+// picture keeps a chart the slide can draw, or none and a chartIssue saying so.
 
 import { isChartData } from "./chart-model";
 

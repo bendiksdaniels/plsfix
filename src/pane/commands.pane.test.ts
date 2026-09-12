@@ -1,10 +1,10 @@
 // @vitest-environment jsdom
-// The shortcut card's pane-only actions: Super Find and the style scrubber
-// both put their answer in the Workbook tab and nowhere else, so pressing
-// their keys with the pane shut has to open it first - the way PLSFIX_SHOWPANE
-// does. Every other id on the card writes to the workbook, which is visible
-// whether the pane is open or not, and this suite holds that line: a new
-// pane-only action either joins NEEDS_PANE or leaves the card.
+// The pane-only actions: Super Find, the style scrubber and Prepare for
+// sharing put their answer in the pane and nowhere else, so firing one with
+// the pane shut has to open it first - the way PLSFIX_SHOWPANE does. Every
+// other id writes to the workbook, which is visible whether the pane is open
+// or not. This suite holds each id in NEEDS_PANE to opening the pane before
+// its action runs, and a cell action and the trace pair to leaving it alone.
 
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -61,7 +61,9 @@ vi.mock("./paint-slots", () => ({
   applyPaintSlot: vi.fn(async () => undefined),
 }));
 vi.mock("./share-panel", () => ({
-  prepareShare: vi.fn(async () => undefined),
+  prepareShare: vi.fn(async () => {
+    order.push("share");
+  }),
 }));
 vi.mock("./trace-panel", () => ({
   startTrace: vi.fn(async () => undefined),
@@ -109,8 +111,8 @@ async function fire(id: string): Promise<() => void> {
   return completed;
 }
 
-// The two the ruling covers, and the card that has to carry them.
-const PANE_ONLY = ["PLSFIX_FIND", "PLSFIX_STYLES_SCAN"];
+// The two of the ruling that the shortcut card carries a key for.
+const ON_THE_CARD = ["PLSFIX_FIND", "PLSFIX_STYLES_SCAN"];
 
 function shortcutCardIds(): string[] {
   const json = JSON.parse(
@@ -141,6 +143,14 @@ describe("a shortcut whose whole answer is in the pane", () => {
     expect(completed).toHaveBeenCalledOnce();
   });
 
+  // No key on the card yet - it is a pane button today - but the rule belongs
+  // with the id, not with whoever gives it one.
+  it("opens the pane before Prepare for sharing rearranges the workbook", async () => {
+    const completed = await fire("PLSFIX_SHARE");
+    expect(order).toEqual(["pane", "share"]);
+    expect(completed).toHaveBeenCalledOnce();
+  });
+
   it("still runs the action when the host refuses to show the pane", async () => {
     const associated = stubOffice();
     const office = (
@@ -160,7 +170,7 @@ describe("a shortcut whose whole answer is in the pane", () => {
 
   it("is on the shortcut card, which is what makes the rule worth having", () => {
     const card = new Set(shortcutCardIds());
-    for (const id of PANE_ONLY) expect(card.has(id)).toBe(true);
+    for (const id of ON_THE_CARD) expect(card.has(id)).toBe(true);
   });
 });
 
