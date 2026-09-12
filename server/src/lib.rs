@@ -1,10 +1,12 @@
 //! pls,fix host: the panes' static assets plus the encrypted link
 //! relay under `/api`. Owns the router and the cache-control middleware.
 //! Invariant: the relay stores ciphertext and `sha256(authKey)` only, so the
-//! Cloudflare Access bypass on this path never exposes readable content.
+//! Cloudflare Access bypass on this path never exposes readable content; the
+//! one document served on purpose is `/manifest.xml`, made to be handed out.
 
 mod fetch;
 pub mod limits;
+pub mod manifest;
 pub mod relay;
 mod relay_gates;
 mod relay_inbox;
@@ -50,6 +52,27 @@ fn healthz() -> Json<serde_json::Value> {
     Json(serde_json::json!({ "ok": true }))
 }
 
+/// The manifest to sideload for THIS host: the committed file, or the same
+/// file re-pointed at `MODELIS_PUBLIC_URL` with an id of its own (`manifest.rs`).
+/// A file that cannot be read is a 404 with the reason on stderr, never a
+/// half manifest.
+async fn manifest_xml(State(state): State<Arc<AppState>>) -> Response {
+    match manifest::render(&state.manifest) {
+        Ok(xml) => (
+            [(header::CONTENT_TYPE, "application/xml; charset=utf-8")],
+            xml,
+        )
+            .into_response(),
+        Err(error) => {
+            eprintln!(
+                "manifest: cannot read {}: {error}",
+                state.manifest.file.display()
+            );
+            StatusCode::NOT_FOUND.into_response()
+        }
+    }
+}
+
 // Office webviews cache aggressively, so a JS-only redeploy must reach them:
 // everything is no-cache except vite's hashed bundles, which never change
 // under the same name (only icons share `/assets/`, and they are not .js/.css).
@@ -89,11 +112,12 @@ async fn no_dotfiles(request: Request, next: Next) -> Response {
     next.run(request).await
 }
 
-/// Suite endpoints, the relay and the built panes, in that order.
+/// Suite endpoints, the manifest, the relay and the built panes, in that order.
 pub fn app(static_dir: PathBuf, state: Arc<AppState>) -> Router {
     Router::new()
         .route("/healthz", get(|| async { healthz() }))
         .route("/version", get(version))
+        .route("/manifest.xml", get(manifest_xml))
         .route("/", get(|| async { Redirect::temporary("taskpane.html") }))
         .with_state(state.clone())
         .merge(relay::routes(state))

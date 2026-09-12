@@ -2,6 +2,8 @@
 name = "manual"
 version = "0.1.0"
 edition = "2024"
+license = "MIT"
+repository = "https://github.com/bendiksdaniels/plsfix"
 description = "Generates the Latvian pls,fix user manual as a Word document."
 
 [dependencies]

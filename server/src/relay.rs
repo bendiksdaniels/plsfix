@@ -20,6 +20,7 @@ use axum::{
 use serde::{Deserialize, Serialize};
 
 use crate::limits::RateLimiter;
+use crate::manifest::ManifestSource;
 use crate::relay_gates::{rate_limit, room_for};
 use crate::store::{auth_hash, Delete, Found, Get, Put, StatusRow, Store};
 use crate::{fetch, relay_inbox, relay_touch};
@@ -49,14 +50,15 @@ pub const DEFAULT_READ_PER_MIN: u32 = 1200;
 /// minutes, so a workspace this deep is a loop, not a busy week.
 pub const INBOX_MAX_PER_WS: i64 = 500;
 
-/// Everything the routes share: one store, the storage ceiling and the two
-/// rate limiters. Built by `AppState::new`, so a new limit cannot be forgotten
+/// Everything the routes share: one store, the storage ceiling, the two
+/// rate limiters and the manifest source. Built by `AppState::new`, so a new limit cannot be forgotten
 /// at one call site; `main` overrides the fields from the environment.
 pub struct AppState {
     pub store: Store,
     pub max_bytes: i64,
     pub writes: RateLimiter,
     pub reads: RateLimiter,
+    pub manifest: ManifestSource,
 }
 
 impl AppState {
@@ -66,6 +68,7 @@ impl AppState {
             max_bytes: DEFAULT_MAX_BYTES,
             writes: RateLimiter::new(DEFAULT_WRITE_PER_MIN),
             reads: RateLimiter::new(DEFAULT_READ_PER_MIN),
+            manifest: ManifestSource::default(),
         }
     }
 }

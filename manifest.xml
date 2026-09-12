@@ -14,7 +14,7 @@
   <DisplayName DefaultValue="pls,fix"/>
   <Description DefaultValue="Fast, consistent financial modelling tools for Excel and PowerPoint."/>
   <IconUrl DefaultValue="https://localhost:3000/assets/icon-32.png"/>
-  <SupportUrl DefaultValue="https://dbautomatizacijas.com"/>
+  <SupportUrl DefaultValue="https://github.com/bendiksdaniels/plsfix"/>
   <AppDomains>
     <AppDomain>https://dbautomatizacijas.com</AppDomain>
   </AppDomains>

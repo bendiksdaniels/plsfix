@@ -1,14 +1,22 @@
 //! Binary for the pls,fix host: environment, bind and the hourly
 //! sweeper. The router lives in `lib.rs`, the relay in `relay.rs`; this file
-//! only reads `MODELIS_PORT`, `MODELIS_STATIC`, `MODELIS_DATA` and the three
-//! limits, and starts the server, so the interesting parts stay testable
-//! without a socket.
+//! only reads `MODELIS_PORT`, `MODELIS_BIND`, `MODELIS_STATIC`, `MODELIS_DATA`,
+//! `MODELIS_MANIFEST`, `MODELIS_PUBLIC_URL` and the three limits, and starts
+//! the server, so the interesting parts stay testable without a socket.
 
-use std::{env, net::SocketAddr, path::PathBuf, str::FromStr, sync::Arc, time::Duration};
+use std::{
+    env,
+    net::{IpAddr, SocketAddr},
+    path::PathBuf,
+    str::FromStr,
+    sync::Arc,
+    time::Duration,
+};
 
 use plsfix_server::{
     app,
     limits::{RateLimiter, BUCKET_IDLE_SECS},
+    manifest::ManifestSource,
     relay::{now, AppState, DEFAULT_MAX_BYTES, DEFAULT_READ_PER_MIN, DEFAULT_WRITE_PER_MIN},
     store::Store,
 };
@@ -30,36 +38,41 @@ fn spawn_sweeper(state: Arc<AppState>) {
 }
 
 /// One env var, parsed or ignored: a typo in the unit file must not silently
-/// halve a limit, so an unparsable value keeps the default and says so.
-fn env_number<T: FromStr + Copy>(name: &str, default: T) -> T {
+/// halve a limit or move the bind, so an unparsable value keeps the default
+/// and says so.
+fn env_parsed<T: FromStr + Copy>(name: &str, default: T) -> T {
     match env::var(name).ok() {
         None => default,
         Some(text) => text.parse().unwrap_or_else(|_| {
-            eprintln!("warning: {name}={text} is not a number, using the default");
+            eprintln!("warning: {name}={text} cannot be parsed, using the default");
             default
         }),
     }
 }
 
-/// The store plus the limits the routes gate on, straight from the unit file.
+/// The store, the limits the routes gate on and the manifest source, straight
+/// from the unit file (or the container's environment).
 fn state_from_env(store: Store) -> AppState {
     AppState {
-        max_bytes: env_number("MODELIS_MAX_BYTES", DEFAULT_MAX_BYTES),
-        writes: RateLimiter::new(env_number(
+        max_bytes: env_parsed("MODELIS_MAX_BYTES", DEFAULT_MAX_BYTES),
+        writes: RateLimiter::new(env_parsed(
             "MODELIS_RATE_WRITE_PER_MIN",
             DEFAULT_WRITE_PER_MIN,
         )),
-        reads: RateLimiter::new(env_number(
+        reads: RateLimiter::new(env_parsed(
             "MODELIS_RATE_READ_PER_MIN",
             DEFAULT_READ_PER_MIN,
         )),
+        manifest: ManifestSource::from_env(),
         ..AppState::new(store)
     }
 }
 
 #[tokio::main]
 async fn main() {
-    let port: u16 = env_number("MODELIS_PORT", 8804);
+    let port: u16 = env_parsed("MODELIS_PORT", 8804);
+    // Loopback behind the gateway's nginx; a container sets MODELIS_BIND=0.0.0.0.
+    let bind: IpAddr = env_parsed("MODELIS_BIND", IpAddr::from([127, 0, 0, 1]));
     let static_dir =
         PathBuf::from(env::var("MODELIS_STATIC").unwrap_or_else(|_| "dist".to_string()));
     if !static_dir.join("taskpane.html").is_file() {
@@ -77,7 +90,7 @@ async fn main() {
     let state = Arc::new(state_from_env(store));
     spawn_sweeper(state.clone());
 
-    let addr = SocketAddr::from(([127, 0, 0, 1], port));
+    let addr = SocketAddr::new(bind, port);
     let listener = tokio::net::TcpListener::bind(addr)
         .await
         .unwrap_or_else(|error| panic!("cannot bind {addr}: {error}"));
@@ -91,6 +104,14 @@ async fn main() {
         state.max_bytes,
         state.writes.per_minute(),
         state.reads.per_minute()
+    );
+    println!(
+        "manifest: {}{}",
+        state.manifest.file.display(),
+        match &state.manifest.public_url {
+            Some(url) => format!(", re-pointed at {url}"),
+            None => String::from(" verbatim"),
+        }
     );
     // ConnectInfo so the rate limiter can fall back to the peer address when a
     // request carries no forwarding header (a direct call, not through the
