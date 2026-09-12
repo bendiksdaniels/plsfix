@@ -46,9 +46,7 @@ describe("sheet-scoped broken names", () => {
   it("deletes a broken one and counts it, keeping the healthy one", async () => {
     expect(await smt.deleteBrokenNames()).toBe(1);
 
-    expect(helpers.sheet("Model").names.map((entry) => entry.name)).toEqual(
-      [],
-    );
+    expect(helpers.sheet("Model").names.map((entry) => entry.name)).toEqual([]);
     expect(helpers.sheet("Data").names.map((entry) => entry.name)).toEqual([
       "Region",
     ]);
