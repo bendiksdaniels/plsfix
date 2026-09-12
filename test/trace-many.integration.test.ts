@@ -207,6 +207,24 @@ describe("tracePrecedentsOfSelection", () => {
     expect(selected()).toBe("A1");
   });
 
+  // The worst case: every cell reads from nothing, so every batch fails. The
+  // list is halved down to four cells and then asked one cell at a time -
+  // halving to the bottom would spend a sync on each pair on the way down.
+  it("holds the all-empty worst case to its halve-then-flat sync count", async () => {
+    helpers.seed("Model!B2", [Array.from({ length: 8 }, () => formula("=RC"))]);
+    helpers.select("Model!B2:I2");
+
+    const before = helpers.syncCount();
+    const result = await smt.tracePrecedentsOfSelection();
+
+    expect(result.formulaCells).toBe(8);
+    expect(result.areas).toEqual([]);
+    expect(result.groups.every((group) => group.areas.length === 0)).toBe(true);
+    // 3 to reach the grid, then 1 + (1 + 4) + (1 + 4) for the failed batches,
+    // and no select because nothing was found.
+    expect(helpers.syncCount() - before).toBe(14);
+  });
+
   it("one load for the formulas, one for the precedents, one select: five syncs", async () => {
     seedRow();
     for (const cell of ["Model!B2", "Model!C2", "Model!D2"]) {

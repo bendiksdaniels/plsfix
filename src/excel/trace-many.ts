@@ -12,6 +12,9 @@ import { type CellValue, isFormula } from "../model";
 // One batch asks Excel about every cell at once, and a batch is one request:
 // fifty formula cells is already a long answer to render as chips.
 export const MULTI_TRACE_CELL_CAP = 50;
+// Where halving a failed batch stops paying: below this, splitting costs a
+// sync per level for the same answers one cell at a time would give.
+const FLAT_RETRY_CELLS = 4;
 
 const STAGE = "Precedents of selection";
 const OVER_CAP = `${STAGE} handles up to ${String(MULTI_TRACE_CELL_CAP)} cells at once.`;
@@ -39,12 +42,24 @@ interface SourceCell {
   range: Excel.Range;
 }
 
+/** Each cell its own batch, in order: what a small failed batch is worth. */
+async function resolveOneByOne(
+  context: Excel.RequestContext,
+  cells: SourceCell[],
+): Promise<CellPrecedents[]> {
+  const groups: CellPrecedents[] = [];
+  for (const cell of cells)
+    groups.push(...(await resolveGroups(context, [cell])));
+  return groups;
+}
+
 /**
  * One batch for the whole list. Excel answers a cell with no precedents by
  * throwing ItemNotFound, which fails the entire batch and names no cell, so a
- * failed batch is halved and each half asked again: the cells that read from
- * nothing are the ones still failing alone. A model row where every cell reads
- * from something costs exactly one round trip.
+ * failed batch is halved and each half asked again - and once a failing batch
+ * is down to FLAT_RETRY_CELLS, straight through cell by cell: the cells that
+ * read from nothing are the ones still failing alone. A model row where every
+ * cell reads from something costs exactly one round trip.
  */
 async function resolveGroups(
   context: Excel.RequestContext,
@@ -63,6 +78,8 @@ async function resolveGroups(
 
   const first = cells[0];
   if (cells.length === 1 && first) return [{ cell: first.address, areas: [] }];
+  if (cells.length <= FLAT_RETRY_CELLS) return resolveOneByOne(context, cells);
+
   const half = Math.ceil(cells.length / 2);
   const head = await resolveGroups(context, cells.slice(0, half));
   const tail = await resolveGroups(context, cells.slice(half));
