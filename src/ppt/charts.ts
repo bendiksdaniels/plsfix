@@ -4,7 +4,12 @@
 // the fall back to a picture when the source stopped being drawable.
 // Invariant: a link drawn as a group refreshes as a group, and only as one.
 
-import { chartSize, layoutChart, type Primitive } from "../chart-shapes";
+import {
+  chartSize,
+  layoutChart,
+  MIN_SIZE,
+  type Primitive,
+} from "../chart-shapes";
 import type { Box, Size } from "../layout";
 import {
   CHART_HOST_SILENT,
@@ -42,6 +47,12 @@ export const CHARTS_NEED_1_8 =
   "as a picture: shape charts need PowerPoint 2504/16.96 or newer";
 export const PIES_NEED_1_10 =
   "as a picture: pie shapes need PowerPoint 2601/16.105 or newer";
+// A chart the slide had to scale down to fit its height (see onSlide) can end
+// up under the smallest box the layout is drawn for: below that the bars are
+// hairlines and the labels overlap, so the picture is the better link.
+export const CHART_TOO_SMALL = pictureNote(
+  `the chart would be smaller than ${String(MIN_SIZE.width)} x ${String(MIN_SIZE.height)} pt on this slide`,
+);
 
 // How many shapes a host draws before the cost of an add outgrows the value
 // of drawing at all: on the web an add slows down with every shape already on
@@ -60,6 +71,10 @@ export function shapeBudget(): number {
   return Office.context?.platform === Office.PlatformType.OfficeOnline
     ? SHAPE_BUDGET_WEB
     : SHAPE_BUDGET_DESKTOP;
+}
+
+function belowMinimum(size: Size): boolean {
+  return size.width < MIN_SIZE.width || size.height < MIN_SIZE.height;
 }
 
 export function overBudgetNote(count: number, budget: number): string {
@@ -114,6 +129,7 @@ export function declineReason(plan: ChartPlan): string | null {
   if (plan.data.kind === "pie" && !hasPowerPointApi(PIE_API)) {
     return PIES_NEED_1_10;
   }
+  if (belowMinimum(plan.size)) return CHART_TOO_SMALL;
   const budget = shapeBudget();
   const count = plan.primitives.length;
   return count > budget ? overBudgetNote(count, budget) : null;
