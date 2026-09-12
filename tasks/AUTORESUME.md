@@ -1,4 +1,4 @@
-# AUTORESUME - pls,fix (v2.6.18 LIVE 12.09, deployed from 3abdb15; PUBLIC on GitHub, MIT)
+# AUTORESUME - pls,fix (v2.7.1 LIVE 12.09, deployed from 3e88d67; PUBLIC on GitHub, MIT)
 
 ## 12.09 evening: "a package they just install": installers + the store kit (branch `installers`)
 
@@ -25,8 +25,11 @@
   (feature wave K3). SupportUrl for the store = `support.html` (K3 sets it).
 - `release.yml` pinned after the 12.09 security review: action commit SHAs, job-scoped
   permissions, toolchain 1.98.1; Dockerfile on `rust:1.98-bookworm`.
-- Merge of `installers` into main waits for the feature wave's window to close; then
-  `release.sh patch`, the release carries the installers, `deploy.sh modelis`.
+- Merged 12.09 23:5x as f7da86c -> **v2.7.1 LIVE** (3e88d67; modelis OK + clean, routed smoke OK,
+  `/version` 2.7.1); the v2.7.1 release carries the four installers, both proven from the
+  real URLs (Mac one-liner into a fake HOME, Windows dry run). Daniel had the `check`
+  workflow disabled ("it keeps saying something failed") before the last flaky suite was
+  fixed in this merge; re-enabling it is his call.
 
 ## 12.09: public on GitHub (plan ~/.claude/plans/validated-juggling-duckling.md, approved)
 
