@@ -19,6 +19,13 @@ import { getActiveSettings, tint } from "../settings";
 
 const LONE_FILL = "#E8B4B4";
 
+// One cap, one sentence, one place: every audit tool reads a grid under
+// SELECTION_CELL_CAP, and each names itself so a refusal never blames a button
+// the modeller did not press.
+export function scanCapSentence(tool: string): string {
+  return `${tool} supports up to ${SELECTION_CELL_CAP.toLocaleString()} cells at once.`;
+}
+
 // The overlay owns nothing it did not paint: every fill it covers is stored
 // first and written back verbatim. It stays separate from pls,fix Undo because the
 // overlay is a toggle the modeller turns off again, not an edit to the model.
@@ -119,7 +126,7 @@ export async function toggleAuditOverlay(): Promise<boolean> {
       await context.sync();
     }
     if (target.rowCount * target.columnCount > SELECTION_CELL_CAP) {
-      throw new Error("The audit overlay supports up to 5,000 cells at once.");
+      throw new Error(scanCapSentence("The audit overlay"));
     }
 
     const sheet = target.worksheet;

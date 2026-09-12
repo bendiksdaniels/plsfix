@@ -3,16 +3,16 @@
 // used range and the growth call into the pure audit module. Invariant: the
 // flow only reads and selects, so it never goes through syncWrite.
 
-import { overCap, selectedSingleRange, SELECTION_CELL_CAP } from "./internal";
+import { scanCapSentence } from "./audit";
+import { overCap, selectedSingleRange } from "./internal";
 import { consistentRegion } from "../audit";
 import { type CellValue } from "../model";
 
 const STAGE = "Consistent region";
 const NO_FORMULA = "The active cell has no formula.";
 const ONLY_ONE = "Only the active cell has this formula.";
-// The same cap and the same sentence as the overlay: both audit tools read one
-// grid, and a modeller who has met one refusal has met the other.
-const OVER_CAP = `The audit overlay supports up to ${SELECTION_CELL_CAP.toLocaleString()} cells at once.`;
+// The overlay's cap over the overlay's own wording, this tool's name in front.
+const OVER_CAP = scanCapSentence("Select consistent region");
 
 /**
  * Grows the rectangle of cells that share the active cell's R1C1 formula and

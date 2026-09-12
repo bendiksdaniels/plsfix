@@ -146,7 +146,7 @@ describe("selectConsistentRegion", () => {
     helpers.select("Model!A1");
 
     expect(await rejects(() => smt.selectConsistentRegion())).toBe(
-      "The audit overlay supports up to 5,000 cells at once.",
+      "Select consistent region supports up to 5,000 cells at once.",
     );
   });
 
