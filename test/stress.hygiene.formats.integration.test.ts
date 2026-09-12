@@ -38,6 +38,11 @@ async function rejects(run: () => Promise<unknown>): Promise<string> {
   throw new Error("expected a rejection");
 }
 
+/** One full lap of a size ladder from its rung 0: what each press should land. */
+function walkOf(ladder: number[]): number[] {
+  return [...ladder.slice(1), ladder[0] ?? 0];
+}
+
 /** Every cycle in this suite's area, by the stage name it refuses under. */
 function formatCycles(): [string, () => Promise<void>][] {
   return [
@@ -251,22 +256,16 @@ describe("the two size cycles", () => {
     const ladders = buildSizeCycles();
     helpers.select("Model!A1:B2");
 
-    const heights: number[] = [];
-    for (let press = 0; press < ladders.rowHeight.length + 1; press += 1) {
+    // Both defaults sit on rung 0 of their ladder, so a full lap ends where it
+    // started rather than drifting one rung per lap.
+    for (const expected of walkOf(ladders.rowHeight)) {
       await smt.applyRowHeightCycle();
-      heights.push(helpers.rowHeight("Model", 0));
+      expect(helpers.rowHeight("Model", 0)).toBe(expected);
     }
-    expect(heights.slice(0, ladders.rowHeight.length)).toEqual([
-      ...ladders.rowHeight.slice(1),
-      ladders.rowHeight[0],
-    ]);
-
-    const widths: number[] = [];
-    for (let press = 0; press < ladders.columnWidth.length; press += 1) {
+    for (const expected of walkOf(ladders.columnWidth)) {
       await smt.applyColumnWidthCycle();
-      widths.push(helpers.columnWidth("Model", 0));
+      expect(helpers.columnWidth("Model", 0)).toBe(expected);
     }
-    expect(new Set(widths).size).toBe(ladders.columnWidth.length);
   });
 
   // A hand-dragged size is on no rung of ours, so the next press starts the

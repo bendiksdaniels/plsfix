@@ -116,9 +116,7 @@ describe("used ranges a saved workbook really carries", () => {
   // A formula that evaluates to "" is still something a modeller typed: the
   // cell counts as data and the band under it is what goes.
   it("counts a formula returning empty text as data", async () => {
-    helpers.seed("Model!A1", [
-      [{ formula: '=IF(1=1,"","x")', value: "" }],
-    ]);
+    helpers.seed("Model!A1", [[{ formula: '=IF(1=1,"","x")', value: "" }]]);
     helpers.setFill("Model!A2:A9", { color: "#FFEECC", pattern: "Solid" });
 
     expect(await smt.cleanPastData()).toBe(

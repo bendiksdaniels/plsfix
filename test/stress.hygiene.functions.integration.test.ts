@@ -204,8 +204,6 @@ describe("PLSFIX.ROUNDSUM and PLSFIX.ROUND over a range a modeller really has", 
     const group = [[33.333], [33.333], [33.334]];
     const parts = [1, 2, 3].map((index) => round(group, index, 0));
 
-    expect(parts.reduce((sum, part) => sum + part, 0)).toBe(
-      roundSum(group, 0),
-    );
+    expect(parts.reduce((sum, part) => sum + part, 0)).toBe(roundSum(group, 0));
   });
 });
