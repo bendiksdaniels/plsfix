@@ -2780,11 +2780,13 @@ function seriesProxy(series: FakeSeries) {
       fill: {
         setSolidColor(color: string) {
           series.fillColor = color;
-          series.fillCleared = false;
+          // A colour is not "no fill": the flag goes, it does not turn false,
+          // so a series that was never cleared records nothing at all.
+          delete series.fillCleared;
         },
         clear() {
           series.fillCleared = true;
-          series.fillColor = undefined;
+          delete series.fillColor;
         },
       },
       line: {
