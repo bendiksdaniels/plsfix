@@ -14,7 +14,7 @@ use axum::{
     response::{IntoResponse, Response},
 };
 
-use crate::limits::{client_key, is_write, token_cost, Allowed};
+use crate::limits::{client_key, is_write, token_cost, Allowed, UNKNOWN};
 use crate::relay::{now, short, Api, AppState, Refused};
 
 /// Who a request is counted as, resolved once and carried in the request
@@ -51,7 +51,7 @@ pub(crate) fn charge_bytes(
     client: Option<&ClientKey>,
     bytes: usize,
 ) -> Result<(), Refused> {
-    let key = client.map_or("unknown", |client| client.0.as_str());
+    let key = client.map_or(UNKNOWN, |client| client.0.as_str());
     match state.write_bytes.take_tokens(key, now(), token_cost(bytes)) {
         Allowed::Yes => Ok(()),
         Allowed::No { retry_after } => {

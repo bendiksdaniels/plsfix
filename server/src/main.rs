@@ -10,7 +10,7 @@
 use std::{
     env,
     net::{IpAddr, SocketAddr},
-    path::PathBuf,
+    path::{Path, PathBuf},
     str::FromStr,
     sync::Arc,
     time::Duration,
@@ -29,18 +29,23 @@ use plsfix_server::{
 };
 
 /// Expired rows and idle rate-limit buckets die on every write too; this only
-/// catches an idle server.
+/// catches an idle server. The sweep is a blocking sqlite call like every
+/// other, so it goes to the blocking pool rather than a runtime worker.
 fn spawn_sweeper(state: Arc<AppState>) {
     tokio::spawn(async move {
         let mut tick = tokio::time::interval(Duration::from_secs(3600));
         loop {
             tick.tick().await;
-            if let Err(error) = state.store.sweep(now()) {
-                eprintln!("store sweep hourly: {error}");
+            let sweeping = Arc::clone(&state);
+            let swept = tokio::task::spawn_blocking(move || sweeping.store.sweep(now())).await;
+            match swept {
+                Ok(Err(error)) => eprintln!("store sweep hourly: {error}"),
+                Err(error) => eprintln!("store sweep hourly: blocking task {error}"),
+                Ok(Ok(_)) => {}
             }
             // The sweep just changed what the store holds, so the counters
             // `/version` reuses are no longer the truth.
-            state.counts.clear();
+            state.counts.clear().await;
             state.writes.prune(now(), BUCKET_IDLE_SECS);
             state.write_bytes.prune(now(), BUCKET_IDLE_SECS);
             state.reads.prune(now(), BUCKET_IDLE_SECS);
@@ -105,6 +110,46 @@ fn state_from_env(store: Store) -> AppState {
     state
 }
 
+/// A deployment bound to loopback is behind something, and a deployment that
+/// trusts no forwarding header counts every request under the peer address -
+/// which behind a proxy is the proxy. Together that is one bucket for everyone,
+/// so it earns a line at startup. A warning, never a refusal: an operator may
+/// mean it (I1 of the N1 security review).
+fn shares_one_bucket(trust: TrustedProxy, bind: IpAddr) -> bool {
+    trust == TrustedProxy::None && bind.is_loopback()
+}
+
+/// What this process is, on three lines, before the first request.
+fn announce(state: &AppState, static_dir: &Path, data_dir: &Path, addr: SocketAddr, bind: IpAddr) {
+    println!(
+        "plsfix-server serving {} on {addr}, data in {}",
+        static_dir.display(),
+        data_dir.display()
+    );
+    println!(
+        "limits: {} bytes max, {} writes/min, {} KiB/min, {} reads/min per client, {} writes at once, client key from {:?}",
+        state.max_bytes(),
+        state.writes.per_minute(),
+        state.write_bytes.per_minute(),
+        state.reads.per_minute(),
+        state.inflight_writes(),
+        state.trusted_proxy,
+    );
+    println!(
+        "manifest: {}{}",
+        state.manifest.file.display(),
+        match &state.manifest.public_url {
+            Some(url) => format!(", re-pointed at {url}"),
+            None => String::from(" verbatim"),
+        }
+    );
+    if shares_one_bucket(state.trusted_proxy, bind) {
+        eprintln!(
+            "warning: behind a proxy and trusting nothing: every client shares one bucket; set MODELIS_TRUSTED_PROXY"
+        );
+    }
+}
+
 #[tokio::main]
 async fn main() {
     let port: u16 = env_parsed("MODELIS_PORT", 8804);
@@ -131,31 +176,36 @@ async fn main() {
     let listener = tokio::net::TcpListener::bind(addr)
         .await
         .unwrap_or_else(|error| panic!("cannot bind {addr}: {error}"));
-    println!(
-        "plsfix-server serving {} on {addr}, data in {}",
-        static_dir.display(),
-        data_dir.display()
-    );
-    println!(
-        "limits: {} bytes max, {} writes/min, {} KiB/min, {} reads/min per client, {} writes at once, client key from {:?}",
-        state.max_bytes(),
-        state.writes.per_minute(),
-        state.write_bytes.per_minute(),
-        state.reads.per_minute(),
-        state.max_inflight_writes,
-        state.trusted_proxy,
-    );
-    println!(
-        "manifest: {}{}",
-        state.manifest.file.display(),
-        match &state.manifest.public_url {
-            Some(url) => format!(", re-pointed at {url}"),
-            None => String::from(" verbatim"),
-        }
-    );
+    announce(&state, &static_dir, &data_dir, addr, bind);
     // ConnectInfo so the rate limiter can fall back to the peer address when a
     // request carries no forwarding header (a direct call, not through the
     // gateway); the extractor is optional, so the route tests still run.
     let service = app(static_dir, state).into_make_service_with_connect_info::<SocketAddr>();
     axum::serve(listener, service).await.expect("server error");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const LOOPBACK: IpAddr = IpAddr::V4(std::net::Ipv4Addr::LOCALHOST);
+    const OPEN: IpAddr = IpAddr::V4(std::net::Ipv4Addr::UNSPECIFIED);
+
+    /// The hosted unit's shape - loopback behind the gateway, no trust mode -
+    /// is the one that quietly puts every client in one bucket.
+    #[test]
+    fn a_loopback_bind_that_trusts_nothing_is_warned_about() {
+        assert!(shares_one_bucket(TrustedProxy::None, LOOPBACK));
+        assert!(!shares_one_bucket(TrustedProxy::Cloudflare, LOOPBACK));
+        assert!(!shares_one_bucket(TrustedProxy::ForwardedFor, LOOPBACK));
+        // Bound to the world, the peer address really is the client.
+        assert!(!shares_one_bucket(TrustedProxy::None, OPEN));
+    }
+
+    /// A trust mode nobody can read is not a reason to start trusting one.
+    #[test]
+    fn an_unreadable_trust_mode_falls_back_to_trusting_nothing() {
+        assert_eq!("cloudflare".parse(), Ok(TrustedProxy::Cloudflare));
+        assert!("cf".parse::<TrustedProxy>().is_err());
+    }
 }

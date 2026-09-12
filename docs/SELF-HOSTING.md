@@ -61,8 +61,11 @@ a day.
 | `MODELIS_DATA`               | `data`              | Where `relay.sqlite` lives. The image: `/data`, a volume.                                                            |
 | `MODELIS_MANIFEST`           | `manifest.prod.xml` | The file `/manifest.xml` serves. The image: `/app/manifest.prod.xml`.                                                |
 | `MODELIS_MAX_BYTES`          | 1 GiB               | Relay storage ceiling; a push past it answers 507.                                                                   |
-| `MODELIS_RATE_WRITE_PER_MIN` | 300                 | Relay writes per minute per client IP (429 with `Retry-After` past it).                                              |
+| `MODELIS_RATE_WRITE_PER_MIN` | 100                 | Relay writes per minute per client IP (429 with `Retry-After` past it).                                              |
+| `MODELIS_RATE_WRITE_KIB_PER_MIN` | 65536           | Relay writes per minute per client IP counted in KiB of body: 64 MiB, so a big push costs more than a small one.     |
 | `MODELIS_RATE_READ_PER_MIN`  | 1200                | Relay reads per minute per client IP.                                                                                |
+| `MODELIS_RATE_MAX_CLIENTS`   | 10000               | Clients each rate limiter tracks at once; past it the longest-idle bucket is dropped and comes back full.            |
+| `MODELIS_MAX_INFLIGHT_WRITES` | 32                 | Pushes and deletes served at once. Each buffers its body, so this bounds memory; a body that stalls for 10 s is given up on. |
 | `MODELIS_TRUSTED_PROXY`      | unset               | Which forwarding header names the client for the rate limits: unset or `none` = the peer address, `cloudflare` = `CF-Connecting-IP`, `xff` = the last `X-Forwarded-For` hop. |
 
 The `MODELIS_` prefix and the binary name `plsfix-server` are historical (the first host was

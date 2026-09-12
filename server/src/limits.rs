@@ -20,7 +20,7 @@ const CF_IP: &str = "cf-connecting-ip";
 const FORWARDED_FOR: &str = "x-forwarded-for";
 /// A request whose client cannot be named at all shares this bucket. Better
 /// one crowded bucket than none: it still caps what an unnamed caller costs.
-const UNKNOWN: &str = "unknown";
+pub(crate) const UNKNOWN: &str = "unknown";
 
 /// A bucket idle this long is dropped by the hourly sweeper, and by the cap
 /// below before it evicts anyone; a client that comes back gets a full one.

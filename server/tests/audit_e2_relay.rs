@@ -223,7 +223,7 @@ async fn version_counts_fall_when_the_sweeper_drops_dead_rows() {
     assert_eq!(before["relay"]["links"], 1);
     assert_eq!(before["relay"]["bytes"], 5);
     assert_eq!(state.store.sweep(now()).unwrap(), 1);
-    state.counts.clear();
+    state.counts.clear().await;
     let after = json(&get(&app, "/version").await.1);
     assert_eq!(after["relay"]["links"], 0);
     assert_eq!(after["relay"]["revisions"], 0);
@@ -246,7 +246,7 @@ async fn version_reuses_its_counters_instead_of_scanning_per_request() {
     state.store.put_link(second, &auth, b"two", now()).unwrap();
     assert_eq!(json(&get(&app, "/version").await.1)["relay"]["links"], 1);
 
-    state.counts.clear();
+    state.counts.clear().await;
     assert_eq!(json(&get(&app, "/version").await.1)["relay"]["links"], 2);
     assert_eq!(VERSION_COUNTS_TTL, 30);
 }

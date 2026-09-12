@@ -61,15 +61,14 @@ async fn version(State(state): State<Arc<AppState>>) -> Json<serde_json::Value> 
 /// needs, and this route is anonymous, so the answer is reused for
 /// `VERSION_COUNTS_TTL` seconds (I3 of the N1 security review).
 async fn relay_counts(state: &Arc<AppState>) -> Option<Counts> {
-    let at = now();
-    if let Some(cached) = state.counts.get(at) {
-        return Some(cached);
-    }
-    let counted = store_call(state, "counts", "version", |store| store.counts())
+    state
+        .counts
+        .counted(now(), async {
+            store_call(state, "counts", "version", |store| store.counts())
+                .await
+                .ok()
+        })
         .await
-        .ok()?;
-    state.counts.set(at, &counted);
-    Some(counted)
 }
 
 fn healthz() -> Json<serde_json::Value> {

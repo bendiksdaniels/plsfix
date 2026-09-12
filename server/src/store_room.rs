@@ -5,9 +5,10 @@
 //! Invariant: a ceiling is read inside the same lock as the insert it guards,
 //! so two concurrent writes can never both pass the same pre-write total.
 
-use std::sync::{Mutex, PoisonError};
+use std::future::Future;
 
 use rusqlite::{params, Connection};
+use tokio::sync::Mutex;
 
 use crate::store::{Counts, Store};
 
@@ -40,26 +41,36 @@ pub struct CountsCache {
 }
 
 impl CountsCache {
-    /// The counters if they were taken within the TTL, else nothing and the
-    /// caller counts again. A poisoned cache is a stale number, never a panic.
-    pub fn get(&self, now: i64) -> Option<Counts> {
-        let last = self.last.lock().unwrap_or_else(PoisonError::into_inner);
-        last.as_ref()
-            .filter(|(at, _)| now - *at < VERSION_COUNTS_TTL && now >= *at)
-            .map(|(_, counts)| counts.clone())
-    }
-
-    pub fn set(&self, now: i64, counts: &Counts) {
-        let mut last = self.last.lock().unwrap_or_else(PoisonError::into_inner);
-        *last = Some((now, counts.clone()));
+    /// The counters, recounted at most once every `VERSION_COUNTS_TTL` AND at
+    /// most once at a time: the lock is held across the recount, so a second
+    /// reader that arrived on the same miss waits for the first one's answer
+    /// instead of scanning the store again.
+    pub async fn counted<F>(&self, now: i64, recount: F) -> Option<Counts>
+    where
+        F: Future<Output = Option<Counts>>,
+    {
+        let mut held = self.last.lock().await;
+        if let Some(fresh) = fresh(&held, now) {
+            return Some(fresh);
+        }
+        let counted = recount.await?;
+        *held = Some((now, counted.clone()));
+        Some(counted)
     }
 
     /// Forgets the held answer: the sweeper calls this after dropping dead
     /// rows, so `/version` never reports a store the sweep has just emptied.
-    pub fn clear(&self) {
-        let mut last = self.last.lock().unwrap_or_else(PoisonError::into_inner);
-        *last = None;
+    pub async fn clear(&self) {
+        *self.last.lock().await = None;
     }
+}
+
+/// The held answer if it was taken within the TTL. A clock that stepped back
+/// is not a fresh answer either.
+fn fresh(held: &Option<(i64, Counts)>, now: i64) -> Option<Counts> {
+    held.as_ref()
+        .filter(|(at, _)| now - *at < VERSION_COUNTS_TTL && now >= *at)
+        .map(|(_, counts)| counts.clone())
 }
 
 /// Blob bytes both tables hold together: what the storage ceiling counts.
@@ -126,6 +137,14 @@ impl Store {
 
 #[cfg(test)]
 mod tests {
+    use std::{
+        sync::{
+            atomic::{AtomicUsize, Ordering},
+            Arc,
+        },
+        time::Duration,
+    };
+
     use super::*;
 
     /// M3 of the N1 security review: one panic while the connection was locked
@@ -143,24 +162,68 @@ mod tests {
         assert_eq!(store.total_bytes().unwrap(), 0);
     }
 
-    /// The counters are reused for the TTL and counted again after it.
-    #[test]
-    fn the_counts_cache_answers_for_its_ttl_only() {
-        let cache = CountsCache::default();
-        let counts = Counts {
-            links: 1,
+    fn counts(links: i64) -> Counts {
+        Counts {
+            links,
             revisions: 2,
             inbox: 3,
             bytes: 4,
+        }
+    }
+
+    /// The counters are reused for the TTL and counted again after it.
+    #[tokio::test]
+    async fn the_counts_cache_answers_for_its_ttl_only() {
+        let cache = CountsCache::default();
+        let scans = AtomicUsize::new(0);
+        let count = || async {
+            scans.fetch_add(1, Ordering::SeqCst);
+            Some(counts(1))
         };
-        cache.set(1_000, &counts);
-        assert_eq!(cache.get(1_000).map(|held| held.bytes), Some(4));
+
         assert_eq!(
-            cache.get(1_000 + VERSION_COUNTS_TTL - 1).map(|c| c.links),
+            cache.counted(1_000, count()).await.map(|c| c.bytes),
+            Some(4)
+        );
+        let within = 1_000 + VERSION_COUNTS_TTL - 1;
+        assert_eq!(
+            cache.counted(within, count()).await.map(|c| c.links),
             Some(1)
         );
-        assert!(cache.get(1_000 + VERSION_COUNTS_TTL).is_none());
+        assert_eq!(scans.load(Ordering::SeqCst), 1);
+
+        cache.counted(1_000 + VERSION_COUNTS_TTL, count()).await;
         // A clock that stepped back is not a fresh answer either.
-        assert!(cache.get(900).is_none());
+        cache.counted(900, count()).await;
+        assert_eq!(scans.load(Ordering::SeqCst), 3);
+
+        cache.clear().await;
+        cache.counted(900, count()).await;
+        assert_eq!(scans.load(Ordering::SeqCst), 4);
+    }
+
+    /// Two readers that miss together must not both scan the store: the second
+    /// waits for the first one's answer.
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn two_readers_that_miss_together_count_once() {
+        let cache = Arc::new(CountsCache::default());
+        let scans = Arc::new(AtomicUsize::new(0));
+        let slow = |scans: Arc<AtomicUsize>| async move {
+            scans.fetch_add(1, Ordering::SeqCst);
+            tokio::time::sleep(Duration::from_millis(80)).await;
+            Some(counts(7))
+        };
+
+        let mut readers = Vec::new();
+        for _ in 0..2 {
+            let (cache, scans) = (Arc::clone(&cache), Arc::clone(&scans));
+            readers.push(tokio::spawn(async move {
+                cache.counted(5_000, slow(Arc::clone(&scans))).await
+            }));
+        }
+        for reader in readers {
+            assert_eq!(reader.await.unwrap().map(|c| c.links), Some(7));
+        }
+        assert_eq!(scans.load(Ordering::SeqCst), 1);
     }
 }
