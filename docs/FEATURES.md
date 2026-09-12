@@ -1,7 +1,7 @@
 # Feature copy-target matrix
 
 Consolidated from: Macabacus help center (~100 features), UpSlide help center (~140 features),
-UpSlide sales-team training files (primary source), and an Office.js platform feasibility study.
+UpSlide sales-team training files (primary source, not kept in the repository), and an Office.js platform feasibility study.
 Raw inventories with per-feature source URLs live in `docs/research/`.
 
 Date: 2026-08-27. Owner add-in: pls,fix (Office.js task pane, ExcelApi >= 1.9).

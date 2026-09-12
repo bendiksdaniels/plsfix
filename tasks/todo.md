@@ -25,7 +25,7 @@ upload. Design: docs/superpowers/specs/2026-08-28-ppt-links-design.md. Resume fr
 - [x] Macabacus deep inventory (agent, 173k tok) -> docs/research/macabacus-upslide-inventory.md
 - [x] UpSlide help-center full sweep (agent, 111k tok) -> docs/research/upslide-helpcenter-inventory.md
 - [x] Office.js feasibility study (agent, 235k tok) -> docs/research/officejs-feasibility.md
-- [x] Sales-team training files extracted -> docs/research/upslide-*-training-dump.md
+- [x] Sales-team training files extracted (the dumps left the repository before it went public, 12.09.2026)
 - [x] docs/FEATURES.md consolidated matrix + ranked v0.3 shortlist; spot-checked vs live sources
 - [ ] Roadmap deltas: proposed in FEATURES.md, awaiting Daniel's sign-off (ROADMAP.md is his file)
 - [ ] Known conflict: UpSlide training file vs help center swap Autocolor/Smart Track shortcuts (remappable; flagged in research notes)

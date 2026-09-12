@@ -2,7 +2,7 @@
 
 Source: support.upslide.net English help center (~60 articles fetched in full; admin rows marked
 "listing only" are inferred from article titles). Note: shortcuts here sometimes differ from the
-sales-team training files in docs/research/upslide-*-training-dump.md (e.g. Autocolor vs Smart Track
+sales-team training files (not kept in the repository; e.g. Autocolor vs Smart Track
 keys are swapped between the two sources) — UpSlide shortcuts are user-remappable, so treat all keys
 as indicative defaults.
 

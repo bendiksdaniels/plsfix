@@ -2,7 +2,19 @@
 
 Named after the email every analyst knows.
 
+[![check](https://github.com/bendiksdaniels/plsfix/actions/workflows/check.yml/badge.svg)](https://github.com/bendiksdaniels/plsfix/actions/workflows/check.yml) [![release](https://img.shields.io/github/v/release/bendiksdaniels/plsfix)](https://github.com/bendiksdaniels/plsfix/releases/latest) [![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
 pls,fix is an Excel productivity add-in for financial modelling teams. It is a web add-in, so unlike the COM/VSTO incumbents it runs natively on Windows, Mac and Excel on the web. The first milestone covers fast, consistent workbook formatting, model auditing and common formula operations.
+
+## Get pls,fix
+
+Free, MIT-licensed, three ways in; [docs/INSTALL.md](docs/INSTALL.md) has the click-by-click steps for Mac, Windows, the web and Microsoft 365 admins.
+
+1. **Use the hosted add-in** (no setup): download [`manifest.prod.xml`](https://github.com/bendiksdaniels/plsfix/releases/latest/download/manifest.prod.xml) from the latest release and sideload it into Excel and PowerPoint. The panes load from `https://dbautomatizacijas.com/modelis/`; linked objects travel through its relay encrypted end to end.
+2. **Self-host it**: `docker compose up` with the published image, then hand out `https://your.host/manifest.xml`, a manifest the server re-points at your address. See [docs/SELF-HOSTING.md](docs/SELF-HOSTING.md).
+3. **Build it**: clone, `npm install`, `npm start` sideloads the development manifest into desktop Excel. See [CONTRIBUTING.md](CONTRIBUTING.md).
+
+Every release also carries `pls,fix Demo Model.xlsx`, a workbook whose "Start here" sheet walks through every tool.
 
 ## What works in v1.0
 
@@ -140,7 +152,9 @@ Microsoft 365 centralized deployment group assignment instead. Hosted JS updates
 no admin action; manifest changes need a re-upload. Details and sources:
 `docs/research/launch-path.md`. `npm stop` restores `manifest.prod.xml` into Excel's
 local sideload folder (`scripts/wef-restore-prod.sh`), so ending a dev session never
-leaves the desktop add-in pointed at `localhost`.
+leaves the desktop add-in pointed at `localhost`. Any other host runs the same server from
+the container image (`docs/SELF-HOSTING.md`); its `/manifest.xml` hands out a manifest
+re-pointed at `MODELIS_PUBLIC_URL` with an add-in id of its own.
 
 ## Linked objects in PowerPoint (v2)
 
@@ -187,20 +201,18 @@ Export a range or a chart from Excel and keep it fresh in a deck without re-past
 ## Architecture
 
 - `taskpane.html` and `src/main.ts`: task-pane UI and action routing
-- `src/excel.ts`: Office.js integration; workbook data remains in the Excel process
+- `src/excel/`: Office.js integration, one file per feature area; workbook data remains in the Excel process
 - `src/model.ts`, `src/cycles.ts`, `src/classify.ts`, `src/audit.ts`, `src/paste.ts`, `src/chartmath.ts`, `src/workbook.ts`: pure, tested logic (cycling, classification, auditing, paste math, bridge math, TOC/name hygiene)
 - `src/settings.ts`: brand palette model, theme derivation, logo color extraction, persistence helpers
 - `manifest.xml`: Excel add-in identity, permissions, and local development URL
 
 TypeScript is used because an Office.js task pane is a web front end. A future cloud service - for shared brand libraries, authentication and link metadata - should be implemented in Rust.
 
-## Next milestone
+## Roadmap
 
-The next high-value slice is an Excel-to-PowerPoint link proof of concept:
+The Excel-to-PowerPoint link milestone shipped in v2 (*Linked objects in PowerPoint* above);
+what comes next is in `ROADMAP.md`.
 
-1. Export a selected range or chart as an image.
-2. Store a stable link identifier and source metadata.
-3. Add a PowerPoint companion add-in that refreshes one linked object.
-4. Test renamed, moved, and duplicated workbooks before expanding to bulk refresh.
+## License
 
-See `ROADMAP.md` for the staged product plan.
+MIT, see [LICENSE](LICENSE). Copyright (c) 2026 Daniels Bendiks.

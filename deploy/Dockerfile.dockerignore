@@ -1,0 +1,13 @@
+# Build context for deploy/Dockerfile: sources only, no build output, no notes.
+.git
+node_modules
+dist
+public/functions.js
+server/target
+demo
+manual
+docs
+tasks
+.claude
+.superpowers
+*.log

@@ -1,5 +1,22 @@
 # AUTORESUME - pls,fix (v2.6.15 LIVE 09.09, deployed from 92bb4b5)
 
+## 12.09: public on GitHub (plan ~/.claude/plans/validated-juggling-duckling.md, approved)
+
+- Daniel: "prepare it on github so it would be easy for anyone to get it for free and set it
+  up". Decisions (his): MIT; the UpSlide training dumps purged from tree AND history
+  (git filter-repo, 556 commits rewritten, 61 tags re-pointed, force-pushed; everything else
+  byte-identical, proven by tree fingerprint); the hosted pane + relay offered publicly; the
+  working notes kept with the two VM login fragments redacted.
+- Built: `server/src/manifest.rs` + `GET /manifest.xml` (verbatim, or re-pointed at
+  `MODELIS_PUBLIC_URL` with a UUID v5 id), `MODELIS_BIND`; `deploy/Dockerfile` + compose +
+  `.env.example`; `.github/workflows/release.yml` (assets + GHCR image, smoke-tested);
+  `LICENSE`, `CONTRIBUTING.md`, `SECURITY.md`, `docs/INSTALL.md`, `docs/SELF-HOSTING.md`;
+  README "Get pls,fix" section; manifest SupportUrl = the GitHub repo; package.json and the
+  three Cargo.toml carry license + repository.
+- A second session ("plsfix improvments") runs a five-slice feature wave in worktrees off the
+  rewritten main; its merges happen in one announced window, versions bumped by whoever holds
+  the window; no further history rewrite.
+
 ## 09.09: the audit fleet, v2.6.3 to v2.6.15 - every feature debugged on its own
 
 - State: **v2.6.15 LIVE 09.09** (92bb4b5, manual d6315ed after it; SERVER IN SYNC, `/version`
@@ -172,7 +189,7 @@
   and the workbook to the guest Desktop; Excel's first-run dialogs (privacy, diagnostics =
   no, experiences) are cleared; in the unlicensed "read-only mode" the demo opens but the
   ribbon shows NO pls,fix tab (add-ins do not load without activation), so nothing more can be
-  proven there before the sign-in. Daniel signs in over `vnc://192.168.64.2` (admin/admin),
+  proven there before the sign-in. Daniel signs in over `vnc://192.168.64.2` (VM login),
   then an opus agent runs
   `vmctl ssh sh "/Volumes/My Shared Files/share/plsfix/sideload.sh"`, opens the demo, exports a
   chart and a table, reads "Copy details" (`vmctl` clipboard), verifies v2.6.0, records the demo
@@ -199,7 +216,7 @@
   calls only). Wave 2 in flight: opus review of the whole day's diff, sonnet Latvian manual
   chapters + `docs/IT-vienlapa.md`, sonnet demo blocks (Variance sheet + checklist rows).
 - VM (`~/claude-vm`, `vmctl`): booted 01.09 22:43, Excel shows the M365 activation wall; Daniel
-  must sign in over `vnc://192.168.64.2` (admin/admin) before the VM agent can sideload
+  must sign in over `vnc://192.168.64.2` (VM login) before the VM agent can sideload
   `manifest.prod.xml`, reproduce the Mac export, capture "Copy details", verify v2.6.0 and record
   the demo video (in-VM `screencapture -V`, copy via `share/` to his Desktop).
 - NEXT: apply review findings -> merge docs + demo -> `npm run check` -> `sh scripts/release.sh

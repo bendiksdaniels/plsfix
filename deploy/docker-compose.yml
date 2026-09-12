@@ -1,0 +1,35 @@
+# pls,fix self-hosted: the add-in host and relay, optionally behind Caddy for HTTPS.
+#   cp .env.example .env            # PLSFIX_PUBLIC_URL, PLSFIX_DOMAIN
+#   docker compose --profile https up -d    # Caddy fetches a Let's Encrypt certificate
+#   docker compose up -d                    # or: behind your own HTTPS proxy on :8804
+# Then sideload https://<your host>/manifest.xml (docs/SELF-HOSTING.md).
+services:
+  plsfix:
+    image: ghcr.io/bendiksdaniels/plsfix:latest
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    restart: unless-stopped
+    environment:
+      MODELIS_PUBLIC_URL: ${PLSFIX_PUBLIC_URL}
+    volumes:
+      - plsfix-data:/data
+    ports:
+      - "127.0.0.1:8804:8804"
+
+  caddy:
+    image: caddy:2
+    profiles: ["https"]
+    restart: unless-stopped
+    command: caddy reverse-proxy --from ${PLSFIX_DOMAIN} --to plsfix:8804
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - caddy-data:/data
+      - caddy-config:/config
+
+volumes:
+  plsfix-data:
+  caddy-data:
+  caddy-config:

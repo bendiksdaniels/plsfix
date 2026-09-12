@@ -185,7 +185,7 @@ Shortcuts marked "per recalcacademy.com" are third-party sourced, indicative not
 
 ---
 
-# UpSlide (help-center sweep; see also docs/research/upslide-*-training-dump.md primary sources)
+# UpSlide (help-center sweep; the training-file primary sources are not kept in the repository)
 
 ## Excel-to-PowerPoint/Word Link & Refresh
 | Feature | What it does | Shortcut | Source URL |
