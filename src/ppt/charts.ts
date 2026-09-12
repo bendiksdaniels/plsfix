@@ -220,14 +220,34 @@ async function pictureInstead(
 ): Promise<string> {
   return PowerPoint.run(async (context) => {
     const shapes = context.presentation.slides.getItem(where.slideId).shapes;
-    const shape = addPicture(shapes, where.box, item.label, png, {
-      tag,
-      token: item.token,
-    });
-    shape.load("id");
-    await withSyncDeadline(context.sync());
-    return shape.id;
+    return pictureSynced(context, shapes, where.box, item, png, tag);
   });
+}
+
+// The picture added, its id read back and the batch committed under the
+// deadline in the caller's run: the timeout fallback and the too-small
+// refusal land the same shape.
+async function pictureSynced(
+  context: PowerPoint.RequestContext,
+  shapes: PowerPoint.ShapeCollection,
+  box: Box,
+  item: InboxItem,
+  png: string,
+  tag: LinkTag,
+): Promise<string> {
+  const shape = addPicture(shapes, box, item.label, png, {
+    tag,
+    token: item.token,
+  });
+  shape.load("id");
+  await withSyncDeadline(context.sync());
+  return shape.id;
+}
+
+interface Placed {
+  slideId: string;
+  box: Box;
+  overlapping: boolean;
 }
 
 export async function insertChart(
@@ -236,45 +256,13 @@ export async function insertChart(
   plan: ChartPlan,
   tag: LinkTag,
 ): Promise<InsertResult> {
-  let where: { slideId: string; box: Box; overlapping: boolean } | undefined;
+  let where: Placed | undefined;
   try {
-    return await PowerPoint.run(async (context) => {
-      // The reads that decide where the chart goes are round trips like any
-      // other, and a host that swallows one of them would leave the pane
-      // waiting for ever: they get the draw's own deadline.
-      const slideId = await withSyncDeadline(selectedSlideId(context, stage));
-      const placed = await withSyncDeadline(
-        placeOnSlide(context, slideId, plan.size, minPlacementScale(plan.size)),
-      );
-      where = { slideId, ...placed };
-      const shapes = context.presentation.slides.getItem(slideId).shapes;
-      // The same refusal declineReason makes of a plan, made of the box the
-      // slide handed back: the picture goes where the chart would have gone.
-      if (belowMinimum(placed.box)) {
-        const shape = addPicture(shapes, placed.box, item.label, plan.png, {
-          tag,
-          token: item.token,
-        });
-        shape.load("id");
-        await withSyncDeadline(context.sync());
-        return {
-          slideId,
-          shapeId: shape.id,
-          overlapping: placed.overlapping,
-          note: CHART_TOO_SMALL,
-        };
-      }
-      const shapeId = await drawGroup(context, shapes, {
-        primitives: primitivesAt(plan, placed.box),
-        box: placed.box,
-        font: plan.data.font,
-        name: `pls,fix chart ${item.label}`,
-        tag,
-        token: item.token,
-        slideId,
-      });
-      return { slideId, shapeId, overlapping: placed.overlapping };
-    });
+    return await PowerPoint.run((context) =>
+      drawPlaced(context, stage, item, plan, tag, (placed) => {
+        where = placed;
+      }),
+    );
   } catch (error) {
     const placed = where;
     if (!isDrawTimeout(error) || placed === undefined) throw error;
@@ -285,6 +273,52 @@ export async function insertChart(
       note: pictureNote(CHART_HOST_SILENT),
     };
   }
+}
+
+// One run: the placement reads under the draw's deadline, then the group, or
+// the picture when the slide hands back a box below the minimum; `remember`
+// hands the placement out first so a swallowed batch can still use the space.
+async function drawPlaced(
+  context: PowerPoint.RequestContext,
+  stage: string,
+  item: InboxItem,
+  plan: ChartPlan,
+  tag: LinkTag,
+  remember: (placed: Placed) => void,
+): Promise<InsertResult> {
+  const slideId = await withSyncDeadline(selectedSlideId(context, stage));
+  const placed = await withSyncDeadline(
+    placeOnSlide(context, slideId, plan.size, minPlacementScale(plan.size)),
+  );
+  remember({ slideId, ...placed });
+  const shapes = context.presentation.slides.getItem(slideId).shapes;
+  if (belowMinimum(placed.box)) {
+    const png = plan.png;
+    const shapeId = await pictureSynced(
+      context,
+      shapes,
+      placed.box,
+      item,
+      png,
+      tag,
+    );
+    return {
+      slideId,
+      shapeId,
+      overlapping: placed.overlapping,
+      note: CHART_TOO_SMALL,
+    };
+  }
+  const shapeId = await drawGroup(context, shapes, {
+    primitives: primitivesAt(plan, placed.box),
+    box: placed.box,
+    font: plan.data.font,
+    name: `pls,fix chart ${item.label}`,
+    tag,
+    token: item.token,
+    slideId,
+  });
+  return { slideId, shapeId, overlapping: placed.overlapping };
 }
 
 // The chart drawn again where it sits. The new group is built first and the
