@@ -212,6 +212,11 @@ describe("a sheet name a parser could trip over", () => {
       "P&L, group is very hidden now. Unhide all brings it back with the tick on",
     );
     expect(helpers.sheet("P&L, group").visibility).toBe("VeryHidden");
+    // The explorer keeps the buried sheet on its list, muted, never dropped.
+    expect(explorer()).toHaveLength(2);
+    expect(
+      document.querySelectorAll("#sheet-list .sheet-row.locked"),
+    ).toHaveLength(1);
   });
 });
 

@@ -257,8 +257,10 @@ describe("a host that says no", () => {
     helpers.selectAreas(["Model!A1", "Model!C1"]);
     helpers.protectSheet("Model", ["Model!A1"]);
 
-    await rejects(() => smt.applyIndentCycle());
-    expect(helpers.cell("Model!A1").indentLevel).toBe(0);
+    const said = await rejects(() => smt.applyIndentCycle());
+    // The unlocked area was painted: the sentence may not deny it.
+    expect(helpers.cell("Model!A1").indentLevel).toBe(1);
+    expect(said).not.toContain("nothing was changed");
   });
 
   it("names the build when a ctrl-clicked selection meets a host below 1.9", async () => {

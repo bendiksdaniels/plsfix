@@ -113,6 +113,9 @@ describe("PLSFIX.CAGR with the wrong thing in an argument", () => {
     expect(shown(() => cagr(1e-300, 1e300, 1))).toBe(
       "#VALUE! PLSFIX.CAGR: these values are too far apart to give a rate.",
     );
+    // The same two values over enough periods have a rate a double can hold:
+    // the root is taken in log space once the plain ratio overflows.
+    expect(cagr(1e-300, 1e300, 100)).toBeCloseTo(999_999, 3);
   });
 
   it("still answers the ordinary cases, and the flat one", async () => {

@@ -70,7 +70,12 @@ export function cagr(first: number, last: number, periods: number): number {
   if (first <= 0 || last <= 0) {
     throw new Error("A CAGR needs a positive start and end value.");
   }
-  return (last / first) ** (1 / periods) - 1;
+  const ratio = last / first;
+  if (Number.isFinite(ratio)) return ratio ** (1 / periods) - 1;
+  // The ratio overflowed a double although a rate may still exist (1e-300 to
+  // 1e300 over 100 periods is 999 999): take the root in log space, and let a
+  // result that is still infinite say so to the caller.
+  return Math.exp((Math.log(last) - Math.log(first)) / periods) - 1;
 }
 
 export function formatCagrLabel(value: number): string {
