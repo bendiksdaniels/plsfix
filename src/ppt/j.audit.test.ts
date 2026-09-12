@@ -32,7 +32,7 @@ import {
   type FakePptHelpers,
   type FakePresentation,
 } from "../../test/fakeppt";
-import { SYNC_TIMEOUT_MS } from "./chart-draw";
+import { settleUntil } from "../../test/hung-sync";
 import type * as RelayModule from "../link/relay";
 
 enableStrictLoadSemantics();
@@ -209,7 +209,9 @@ describe("an insert the host never answers", () => {
     expect(button("refresh-inbox").disabled).toBe(true);
     expect(inboxButtons()[0]!.disabled).toBe(true);
 
-    await vi.advanceTimersByTimeAsync(SYNC_TIMEOUT_MS);
+    // The deadline is armed only once the item is open, which on a slow machine
+    // takes real time: drive the clock until the sentence lands (test/hung-sync.ts).
+    await settleUntil(() => toastText().startsWith("PowerPoint stopped"));
     await settleFake();
 
     expect(toastText()).toBe(
