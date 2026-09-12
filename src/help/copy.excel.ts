@@ -123,6 +123,8 @@ const tools: HelpCopy = {
       "sign-flip": "Flips the sign of the selection.",
       "dec-more": "Adds one decimal place to the selection.",
       "dec-less": "Takes one decimal place off the selection.",
+      "comps-stats":
+        "Writes min, quartiles, median, mean and max as live formulas under the selected comps table. Needs two data rows and six empty rows below.",
     },
   },
   "audit-heading": {

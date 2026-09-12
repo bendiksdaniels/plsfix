@@ -12,6 +12,7 @@ import {
   applyColumnWidthCycle,
   applyRowHeightCycle,
   applyRowStyleCycle,
+  insertCompsStats,
 } from "../excel";
 import { isExcelReady } from "./shared";
 import { dispatch } from "./dispatch";
@@ -35,6 +36,7 @@ vi.mock("../excel", () => ({
   formatSelectedChart: vi.fn(async () => undefined),
   insertCagr: vi.fn(async () => undefined),
   insertColorKey: vi.fn(async () => "color key ok"),
+  insertCompsStats: vi.fn(async () => "comps stats ok"),
   insertConsistentRounding: vi.fn(async () => "rounded ok"),
   insertTemplate: vi.fn(async () => "template ok"),
   insertTornado: vi.fn(async () => "tornado ok"),
@@ -203,6 +205,13 @@ describe("dispatch: without Excel connected", () => {
     );
     expect(opened).toHaveBeenCalledTimes(1);
     vi.unstubAllGlobals();
+  });
+});
+
+describe("dispatch: wave v2.7 slice M1", () => {
+  it("routes comps-stats to the comps statistics block", async () => {
+    await expect(dispatch("comps-stats")).resolves.toBe("comps stats ok");
+    expect(insertCompsStats).toHaveBeenCalledTimes(1);
   });
 });
 

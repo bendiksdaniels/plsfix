@@ -24,6 +24,7 @@ import {
   formatSelectedChart,
   insertCagr,
   insertColorKey,
+  insertCompsStats,
   insertConsistentRounding,
   insertTemplate,
   insertTornado,
@@ -209,6 +210,9 @@ export async function dispatch(action: string): Promise<string> {
         return runReconciliation();
       case "shortcut-card":
         return openShortcutCard();
+      // ---- wave v2.7, slice M1: comps and valuation tools ----
+      case "comps-stats":
+        return insertCompsStats();
       default:
         throw new Error(`Unknown action: ${action}`);
     }
