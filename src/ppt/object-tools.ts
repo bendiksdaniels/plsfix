@@ -23,6 +23,11 @@ const GEOMETRY =
 // 1.4, so gating every entry point at 1.5 covers both.
 const OBJECT_TOOLS_API = "1.5";
 
+// Select similar compares the slide's own shapes, which never include one the
+// user clicked into a group to reach.
+const SIMILAR_NEEDS_SLIDE =
+  "Select similar needs an object on the slide, not one inside a group.";
+
 function requireObjectToolsApi(): void {
   if (!hasPowerPointApi(OBJECT_TOOLS_API)) {
     throw new Error("Object tools need PowerPoint 2021 or Microsoft 365.");
@@ -145,6 +150,10 @@ export async function selectSimilar(): Promise<string> {
     const ids = shapes.items
       .filter((shape) => sameKindAndSize(source, shape))
       .map((shape) => shape.id);
+    // The source matches itself, so an empty list means the slide's own
+    // collection never saw it: the user clicked into a group. Selecting
+    // nothing there would clear their selection and still report a match.
+    if (!ids.includes(source.id)) throw new Error(SIMILAR_NEEDS_SLIDE);
     slide.setSelectedShapes(ids);
     await withSyncDeadline(context.sync(), "selecting the similar shapes");
     return `Selected ${String(ids.length)} similar object${ids.length === 1 ? "" : "s"}.`;
