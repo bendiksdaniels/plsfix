@@ -432,7 +432,7 @@ export const ADDIN: AddinSpec = {
   displayName: "pls,fix",
   description:
     "Fast, consistent financial modelling tools for Excel and PowerPoint.",
-  supportUrl: "https://github.com/bendiksdaniels/plsfix",
+  supportUrl: "https://dbautomatizacijas.com/modelis/support.html",
   appDomain: "https://dbautomatizacijas.com",
   tabLabel: "pls,fix",
   iconResids: {
