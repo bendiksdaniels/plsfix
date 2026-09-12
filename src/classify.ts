@@ -1,3 +1,7 @@
+// Classifies a cell by its formula and value into the pane's colour key:
+// blank, input, formula, crossSheet or external, plus "partial" for a formula
+// that also hardcodes a number. Pure, no Office.js. Invariant: a "[" reads as
+// another workbook only where a sheet name and "!" actually follow it.
 import { type CellValue, isFormula } from "./model";
 
 export type CellClass =

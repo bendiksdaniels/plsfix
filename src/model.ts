@@ -1,3 +1,7 @@
+// The cell value type every pure module shares, plus grid-wide reads
+// (isFormula, analyzeGrid) and two grid builders (scaleCells, makeFormatGrid).
+// Pure: no Office.js. Invariant: a formula is any string starting with "=",
+// nothing else.
 export type CellValue = string | number | boolean | null;
 
 export interface GridSummary {

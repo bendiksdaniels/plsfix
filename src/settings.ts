@@ -1,3 +1,7 @@
+// The brand palette: its shape, the shipped default, derived theme colours,
+// the house currency format, JSON (de)serialisation and the active-settings
+// singleton the rest of the pane reads. Pure: no Office.js. Invariant:
+// parsePalette refuses JSON naming none of the palette's own keys.
 import { currencyFormat, isLanguage, type Language } from "./numbers";
 
 export interface BrandSettings {

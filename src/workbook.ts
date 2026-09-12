@@ -1,3 +1,7 @@
+// Two small workbook-wide reads: the contents-sheet rows for every visible
+// sheet, and which defined names broke when Excel rewrote their formula to
+// #REF!. Pure: no Office.js. Invariant: a hidden sheet is left off the
+// contents sheet rather than linked and unreachable.
 export interface TocRow {
   index: number;
   name: string;
