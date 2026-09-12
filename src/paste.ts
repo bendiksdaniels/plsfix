@@ -373,3 +373,21 @@ export function duplicateFormulas(
     row.map((cell) => duplicateFormula(cell, block, offset)),
   );
 }
+
+/**
+ * A source grid repeated over a target of the given shape, the way Excel's own
+ * copy tiles a smaller source across a larger destination: destination cell
+ * (r, c) reads source (r mod rows, c mod columns), so the last tile is cut
+ * short when the target is not a whole multiple of the source.
+ */
+export function tileGrid<T>(grid: T[][], rows: number, columns: number): T[][] {
+  const sourceRows = grid.length;
+  const sourceColumns = grid[0]?.length ?? 0;
+  if (sourceRows === 0 || sourceColumns === 0) return [];
+  return Array.from({ length: rows }, (_unused, row) =>
+    Array.from(
+      { length: columns },
+      (_cell, column) => grid[row % sourceRows]![column % sourceColumns]!,
+    ),
+  );
+}

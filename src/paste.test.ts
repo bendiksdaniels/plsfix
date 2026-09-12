@@ -7,6 +7,7 @@ import {
   duplicateFormula,
   duplicateFormulas,
   flipSign,
+  tileGrid,
   formatDecimals,
   stepDecimals,
   toggleIfError,
@@ -285,5 +286,70 @@ describe("duplicateFormulas", () => {
       [1, "=A5*2"],
       ["label", "=SUM($A$5:$C$7)+Z9"],
     ]);
+  });
+});
+
+describe("tileGrid", () => {
+  it("hands back the same grid when the target is the source shape", () => {
+    expect(
+      tileGrid(
+        [
+          ["a", "b"],
+          ["c", "d"],
+        ],
+        2,
+        2,
+      ),
+    ).toEqual([
+      ["a", "b"],
+      ["c", "d"],
+    ]);
+  });
+
+  it("spreads a single cell over the whole target", () => {
+    expect(tileGrid([["x"]], 2, 3)).toEqual([
+      ["x", "x", "x"],
+      ["x", "x", "x"],
+    ]);
+  });
+
+  it("repeats the source over a target that is a multiple of it", () => {
+    expect(
+      tileGrid(
+        [
+          ["a", "b"],
+          ["c", "d"],
+        ],
+        4,
+        4,
+      ),
+    ).toEqual([
+      ["a", "b", "a", "b"],
+      ["c", "d", "c", "d"],
+      ["a", "b", "a", "b"],
+      ["c", "d", "c", "d"],
+    ]);
+  });
+
+  it("cuts the last tile short when the target is not a multiple", () => {
+    expect(
+      tileGrid(
+        [
+          ["a", "b"],
+          ["c", "d"],
+        ],
+        3,
+        3,
+      ),
+    ).toEqual([
+      ["a", "b", "a"],
+      ["c", "d", "c"],
+      ["a", "b", "a"],
+    ]);
+  });
+
+  it("answers an empty grid for an empty source", () => {
+    expect(tileGrid([], 2, 2)).toEqual([]);
+    expect(tileGrid([[]], 2, 2)).toEqual([]);
   });
 });
