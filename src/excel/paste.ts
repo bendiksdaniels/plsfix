@@ -160,6 +160,46 @@ function overCapError(): Error {
   );
 }
 
+// One area of the selection: where the block lands, on which sheet, and the
+// range of the block's shape it will fill.
+interface PasteMove {
+  sheet: Excel.Worksheet | undefined;
+  row: number;
+  column: number;
+  destination: Excel.Range;
+}
+
+// Reading a block the same paste is overwriting would rewrite half of its
+// references twice, so a destination sitting on it is refused outright.
+function refuseOverlap(
+  block: CellBlock,
+  moves: PasteMove[],
+  sourceId: string,
+): void {
+  const source = blockRect(block, block.row, block.column);
+  for (const move of moves) {
+    if (move.sheet?.id !== sourceId) continue;
+    if (overlaps(source, blockRect(block, move.row, move.column))) {
+      throw new Error(OVERLAP_REFUSAL);
+    }
+  }
+}
+
+function writeDuplicates(
+  block: CellBlock,
+  moves: PasteMove[],
+  formulas: CellValue[][],
+): void {
+  for (const move of moves) {
+    move.destination.formulas = duplicateFormulas(
+      formulas,
+      block,
+      { rows: move.row - block.row, columns: move.column - block.column },
+      move.sheet?.name ?? block.sheet,
+    );
+  }
+}
+
 /**
  * The copied block's formulas at the selection's corner, with every reference
  * pointing inside the block moved with it and every reference pointing outside
@@ -190,8 +230,7 @@ export async function pasteDuplicateFormulas(): Promise<void> {
       rowCount: from.rowCount,
       columnCount: from.columnCount,
     };
-    const formulas = from.formulas as CellValue[][];
-    const moves = targets.map((target, index) => ({
+    const moves: PasteMove[] = targets.map((target, index) => ({
       sheet: targetSheets[index],
       row: target.rowIndex,
       column: target.columnIndex,
@@ -199,32 +238,40 @@ export async function pasteDuplicateFormulas(): Promise<void> {
         .getCell(0, 0)
         .getResizedRange(block.rowCount - 1, block.columnCount - 1),
     }));
-    for (const move of moves) {
-      const same = move.sheet?.id === sourceSheet.id;
-      if (
-        same &&
-        overlaps(
-          blockRect(block, block.row, block.column),
-          blockRect(block, move.row, move.column),
-        )
-      ) {
-        throw new Error(OVERLAP_REFUSAL);
-      }
-    }
+    refuseOverlap(block, moves, sourceSheet.id);
 
     await captureUndoAreas(
       context,
       moves.map((move) => move.destination),
     );
-    for (const move of moves) {
-      move.destination.formulas = duplicateFormulas(
-        formulas,
-        block,
-        { rows: move.row - block.row, columns: move.column - block.column },
-        move.sheet?.name ?? block.sheet,
-      );
-    }
+    writeDuplicates(block, moves, from.formulas as CellValue[][]);
     await syncWrite(context, PASTE);
+  });
+}
+
+interface FormatPlan {
+  target: Excel.Range;
+  rows: number;
+  columns: number;
+}
+
+// Excel grows a destination smaller than the source to the source's shape.
+// Smaller in BOTH axes, though: taking each axis on its own would turn a tall
+// source and a wide selection into the rectangle of the two, which nobody
+// selected and which is where a 5,000-cell source meets a 5,000-cell
+// selection as 25 million cells.
+function planFormatWrites(
+  from: Excel.Range,
+  targets: Excel.Range[],
+): FormatPlan[] {
+  return targets.map((target) => {
+    const grow =
+      target.rowCount < from.rowCount && target.columnCount < from.columnCount;
+    return {
+      target,
+      rows: grow ? from.rowCount : target.rowCount,
+      columns: grow ? from.columnCount : target.columnCount,
+    };
   });
 }
 
@@ -245,21 +292,7 @@ export async function pasteNumberFormats(): Promise<void> {
     await context.sync();
 
     const formats = from.numberFormat as string[][];
-    // Excel grows a destination smaller than the source to the source's shape.
-    // Smaller in BOTH axes, though: taking each axis on its own would turn a
-    // tall source and a wide selection into the rectangle of the two, which
-    // nobody selected and which is where a 5,000-cell source meets a
-    // 5,000-cell selection as 25 million cells.
-    const plans = targets.map((target) => {
-      const grow =
-        target.rowCount < from.rowCount &&
-        target.columnCount < from.columnCount;
-      return {
-        target,
-        rows: grow ? from.rowCount : target.rowCount,
-        columns: grow ? from.columnCount : target.columnCount,
-      };
-    });
+    const plans = planFormatWrites(from, targets);
     const cells = plans.reduce(
       (total, plan) => total + plan.rows * plan.columns,
       0,
