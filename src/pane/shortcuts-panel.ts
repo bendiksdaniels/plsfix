@@ -163,9 +163,13 @@ function box(id: string): HTMLInputElement | null {
   return input instanceof HTMLInputElement ? input : null;
 }
 
+// One full-width row per action: the name and its shipped key on the first
+// line, the box under it. Two columns would clip - the longest Mac key,
+// Cmd+Shift+Option+7, does not break and is wider than half a 320 px dock.
 function rowLabel(row: ShortcutRow): HTMLLabelElement {
   const shown = showKey(row.defaultKey, platform);
   const label = document.createElement("label");
+  label.className = "key-label";
   const name = document.createElement("span");
   name.textContent = `${row.name} `;
   const key = document.createElement("kbd");
