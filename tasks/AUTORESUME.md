@@ -1,5 +1,33 @@
 # AUTORESUME - pls,fix (v2.6.18 LIVE 12.09, deployed from 3abdb15; PUBLIC on GitHub, MIT)
 
+## 12.09 evening: "a package they just install": installers + the store kit (branch `installers`)
+
+- Daniel: pls,fix must feel like an install, no extra steps. The only real install for an
+  Office add-in is AppSource; until the listing is live, one line per platform does the
+  sideload: `deploy/install/plsfix-install-windows.ps1` (`irm <url> | iex`: manifest to
+  `%LOCALAPPDATA%\plsfix`, registered under `HKCU\...\WEF\Developer` like Microsoft's tooling)
+  and `plsfix-install-mac.command` (`curl <url> | sh`: manifest into both `wef` folders), both
+  with uninstallers, attached to every release by `release.yml`; `PLSFIX_MANIFEST_URL` for a
+  self-hosted manifest. Proven: Mac scripts against a fake HOME with the live manifest
+  (install, refuse a non-manifest, uninstall, idempotent); Windows scripts parsed by pwsh 7.6
+  and dry-run on macOS (download, validate, id extract, `iex` form). The real Windows run is
+  Daniel's pass. `docs/INSTALL.md` rewritten around them; README "Get pls,fix" = one line per
+  platform, self-host + build a footnote.
+- Store kit `docs/appsource/`: `privacy-policy.md` (names the app and the relay; Hetzner
+  Helsinki, 14-day logs, relay 30/7 days), `listing.md`, `test-notes.md` (incl. the
+  custom-function test the store requires), `checklist.md` (repo side, Partner Center side).
+  Screenshots (1366x768, at least one) still to take: Daniel, or the web rig once signed in.
+- Store validator 12.09: "Icon URL Unreachable" was the gateway's Latvia-only country gate
+  (nginx answered 403 to `MicrosoftOfficeStoreValidationService`), which also meant no Office
+  user outside Latvia could load the pane. Fixed in the hosting gateway 056d9c3
+  (`OPEN_COUNTRY_PATHS` = `/modelis/`, apex gates on ``, smoke probes it),
+  deployed and proven on the server; the validator now reports only the missing 64 px icon
+  (feature wave K3). SupportUrl for the store = `support.html` (K3 sets it).
+- `release.yml` pinned after the 12.09 security review: action commit SHAs, job-scoped
+  permissions, toolchain 1.98.1; Dockerfile on `rust:1.98-bookworm`.
+- Merge of `installers` into main waits for the feature wave's window to close; then
+  `release.sh patch`, the release carries the installers, `deploy.sh modelis`.
+
 ## 12.09: public on GitHub (plan ~/.claude/plans/validated-juggling-duckling.md, approved)
 
 - State: **PUBLIC, MIT, v2.6.18 LIVE 12.09** (3abdb15; modelis OK + clean in the deploy audit,
