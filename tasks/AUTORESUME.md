@@ -1,7 +1,16 @@
-# AUTORESUME - pls,fix (v2.6.15 LIVE 09.09, deployed from 92bb4b5)
+# AUTORESUME - pls,fix (v2.6.18 LIVE 12.09, deployed from 3abdb15; PUBLIC on GitHub, MIT)
 
 ## 12.09: public on GitHub (plan ~/.claude/plans/validated-juggling-duckling.md, approved)
 
+- State: **PUBLIC, MIT, v2.6.18 LIVE 12.09** (3abdb15; modelis OK + clean in the deploy audit,
+  `/version` 2.6.18, `/manifest.xml` byte-equal to the release asset; 1810 vitest; CI green on
+  the tag and main). Releases v2.6.16-18 each carry `manifest.prod.xml`, `plsfix-pane-<tag>.zip`
+  and the demo workbook; image `ghcr.io/bendiksdaniels/plsfix:{v2.6.16,v2.6.17,v2.6.18,latest}`,
+  pullable anonymously. Repo: description, homepage, 7 topics, issues on, private vulnerability
+  reporting on. v2.6.17 = a 20 s testTimeout that did NOT cure the CI flake; v2.6.18 = the real
+  fix, `test/hung-sync.ts` (lessons 12.09). The deploy audit stays red on OTHER tools (struktura,
+  aktivitate-nonbank, sejas, peers-nonbank drift), not modelis. Old pre-rewrite SHAs may stay
+  addressable on GitHub until its GC (the repo was private, nobody holds them).
 - Daniel: "prepare it on github so it would be easy for anyone to get it for free and set it
   up". Decisions (his): MIT; the UpSlide training dumps purged from tree AND history
   (git filter-repo, 556 commits rewritten, 61 tags re-pointed, force-pushed; everything else
