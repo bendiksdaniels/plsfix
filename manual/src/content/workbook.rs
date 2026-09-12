@@ -14,6 +14,7 @@ pub fn workbook() -> Chapter {
             names(),
             styles(),
             share(),
+            clean_past_data(),
             model_check(),
         ],
     }
@@ -28,6 +29,7 @@ pub fn brand() -> Chapter {
             language(),
             currency(),
             autocolor_on_edit(),
+            shortcuts(),
             transfer(),
         ],
     }
@@ -42,6 +44,9 @@ fn explorer() -> Section {
             ),
             Block::Para(
                 r#"Aplītis rindas labajā pusē lapu paslēpj vai parāda. Ļoti paslēptās lapas sarakstā ir redzamas, bet netiek aiztiktas, jo tās var mainīt tikai ārpus Excel saskarnes."#,
+            ),
+            Block::Para(
+                r#"Virs saraksta ir lapu rīku rinda: "Unhide all" parāda visas paslēptās lapas (ļoti paslēptās tikai ar atzīmi "Include very hidden"), "Show only this" paslēpj visas pārējās, "Bury this" padara aktīvo lapu ļoti paslēptu (pēdējo redzamo lapu paslēpt nevar), bet "Move up", "Move down" un "Move to end" pārvieto aktīvo lapu. Šīs darbības maina darbgrāmatas uzbūvi un neietilpst "Undo last pls,fix action"; ja darbgrāmatas struktūra ir aizsargāta, panelis to pasaka teikumā."#,
             ),
             Block::Image {
                 file: "excel-workbook.png",
@@ -132,6 +137,23 @@ fn share() -> Section {
             Block::Para(
                 r#"Neviens no šiem elementiem netiek dzēsts, un paslēptās lapas netiek aiztiktas: lēmums paliek jums. Tālummaiņu atiestatīt nav iespējams, jo Office.js šo lapas īpašību nepiedāvā."#,
             ),
+        ],
+    )
+}
+
+fn clean_past_data() -> Section {
+    section(
+        "Clean past the data",
+        vec![
+            Block::Para(
+                r#"Liela darbgrāmata bieži nes tukšas, bet formatētas rindas un kolonnas tālu aiz datiem: tās palielina failu un padara ritināšanu lēnu. Poga "Clean past the data" salīdzina lapas izmantoto apgabalu ar apgabalu, kurā patiešām ir vērtības vai formulas, un liekās rindas un kolonnas izdzēš. Paziņojums nosauc skaitu, piemēram, "Removed 1,204 rows and 12 columns past the data on P&L"."#,
+            ),
+            Block::Bullets(&[
+                "Ja lapā ir diagramma vai forma, rindas un kolonnas paliek un tiek notīrīti tikai formāti, lai objekts nepazustu.",
+                "Ja Excel versija nevar saskaitīt lapas objektus, rīks arī tad tikai notīra formātus un to pasaka.",
+                "Tukšā lapā un lapā bez liekā apgabala nekas nemainās; aizsargātā lapā rīks atbild ar teikumu.",
+                "Darbība maina lapas uzbūvi un neietilpst \"Undo last pls,fix action\": pirms tās saglabājiet failu.",
+            ]),
         ],
     )
 }
@@ -241,6 +263,15 @@ fn autocolor_on_edit() -> Section {
         "Autocolor on edit",
         vec![Block::Para(
             r#"Izvēles rūtiņa "Autocolor on edit" pārkrāso šūnas rediģēšanas brīdī, līdz 500 šūnām vienā reizē. Tā strādā, kamēr panelis ir atvērts, un iestatījums tiek saglabāts."#,
+        )],
+    )
+}
+
+fn shortcuts() -> Section {
+    section(
+        "Keyboard shortcuts",
+        vec![Block::Para(
+            r#"Sadaļā "Keyboard shortcuts" cilnē "Brand" katrai pls,fix taustiņu saīsnei var piešķirt savu kombināciju, piemēram, Ctrl+Shift+A (Mac datorā Ctrl nozīmē Cmd). "Apply" vispirms pārbauda, vai kombinācija jau nav aizņemta, un nosauc konfliktus; "Reset all" atgriež noklusējumus. Iestatījumi glabājas jūsu Microsoft 365 kontā, tāpēc jābūt pieteiktam Office; bez tā sadaļa to pasaka un paliek neaktīva."#,
         )],
     )
 }

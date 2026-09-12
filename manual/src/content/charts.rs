@@ -8,6 +8,8 @@ pub fn sections() -> Vec<Section> {
     vec![
         waterfall(),
         tornado(),
+        football_field(),
+        comps_stats(),
         chart_format(),
         rounding(),
         unpivot(),
@@ -51,6 +53,44 @@ fn tornado() -> Section {
     )
 }
 
+fn football_field() -> Section {
+    section(
+        "Football field",
+        vec![
+            Block::Para(
+                r#"Poga "Football field" no trīs kolonnu tabulas (metode, zemākā vērtība, augstākā vērtība) uzzīmē vērtēšanas diapazonu diagrammu: katrai metodei viena peldoša josla no zemākās līdz augstākajai vērtībai, pirmā rinda augšā. Diagramma ir Excel joslu diagramma ar neredzamu pamata sēriju, tāpēc to var rediģēt kā jebkuru citu diagrammu."#,
+            ),
+            Block::Steps(&[
+                "Atlasiet trīs kolonnas: nosaukumi, zemākā un augstākā vērtība, no 2 līdz 20 rindām. Virsrakstu rinda tiek izlaista, ceturtā un tālākās kolonnas netiek izmantotas.",
+                "Nospiediet \"Football field\". Blakus atlasei tiek ierakstīts palīgbloks (metode, zemākā vērtība, diapazons), un diagramma tiek novietota brīvā vietā pie tā.",
+                "Ja kādā rindā zemākā vērtība ir lielāka par augstāko, rīks tās apmaina un paziņo, cik rindu apmainīts.",
+            ]),
+            Block::Para(
+                r#"Vērtību ass pārņem skaitļa formātu no zemākās vērtības kolonnas, leģenda ir izslēgta, diagrammas nosaukums ir "Valuation range"."#,
+            ),
+        ],
+    )
+}
+
+fn comps_stats() -> Section {
+    section(
+        "Comps stats",
+        vec![
+            Block::Para(
+                r#"Poga "Comps stats" zem atlasītās salīdzināmo uzņēmumu tabulas ieraksta sešas rindas ar dzīvām formulām: minimums, 25. procentile, mediāna, vidējais, 75. procentile un maksimums. Katra skaitļu kolonna saņem savas formulas, pirmā kolonna nes rindu nosaukumus, un katra šūna pārņem skaitļa formātu no kolonnas pēdējās datu rindas."#,
+            ),
+            Block::Steps(&[
+                "Atlasiet tabulu kopā ar virsrakstu rindu, ja tāda ir: rinda, kurā ir tikai teksts, tiek uzskatīta par virsrakstu un statistikā neietilpst.",
+                "Nospiediet \"Comps stats\". Bloks tiek ierakstīts vienu tukšu rindu zem tabulas un paliek atlasīts.",
+                "Mainot kādu reizinātāju tabulā, statistika pārrēķinās pati, jo šūnās ir formulas, nevis vērtības.",
+            ]),
+            Block::Para(
+                r#"Rīks atsakās strādāt, ja zem tabulas nav sešu tukšu rindu, ja atlasīti vairāki apgabali, ja datu rindu ir mazāk par divām vai ja nevienā kolonnā nav skaitļu. Ierakstīto bloku var atsaukt ar "Undo last pls,fix action"."#,
+            ),
+        ],
+    )
+}
+
 fn chart_format() -> Section {
     section(
         "Brand-format chart un CAGR label",
@@ -86,10 +126,17 @@ fn rounding() -> Section {
                         "=PLSFIX.ROUNDSUM(apgabals; zīmes)",
                         "grupas kopsummu, noapaļotu tā, lai tā sakristu ar daļu summu",
                     ],
+                    &[
+                        "=PLSFIX.CAGR(sākums; beigas; periodi)",
+                        "vidējo gada pieauguma tempu no sākuma vērtības līdz beigu vērtībai norādītajā periodu skaitā",
+                    ],
                 ],
             },
             Block::Para(
                 r#"Argumentu "zīmes" saprot tāpat kā Excel funkcijā ROUND: 0 nozīmē veselus skaitļus, negatīvs skaitlis noapaļo līdz desmitiem vai tūkstošiem."#,
+            ),
+            Block::Para(
+                r#"Funkcija "=PLSFIX.CAGR(100; 200; 4)" atgriež 0,1892 jeb 18,92 % gadā. Negatīva vai nulles vērtība un periodu skaits, kas mazāks par 1, dod #VALUE!."#,
             ),
             Block::Para(
                 r#"Šīs funkcijas nāk no pievienojumprogrammas. Datorā, kur pls,fix nav uzstādīts, šādas šūnas rāda #NAME?."#,

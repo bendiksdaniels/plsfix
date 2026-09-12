@@ -142,10 +142,20 @@ fn cycles() -> Section {
                     ],
                     &[r#""Row height""#, "15 / 18 / 21 / 24 / 30 pt"],
                     &[r#""Column width""#, "64 / 80 / 96 / 120 / 48 pt"],
+                    &[r#""Indent""#, "atkāpe 0 / 1 / 2 / 3"],
+                    &[r#""Align""#, "pa kreisi / centrā / pa labi / vispārīgi"],
+                    &[r#""Underline""#, "viena līnija / dubulta / nav"],
+                    &[
+                        r#""Pinstripes", "Pinstripes ↔""#,
+                        "katra otrā rinda vai kolonna gaišā zīmola tonī; otrs spiediens joslas noņem",
+                    ],
                 ],
             },
             Block::Para(
                 r#"Rindu stilu cikli strādā pa rindām un vienā reizē apstrādā līdz 500 rindām."#,
+            ),
+            Block::Para(
+                r#"Joslas ("Pinstripes") netiek zīmētas, kamēr ieslēgts formulu pārbaudes pārklājums vai saistīto šūnu izcēlums: vispirms izslēdziet tos. Jūsu pašu aizpildījumus rīks saglabā, un "Undo last pls,fix action" tos atgriež."#,
             ),
         ],
     )
@@ -173,6 +183,9 @@ fn fill_and_paste() -> Section {
                     &[r#""Transpose""#, "rindas kā kolonnas"],
                 ],
             },
+            Block::Para(
+                r#"Trīs šaurās ielīmēšanas pogas strādā ar to pašu nokopēto bloku: "Paste: duplicate formulas" ielīmē formulas tā, ka atsauces uz nokopētā bloka iekšpusi pārvietojas līdzi, bet atsauces uz ārpusi paliek uz tām pašām šūnām; "Paste number formats only" pārnes tikai skaitļu formātus; "Paste row heights only" pārnes tikai rindu augstumus (ārpus "Undo last pls,fix action")."#,
+            ),
         ],
     )
 }
@@ -228,6 +241,9 @@ fn audit() -> Section {
                 file: "excel-audit-overlay.png",
                 alt: "Pārbaudes slānis peļņas un zaudējumu aprēķinā: svītrotas šūnas ar vienādām formulām un sarkanīgas šūnas, kas no parauga atšķiras.",
             },
+            Block::Para(
+                r#"Poga "Select consistent region" no aktīvās šūnas formulas atlasa visu taisnstūri, kurā katra šūna nes to pašu formulu relatīvā formā, un pasaka, cik šūnu tajā ir. Poga "Precedents of selection" vienā reizē parāda līdz 50 atlasīto šūnu tiešos precedentus, sagrupētus pēc šūnas, un atlasa tos, kas atrodas tajā pašā lapā."#,
+            ),
         ],
     )
 }
