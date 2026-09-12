@@ -4,6 +4,8 @@ import {
   buildCagrFormula,
   buildRoundFormula,
   detectFillExtent,
+  duplicateFormula,
+  duplicateFormulas,
   flipSign,
   formatDecimals,
   stepDecimals,
@@ -193,5 +195,95 @@ describe("buildRoundFormula", () => {
     expect(buildRoundFormula("$B$2:$D$2", 3, 2)).toBe(
       "=PLSFIX.ROUND($B$2:$D$2,3,2)",
     );
+  });
+});
+
+// The copied block: Model!A1:C3, pasted four rows down at Model!A5:C7.
+const BLOCK = {
+  sheet: "Model",
+  row: 0,
+  column: 0,
+  rowCount: 3,
+  columnCount: 3,
+};
+const DOWN = { rows: 4, columns: 0 };
+
+describe("duplicateFormula", () => {
+  it.each([
+    // Inside the block: the reference moves with it, markers as written.
+    ["=A1+1", "=A5+1"],
+    ["=$A$1", "=$A$5"],
+    ["=A$1", "=A$5"],
+    ["=$A1", "=$A5"],
+    ["=SUM(A1:C3)", "=SUM(A5:C7)"],
+    ["=SUM(A1:A3)", "=SUM(A5:A7)"],
+    ["=SUM($A$1:$C$3)", "=SUM($A$5:$C$7)"],
+    ["=IF(A1>B2,C3,Z9)", "=IF(A5>B6,C7,Z9)"],
+    ['=A1&"ok"&B2', '=A5&"ok"&B6'],
+    // Outside the block: same cells, markers as written.
+    ["=Z9", "=Z9"],
+    ["=$Z$9", "=$Z$9"],
+    ["=A4", "=A4"],
+    ["=D1", "=D1"],
+    // A range straddling the edge points partly outside, so it stays put.
+    ["=SUM(A1:C4)", "=SUM(A1:C4)"],
+    // Whole columns and whole rows span the sheet, never a copied block.
+    ["=SUM(A:A)", "=SUM(A:A)"],
+    ["=SUM($A:$A)", "=SUM($A:$A)"],
+    ["=SUM(1:1)", "=SUM(1:1)"],
+    // The block's own sheet by name is inside; any other sheet is outside.
+    ["=Model!B2", "=Model!B6"],
+    ["=model!B2", "=model!B6"],
+    ["='Model'!A1", "='Model'!A5"],
+    ["=Data!B2", "=Data!B2"],
+    ["='P&L 2025'!A1:B2", "='P&L 2025'!A1:B2"],
+    ["=[Book1.xlsx]Model!A1", "=[Book1.xlsx]Model!A1"],
+    // Text, tables, names and function names are not references.
+    ['="A1"&A1', '="A1"&A5'],
+    ["=SUM(Table1[Col])", "=SUM(Table1[Col])"],
+    ["=Tax_A1", "=Tax_A1"],
+    ["=LOG10(A1)", "=LOG10(A5)"],
+    ["=A1+Sheet2!A1+$C$3", "=A5+Sheet2!A1+$C$7"],
+  ])("rewrites %s as %s", (formula, expected) => {
+    expect(duplicateFormula(formula, BLOCK, DOWN)).toBe(expected);
+  });
+
+  it("shifts columns as well as rows", () => {
+    expect(duplicateFormula("=B2", BLOCK, { rows: 0, columns: 3 })).toBe("=E2");
+    expect(duplicateFormula("=$B$2", BLOCK, { rows: 1, columns: 3 })).toBe(
+      "=$E$3",
+    );
+  });
+
+  it("leaves a reference that would fall off the grid where it is", () => {
+    expect(duplicateFormula("=A1", BLOCK, { rows: -1, columns: 0 })).toBe(
+      "=A1",
+    );
+    expect(duplicateFormula("=A1", BLOCK, { rows: 0, columns: -1 })).toBe(
+      "=A1",
+    );
+  });
+
+  it("never touches a cell that is not a formula", () => {
+    expect(duplicateFormula("A1", BLOCK, DOWN)).toBe("A1");
+    expect(duplicateFormula("", BLOCK, DOWN)).toBe("");
+  });
+});
+
+describe("duplicateFormulas", () => {
+  it("rewrites a grid and passes plain values through", () => {
+    expect(
+      duplicateFormulas(
+        [
+          [1, "=A1*2"],
+          ["label", "=SUM($A$1:$C$3)+Z9"],
+        ],
+        BLOCK,
+        DOWN,
+      ),
+    ).toEqual([
+      [1, "=A5*2"],
+      ["label", "=SUM($A$5:$C$7)+Z9"],
+    ]);
   });
 });

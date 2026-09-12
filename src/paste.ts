@@ -1,3 +1,17 @@
+// The pure maths behind the fill and paste actions: how far a fast fill
+// reaches, the formula strings a paste writes (sign flip, IFERROR guard, CAGR,
+// rounding) and how a number format's decimals step. Owns no Office.js state.
+// Invariant: every function here is a string or grid transform - what a cell
+// currently holds goes in, what it should hold comes out, nothing is read back.
+
+import {
+  type FormulaRef,
+  formatReference,
+  GRID_COLUMNS,
+  GRID_ROWS,
+  type RefPart,
+  rewriteReferences,
+} from "./formula-refs";
 import { type CellValue, isFormula } from "./model";
 
 function isBlank(value: CellValue): boolean {
@@ -268,4 +282,94 @@ export function buildRoundFormula(
   decimals: number,
 ): string {
   return `=PLSFIX.ROUND(${rangeRef},${index},${decimals})`;
+}
+
+/** A copied rectangle, zero-based, on the sheet it was copied from. */
+export interface CellBlock {
+  sheet: string;
+  row: number;
+  column: number;
+  rowCount: number;
+  columnCount: number;
+}
+
+/** How far the paste lands from the block: positive is down and right. */
+export interface CellOffset {
+  rows: number;
+  columns: number;
+}
+
+// Excel sheet names do not differ by case, so neither may this test.
+function sameSheet(name: string, sheet: string): boolean {
+  return sheet !== "" && name.toLowerCase() === sheet.toLowerCase();
+}
+
+// A missing half is a whole column ("A:A") or a whole row ("1:1"), which spans
+// the sheet - so it is only ever inside a block that spans the sheet too.
+function span(
+  from: number | null,
+  to: number | null,
+  size: number,
+): [number, number] {
+  if (from === null || to === null) return [0, size - 1];
+  return [Math.min(from, to), Math.max(from, to)];
+}
+
+// Inside means the WHOLE reference is inside: one that straddles the edge
+// points partly at cells the paste does not carry, so it must not move.
+function insideBlock(ref: FormulaRef, block: CellBlock): boolean {
+  const [rowFrom, rowTo] = span(ref.from.row, ref.to.row, GRID_ROWS);
+  const [columnFrom, columnTo] = span(
+    ref.from.column,
+    ref.to.column,
+    GRID_COLUMNS,
+  );
+  return (
+    rowFrom >= block.row &&
+    rowTo < block.row + block.rowCount &&
+    columnFrom >= block.column &&
+    columnTo < block.column + block.columnCount
+  );
+}
+
+function shiftPart(part: RefPart, offset: CellOffset): RefPart | null {
+  const row = part.row === null ? null : part.row + offset.rows;
+  const column = part.column === null ? null : part.column + offset.columns;
+  if (row !== null && (row < 0 || row >= GRID_ROWS)) return null;
+  if (column !== null && (column < 0 || column >= GRID_COLUMNS)) return null;
+  return { ...part, row, column };
+}
+
+/**
+ * One formula of a copied block, rewritten for the block's new corner: a
+ * reference inside the block moves with it whatever its `$` markers say, and
+ * a reference outside it keeps the address it was written with. A sheet
+ * prefix naming another sheet is outside by definition; the block's own sheet
+ * by name is inside when the address falls in the block.
+ */
+export function duplicateFormula(
+  formula: CellValue,
+  block: CellBlock,
+  offset: CellOffset,
+): CellValue {
+  if (!isFormula(formula)) return formula;
+  return rewriteReferences(formula, (ref) => {
+    if (ref.sheet !== "" && !sameSheet(ref.sheet, block.sheet)) return null;
+    if (!insideBlock(ref, block)) return null;
+    const from = shiftPart(ref.from, offset);
+    const to = shiftPart(ref.to, offset);
+    // Off the grid: nothing sensible to write, so the reference stays put.
+    if (from === null || to === null) return null;
+    return formatReference(ref, from, to);
+  });
+}
+
+export function duplicateFormulas(
+  cells: CellValue[][],
+  block: CellBlock,
+  offset: CellOffset,
+): CellValue[][] {
+  return cells.map((row) =>
+    row.map((cell) => duplicateFormula(cell, block, offset)),
+  );
 }
