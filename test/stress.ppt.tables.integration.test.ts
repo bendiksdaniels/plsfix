@@ -87,7 +87,10 @@ describe("a table source that grows to the cap", () => {
       widths(TABLE_MAX_COLS),
     );
 
-    const summary = await links.updateLinks(await links.listLinks(relay), relay);
+    const summary = await links.updateLinks(
+      await links.listLinks(relay),
+      relay,
+    );
 
     expect(summary).toMatchObject({ updated: 1, failed: 0 });
     expect(tables()).toHaveLength(1);
@@ -126,7 +129,10 @@ describe("a table source that grows to the cap", () => {
       bold("b", TABLE_MAX_ROWS + 1, TABLE_MAX_COLS),
       widths(TABLE_MAX_COLS),
     );
-    const summary = await links.updateLinks(await links.listLinks(relay), relay);
+    const summary = await links.updateLinks(
+      await links.listLinks(relay),
+      relay,
+    );
     expect(summary).toMatchObject({ updated: 0, failed: 1 });
     expect(summary.failures[0]).toContain(TABLE_TOO_BIG);
     expect(tables()[0]!.table!.rowCount).toBe(2);
@@ -204,7 +210,10 @@ describe("a table the user rearranged", () => {
     );
     await pushTable(item, bold("b", 3, 2), widths(2));
 
-    const summary = await links.updateLinks(await links.listLinks(relay), relay);
+    const summary = await links.updateLinks(
+      await links.listLinks(relay),
+      relay,
+    );
 
     expect(summary).toMatchObject({ updated: 0, failed: 1 });
     expect(summary.failures[0]).toContain(
@@ -229,7 +238,10 @@ describe("a table the user rearranged", () => {
     );
     await pushTable(item, bold("b", 2, 2), widths(2));
 
-    const summary = await links.updateLinks(await links.listLinks(relay), relay);
+    const summary = await links.updateLinks(
+      await links.listLinks(relay),
+      relay,
+    );
 
     expect(summary).toMatchObject({ updated: 1, failed: 0 });
     expect(table.table!.cells[1]![1]!.text).toBe("b1-1");
