@@ -99,6 +99,38 @@ describe("a second action while the first is still running", () => {
     expect(ids.filter((id) => button(id).disabled)).toEqual([]);
   });
 
+  it("refuses a ribbon command while a batch is still in the host", async () => {
+    await bootPane();
+    await plant();
+    // Two shapes on the selected slide, so Align left would have work to do.
+    const slide = deck().slides[0]!;
+    for (const left of [10, 90]) {
+      deck().addShape(slide, { left, top: 10, width: 40, height: 40 });
+    }
+    hostHelpers().selectShapes(slide.shapes.map((shape) => shape.id));
+    click("refresh-links");
+    await settle();
+    const release = heldFetch();
+
+    click("update-all");
+    await settle(3);
+    // The ribbon shares this runtime: its press must meet the same latch as a
+    // button's, not queue behind the batch and spend its own sync deadline.
+    await hostHelpers().runCommand("PLSFIX_PPT_ALIGN_LEFT");
+    await settle();
+
+    expect(toastText()).toBe("Wait for the last action to finish.");
+    expect(slide.shapes.map((shape) => shape.left)).toEqual([10, 90]);
+
+    release();
+    await settle();
+    expect(toastText()).toBe("1 up to date");
+    // And once the batch is done the same press works.
+    await hostHelpers().runCommand("PLSFIX_PPT_ALIGN_LEFT");
+    await settle();
+    expect(toastText()).toBe("Aligned 2 objects left.");
+  });
+
   it("inserts once when Paste latest linked is pressed twice", async () => {
     await bootPane();
     await waiting();

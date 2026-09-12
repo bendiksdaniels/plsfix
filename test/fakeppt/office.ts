@@ -28,6 +28,10 @@ interface ArmedSyncFailure {
   error: Error;
 }
 
+// What Office.actions.associate hands the ribbon: the handler completes the
+// event when the command is done, which is the host's own signal.
+type CommandHandler = (event?: { completed: () => void }) => void;
+
 // The message and code a rejected sync carries when a test does not supply
 // its own, styled like the host's own "the operation could not complete".
 function syncFailure(message?: string): Error {
@@ -57,6 +61,8 @@ class FakeRuntime {
   // stayed busy for ever (tasks/lessons.md, 2026-09-08). Armed by
   // helpers.hangNextSync(): the sync ordinals whose promise never settles.
   hangSyncs: number[] = [];
+  // Every ribbon FunctionName registerCommands associated, by id.
+  commands = new Map<string, CommandHandler>();
 
   constructor(
     public presentation: FakePresentation,
@@ -204,6 +210,14 @@ function documentApi(runtime: FakeRuntime): Record<string, unknown> {
 
 function officeGlobal(runtime: FakeRuntime): Record<string, unknown> {
   return {
+    // Office.actions.associate: the ribbon's FunctionName table. Without it
+    // registerCommands returns early, so a pane test could never fire a
+    // ribbon press; helpers.runCommand(id) is how a test does.
+    actions: {
+      associate: (id: string, handler: CommandHandler) => {
+        runtime.commands.set(id, handler);
+      },
+    },
     context: {
       get platform(): string {
         return runtime.platform;
@@ -325,6 +339,15 @@ function makeHelpers(runtime: FakeRuntime): FakePptHelpers {
     // G audit: the web host that takes a batch and never answers.
     hangNextSync(afterSyncs = 0) {
       runtime.hangSyncs.push(runtime.syncs + afterSyncs + 1);
+    },
+    commandIds: () => [...runtime.commands.keys()],
+    runCommand(id) {
+      const handler = runtime.commands.get(id);
+      if (!handler) throw new Error(`no ribbon command "${id}"`);
+      // The host waits for event.completed(); so does the caller.
+      return new Promise<void>((done) => {
+        handler({ completed: () => done() });
+      });
     },
   };
 }

@@ -72,6 +72,11 @@ export interface FakePptHelpers {
   // chart draw's second chunk (tasks/lessons.md, 2026-09-08). Same ordinal
   // rule as failNextSync; the shapes of that batch never reach the deck.
   hangNextSync(afterSyncs?: number): void;
+  // The ribbon FunctionNames registerCommands associated with this host.
+  commandIds(): string[];
+  // Presses one of them the way the ribbon does, resolving when the command
+  // calls event.completed().
+  runCommand(id: string): Promise<void>;
 }
 
 let strictByDefault = false;

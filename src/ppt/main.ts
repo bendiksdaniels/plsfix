@@ -108,6 +108,8 @@ registerCommands({
     await Office.addin?.showAsTaskpane();
     tabs.activate("tab-tools");
   },
+  // Through the pane's own guard: one action at a time, ribbon included.
+  run: (work, action) => guard(work, action),
 });
 // The "?" on every section heading, added once the markup is in place.
 installHelp(document);
