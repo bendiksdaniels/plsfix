@@ -127,9 +127,12 @@ describe("PLSFIX.CAGR with the wrong thing in an argument", () => {
 });
 
 describe("PLSFIX.ROUNDSUM and PLSFIX.ROUND over a range a modeller really has", () => {
-  it("names the reason for text, a blank, a boolean and a NaN", async () => {
+  // Excel marshals an error cell as its own object rather than a number, the
+  // same shape a text cell arrives in: one refusal covers both.
+  it("names the reason for text, a blank, a boolean, a NaN and an error cell", async () => {
     const { roundSum } = await loadFunctions();
-    for (const cell of ["x", null, true, Number.NaN]) {
+    const errorCell = { code: "#N/A" };
+    for (const cell of ["x", null, true, Number.NaN, errorCell, "#REF!"]) {
       expect(shown(() => roundSum([[1, loose(cell)]], 0))).toBe(
         "#VALUE! pls,fix rounding needs numbers; this range holds text.",
       );

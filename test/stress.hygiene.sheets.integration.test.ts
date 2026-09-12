@@ -168,6 +168,18 @@ describe("the tools on a workbook that leaves them nowhere to go", () => {
     ]);
   });
 
+  // REPORTED (P2): the receipt counts every sheet, hidden ones included, so a
+  // workbook whose first sheet is hidden is told "sheet 3" about the second
+  // tab it shows. Fix in src/excel/workbook.ts (not a P2 file): moveSheet
+  // already loads the sheet list, so it can answer the position among the
+  // VISIBLE sheets, which is the strip the modeller is counting.
+  it.skip("counts the tabs a modeller can see", async () => {
+    helpers.sheet("Model").visibility = "Hidden";
+    workbook.activeSheetId = helpers.sheet("Data").id;
+
+    expect(await tab.moveThisSheet("end")).toBe("Data is now sheet 2");
+  });
+
   it("says which edge it is on rather than pretending to move", async () => {
     expect(await rejects(() => tab.moveThisSheet("up"))).toBe(
       "Model is already the first sheet.",
