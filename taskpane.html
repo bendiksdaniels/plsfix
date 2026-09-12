@@ -1210,6 +1210,45 @@
             /></label>
           </div>
         </section>
+
+        <section aria-labelledby="shortcuts-heading">
+          <div class="section-heading">
+            <div>
+              <p class="kicker">YOUR KEYS</p>
+              <h2 id="shortcuts-heading">Keyboard shortcuts</h2>
+            </div>
+            <button
+              id="shortcuts-card"
+              class="icon-button"
+              type="button"
+              aria-label="Printable card"
+              title="Printable card"
+            >
+              ⌨
+            </button>
+          </div>
+          <p class="hint" id="shortcuts-note">
+            Type a combination beside any action, then Apply. An empty box keeps
+            the pls,fix default.
+          </p>
+          <div class="settings-grid" id="shortcuts-list"></div>
+          <div class="io-row">
+            <button
+              id="shortcuts-apply"
+              type="button"
+              data-action="shortcuts-apply"
+            >
+              Apply
+            </button>
+            <button
+              id="shortcuts-reset"
+              type="button"
+              data-action="shortcuts-reset"
+            >
+              Reset all
+            </button>
+          </div>
+        </section>
       </div>
 
       <div

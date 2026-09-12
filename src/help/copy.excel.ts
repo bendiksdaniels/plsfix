@@ -215,6 +215,18 @@ const brand: HelpCopy = {
         "Copies every Brand setting to the clipboard, ready for someone else's Import JSON.",
     },
   },
+  "shortcuts-heading": {
+    about:
+      "Your own key for any pls,fix action. The keys are saved to your Office account, not to the workbook.",
+    buttons: {
+      "shortcuts-apply":
+        "Saves the keys you typed. Combinations another add-in or Excel already uses are named in the message.",
+      "shortcuts-reset":
+        "Clears every custom key and puts the shipped pls,fix defaults back.",
+      "shortcuts-card":
+        "Opens the printable page listing every shortcut, the same card the Tools tab opens.",
+    },
+  },
 };
 
 const workbook: HelpCopy = {

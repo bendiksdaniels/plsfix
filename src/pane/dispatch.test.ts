@@ -24,6 +24,7 @@ import {
 } from "../excel";
 import { isExcelReady } from "./shared";
 import { startPrecedentsOfSelection, startTrace } from "./trace-panel";
+import { applyShortcuts, resetShortcuts } from "./shortcuts-panel";
 import { dispatch } from "./dispatch";
 import {
   buryThisSheet,
@@ -85,6 +86,10 @@ vi.mock("./share-panel", () => ({
 }));
 vi.mock("./reconcile-panel", () => ({
   runReconciliation: vi.fn(async () => "reconcile ok"),
+}));
+vi.mock("./shortcuts-panel", () => ({
+  applyShortcuts: vi.fn(async () => "shortcuts applied"),
+  resetShortcuts: vi.fn(async () => "shortcuts reset"),
 }));
 vi.mock("./styles-panel", () => ({
   deleteStyles: vi.fn(async () => "styles deleted"),
@@ -150,6 +155,13 @@ describe("dispatch: every taskpane data-action", () => {
     await expect(dispatch("styles-delete")).resolves.toEqual(
       expect.any(String),
     );
+  });
+
+  it("routes the two shortcut-manager buttons to their own panel", async () => {
+    await dispatch("shortcuts-apply");
+    await dispatch("shortcuts-reset");
+    expect(applyShortcuts).toHaveBeenCalledTimes(1);
+    expect(resetShortcuts).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -220,6 +232,17 @@ describe("dispatch: without Excel connected", () => {
     await expect(dispatch("shortcut-card")).resolves.toBe(
       "Shortcut card opened",
     );
+  });
+
+  // Office.actions roams a key map on the account and never touches the file,
+  // so the two shortcut-manager buttons answer on their own terms (the panel
+  // refuses when the requirement set is missing) rather than through the
+  // "Excel is not connected." guard, which would be the wrong sentence.
+  it("still runs the shortcut manager - Office.actions, not a workbook action", async () => {
+    await expect(dispatch("shortcuts-apply")).resolves.toBe(
+      "shortcuts applied",
+    );
+    await expect(dispatch("shortcuts-reset")).resolves.toBe("shortcuts reset");
   });
 
   it("falls back to a plain tab when the host has no dialog API at all", async () => {

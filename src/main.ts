@@ -35,6 +35,7 @@ import {
   toast,
 } from "./pane/shared";
 import { renderShare } from "./pane/share-panel";
+import { installShortcutsPanel } from "./pane/shortcuts-panel";
 import {
   armStyles,
   disarmStyles,
@@ -72,6 +73,10 @@ installHelp(document);
 // The Tools tab's "New here?" card; its Shortcut card button runs the same
 // dispatch action as the Tools tab's own button.
 installFirstRun(document, "plsfix.firstRun.v1", "first-run", () => {
+  void guard(() => dispatch("shortcut-card"), "shortcut-card");
+});
+// The Brand tab's shortcut manager; its own card button opens the same dialog.
+void installShortcutsPanel(document, () => {
   void guard(() => dispatch("shortcut-card"), "shortcut-card");
 });
 getElement<HTMLButtonElement>("tab-workbook").addEventListener(

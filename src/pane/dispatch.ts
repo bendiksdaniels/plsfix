@@ -54,6 +54,7 @@ import { applyPaintSlot, capturePaintSlot } from "./paint-slots";
 import { prepareShare } from "./share-panel";
 import { runReconciliation } from "./reconcile-panel";
 import { isExcelReady } from "./shared";
+import { applyShortcuts, resetShortcuts } from "./shortcuts-panel";
 import { deleteStyles, scanStyles } from "./styles-panel";
 import {
   startPrecedentsOfSelection,
@@ -93,12 +94,23 @@ function openShortcutCard(): Promise<string> {
   });
 }
 
+// Actions that want Office chrome rather than a connected workbook: the
+// printable card (a dialog) and the shortcut manager (Office.actions, which
+// roams a user's key map and never touches the file). Each refuses on its own
+// terms, so the "Excel is not connected." guard would answer the wrong
+// question for all three.
+const HOST_FREE_ACTIONS = new Set([
+  "shortcut-card",
+  "shortcuts-apply",
+  "shortcuts-reset",
+]);
+
 export async function dispatch(action: string): Promise<string> {
   // Every other action reaches Excel through ../excel: without a connected
   // workbook that would throw whatever raw error the adapter or Excel.js
   // hits first, instead of the one clean sentence a pane with no host (or a
   // rejected one) owes every click.
-  if (action !== "shortcut-card" && !isExcelReady()) {
+  if (!HOST_FREE_ACTIONS.has(action) && !isExcelReady()) {
     throw new Error("Excel is not connected.");
   }
 
@@ -264,6 +276,10 @@ export async function dispatch(action: string): Promise<string> {
         return moveThisSheet("end");
       case "clean-past-data":
         return cleanPastData();
+      case "shortcuts-apply":
+        return applyShortcuts();
+      case "shortcuts-reset":
+        return resetShortcuts();
       default:
         throw new Error(`Unknown action: ${action}`);
     }
