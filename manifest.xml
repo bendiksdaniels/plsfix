@@ -8,7 +8,7 @@
   xmlns:ov="http://schemas.microsoft.com/office/taskpaneappversionoverrides"
   xsi:type="TaskPaneApp">
   <Id>FF1B34D8-DD7D-4B39-8FA9-6248CA09DB6E</Id>
-  <Version>2.7.10.0</Version>
+  <Version>2.7.11.0</Version>
   <ProviderName>Daniels Bendiks</ProviderName>
   <DefaultLocale>en-US</DefaultLocale>
   <DisplayName DefaultValue="pls,fix"/>
