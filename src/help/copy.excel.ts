@@ -152,6 +152,8 @@ const tools: HelpCopy = {
         "Restyles the selected chart to your palette: fonts, series colors and legend, gridlines off, labels down to the values only.",
       "chart-cagr":
         "Writes the selected series' growth rate at the top right of the selection.",
+      "chart-football":
+        "Builds a football field from a method, low and high table: one floating bar per valuation, first row on top. Up to twenty rows.",
     },
   },
   "templates-heading": {

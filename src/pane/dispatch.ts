@@ -26,6 +26,7 @@ import {
   insertColorKey,
   insertCompsStats,
   insertConsistentRounding,
+  insertFootballField,
   insertTemplate,
   insertTornado,
   insertWaterfall,
@@ -213,6 +214,8 @@ export async function dispatch(action: string): Promise<string> {
       // ---- wave v2.7, slice M1: comps and valuation tools ----
       case "comps-stats":
         return insertCompsStats();
+      case "chart-football":
+        return insertFootballField();
       default:
         throw new Error(`Unknown action: ${action}`);
     }

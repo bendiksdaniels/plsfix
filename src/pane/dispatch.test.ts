@@ -13,6 +13,7 @@ import {
   applyRowHeightCycle,
   applyRowStyleCycle,
   insertCompsStats,
+  insertFootballField,
 } from "../excel";
 import { isExcelReady } from "./shared";
 import { dispatch } from "./dispatch";
@@ -38,6 +39,7 @@ vi.mock("../excel", () => ({
   insertColorKey: vi.fn(async () => "color key ok"),
   insertCompsStats: vi.fn(async () => "comps stats ok"),
   insertConsistentRounding: vi.fn(async () => "rounded ok"),
+  insertFootballField: vi.fn(async () => "football ok"),
   insertTemplate: vi.fn(async () => "template ok"),
   insertTornado: vi.fn(async () => "tornado ok"),
   insertWaterfall: vi.fn(async () => "waterfall ok"),
@@ -212,6 +214,11 @@ describe("dispatch: wave v2.7 slice M1", () => {
   it("routes comps-stats to the comps statistics block", async () => {
     await expect(dispatch("comps-stats")).resolves.toBe("comps stats ok");
     expect(insertCompsStats).toHaveBeenCalledTimes(1);
+  });
+
+  it("routes chart-football to the football field", async () => {
+    await expect(dispatch("chart-football")).resolves.toBe("football ok");
+    expect(insertFootballField).toHaveBeenCalledTimes(1);
   });
 });
 

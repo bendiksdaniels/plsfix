@@ -442,6 +442,8 @@ export interface FakeAxis {
   fontColor?: string;
   majorGridlines?: boolean;
   reversePlotOrder?: boolean;
+  // The tick-label format a value axis takes (ExcelApi 1.8).
+  numberFormat?: string;
 }
 
 // What Excel.ChartDataLabels records: the six "show" parts, the position, the
@@ -461,6 +463,10 @@ export interface FakeDataLabels {
 export interface FakeSeries {
   showConnectorLines?: boolean;
   fillColor?: string;
+  // A series painted with no fill and no outline: the invisible floor of a
+  // stacked bar the football field draws its bands on.
+  fillCleared?: boolean;
+  lineStyle?: string;
   overlap?: number;
   gapWidth?: number;
   pointColors: Record<number, string>;
@@ -1307,6 +1313,7 @@ const RangeCopyType = {
 const ChartType = {
   columnClustered: "ColumnClustered",
   barClustered: "BarClustered",
+  barStacked: "BarStacked",
   line: "Line",
   pie: "Pie",
   pieExploded: "PieExploded",
@@ -2540,6 +2547,10 @@ class ChartAxisProxy {
   set reversePlotOrder(value: boolean) {
     this.axis.reversePlotOrder = value;
   }
+
+  set numberFormat(value: string) {
+    this.axis.numberFormat = value;
+  }
 }
 
 class ChartProxy {
@@ -2769,6 +2780,16 @@ function seriesProxy(series: FakeSeries) {
       fill: {
         setSolidColor(color: string) {
           series.fillColor = color;
+          series.fillCleared = false;
+        },
+        clear() {
+          series.fillCleared = true;
+          series.fillColor = undefined;
+        },
+      },
+      line: {
+        set lineStyle(value: string) {
+          series.lineStyle = value;
         },
       },
     },
