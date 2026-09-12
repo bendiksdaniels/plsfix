@@ -387,10 +387,9 @@ describe("shapes the host would refuse", () => {
 describe("a chart taller than the slide", () => {
   it("fits the group to the slide, as the picture would have been", async () => {
     const ws = await createWorkspace(memoryStore());
-    // 800 x 1600 pixels are 600 x 1200 points on a 540 pt slide, and the fit
-    // leaves 234 x 468 - still over MIN_SIZE, which a chart narrower than this
-    // one would not be (test/ppt.charts.minsize.integration.test.ts owns that
-    // side of the rule: below the minimum the group declines to the picture).
+    // 800 x 1600 pixels are 600 x 1200 points on a 540 pt slide; the fit
+    // leaves 234 x 468, over MIN_SIZE (below it the group declines to the
+    // picture: test/ppt.charts.minsize.integration.test.ts).
     const item = await seedChart(COLUMN, fakePng(800, 1600));
     const placed = await links.insertFromInbox(item, ws, relay);
 
