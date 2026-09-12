@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { auditGrid } from "./audit";
+import { auditGrid, consistentRegion } from "./audit";
 
 describe("cells with nothing to compare", () => {
   it("leaves constants, text and blanks unmarked", () => {
@@ -106,5 +106,114 @@ describe("deviations", () => {
 
   it("marks two adjacent mismatched formulas lone", () => {
     expect(auditGrid([["=RC[-1]", "=RC[-2]"]])).toEqual([["lone", "lone"]]);
+  });
+});
+
+// The rectangle "Select consistent region" hands back to Excel: the same R1C1
+// equality the overlay classifies with, grown instead of classified.
+describe("consistentRegion", () => {
+  const cell = "=RC[-1]*1.05";
+  const other = "=RC[-1]*1.5";
+
+  it("answers nothing for a cell that holds no formula", () => {
+    expect(consistentRegion([[1, "Revenue", null]], 0, 1)).toBeNull();
+  });
+
+  it("answers nothing for a cell outside the grid", () => {
+    expect(consistentRegion([[cell]], 4, 9)).toBeNull();
+    expect(consistentRegion([], 0, 0)).toBeNull();
+  });
+
+  it("answers the cell itself when nothing around it matches", () => {
+    expect(
+      consistentRegion(
+        [
+          [null, other, null],
+          [12, cell, "Total"],
+          [null, null, null],
+        ],
+        1,
+        1,
+      ),
+    ).toEqual({ row: 1, column: 1, rowCount: 1, columnCount: 1 });
+  });
+
+  it("grows across a filled-right row from any cell in it", () => {
+    expect(consistentRegion([[cell, cell, cell, cell]], 0, 2)).toEqual({
+      row: 0,
+      column: 0,
+      rowCount: 1,
+      columnCount: 4,
+    });
+  });
+
+  it("grows down a filled column", () => {
+    expect(consistentRegion([[cell], [cell], [cell]], 2, 0)).toEqual({
+      row: 0,
+      column: 0,
+      rowCount: 3,
+      columnCount: 1,
+    });
+  });
+
+  it("grows to the whole block when every row and column matches", () => {
+    const grid = [
+      ["Label", null, null, null],
+      [null, cell, cell, cell],
+      [null, cell, cell, cell],
+    ];
+    expect(consistentRegion(grid, 1, 2)).toEqual({
+      row: 1,
+      column: 1,
+      rowCount: 2,
+      columnCount: 3,
+    });
+  });
+
+  it("stops at a blank and at a different formula", () => {
+    expect(consistentRegion([[other, cell, cell, null, cell]], 0, 1)).toEqual({
+      row: 0,
+      column: 1,
+      rowCount: 1,
+      columnCount: 2,
+    });
+  });
+
+  it("stops a direction whose next row is only partly the same formula", () => {
+    const grid = [
+      [cell, cell, cell],
+      [cell, other, cell],
+      [cell, cell, cell],
+    ];
+    expect(consistentRegion(grid, 0, 0)).toEqual({
+      row: 0,
+      column: 0,
+      rowCount: 1,
+      columnCount: 3,
+    });
+  });
+
+  it("treats a short row as blank rather than reading past its end", () => {
+    expect(consistentRegion([[cell, cell], [cell]], 0, 0)).toEqual({
+      row: 0,
+      column: 0,
+      rowCount: 1,
+      columnCount: 2,
+    });
+  });
+
+  // Growth is horizontal first, then vertical, repeated until the rectangle
+  // stops changing: an L of matching cells becomes the row, not the column.
+  it("takes the row before the column when both would fit an L", () => {
+    const grid = [
+      [cell, cell],
+      [cell, null],
+    ];
+    expect(consistentRegion(grid, 0, 0)).toEqual({
+      row: 0,
+      column: 0,
+      rowCount: 1,
+      columnCount: 2,
+    });
   });
 });
