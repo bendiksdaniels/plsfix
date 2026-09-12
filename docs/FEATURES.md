@@ -50,7 +50,7 @@ not yet built.
 | Row height / column width cycles | US | Cycles preset standards | shipped v2.1 | P2 |
 | More/fewer decimals | US | Steps decimal places in the active format | shipped v1.1 | P1 |
 | Change sign | US | Flips sign of selected constants | shipped v1.1 | P1 |
-| Pinstripes (alternate row/col shading) | MB | Odd/even shading via conditional format | Yes (ConditionalFormat API) | P2 |
+| Pinstripes (alternate row/col shading) | MB | Odd/even shading via conditional format | Yes (ConditionalFormat API) | shipped v2.7 |
 | Custom Styles / Style Cycles (user-defined, 8 slots) | MB | Reusable multi-property styles on one key | Yes (settings-driven) | P2 |
 | Paintbrush (multi-slot format painter) | MB | Copy/apply formatting without clipboard, FIFO slots | shipped v2.1; slots saved with the workbook v2.5 | P2 |
 | Indent cycles, center cycle, underline cycle | MB | Alignment/underline cycling | Yes | P2 |
@@ -102,7 +102,7 @@ not yet built.
 | IFERROR wrap | both | Wrap/unwrap with custom fallback | shipped v1.1 (wrap/unwrap; custom value still open) | P1 |
 | Scale x1000 / /1000 | both | Rescale constants+formulas | shipped v1.1 | - |
 | Quick CAGR formula | both | Insert CAGR over range/period | shipped v1.1 | P1 |
-| Summary statistics block (min/max/mean/median under data) | MB | Auto stats for comps | Yes | P2 |
+| Summary statistics block (min/max/mean/median under data) | MB | Auto stats for comps | Yes | shipped v2.7 |
 | Add Scenarios (toggle-driven projection cases) | MB | Scenario switch cells + duplicated rows | Yes (structured but doable) | P3 |
 | Replicate Module | MB | Duplicate an analysis block across sheets | Yes | P3 |
 | Custom functions (UDFs) e.g. =PLSFIX.CAGR | - | Namespaced functions | Yes (CustomFunctions set; not iPad/perpetual<=2021) | P2 |
@@ -115,7 +115,7 @@ not yet built.
 | Stacked waterfall | US | Subcategory pillars | Partial (no native type — compose from stacked columns with helper series) | P2 |
 | CAGR arrow on chart | both | Data-driven growth arrow overlay | shipped v1.1 | P1 |
 | Chart Smart Format (brand compliance) | both | One-click restyle any chart to brand | shipped v1.1 | P1 |
-| Football field (valuation ranges) | MB | Floating-bar range chart | Yes (stacked bar with invisible base) | P2 |
+| Football field (valuation ranges) | MB | Floating-bar range chart | Yes (stacked bar with invisible base) | shipped v2.7 |
 | Marimekko / S-curve | US | Width-encoded 100% stacked | Partial (no native type; column-width tricks or scatter-area composition) | P3 |
 | XY scatter labels | MB | Correct point labels | Yes (series data labels API) | P3 |
 | Gantt (in PPT) | US | Project timelines | Partial, PPT companion scope | P3 |

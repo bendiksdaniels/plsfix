@@ -108,3 +108,26 @@ PowerPoint
       the row "Up to date" within about 15 s on desktop, under a minute on the web, never
       "stopped answering while repainting the table" (cells go eight per round trip now; on
       the web a formatted cell cost about 0.4 s per property on 09.09).
+
+## Added by the v2.7 wave (12.09): the comps and valuation tools
+
+- [ ] Comps stats: on a real comps table, the six formulas recalculate when a multiple is edited,
+      and `=PERCENTILE.INC` resolves (a non-English Excel may expect the localised function name).
+- [ ] Comps stats: the written block's number formats match the source column in a currency and in
+      a multiple format, on Excel for Mac and Excel for the web.
+- [ ] Football field: the stacked bar really shows floating bars in desktop Excel - the floor series
+      invisible, no outline artefact at its top edge - and the legend is off.
+- [ ] Football field: `categoryAxis.reversePlotOrder` puts the first selected method at the top in
+      desktop Excel and on the web (the fake only records the flag).
+- [ ] Football field: `valueAxis.numberFormat` is honoured on Excel for the web (axis number format
+      is ExcelApi 1.8; the web build has been known to ignore chart axis writes).
+- [ ] Football field: the chart lands beside the helper block, not on the model, on a real sheet
+      with non-uniform row heights.
+- [ ] Pinstripes: `#E8E9EC` is visible but not distracting on a real screen and when printed, and
+      it reads correctly against a workbook whose own theme is dark.
+- [ ] Pinstripes: a second press over a real hand-formatted grid clears exactly the bands and
+      nothing else - Excel's own read-back of a solid fill must return the same hex it was given
+      (see the 2026-08-27 lesson on read-back canonicalisation).
+- [ ] Pinstripes over columns on a sheet with grouped or hidden columns: the bands follow the
+      selection's own column order, not the visible one.
+- [ ] All three: the toasts fit the pane at a 320 px dock without wrapping past two lines.
