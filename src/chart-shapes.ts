@@ -235,6 +235,7 @@ function baselineLine(
 // (same left) sit next to each other in the output.
 function columnBars(
   data: ChartData,
+  chart: Box,
   plot: Box,
   scale: ValueScale,
 ): Primitive[] {
@@ -259,7 +260,7 @@ function columnBars(
       const top = valueY(hi, scale, plot);
       const box = boxAt(left, top, barWidth, valueY(lo, scale, plot) - top);
       out.push(rect(box, series.colors[i]!, `bar ${j}.${i}`));
-      out.push(...segmentLabel(data, series, j, i, value, box, stacked, true));
+      out.push(...segmentLabel(data, series, j, i, box, stacked, true, chart));
     });
   });
   return out;
@@ -267,7 +268,12 @@ function columnBars(
 
 // Bar and tornado rows: one row per category, series stacked vertically
 // within it (or overlapping, longer first, when `overlap` is set).
-function barBars(data: ChartData, plot: Box, scale: ValueScale): Primitive[] {
+function barBars(
+  data: ChartData,
+  chart: Box,
+  plot: Box,
+  scale: ValueScale,
+): Primitive[] {
   const stacked = data.kind === "stackedBar";
   const overlap = data.overlap === true && !stacked;
   const n = data.categories.length;
@@ -293,7 +299,7 @@ function barBars(data: ChartData, plot: Box, scale: ValueScale): Primitive[] {
       const left = valueX(lo, scale, plot);
       const box = boxAt(left, top, valueX(hi, scale, plot) - left, barHeight);
       out.push(rect(box, series.colors[i]!, `bar ${j}.${i}`));
-      out.push(...segmentLabel(data, series, j, i, value, box, stacked, false));
+      out.push(...segmentLabel(data, series, j, i, box, stacked, false, chart));
     });
   });
   return out;
@@ -366,28 +372,20 @@ export function layoutChart(data: ChartData, box: Box): Primitive[] {
     out.push(...pieWedges(data, plot));
   } else {
     const scale = valueScale(data);
+    // Built up front and pushed last, exactly where each kind pushed its own:
+    // the zero line is the same line whatever draws above it, and one name
+    // keeps every branch to the one call that differs.
+    const zero = baselineLine(data.kind, data, plot, scale);
     if (data.kind === "column" || data.kind === "stackedColumn") {
-      out.push(
-        ...columnBars(data, plot, scale),
-        baselineLine(data.kind, data, plot, scale),
-      );
+      out.push(...columnBars(data, box, plot, scale), zero);
     } else if (data.kind === "bar" || data.kind === "stackedBar") {
-      out.push(
-        ...barBars(data, plot, scale),
-        baselineLine(data.kind, data, plot, scale),
-      );
+      out.push(...barBars(data, box, plot, scale), zero);
       if (labelColumn)
         out.push(...categoryLabels(data, plot, labelColumn, true));
     } else if (data.kind === "line") {
-      out.push(
-        ...lineSeries(data, plot, scale),
-        baselineLine(data.kind, data, plot, scale),
-      );
+      out.push(...lineSeries(data, plot, scale), zero);
     } else {
-      out.push(
-        ...waterfallBars(data, plot, scale),
-        baselineLine(data.kind, data, plot, scale),
-      );
+      out.push(...waterfallBars(data, plot, scale), zero);
     }
     // Every kind but the bar family labels its categories under the plot; the
     // bar family has none, so this is skipped rather than repeated per kind.

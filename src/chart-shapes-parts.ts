@@ -191,20 +191,59 @@ export function rowOrder(
   );
 }
 
+function clampTo(value: number, low: number, high: number): number {
+  return Math.max(low, Math.min(value, high));
+}
+
+// A horizontal bar's value label: past the end of the bar where the chart box
+// has the room, and inside the bar end - reading back towards it - where it
+// has not. A nine-digit number on the longest bar of a forty-row chart would
+// otherwise run past the box the group was placed in, and a group's own box is
+// the union of its children.
+function barLabel(
+  content: string,
+  ink: string,
+  value: number,
+  bar: Box,
+  chart: Box,
+  name: string,
+): Text {
+  const width = Math.min(textWidth(content, LABEL_SIZE), chart.width);
+  const right = chart.left + chart.width;
+  const past = value >= 0 ? bar.left + bar.width : bar.left - width;
+  const crosses = past < chart.left || past + width > right;
+  const inside = value >= 0 ? bar.left + bar.width - width : bar.left;
+  const box = boxAt(
+    clampTo(crosses ? inside : past, chart.left, right - width),
+    clampTo(
+      bar.top + (bar.height - LABEL_HEIGHT) / 2,
+      chart.top,
+      chart.top + chart.height - LABEL_HEIGHT,
+    ),
+    width,
+    LABEL_HEIGHT,
+  );
+  const outward = value >= 0 ? "l" : "r";
+  const inward = value >= 0 ? "r" : "l";
+  return label(box, content, ink, crosses ? inward : outward, name);
+}
+
 // A value label outside the bar it belongs to: above a positive column bar or
-// right of a positive bar-chart bar, the far side for a negative one. A
-// stacked segment's label sits centred inside instead, white on a dark fill,
-// and is dropped when the segment is too thin to hold it.
+// right of a positive bar-chart bar, the far side for a negative one, and
+// never outside `chart`, the box the whole chart is laid out in. A stacked
+// segment's label sits centred inside instead, white on a dark fill, and is
+// dropped when the segment is too thin to hold it.
 export function segmentLabel(
   data: ChartData,
   series: ChartSeries,
   j: number,
   i: number,
-  value: number,
   box: Box,
   stacked: boolean,
   vertical: boolean,
+  chart: Box,
 ): Text[] {
+  const value = series.values[i]!;
   const content = series.labels[i]!;
   const name = `label ${j}.${i}`;
   if (stacked) {
@@ -224,18 +263,7 @@ export function segmentLabel(
       ),
     ];
   }
-  const width = textWidth(content, LABEL_SIZE);
-  const left = value >= 0 ? box.left + box.width : box.left - width;
-  const top = box.top + (box.height - LABEL_HEIGHT) / 2;
-  return [
-    label(
-      boxAt(left, top, width, LABEL_HEIGHT),
-      content,
-      data.ink,
-      value >= 0 ? "l" : "r",
-      name,
-    ),
-  ];
+  return [barLabel(content, data.ink, value, box, chart, name)];
 }
 
 export function legendItems(data: ChartData): string[] {
