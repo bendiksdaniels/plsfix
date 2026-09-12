@@ -259,6 +259,8 @@ const workbook: HelpCopy = {
     buttons: {
       "share-prepare":
         "Puts every visible sheet back at A1, then reports what a reader would still find. Nothing is deleted.",
+      "clean-past-data":
+        "Deletes the empty rows and columns past this sheet's data. Outside pls,fix Undo.",
     },
   },
   "model-check": {

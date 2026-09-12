@@ -818,9 +818,15 @@ const SHAPES: Record<string, Shape> = {
   charts: {
     scalars: ["items"],
     items: "chart",
-    returns: { add: "chart", getItemOrNullObject: "chart" },
+    returns: {
+      add: "chart",
+      getItemOrNullObject: "chart",
+      getCount: "clientResult",
+    },
   },
-  shapes: { returns: { addTextBox: "shape" } },
+  shapes: {
+    returns: { addTextBox: "shape", getCount: "clientResult" },
+  },
   range: {
     scalars: [
       "address",
@@ -1355,6 +1361,11 @@ const SheetVisibility = {
   visible: "Visible",
   hidden: "Hidden",
   veryHidden: "VeryHidden",
+} as const;
+
+const DeleteShiftDirection = {
+  up: "Up",
+  left: "Left",
 } as const;
 
 const ClearApplyTo = {
@@ -2106,6 +2117,37 @@ class RangeProxy {
 
   getDirectDependents() {
     return this.trace(this.runtime.workbook.dependents);
+  }
+
+  // Range.delete: the cells of the range go and what sat past them is pulled
+  // back - Up for a band of rows, Left for a band of columns. Walked over the
+  // sheet's populated cells rather than over the rectangle, so a whole-row
+  // delete (16 384 columns wide) is one pass over the map. Deliberately
+  // simple: row heights, column widths and merges stay where they are, which
+  // no flow here reads back after a delete.
+  delete(shift: string = DeleteShiftDirection.up): void {
+    if (refuseProtected(this.ctx, this.sheet, this.rect)) return;
+    const { row, col, rowCount, colCount } = this.rect;
+    const up = shift !== DeleteShiftDirection.left;
+    const kept = new Map<string, FakeCell>();
+
+    for (const [key, cell] of this.sheet.cells) {
+      const [r, c] = key.split(",").map(Number) as [number, number];
+      const inBand = up
+        ? c >= col && c < col + colCount
+        : r >= row && r < row + rowCount;
+      if (!inBand) {
+        kept.set(key, cell);
+        continue;
+      }
+      const along = up ? r : c;
+      const from = up ? row : col;
+      const span = up ? rowCount : colCount;
+      if (along >= from && along < from + span) continue;
+      const moved = along >= from + span ? along - span : along;
+      kept.set(up ? this.sheet.key(moved, c) : this.sheet.key(r, moved), cell);
+    }
+    this.sheet.cells = kept;
   }
 }
 
@@ -3279,6 +3321,13 @@ class WorksheetProxy {
         missing.isNullObject = true;
         return missing;
       },
+      // ClientResult: .value arrives with the next sync, no load needed.
+      getCount(): { value: number } {
+        const count = runtime.workbook.charts.filter(
+          (record) => record.sheetName === sheet.name,
+        ).length;
+        return { value: count };
+      },
     };
   }
 
@@ -3295,6 +3344,12 @@ class WorksheetProxy {
         };
         runtime.workbook.shapes.push(record);
         return new ShapeProxy(record);
+      },
+      getCount(): { value: number } {
+        const count = runtime.workbook.shapes.filter(
+          (record) => record.sheetName === sheet.name,
+        ).length;
+        return { value: count };
       },
     };
   }
@@ -3833,6 +3888,7 @@ export function installFakeHost(options: FakeHostOptions = {}): {
     RangeValueType,
     SheetVisibility,
     ClearApplyTo,
+    DeleteShiftDirection,
     ShapeTextHorizontalAlignment,
     ShapeTextVerticalAlignment,
     ChartLineStyle,

@@ -23,6 +23,7 @@ import {
   applySignFlip,
   applyUnderlineCycle,
   autocolorSelection,
+  cleanPastData,
   clearFormats,
   fastFillAuto,
   formatSelectedChart,
@@ -252,6 +253,8 @@ export async function dispatch(action: string): Promise<string> {
         return moveThisSheet("down");
       case "sheets-move-end":
         return moveThisSheet("end");
+      case "clean-past-data":
+        return cleanPastData();
       default:
         throw new Error(`Unknown action: ${action}`);
     }

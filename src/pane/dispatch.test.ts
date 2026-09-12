@@ -17,6 +17,7 @@ import {
   applyRowHeightCycle,
   applyRowStyleCycle,
   applyUnderlineCycle,
+  cleanPastData,
   insertCompsStats,
   insertFootballField,
 } from "../excel";
@@ -47,6 +48,7 @@ vi.mock("../excel", () => ({
   applySignFlip: vi.fn(async () => undefined),
   applyUnderlineCycle: vi.fn(async () => undefined),
   autocolorSelection: vi.fn(async () => "autocolor ok"),
+  cleanPastData: vi.fn(async () => "cleaned ok"),
   clearFormats: vi.fn(async () => undefined),
   fastFillAuto: vi.fn(async () => undefined),
   formatSelectedChart: vi.fn(async () => undefined),
@@ -287,5 +289,10 @@ describe("dispatch: the hygiene cycles and the sheet tools", () => {
     expect(unhideAllSheets).toHaveBeenCalledTimes(1);
     expect(showOnlyThisSheet).toHaveBeenCalledTimes(1);
     expect(buryThisSheet).toHaveBeenCalledTimes(1);
+  });
+
+  it("routes Clean past the data and hands its count back", async () => {
+    await expect(dispatch("clean-past-data")).resolves.toBe("cleaned ok");
+    expect(cleanPastData).toHaveBeenCalledTimes(1);
   });
 });
