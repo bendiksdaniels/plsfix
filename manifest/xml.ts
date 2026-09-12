@@ -312,6 +312,7 @@ export function buildManifest(
     `  <DisplayName DefaultValue="${escapeXml(spec.displayName)}"/>`,
     `  <Description DefaultValue="${escapeXml(spec.description)}"/>`,
     `  <IconUrl DefaultValue="${escapeXml(env.baseUrl)}assets/icon-32.png"/>`,
+    `  <HighResolutionIconUrl DefaultValue="${escapeXml(env.baseUrl)}assets/icon-64.png"/>`,
     `  <SupportUrl DefaultValue="${escapeXml(spec.supportUrl)}"/>`,
     `  <AppDomains>`,
     `    <AppDomain>${escapeXml(spec.appDomain)}</AppDomain>`,
