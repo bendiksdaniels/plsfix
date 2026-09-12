@@ -68,6 +68,47 @@ describe("toolEntries", () => {
     const entries = toolEntries(document);
     expect(entries.some((e) => e.action === "export-selection")).toBe(true);
   });
+
+  it("catalogues the hygiene cycles and the sheet tools on their own tabs", async () => {
+    const { toolEntries } = await load();
+    const entries = toolEntries(document);
+    const found = (action: string) =>
+      entries.find((entry) => entry.action === action);
+
+    expect(found("cycle-indent")).toMatchObject({
+      label: "Indent",
+      tab: "Tools",
+    });
+    expect(found("cycle-align")?.tab).toBe("Tools");
+    expect(found("cycle-underline")?.tab).toBe("Tools");
+    expect(found("sheets-unhide-all")).toMatchObject({
+      label: "Unhide all",
+      tab: "Workbook",
+    });
+    expect(found("sheets-move-end")?.tab).toBe("Workbook");
+    expect(found("clean-past-data")).toMatchObject({
+      label: "Clean past the data",
+      tab: "Workbook",
+    });
+    // Every one of them carries its help sentence into the search row.
+    for (const action of [
+      "cycle-indent",
+      "cycle-align",
+      "cycle-underline",
+      "sheets-unhide-all",
+      "sheets-show-only",
+      "sheets-bury",
+      "sheets-move-up",
+      "sheets-move-down",
+      "sheets-move-end",
+      "clean-past-data",
+    ]) {
+      expect([action, found(action)?.sentence.length ?? 0]).not.toEqual([
+        action,
+        0,
+      ]);
+    }
+  });
 });
 
 describe("installToolSearch", () => {
