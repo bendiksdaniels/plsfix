@@ -87,6 +87,10 @@ const tools: HelpCopy = {
         "Steps the borders: bottom rule, total, result, box, then grid.",
       "cycle-row-height": "Steps the row height: 15, 18, 21, 24, then 30 pt.",
       "cycle-col-width": "Steps the column width: 64, 80, 96, 120, then 48 pt.",
+      "pinstripes-rows":
+        "Bands every second row of the selection in a light brand tint, so a wide grid reads across. Press again to take the bands off.",
+      "pinstripes-columns":
+        "The same bands running down the columns instead of across the rows. Press again to take them off.",
     },
   },
   "tools-heading": {

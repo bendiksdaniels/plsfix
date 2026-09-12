@@ -14,6 +14,7 @@ import {
   applyFontColorCycle,
   applyNumberCycle,
   applyNumberFormat,
+  applyPinstripes,
   applyPreset,
   applyRowHeightCycle,
   applyRowStyleCycle,
@@ -216,6 +217,10 @@ export async function dispatch(action: string): Promise<string> {
         return insertCompsStats();
       case "chart-football":
         return insertFootballField();
+      case "pinstripes-rows":
+        return applyPinstripes("rows");
+      case "pinstripes-columns":
+        return applyPinstripes("columns");
       default:
         throw new Error(`Unknown action: ${action}`);
     }

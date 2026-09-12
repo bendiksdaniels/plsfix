@@ -10,6 +10,7 @@ import { join } from "node:path";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   applyColumnWidthCycle,
+  applyPinstripes,
   applyRowHeightCycle,
   applyRowStyleCycle,
   insertCompsStats,
@@ -27,6 +28,7 @@ vi.mock("../excel", () => ({
   applyFontColorCycle: vi.fn(async () => undefined),
   applyNumberCycle: vi.fn(async () => undefined),
   applyNumberFormat: vi.fn(async () => undefined),
+  applyPinstripes: vi.fn(async () => "pinstripes ok"),
   applyPreset: vi.fn(async () => undefined),
   applyRowHeightCycle: vi.fn(async () => undefined),
   applyRowStyleCycle: vi.fn(async () => undefined),
@@ -219,6 +221,13 @@ describe("dispatch: wave v2.7 slice M1", () => {
   it("routes chart-football to the football field", async () => {
     await expect(dispatch("chart-football")).resolves.toBe("football ok");
     expect(insertFootballField).toHaveBeenCalledTimes(1);
+  });
+
+  it("routes the two pinstripe buttons to their own axis", async () => {
+    await expect(dispatch("pinstripes-rows")).resolves.toBe("pinstripes ok");
+    await dispatch("pinstripes-columns");
+    expect(applyPinstripes).toHaveBeenNthCalledWith(1, "rows");
+    expect(applyPinstripes).toHaveBeenNthCalledWith(2, "columns");
   });
 });
 
