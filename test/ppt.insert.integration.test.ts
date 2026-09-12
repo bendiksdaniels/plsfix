@@ -66,6 +66,29 @@ describe("insert from inbox", () => {
     expect(links.latestInboxItem(inbox)?.id).toBe(newer.id);
   });
 
+  it("breaks a same-second tie with the server's own order, last export first", async () => {
+    const ws = await createWorkspace(memoryStore());
+    const first = await seedLink(fakePng(100, 50));
+    await relay.postInbox(
+      ws.id,
+      ws.auth,
+      first.id,
+      await seal(ws.enc, ws.id, encodeInboxItem(first)),
+    );
+    // No `relay.now += 1` here: both rows land in the same whole second, the
+    // case that used to let "Paste latest linked" pick the older export.
+    const second = await seedLink(fakePng(200, 100));
+    await relay.postInbox(
+      ws.id,
+      ws.auth,
+      second.id,
+      await seal(ws.enc, ws.id, encodeInboxItem(second)),
+    );
+    const inbox = await links.listInbox(ws, relay);
+    expect(inbox.map((item) => item.id)).toEqual([second.id, first.id]);
+    expect(links.latestInboxItem(inbox)?.id).toBe(second.id);
+  });
+
   it("creates a tagged picture-filled rectangle sized to the image, at the first free spot, and clears the inbox", async () => {
     const ws = await createWorkspace(memoryStore());
     const item = await seedLink(fakePng(800, 400));

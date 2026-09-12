@@ -395,8 +395,8 @@ export async function listInbox(
       // Sealed with another workspace key, or corrupt: not ours to show.
     }
   }
-  // A relay is free to return rows in storage order. The pane's one-click
-  // paste must mean newest export, not whichever row happened to arrive first.
+  // The relay already orders rows newest first with ties broken by arrival;
+  // sort is stable, so equal createdAt values keep that server order here too.
   return items
     .sort((left, right) => right.createdAt - left.createdAt)
     .map(({ item }) => item);

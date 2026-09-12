@@ -38,7 +38,13 @@ impl Store {
         Ok(())
     }
 
-    /// Live items of a workspace, newest first; a foreign key simply sees none.
+    /// Live items of a workspace, newest first. `created_at` is whole seconds,
+    /// so two exports in the same second tie; the old tiebreak, `id DESC`,
+    /// sorted on the link's random hex id and so picked either one with even
+    /// odds. `rowid` only ever grows (this table keeps its default rowid, and
+    /// a re-export upserts the existing row rather than reinserting it), so a
+    /// tie now reads as "the one exported last of the two", matching what
+    /// "Paste latest linked" promises. A foreign key simply sees no rows.
     pub fn list_inbox(
         &self,
         ws: &str,
@@ -47,7 +53,7 @@ impl Store {
     ) -> rusqlite::Result<Vec<InboxRow>> {
         let conn = self.conn();
         let mut statement = conn.prepare(
-            "SELECT id, created_at, blob FROM inbox_v2 WHERE ws = ?1 AND auth_hash = ?2 AND expires_at > ?3 ORDER BY created_at DESC, id DESC",
+            "SELECT id, created_at, blob FROM inbox_v2 WHERE ws = ?1 AND auth_hash = ?2 AND expires_at > ?3 ORDER BY created_at DESC, rowid DESC",
         )?;
         let rows = statement.query_map(params![ws, auth_hash.as_slice(), now], |row| {
             Ok(InboxRow {

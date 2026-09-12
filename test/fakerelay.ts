@@ -222,9 +222,16 @@ export class FakeRelay implements RelayApi {
       blob,
     });
   }
+  // Same order as the fixed SELECT in server/src/store_inbox.rs: created_at
+  // DESC, then insertion DESC so two rows the same whole second still tie-
+  // break to the one exported last, not whichever the map happened to hold
+  // first. Reverse before the stable sort, since a stable sort keeps a tied
+  // pair in the order it was given, and insertion order is all a Map has.
   async listInbox(ws: string, auth: string): Promise<InboxRow[]> {
     return [...this.inbox.values()]
       .filter((row) => row.ws === ws && row.auth === auth)
+      .reverse()
+      .sort((left, right) => right.createdAt - left.createdAt)
       .map((row) => ({
         id: row.id,
         createdAt: row.createdAt,

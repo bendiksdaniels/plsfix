@@ -14,7 +14,7 @@ mod relay_touch;
 pub mod store;
 mod store_inbox;
 
-use std::{path::PathBuf, sync::Arc};
+use std::{path::PathBuf, sync::Arc, time::Duration};
 
 use axum::{
     extract::{Request, State},
@@ -24,9 +24,13 @@ use axum::{
     routing::get,
     Router,
 };
-use tower_http::services::ServeDir;
+use tower_http::{services::ServeDir, timeout::TimeoutLayer};
 
 use crate::relay::AppState;
+
+/// A stalled connection - a slow client, a wedged upstream - must not hold a
+/// worker forever: past this, the layer below answers 408 on its own.
+pub const REQUEST_TIMEOUT_SECS: u64 = 30;
 
 /// The gateway parses `version`, so that field never changes shape. `relay` is
 /// counted on request and is what the VPS is watched by: rows held, the links
@@ -112,8 +116,10 @@ async fn no_dotfiles(request: Request, next: Next) -> Response {
     next.run(request).await
 }
 
-/// Suite endpoints, the manifest, the relay and the built panes, in that order.
-pub fn app(static_dir: PathBuf, state: Arc<AppState>) -> Router {
+/// Suite endpoints, the manifest, the relay and the built panes, in that
+/// order, every request bounded by `timeout`. Split from `app` so a test can
+/// pass a short deadline instead of waiting out the real one.
+pub fn app_with_timeout(static_dir: PathBuf, state: Arc<AppState>, timeout: Duration) -> Router {
     Router::new()
         .route("/healthz", get(|| async { healthz() }))
         .route("/version", get(version))
@@ -124,4 +130,11 @@ pub fn app(static_dir: PathBuf, state: Arc<AppState>) -> Router {
         .fallback_service(ServeDir::new(static_dir))
         .layer(middleware::from_fn(no_dotfiles))
         .layer(middleware::from_fn(cache_control))
+        .layer(TimeoutLayer::new(timeout))
+}
+
+/// Suite endpoints, the manifest, the relay and the built panes, in that
+/// order, bounded by REQUEST_TIMEOUT_SECS.
+pub fn app(static_dir: PathBuf, state: Arc<AppState>) -> Router {
+    app_with_timeout(static_dir, state, Duration::from_secs(REQUEST_TIMEOUT_SECS))
 }

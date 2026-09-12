@@ -154,6 +154,27 @@ mod tests {
         );
         assert!(store.delete_inbox("WS", &hash(1), ID, 10).unwrap());
     }
+
+    // Two rows in the same whole second: the SQL used to tie-break on the
+    // link's random hex id (`id DESC`), so a lexically later id could win
+    // even when it was exported first. rowid only grows, so the row inserted
+    // last - the one "Paste latest linked" ought to mean - now wins the tie
+    // regardless of what its id happens to look like.
+    #[test]
+    fn same_second_inbox_rows_tie_break_to_the_one_inserted_last() {
+        let store = Store::in_memory().unwrap();
+        let older = "zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz";
+        let newer = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+        store
+            .post_inbox("WS", &hash(1), older, b"first", 10)
+            .unwrap();
+        store
+            .post_inbox("WS", &hash(1), newer, b"second", 10)
+            .unwrap();
+        let rows = store.list_inbox("WS", &hash(1), 10).unwrap();
+        assert_eq!(rows[0].id, newer);
+        assert_eq!(rows[1].id, older);
+    }
 }
 
 #[test]
