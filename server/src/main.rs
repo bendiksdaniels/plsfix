@@ -110,13 +110,21 @@ fn state_from_env(store: Store) -> AppState {
     state
 }
 
-/// A deployment bound to loopback is behind something, and a deployment that
-/// trusts no forwarding header counts every request under the peer address -
-/// which behind a proxy is the proxy. Together that is one bucket for everyone,
-/// so it earns a line at startup. A warning, never a refusal: an operator may
-/// mean it (I1 of the N1 security review).
-fn shares_one_bucket(trust: TrustedProxy, bind: IpAddr) -> bool {
-    trust == TrustedProxy::None && bind.is_loopback()
+/// A deployment that trusts no forwarding header counts every request under
+/// the peer address, which behind a proxy is the proxy: one bucket for everyone.
+/// Bound to loopback it IS behind something, so that is a warning; bound to the
+/// world (the container image) a proxy may or may not sit in front, so that is
+/// a note. Never a refusal: an operator may mean it (I1 of the N1 security review).
+fn one_bucket_line(trust: TrustedProxy, bind: IpAddr) -> Option<&'static str> {
+    match (trust, bind.is_loopback()) {
+        (TrustedProxy::None, true) => Some(
+            "warning: behind a proxy and trusting nothing: every client shares one bucket; set MODELIS_TRUSTED_PROXY",
+        ),
+        (TrustedProxy::None, false) => Some(
+            "note: trusting no forwarding header: behind a reverse proxy every client would share one bucket; set MODELIS_TRUSTED_PROXY if one sits in front",
+        ),
+        _ => None,
+    }
 }
 
 /// What this process is, on three lines, before the first request.
@@ -143,10 +151,8 @@ fn announce(state: &AppState, static_dir: &Path, data_dir: &Path, addr: SocketAd
             None => String::from(" verbatim"),
         }
     );
-    if shares_one_bucket(state.trusted_proxy, bind) {
-        eprintln!(
-            "warning: behind a proxy and trusting nothing: every client shares one bucket; set MODELIS_TRUSTED_PROXY"
-        );
+    if let Some(line) = one_bucket_line(state.trusted_proxy, bind) {
+        eprintln!("{line}");
     }
 }
 
@@ -192,14 +198,19 @@ mod tests {
     const OPEN: IpAddr = IpAddr::V4(std::net::Ipv4Addr::UNSPECIFIED);
 
     /// The hosted unit's shape - loopback behind the gateway, no trust mode -
-    /// is the one that quietly puts every client in one bucket.
+    /// is the one that quietly puts every client in one bucket. The container
+    /// image binds the world behind Caddy or nginx and gets the conditional line.
     #[test]
-    fn a_loopback_bind_that_trusts_nothing_is_warned_about() {
-        assert!(shares_one_bucket(TrustedProxy::None, LOOPBACK));
-        assert!(!shares_one_bucket(TrustedProxy::Cloudflare, LOOPBACK));
-        assert!(!shares_one_bucket(TrustedProxy::ForwardedFor, LOOPBACK));
-        // Bound to the world, the peer address really is the client.
-        assert!(!shares_one_bucket(TrustedProxy::None, OPEN));
+    fn a_bind_that_trusts_nothing_gets_its_line() {
+        assert!(one_bucket_line(TrustedProxy::None, LOOPBACK)
+            .unwrap()
+            .starts_with("warning:"));
+        assert!(one_bucket_line(TrustedProxy::None, OPEN)
+            .unwrap()
+            .starts_with("note:"));
+        assert!(one_bucket_line(TrustedProxy::Cloudflare, LOOPBACK).is_none());
+        assert!(one_bucket_line(TrustedProxy::ForwardedFor, LOOPBACK).is_none());
+        assert!(one_bucket_line(TrustedProxy::Cloudflare, OPEN).is_none());
     }
 
     /// A trust mode nobody can read is not a reason to start trusting one.
