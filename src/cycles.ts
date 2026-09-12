@@ -1,3 +1,10 @@
+// Every cycle a pls,fix button steps, as pure data: which look follows which
+// for numbers, row styles, fills, fonts, borders, sizes, indent, alignment and
+// the underline. Owns the ladders and the matching rules only - the Office.js
+// side lives in src/excel/format-cycles.ts and src/excel/sizes.ts.
+// Invariant: matching canonicalises both sides, because Excel rewrites what it
+// gives back (tasks/lessons.md 2026-08-27).
+
 import {
   type BrandSettings,
   contrastText,
@@ -336,4 +343,57 @@ export function nextSize(
   // -1 for a size we did not set - a hand-dragged row - which steps to entry 0.
   const next = cycle[(index + 1) % cycle.length];
   return next ?? current;
+}
+
+// ---------------------------------------------------------------------------
+// Hygiene cycles: the indent, the horizontal alignment and the font underline
+// a label column and a total row get tidied with. Excel rewrites these on
+// read-back too (an accounting underline answers "SingleAccountant", a range
+// whose cells disagree answers nothing), so each ladder canonicalises both
+// sides before it looks for its position, as the number formats do.
+// ---------------------------------------------------------------------------
+
+export const INDENT_CYCLE = [0, 1, 2, 3];
+export const ALIGN_CYCLE = ["Left", "Center", "Right", "General"];
+export const UNDERLINE_CYCLE = ["Single", "Double", "None"];
+
+/** Excel spells these "Center" and "SingleAccountant"; case is not evidence. */
+export function canonicalAlignment(value: string | null | undefined): string {
+  return (value ?? "").trim().toLowerCase();
+}
+
+/** An accounting underline draws the same rule, so it is the same rung. */
+export function canonicalUnderline(value: string | null | undefined): string {
+  return canonicalAlignment(value).replace("accountant", "");
+}
+
+// Shared step: the entry after the one the cell is already wearing, and entry 0
+// for a state we did not apply (-1 + 1), so the next press starts our ladder.
+function stepThrough(
+  cycle: string[],
+  current: string | null | undefined,
+  canonical: (value: string | null | undefined) => string,
+): string {
+  const index = cycle.findIndex(
+    (entry) => canonical(entry) === canonical(current),
+  );
+  return cycle[(index + 1) % cycle.length] ?? "";
+}
+
+/** A null indent - a range whose cells disagree, or none set - is no indent. */
+export function nextIndent(current: number | null | undefined): number {
+  const level =
+    typeof current === "number" && Number.isFinite(current)
+      ? Math.max(0, Math.round(current))
+      : 0;
+  const index = INDENT_CYCLE.indexOf(level);
+  return INDENT_CYCLE[(index + 1) % INDENT_CYCLE.length] ?? 0;
+}
+
+export function nextAlignment(current: string | null | undefined): string {
+  return stepThrough(ALIGN_CYCLE, current, canonicalAlignment);
+}
+
+export function nextUnderline(current: string | null | undefined): string {
+  return stepThrough(UNDERLINE_CYCLE, current, canonicalUnderline);
 }
