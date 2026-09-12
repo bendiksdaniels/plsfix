@@ -226,3 +226,19 @@ PowerPoint
       read-only tools end on `.select()`, and the host may refuse that with a raw string instead of a
       pls,fix sentence. Shared with `src/excel/reconcile.ts`, which selects the same way; if it does
       refuse, all three need the same staged wording.
+
+## Added by the v2.7 wave (13.09): the shortcut manager
+
+- [ ] Excel desktop (Windows, Microsoft 365, signed in): Brand > Keyboard shortcuts fills the boxes that already carry a custom key on that account, Apply toasts "Shortcuts updated for your account.", and the remapped key runs the action in the sheet.
+- [ ] Excel desktop (Mac, signed in): the rows print `Cmd`/`Option`, and the key that actually fires the action is confirmed - Ctrl or Cmd - since the documentation only states Cmd -> Ctrl on Windows and Alt -> Option on Mac, never Ctrl -> Cmd on Mac.
+- [ ] Excel for the web (signed in): the panel works and the remapped shortcut fires with focus on the grid (the docs warn custom shortcuts do not fire while the task pane has focus).
+- [ ] Signed OUT of Office (or a local/anonymous account): Apply toasts exactly "Custom shortcuts need Microsoft 365 with a signed-in account.", and the copyable details block carries the real `code:` Office rejected with - record that code so the guess in section 3 can be replaced by the documented one.
+- [ ] Excel too old for KeyboardShortcuts 1.1 (Windows before 2111 / Mac before 16.55): the section shows the same sentence with every box disabled, and neither button throws anything else.
+- [ ] Deliberate clash: set a pls,fix action to a combination another add-in or Excel already owns; Apply toasts "... Already used elsewhere: <key>." and Excel's own conflict dialog appears on the first press of that key.
+- [ ] Reset all on an account with several custom keys: every key goes back to the shipped default, the boxes empty, and reopening the Brand tab still shows them empty.
+- [ ] The keys survive: sign in to Excel on a second machine with the same account and confirm the custom keys roamed (the docs say roaming settings, per platform).
+- [ ] Printable card from the section heading opens the same dialog as the Tools tab's card button.
+---
+The Mac row in section 8 is replaced by these two:
+- [ ] Excel desktop (Mac, signed in): a `Ctrl+...` row fires on the physical key the Mac reports, and the pane prints `Ctrl`, not `Cmd`. Record which physical key it actually is: the documentation states only Cmd -> Ctrl on Windows and Alt -> Option on Mac, so this is the open question.
+- [ ] Excel desktop (Mac, signed in): set one action to a `Cmd+Shift+<key>` combination and confirm Office accepts the string and the Command key fires it, since the docs say Cmd is supported on macOS but no sample sends it through `replaceShortcuts`.

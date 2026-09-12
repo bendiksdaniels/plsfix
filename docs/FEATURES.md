@@ -169,7 +169,7 @@ suppression are out of reach; additive checks only.
 |---|---|---|---|---|
 | Shared org settings/themes (publish to team) | both | Admin-published palette/formats | Backend (or Graph file) | P2 |
 | Settings export/import | both | XML/JSON round-trip | shipped v1.1 (JSON) | - |
-| Shortcut manager (remap, conflicts, print list) | both | User remapping | Yes (replaceShortcuts API, signed-in users) | P2 |
+| Shortcut manager (remap, conflicts, print list) | both | User remapping | Yes (replaceShortcuts API, signed-in users) | shipped v2.7 (Excel pane: remap, clashes incl. shipped defaults, printable card) |
 | Centralized deployment | both | M365 admin rollout | Yes (Integrated Apps) | P2 |
 | Content library (shared slides/ranges/templates) | both | Org content store | Backend | P3 |
 | Tombstone generator / dynamic library | both | Deal content from data | Backend | P3 |
