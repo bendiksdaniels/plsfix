@@ -324,3 +324,20 @@ Against the deployed relay through the real tunnel and unit (S1, v2.7.12):
 - [ ] `curl https://dbautomatizacijas.com/modelis/version` still parses in the gateway's status aggregator and the dashboard, and its `relay` numbers move within 30 s of a push.
 - [ ] A deck's "Update all" over a slow link still gets its 304s (the `no-store` change did not break the ETag round trip in a real Office webview).
 - [ ] `journalctl -u plsfix-server` shows the startup line naming the trust mode, no "every client shares one bucket" warning, and no `relay rate write ...` lines during normal use.
+
+## Added by the v2.7 wave (13.09): the PowerPoint stress pass
+
+Host-only behaviours the fakes cannot settle (P3, v2.7.13):
+
+- [ ] PowerPoint (desktop and web): delete a linked picture, then press Update all before the list refreshes: the toast names the link and says the object is no longer where the list had it, never `ItemNotFound`. The same for Break and for Revert on a row whose shape was deleted.
+- [ ] Go to slide on a row whose slide was deleted: does the real host throw? The fake accepts any slide id. If it throws `ItemNotFound`, wire `missingShapeError` into `goToSlide`.
+- [ ] Smart Painter: capture from a native PowerPoint table and from a group on a real host (`Shape.fill.type` may be unreadable there, where the fake answers Solid/NoFill).
+- [ ] PowerPoint for the web: a table rebuild (source grew a row) keeps the row on "Update available" until the last format chunk lands, and the next press finishes the formats.
+- [ ] A 60 x 20 table repaint on the web: confirm the 150 round trips complete.
+- [ ] An object tool against a shape a protected layout or a locked group refuses to move: the host's own refusal string reaches the toast; check it reads as a sentence on a real host.
+- [ ] Press Enter in the link-key field while Update all is running: "Wait for the last action to finish." and no button comes back before the batch does.
+- [ ] Press a ribbon object tool (Align left) while Update all is running: the same sentence, and the tool works on the next press.
+- [ ] Insert a 61 x 21 table export (a hand-written relay row or an older Excel build): "Tables go up to 60 rows and 20 columns; export a picture for more." and nothing on the slide.
+- [ ] A relay that answers 429 or 507 on the real deployment: the toast reads "The relay is busy..." / "The relay is full...", never the status line.
+- [ ] An insert whose `deleteInbox` the relay refuses (500): "Inserted ...", one shape, and the Inbox no longer offers that export in this pane session.
+- [ ] Select similar refuses with "not one inside a group": confirm on a real host that nothing else (a shape on a layout, a placeholder reached another way) can be selected while sitting outside `Slide.shapes`; the guard detects the class, the sentence names the one cause.
