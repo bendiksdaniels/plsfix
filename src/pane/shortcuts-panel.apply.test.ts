@@ -186,6 +186,27 @@ describe("Apply: never wipes a key map it has not read", () => {
     expect(sentMap(actions).PLSFIX_AUTOCOLOR).toBe("Ctrl+Alt+Z");
   });
 
+  it("reads again, and refuses, when a later read fails after an earlier one landed", async () => {
+    const { actions, applyShortcuts } = await unreadPanel();
+    actions.getShortcuts.mockResolvedValue({ PLSFIX_AUTOCOLOR: "Ctrl+Alt+Z" });
+    showBrandTab();
+    await vi.waitFor(() => {
+      expect(box("PLSFIX_AUTOCOLOR").value).toBe("Ctrl+Alt+Z");
+    });
+
+    actions.getShortcuts.mockRejectedValue(new Error("gone"));
+    showBrandTab(false);
+    showBrandTab();
+    await vi.waitFor(() => {
+      expect(actions.getShortcuts.mock.calls.length).toBeGreaterThanOrEqual(3);
+    });
+
+    expect(await refusal(applyShortcuts)).toBe(
+      "Your current shortcuts could not be read, so nothing was changed. Reopen the Brand tab and try again.",
+    );
+    expect(actions.replaceShortcuts).not.toHaveBeenCalled();
+  });
+
   it("refuses outright while the keys still cannot be read", async () => {
     const { actions, applyShortcuts } = await unreadPanel();
     actions.getShortcuts.mockRejectedValue(new Error("still no"));

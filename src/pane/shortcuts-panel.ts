@@ -235,6 +235,9 @@ async function fill(api: Office.Actions, force: boolean): Promise<boolean> {
   try {
     current = await deadline(api.getShortcuts());
   } catch {
+    // A read that fails after an earlier success drops the latch too, so the
+    // next Apply reads again instead of trusting a map that may be stale.
+    filled = false;
     return false;
   }
   for (const row of rows) {
