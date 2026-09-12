@@ -22,6 +22,43 @@ const TRACE_API_SET: Record<TraceDirection, string> = {
   dependents: "1.13",
 };
 
+/**
+ * Queues one direct-trace call on a cell, with the API guard in front of it
+ * and the load the answer needs. The batch the caller syncs decides when it
+ * answers, so several cells can be asked in one round trip - which is what
+ * "Precedents of selection" does (src/excel/trace-many.ts).
+ */
+export function queueTrace(
+  cell: Excel.Range,
+  direction: TraceDirection,
+): Excel.WorkbookRangeAreas {
+  // The hosted office.js always defines the method, so the host API set decides.
+  const method =
+    direction === "precedents" ? "getDirectPrecedents" : "getDirectDependents";
+  const callable = (cell as unknown as Record<string, unknown>)[method];
+  if (
+    typeof callable !== "function" ||
+    !hostSupports(TRACE_API_SET[direction])
+  ) {
+    throw new Error("Tracing needs a newer Excel build.");
+  }
+
+  const found =
+    direction === "precedents"
+      ? cell.getDirectPrecedents()
+      : cell.getDirectDependents();
+  found.ranges.load("items/address,items/cellCount");
+  return found;
+}
+
+/** What a synced trace call holds, one area per rectangle Excel named. */
+export function traceAreas(found: Excel.WorkbookRangeAreas): TraceArea[] {
+  return found.ranges.items.map((item) => ({
+    ...parseAddress(item.address),
+    cellCount: item.cellCount,
+  }));
+}
+
 export async function traceActiveCell(
   direction: TraceDirection,
 ): Promise<TraceResult> {
@@ -30,25 +67,7 @@ export async function traceActiveCell(
     cell.load("address");
     await context.sync();
 
-    // The hosted office.js always defines the method, so the host API set decides.
-    const method =
-      direction === "precedents"
-        ? "getDirectPrecedents"
-        : "getDirectDependents";
-    const callable = (cell as unknown as Record<string, unknown>)[method];
-    if (
-      typeof callable !== "function" ||
-      !hostSupports(TRACE_API_SET[direction])
-    ) {
-      throw new Error("Tracing needs a newer Excel build.");
-    }
-
-    const found =
-      direction === "precedents"
-        ? cell.getDirectPrecedents()
-        : cell.getDirectDependents();
-    found.ranges.load("items/address,items/cellCount");
-
+    const found = queueTrace(cell, direction);
     try {
       await context.sync();
     } catch (error) {
@@ -59,13 +78,7 @@ export async function traceActiveCell(
       return { origin: cell.address, areas: [] };
     }
 
-    return {
-      origin: cell.address,
-      areas: found.ranges.items.map((item) => ({
-        ...parseAddress(item.address),
-        cellCount: item.cellCount,
-      })),
-    };
+    return { origin: cell.address, areas: traceAreas(found) };
   });
 }
 

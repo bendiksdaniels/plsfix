@@ -12,6 +12,7 @@ export * from "./autocolor";
 export * from "./audit";
 export * from "./consistent";
 export * from "./trace";
+export * from "./trace-many";
 export * from "./charts";
 export * from "./tornado";
 export * from "./templates";
