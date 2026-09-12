@@ -299,3 +299,17 @@ Host-only behaviours the fakes cannot confirm (P1, v2.7.10):
 - [ ] Pinstripes on a protected sheet with an unlocked island: the note, and nothing painted.
 - [ ] Comps stats, the football field and the tornado on a protected sheet whose target block is an unlocked island: all three now refuse with "this sheet is protected, nothing was changed" where before they would have written (house-consistent with Autocolor and the audit overlay; a user of protected templates will notice).
 - [ ] The Charts section reading order in a real docked pane at 320 px: waterfall, tornado, football field, brand-format, CAGR, no wrapping or clipping of the moved button's label.
+
+## Added by the v2.7 wave (13.09): the hygiene stress pass
+
+Host-only behaviours the fakes cannot settle (P2, v2.7.11):
+
+- [ ] Ctrl+A on a sheet, then Indent / Align / Underline / Fill / Font colour: Excel applies one format property over the whole sheet without freezing the pane, and the toast reads "Selection updated (too large for undo)".
+- [ ] Ctrl+A on a sheet, then Row height: `range.getEntireRow().format.rowHeight` over 1 048 576 rows returns, and the toast is a sentence rather than a host string.
+- [ ] A row-height cycle whose band starts on a HIDDEN row: Excel's `format.rowHeight` for a hidden row (0 or its stored height) decides whether the press unhides the band; the fake cannot model it.
+- [ ] A protected sheet with SOME cells unlocked, ctrl-click one unlocked and one locked cell, press Indent: check whether real Office.js applies the unlocked area before rejecting the batch (the skipped P2 row assumes it does).
+- [ ] Clean past the data on a sheet whose merge straddles the data edge: Excel shrinks the merge rather than refusing the row delete, and the top-left value survives.
+- [ ] Clean past the data twice on a sheet with a chart: real Excel does not shrink the used range when only formats are cleared, so the second press should say "Cleared the formats past the data" again (the fake says "Nothing past the data").
+- [ ] `=PLSFIX.CAGR(A1, B1, C1)` where A1 holds an error cell (`#N/A`): confirm Excel propagates the error to the cell rather than calling the function.
+- [ ] `=PLSFIX.ROUNDSUM(A:A, 0)` on a whole-column reference: confirm Office marshals it and the cap sentence is what the cell shows.
+- [ ] Bury this sheet on the active sheet: confirm Excel activates another sheet (the explorer keeps the buried sheet on its list, muted; that half is in the suite).
