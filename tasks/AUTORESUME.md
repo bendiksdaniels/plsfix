@@ -1,4 +1,99 @@
-# AUTORESUME - pls,fix (v2.7.1 LIVE 12.09, deployed from 3e88d67; PUBLIC on GitHub, MIT)
+# AUTORESUME - pls,fix (v2.7.13 LIVE 13.09, deployed from 987ea1c; PUBLIC on GitHub, MIT)
+
+## 13.09: the v2.7 wave - comps and hygiene tools, follow-ups closed, stress passes, relay hardening
+
+- State: **v2.7.13 LIVE 13.09** (987ea1c, deploy.sh modelis "OK / clean", live `/version` 2.7.13,
+  healthz 200, support.html + privacy.html 200, functions.json with three `helpUrl`s; the store
+  validator's support URL and 64 px icon checks pass since v2.7.5). Plan
+  `~/.claude/plans/sleepy-mixing-wand.md` (approved 12.09 22:05, budget 3.65-6.25M + the 23:05
+  extension 2.7-4.4M); ledger `.superpowers/sdd/sleepy-mixing-wand/progress.md` (git-ignored; every
+  ruling, review verdict and merge), briefs, reports, reviews and diffs beside it.
+- Shape: worktree agents by file ownership, one opus review per slice, scoped sonnet re-reviews after
+  a fix round, the controller merging one branch at a time (rebase onto main, trailers stripped,
+  `npm run check` + `ux:check` + `ux:sweep` on the REBASED branch with private dev-server ports, one
+  `release.sh patch` per reviewed merge, deploy after each). A second session ("plsfix launch") took
+  the repo public in the same checkout earlier on 12.09-13.09; main was handed back and forth by
+  message, never touched by both at once. That session is paused at 2be12bf's line of work; its
+  handovers to this one (the SELF-HOSTING proxy paragraph, privacy.html as the source of the AppSource
+  policy copy) are done.
+- Shipped, in merge order (13 slices, each reviewed, gates green on the rebased branch):
+  - v2.7.0 M1 comps tools: Comps stats (six rows of live formulas under a comps table), Football field
+    (stacked bar with a cleared floor series, first row on top), Pinstripes (every second row/column,
+    second press clears; refuses while an overlay owns fills).
+  - v2.7.2 M2 hygiene: Indent / Align / Underline cycles (canonicalised read-back), six sheet tools above
+    the explorer (Unhide all with the "Include very hidden" tick, Show only this, Bury this, three moves;
+    workbook-structure protection answers a sentence), Clean past the data (rows/columns deleted only when
+    no chart or shape sits on the sheet AND the host can count them, else formats cleared; outside Undo),
+    `=PLSFIX.CAGR` + `helpUrl` on all three functions.
+  - v2.7.3 K2 PowerPoint + shell: a chart never lands below 200 x 120 pt, bar labels clamped inside the
+    box, stacked bars in one row per category, `chart-guard.ts` keeps the picture when a payload's chart
+    is unreadable, roving tabindex + arrow activation on both tab strips, `NEEDS_PANE` for the three
+    pane-only shortcuts.
+  - v2.7.4 N2 unit-test backfill + four header comments (squashed onto main: K2 had created the same test
+    file name).
+  - v2.7.5 K3 relay timeouts (client `RELAY_TIMEOUT_MS` 20 s through `relay-timeout.ts`, server 30 s
+    `TimeoutLayer`, inbox tie-break by rowid), 64 px icon + `HighResolutionIconUrl`, `SupportUrl` ->
+    `public/support.html`, `public/privacy.html`.
+  - v2.7.6 N3 audit tools: Select consistent region, Precedents of selection (50 cells, grouped chips).
+  - v2.7.7 N5 shortcut manager (Brand tab: remap per signed-in user through `Office.actions`; Apply reads
+    before it writes; clashes named; Cmd its own modifier).
+  - v2.7.8 N4 paste suite: Paste: duplicate formulas, Paste number formats only, Paste row heights only.
+  - v2.7.9 K1 Excel follow-ups: fast-fill cap, `SHEET_SCAN_CELL_CAP` 200 000 for Find / share / model
+    check, sheet-scoped names everywhere, series-level pie leader lines, the chart picker's "Linked
+    chart" label.
+  - v2.7.10 P1 comps polish + stress: `chart-blocks.ts` shared by tornado and football (a refusal never
+    spends an Undo slot), `requireNoOverlayOwner` in `fill-store.ts`, stats formats per statistics
+    column only, the `stress.comps.*` suites (10 `it.skip` rows with real bodies pin defects outside the
+    slice).
+  - v2.7.11 P2 hygiene stress: six `stress.hygiene.*` suites; CAGR overflow answered in log space
+    (`chartmath.cagr`), size-cycle stage strings, `buriedNote` after Unhide all.
+  - v2.7.12 S1 relay hardening (from the 13.09 security review, `security-review.md`): per-client rate
+    limits by request AND by bytes keyed by the trusted proxy's header (`MODELIS_TRUSTED_PROXY`, the
+    hosted unit sets `cloudflare`; live journal says "client key from Cloudflare"), storage ceilings
+    read inside the write's lock, every store call on `spawn_blocking`, one shared permit pool for the
+    two write methods (`GlobalConcurrencyLimitLayer` 32) with a 10 s body deadline inside it,
+    `MODELIS_RATE_WRITE_PER_MIN` 300 -> 100 so `writes/min x deadline / 60 < permits` holds, a startup
+    line naming the trust mode (warning on loopback, note on an open bind) when nothing is trusted.
+  - v2.7.13 P3 PowerPoint stress: six `stress.ppt.*` suites over the shipped `pptpane.html`;
+    `missing-shape.ts` (deleted/ungrouped objects answered in words), table rebuild keeps the shown
+    revision's tag until the last format chunk, `requireTableSize` (60 x 20 on the way in), Select
+    similar refuses a grouped child, one action at a time through `guard.ts`'s opt-in `busyMessage`
+    latch (ribbon included), `refresh.ts` split out of `host.ts` (447 -> 256), `pane-details.ts`,
+    `inbox-queue.ts` (a refused `deleteInbox` no longer duplicates the next paste), `relay-reason.ts`
+    (429 / 507 / 500 in the pane's words).
+  - Docs on main: manual LV sections for every new tool (charts/tools/workbook.rs) regenerated at
+    v2.7.13, README v2.7 lines, `docs/appsource/privacy-policy.md` pointing at `public/privacy.html`
+    as its source, `tasks/lessons.md` 13.09 section, CLAUDE.md Map + `tasks/launch-check.md` one
+    section per slice, `docs/FEATURES.md` rows marked shipped v2.7.
+- Security review 13.09: 1 Critical (one IP could fill the 1 GiB relay in under a minute), 5 Important,
+  8 Minor; secrets grep clean. Closed by S1 (C1, I1-I3); I4 release.yml SHA pins done by the launch
+  session; OPEN: I5 rollback detection (a design slice), M1 the manifest rewrite's unescaped
+  `MODELIS_PUBLIC_URL` (`server/src/manifest.rs`, the launch session's file).
+- Rulings that changed the briefs (details in the ledger): band tint from `settings.primary`; a 4th
+  football column is ignored; N2 squashed; the ux gates' default ports 3131/3132 are shared across
+  worktrees, so every run passes its own `--port`; 100 writes/min kept (about 50 links per Update all,
+  the pane does not retry a 429: if it bites, raise `MODELIS_MAX_INFLIGHT_WRITES` to 64 and restore 300
+  in the unit, never lengthen the body deadline).
+- Follow-ups, not done: a refused WRITE still spends a pls,fix Undo slot (`src/excel/undo.ts`); a
+  refused READ sync leaks office.js's own string pane-wide (`src/ui/report.ts` / `src/pane/shared.ts`);
+  "nothing was changed" over a partly unlocked sheet a ctrl-click batch DID paint
+  (`src/excel/protection.ts`); "X is now sheet N" counts hidden tabs (`moveSheet`,
+  `src/excel/workbook.ts`); the Excel pane could take `guard.ts`'s `busyMessage` latch in one line
+  (the double football press; a behaviour change, Daniel's call); P1's three hidden-row skips can be
+  un-skipped now that the fake has `helpers.hideRows`; the fake host still has no AutoFilter;
+  `inbox-queue.ts`'s pasted set is in-memory (a pane reload forgets it); `model-check-panel.ts` "Too
+  large to read" wording; 3-D references judged by their last sheet; `insertToc` 82 lines and the files
+  still over the 400-line cap (`src/ppt/main.ts` 530, `src/ppt/links.ts` 432, `src/pane/links-tab.ts`
+  429, `src/link/model.ts` 403; launch-week ruling stands); the `check` workflow re-enable.
+- CI: the `check` workflow is DISABLED since 12.09 23:43 on Daniel's word (hung-sync flake, last copy
+  fixed at v2.7.1); `release` (a Release + ghcr image per tag) stays on and ran for every v2.7.x tag;
+  every gate ran locally before each merge.
+- Daniel's gates: the desktop launch check (`tasks/launch-check.md` grew by one section per slice, about
+  70 rows), Windows once, the M365 centralized upload (the manifest changed: icon-64, SupportUrl), the
+  Cloudflare rate-limit rule on `/modelis/api/*`, the Mac Cmd/Ctrl physical-key check for the shortcut
+  manager, the chart picker's "Linked chart" label as a UX call, the `check` workflow.
+- Branches: none left (every wave/*, merge-* and worktree-agent-* branch deleted after its merge;
+  `git cherry` clean; no worktrees under `.claude/worktrees`).
 
 ## 12.09 evening: "a package they just install": installers + the store kit (branch `installers`)
 
