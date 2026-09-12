@@ -292,14 +292,47 @@ export function formatPart(part: RefPart): string {
   return column + row;
 }
 
-/** The same token with new corners: sheet prefix and ":" kept as written. */
+/**
+ * The same token with new corners and, when the caller passes one, a new sheet
+ * prefix; the ":" and the corners' `$` markers are kept as written.
+ */
 export function formatReference(
   ref: FormulaRef,
   from: RefPart,
   to: RefPart,
+  prefix: string = ref.prefix,
 ): string {
-  const head = ref.prefix + formatPart(from);
+  const head = prefix + formatPart(from);
   return ref.pair ? `${head}:${formatPart(to)}` : head;
+}
+
+// A sheet name Excel writes bare: letters, digits, "_" and "." only, not
+// starting with a digit or a ".".
+const PLAIN_SHEET = /^[\p{L}_][\p{L}\p{N}_.]*$/u;
+// R1C1 reads as a reference too, so a sheet called that needs its quotes.
+const R1C1 = /^[Rr][0-9]*[Cc][0-9]*$/;
+
+// "Q1!A1" would read as cell Q1 on a sheet called "A1", so a sheet whose name
+// is itself an address is quoted however plain its characters are.
+function addressLike(name: string): boolean {
+  const read = readPart(name, 0);
+  const cell =
+    read !== null &&
+    read.end === name.length &&
+    read.part.column !== null &&
+    read.part.row !== null;
+  return cell || R1C1.test(name);
+}
+
+/**
+ * A sheet name as the prefix of a reference, `!` included: bare where Excel
+ * would write it bare, quoted (with any apostrophe doubled) where it would
+ * not. "" for no sheet, so a caller can build an unqualified reference.
+ */
+export function sheetPrefix(name: string): string {
+  if (name === "") return "";
+  if (PLAIN_SHEET.test(name) && !addressLike(name)) return `${name}!`;
+  return `'${name.replaceAll("'", "''")}'!`;
 }
 
 /**

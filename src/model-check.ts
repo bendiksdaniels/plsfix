@@ -172,7 +172,8 @@ export function buildReport(input: ReportInput): ModelCheckReport {
   };
 }
 
-function plural(count: number, one: string): string {
+/** "1 cell" / "2 cells": the count and its noun, for any line that counts. */
+export function plural(count: number, one: string): string {
   return `${String(count)} ${count === 1 ? one : `${one}s`}`;
 }
 

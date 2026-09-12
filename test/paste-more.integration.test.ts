@@ -1,8 +1,8 @@
-// The three narrow pastes against the fake host: the copied block's formulas
-// duplicated to a new corner, its number formats only, its row heights only.
-// Each one gets the universality rows - a ctrl-clicked selection, a merged
-// block, a protected sheet, a source or selection over the cap, and no copy
-// source at all - beside what it is actually for.
+// The number-format and row-height pastes against the fake host: the source's
+// number formats tiled over the selection, and its row heights written one row
+// at a time. Universality rows included: a ctrl-clicked selection, a merged
+// block, a protected sheet, over the cap and no copy source at all.
+// The duplicate-formula paste is test/paste-duplicate.integration.test.ts.
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
@@ -35,130 +35,8 @@ async function rejects(run: () => Promise<unknown>): Promise<string> {
   throw new Error("expected a rejection");
 }
 
-// A two by two block whose second column reads its own first column (inside)
-// and one cell far away (outside).
-async function markBlock(): Promise<void> {
-  helpers.seed("Model!A1", [
-    [1, { formula: "=A1+10", value: 11 }],
-    [2, { formula: "=Z9*B1", value: 0 }],
-  ]);
-  helpers.select("Model!A1:B2");
-  await smt.markCopySource();
-}
-
 beforeEach(async () => {
   await boot();
-});
-
-describe("paste: duplicate formulas", () => {
-  it("adapts in-range references and keeps the external one", async () => {
-    await markBlock();
-    helpers.select("Model!A5");
-    await smt.pasteDuplicateFormulas();
-
-    expect(helpers.formula("Model!B5")).toBe("=A5+10");
-    expect(helpers.formula("Model!B6")).toBe("=Z9*B5");
-    expect(helpers.value("Model!A5")).toBe(1);
-  });
-
-  it("shifts columns as well as rows", async () => {
-    await markBlock();
-    helpers.select("Model!D5");
-    await smt.pasteDuplicateFormulas();
-
-    expect(helpers.formula("Model!E5")).toBe("=D5+10");
-    expect(helpers.formula("Model!E6")).toBe("=Z9*E5");
-  });
-
-  it("refuses a target that overlaps the copied block", async () => {
-    await markBlock();
-    helpers.select("Model!B2");
-
-    expect(await rejects(() => smt.pasteDuplicateFormulas())).toBe(
-      "Paste target overlaps the copied block.",
-    );
-    // Nothing was written, so the block still reads as it did.
-    expect(helpers.formula("Model!B2")).toBe("=Z9*B1");
-  });
-
-  it("allows the same corner on another sheet", async () => {
-    await markBlock();
-    helpers.select("Data!A1");
-    await smt.pasteDuplicateFormulas();
-
-    expect(helpers.formula("Data!B1")).toBe("=A1+10");
-    expect(helpers.formula("Data!B2")).toBe("=Z9*B1");
-  });
-
-  it("writes into every area of a ctrl-clicked selection", async () => {
-    helpers.seed("Model!E1", [[1], [{ formula: "=E1*2", value: 2 }]]);
-    helpers.select("Model!E1:E2");
-    await smt.markCopySource();
-
-    helpers.selectAreas(["Model!A5", "Model!C5"]);
-    await smt.pasteDuplicateFormulas();
-
-    expect(helpers.formula("Model!A6")).toBe("=A5*2");
-    expect(helpers.formula("Model!C6")).toBe("=C5*2");
-  });
-
-  it("says what to do when the target cuts a merged cell", async () => {
-    await markBlock();
-    helpers.merge("Model!B5:C5");
-    helpers.select("Model!A5");
-
-    expect(await rejects(() => smt.pasteDuplicateFormulas())).toBe(
-      "Paste: Excel refused this write. Select whole merged cells, not part of one.",
-    );
-  });
-
-  it("names the protected sheet instead of writing", async () => {
-    await markBlock();
-    helpers.protectSheet("Data");
-    helpers.select("Data!A1");
-
-    expect(await rejects(() => smt.pasteDuplicateFormulas())).toBe(
-      "Paste: this sheet is protected, nothing was changed",
-    );
-  });
-
-  it("refuses a source over the cell cap", async () => {
-    helpers.select("Model!A1:A5001");
-    await smt.markCopySource();
-    helpers.select("Data!A1");
-
-    expect(await rejects(() => smt.pasteDuplicateFormulas())).toBe(
-      "Paste supports up to 5,000 selected cells at once.",
-    );
-  });
-
-  it("asks for a source first", async () => {
-    helpers.select("Data!A1");
-    expect(await rejects(() => smt.pasteDuplicateFormulas())).toBe(
-      "Mark a copy source first.",
-    );
-  });
-
-  it("carries an empty block without complaining", async () => {
-    helpers.select("Model!A1:B2");
-    await smt.markCopySource();
-    helpers.select("Data!A1");
-    await smt.pasteDuplicateFormulas();
-
-    expect(helpers.value("Data!B2")).toBe("");
-  });
-
-  it("captures the destination for undo", async () => {
-    await markBlock();
-    helpers.seed("Data!A1", [["keep"]]);
-    helpers.select("Data!A1");
-    await smt.pasteDuplicateFormulas();
-    expect(smt.undoTarget()).toBe("Data!A1:B2");
-
-    await smt.undoLastAction();
-    expect(helpers.value("Data!A1")).toBe("keep");
-    expect(helpers.formula("Data!B1")).toBe("");
-  });
 });
 
 describe("paste: number formats only", () => {
@@ -217,6 +95,33 @@ describe("paste: number formats only", () => {
     await smt.pasteNumberFormats();
 
     expect(helpers.numberFormat("Data!D4")).toBe("#,##0.0");
+  });
+
+  it("keeps the selection's own shape when it is not smaller in both axes", async () => {
+    // A tall source and a wide selection: growing each axis on its own would
+    // ask for a 4x4 block nobody selected.
+    helpers.setNumberFormat("Model!A1:A4", "0.00");
+    helpers.select("Model!A1:A4");
+    await smt.markCopySource();
+    helpers.select("Data!A1:D1");
+    await smt.pasteNumberFormats();
+
+    expect(helpers.numberFormat("Data!D1")).toBe("0.00");
+    expect(helpers.numberFormat("Data!A2")).toBe("General");
+    expect(helpers.numberFormat("Data!D4")).toBe("General");
+  });
+
+  it("refuses a destination over the cell cap", async () => {
+    // Two one-cell areas, each grown to a 3,000-cell source: neither the
+    // source nor the selection is over the cap, but what would be written is.
+    helpers.select("Model!A1:B1500");
+    await smt.markCopySource();
+    helpers.selectAreas(["Data!A1", "Data!C1"]);
+
+    expect(await rejects(() => smt.pasteNumberFormats())).toBe(
+      "Paste supports up to 5,000 selected cells at once.",
+    );
+    expect(helpers.numberFormat("Data!A1")).toBe("General");
   });
 
   it("writes into every area of a ctrl-clicked selection", async () => {

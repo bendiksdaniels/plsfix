@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { findReferences, rewriteReferences } from "./formula-refs";
+import { findReferences, rewriteReferences, sheetPrefix } from "./formula-refs";
 
 // The token as written, which is what a rewrite has to be able to put back.
 function texts(formula: string): string[] {
@@ -141,5 +141,47 @@ describe("rewriteReferences", () => {
 
   it("returns the formula unchanged when nothing is rewritten", () => {
     expect(rewriteReferences("=A1+B2", () => null)).toBe("=A1+B2");
+  });
+});
+
+describe("sheetPrefix", () => {
+  it("leaves a plain name unquoted", () => {
+    expect(sheetPrefix("Model")).toBe("Model!");
+    expect(sheetPrefix("Model_2025.v2")).toBe("Model_2025.v2!");
+    expect(sheetPrefix("Pārskats")).toBe("Pārskats!");
+  });
+
+  it("quotes a name Excel could not read bare", () => {
+    expect(sheetPrefix("P&L 2025")).toBe("'P&L 2025'!");
+    expect(sheetPrefix("2025")).toBe("'2025'!");
+    expect(sheetPrefix(".hidden")).toBe("'.hidden'!");
+  });
+
+  it("quotes a name that reads like an address", () => {
+    expect(sheetPrefix("Q1")).toBe("'Q1'!");
+    expect(sheetPrefix("XFD1048576")).toBe("'XFD1048576'!");
+    expect(sheetPrefix("R1C1")).toBe("'R1C1'!");
+  });
+
+  it("doubles an apostrophe inside a quoted name", () => {
+    expect(sheetPrefix("Bob's")).toBe("'Bob''s'!");
+  });
+
+  it("answers nothing for no sheet", () => {
+    expect(sheetPrefix("")).toBe("");
+  });
+
+  it("round trips: the scanner reads back the name it was given", () => {
+    for (const name of [
+      "Model",
+      "P&L 2025",
+      "Bob's",
+      "Q1",
+      "Sheet!1",
+      "2025",
+    ]) {
+      const [ref] = findReferences(`=${sheetPrefix(name)}A1`);
+      expect(ref?.sheet).toBe(name);
+    }
   });
 });

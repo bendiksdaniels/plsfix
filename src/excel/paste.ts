@@ -5,12 +5,15 @@
 // live Excel reference, so it survives a sheet rename.
 
 import { cappedAreas, selectedAreas } from "./areas";
-import { withinCap } from "./internal";
+import { overCap, SELECTION_CELL_CAP, withinCap } from "./internal";
 import { syncWrite } from "./protection";
 import { parseAddress } from "./shared";
 import { captureUndoAreas } from "./undo";
-import { type CellBlock, duplicateFormulas, tileGrid } from "../paste";
+import { type CellBlock, duplicateFormulas } from "../formula-duplicate";
+import { overlaps, type Rect } from "../link/geometry";
+import { plural } from "../model-check";
 import type { CellValue } from "../model";
+import { tileGrid } from "../paste";
 
 export type PasteMode = "values" | "formats" | "transpose";
 
@@ -139,22 +142,29 @@ export async function pastePreserveFormulas(): Promise<void> {
   });
 }
 
-// The destination has the source's shape, so two rectangles of one size, on
-// one sheet: a paste that touched the block would read cells it had already
-// overwritten and rewrite their references twice.
-function overlapsBlock(block: CellBlock, row: number, column: number): boolean {
-  return (
-    row < block.row + block.rowCount &&
-    block.row < row + block.rowCount &&
-    column < block.column + block.columnCount &&
-    block.column < column + block.columnCount
+// The destination has the source's shape, so both rectangles are the block's
+// size; src/link/geometry.ts counts 1-based and inclusive, office.js 0-based.
+function blockRect(block: CellBlock, row: number, column: number): Rect {
+  return {
+    top: row + 1,
+    left: column + 1,
+    bottom: row + block.rowCount,
+    right: column + block.columnCount,
+  };
+}
+
+/** The cap sentence every grid flow answers with, for a computed footprint. */
+function overCapError(): Error {
+  return new Error(
+    `${PASTE} supports up to ${SELECTION_CELL_CAP.toLocaleString()} selected cells at once.`,
   );
 }
 
 /**
  * The copied block's formulas at the selection's corner, with every reference
  * pointing inside the block moved with it and every reference pointing outside
- * it left at the cells it was written for (src/paste.ts duplicateFormula).
+ * it still reading the cells it was written for - which on a paste onto
+ * another sheet means naming the source sheet (src/formula-duplicate.ts).
  */
 export async function pasteDuplicateFormulas(): Promise<void> {
   await Excel.run(async (context) => {
@@ -164,9 +174,11 @@ export async function pasteDuplicateFormulas(): Promise<void> {
     // every other grid read is.
     await withinCap(context, from, PASTE);
     const sourceSheet = from.worksheet;
+    // The names decide what every reference has to say; the ids decide whether
+    // the paste could be sitting on top of the block it is reading.
     const targetSheets = targets.map((target) => target.worksheet);
     sourceSheet.load("id,name");
-    for (const sheet of targetSheets) sheet.load("id");
+    for (const sheet of targetSheets) sheet.load("id,name");
     from.load("rowIndex,columnIndex,rowCount,columnCount,formulas");
     for (const target of targets) target.load("rowIndex,columnIndex");
     await context.sync();
@@ -180,7 +192,7 @@ export async function pasteDuplicateFormulas(): Promise<void> {
     };
     const formulas = from.formulas as CellValue[][];
     const moves = targets.map((target, index) => ({
-      onSourceSheet: targetSheets[index]?.id === sourceSheet.id,
+      sheet: targetSheets[index],
       row: target.rowIndex,
       column: target.columnIndex,
       destination: target
@@ -188,7 +200,14 @@ export async function pasteDuplicateFormulas(): Promise<void> {
         .getResizedRange(block.rowCount - 1, block.columnCount - 1),
     }));
     for (const move of moves) {
-      if (move.onSourceSheet && overlapsBlock(block, move.row, move.column)) {
+      const same = move.sheet?.id === sourceSheet.id;
+      if (
+        same &&
+        overlaps(
+          blockRect(block, block.row, block.column),
+          blockRect(block, move.row, move.column),
+        )
+      ) {
         throw new Error(OVERLAP_REFUSAL);
       }
     }
@@ -198,10 +217,12 @@ export async function pasteDuplicateFormulas(): Promise<void> {
       moves.map((move) => move.destination),
     );
     for (const move of moves) {
-      move.destination.formulas = duplicateFormulas(formulas, block, {
-        rows: move.row - block.row,
-        columns: move.column - block.column,
-      });
+      move.destination.formulas = duplicateFormulas(
+        formulas,
+        block,
+        { rows: move.row - block.row, columns: move.column - block.column },
+        move.sheet?.name ?? block.sheet,
+      );
     }
     await syncWrite(context, PASTE);
   });
@@ -224,31 +245,43 @@ export async function pasteNumberFormats(): Promise<void> {
     await context.sync();
 
     const formats = from.numberFormat as string[][];
-    const shapes = targets.map((target) => ({
-      rows: Math.max(from.rowCount, target.rowCount),
-      columns: Math.max(from.columnCount, target.columnCount),
-    }));
-    const destinations = targets.map((target, index) =>
-      target
+    // Excel grows a destination smaller than the source to the source's shape.
+    // Smaller in BOTH axes, though: taking each axis on its own would turn a
+    // tall source and a wide selection into the rectangle of the two, which
+    // nobody selected and which is where a 5,000-cell source meets a
+    // 5,000-cell selection as 25 million cells.
+    const plans = targets.map((target) => {
+      const grow =
+        target.rowCount < from.rowCount &&
+        target.columnCount < from.columnCount;
+      return {
+        target,
+        rows: grow ? from.rowCount : target.rowCount,
+        columns: grow ? from.columnCount : target.columnCount,
+      };
+    });
+    const cells = plans.reduce(
+      (total, plan) => total + plan.rows * plan.columns,
+      0,
+    );
+    // What is written, not what is selected: growing puts more on the sheet
+    // than cappedAreas counted, and Undo silently stops covering it.
+    if (overCap(cells)) throw overCapError();
+
+    const destinations = plans.map((plan) =>
+      plan.target
         .getCell(0, 0)
-        .getResizedRange(
-          (shapes[index]?.rows ?? 1) - 1,
-          (shapes[index]?.columns ?? 1) - 1,
-        ),
+        .getResizedRange(plan.rows - 1, plan.columns - 1),
     );
     await captureUndoAreas(context, destinations);
 
     destinations.forEach((destination, index) => {
-      const shape = shapes[index];
-      if (!shape) return;
-      destination.numberFormat = tileGrid(formats, shape.rows, shape.columns);
+      const plan = plans[index];
+      if (!plan) return;
+      destination.numberFormat = tileGrid(formats, plan.rows, plan.columns);
     });
     await syncWrite(context, PASTE);
   });
-}
-
-function plural(count: number, one: string): string {
-  return `${String(count)} ${one}${count === 1 ? "" : "s"}`;
 }
 
 function rowHeightReport(written: number, skipped: number): string {
