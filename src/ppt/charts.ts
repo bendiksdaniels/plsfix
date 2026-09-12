@@ -77,6 +77,18 @@ function belowMinimum(size: Size): boolean {
   return size.width < MIN_SIZE.width || size.height < MIN_SIZE.height;
 }
 
+// The plan clears MIN_SIZE, but the slide has the last word on the box: a busy
+// one makes placeInFreeSpace shrink an object a tenth at a time rather than
+// overlap what is already there, and 0.4 of a small chart is a smudge. This is
+// the floor that scan may not go under - past it, overlapping is the better
+// answer, and the picture is better still (see insertChart).
+function minPlacementScale(size: Size): number {
+  return Math.min(
+    1,
+    Math.max(MIN_SIZE.width / size.width, MIN_SIZE.height / size.height),
+  );
+}
+
 export function overBudgetNote(count: number, budget: number): string {
   return `as a picture: ${String(count)} shapes is over this host's budget of ${String(budget)}`;
 }
@@ -232,10 +244,26 @@ export async function insertChart(
       // waiting for ever: they get the draw's own deadline.
       const slideId = await withSyncDeadline(selectedSlideId(context, stage));
       const placed = await withSyncDeadline(
-        placeOnSlide(context, slideId, plan.size),
+        placeOnSlide(context, slideId, plan.size, minPlacementScale(plan.size)),
       );
       where = { slideId, ...placed };
       const shapes = context.presentation.slides.getItem(slideId).shapes;
+      // The same refusal declineReason makes of a plan, made of the box the
+      // slide handed back: the picture goes where the chart would have gone.
+      if (belowMinimum(placed.box)) {
+        const shape = addPicture(shapes, placed.box, item.label, plan.png, {
+          tag,
+          token: item.token,
+        });
+        shape.load("id");
+        await withSyncDeadline(context.sync());
+        return {
+          slideId,
+          shapeId: shape.id,
+          overlapping: placed.overlapping,
+          note: CHART_TOO_SMALL,
+        };
+      }
       const shapeId = await drawGroup(context, shapes, {
         primitives: primitivesAt(plan, placed.box),
         box: placed.box,

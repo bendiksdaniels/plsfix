@@ -92,3 +92,55 @@ describe("a chart the slide would shrink below the minimum", () => {
     expect(placed.note).toBeUndefined();
   });
 });
+
+// The plan is one thing and the box the slide gives it is another: a busy
+// slide makes placeInFreeSpace shrink an object a tenth at a time rather than
+// overlap what is already there, and half of a small chart is unreadable.
+describe("a chart the placement would shrink below the minimum", () => {
+  // 400 x 200 pixels are 300 x 150 points - a plan well over the minimum -
+  // and the slide holds one shape wide enough to leave a 176 pt column.
+  const SMALLISH = fakePng(400, 200);
+
+  function crowdTheSlide(): void {
+    presentation.addShape(presentation.slides[0]!, {
+      left: 36,
+      top: 36,
+      width: 700,
+      height: 430,
+    });
+  }
+
+  function drawnGroup(): FakePptShape | undefined {
+    return shapes().find((shape) => shape.type === "Group");
+  }
+
+  it("keeps the group over the minimum, or hands over the picture", async () => {
+    crowdTheSlide();
+    const { placed } = await insert(SMALLISH);
+    const group = drawnGroup();
+    if (group === undefined) {
+      expect(placed.note).toBe(TOO_SMALL);
+      return;
+    }
+    expect(group.width).toBeGreaterThanOrEqual(MIN_SIZE.width);
+    expect(group.height).toBeGreaterThanOrEqual(MIN_SIZE.height);
+    // Today's answer is the full-size chart over the other shape, which the
+    // pane reports as "Placed over other objects".
+    expect(placed.overlapping).toBe(true);
+  });
+
+  it("still places a chart the free space can hold beside the other shape", async () => {
+    presentation.addShape(presentation.slides[0]!, {
+      left: 36,
+      top: 36,
+      width: 200,
+      height: 200,
+    });
+    const { placed } = await insert(SMALLISH);
+    const group = drawnGroup()!;
+    expect(placed.note).toBeUndefined();
+    expect(placed.overlapping).toBe(false);
+    expect(group.width).toBeGreaterThanOrEqual(MIN_SIZE.width);
+    expect(group.height).toBeGreaterThanOrEqual(MIN_SIZE.height);
+  });
+});

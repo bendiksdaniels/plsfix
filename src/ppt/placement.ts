@@ -53,9 +53,20 @@ export async function placeOnSlide(
   context: PowerPoint.RequestContext,
   slideId: string,
   size: Size,
+  // How far the free-space scan may shrink the object before it gives up and
+  // centres it over what is there: a chart passes the scale that would take it
+  // to MIN_SIZE, because a group of hairlines is worse than an overlap.
+  minScale?: number,
 ): Promise<Placement> {
   const occupied = await occupiedBoxes(context, slideId);
-  return placeInFreeSpace(size, occupied, SLIDE, SLIDE_MARGIN, SLIDE_GAP);
+  return placeInFreeSpace(
+    size,
+    occupied,
+    SLIDE,
+    SLIDE_MARGIN,
+    SLIDE_GAP,
+    minScale,
+  );
 }
 
 async function occupiedBoxes(
