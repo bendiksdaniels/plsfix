@@ -138,3 +138,27 @@ describe("the tornado on an older host", () => {
     expect(workbook.charts[0]?.series[0]?.overlap).toBeUndefined();
   });
 });
+
+describe("the tornado on a protected sheet", () => {
+  it("names the sheet, adds no chart and spends no Undo slot", async () => {
+    // One real action first, so there is something on the stack to lose.
+    helpers.select("Model!A1:C2");
+    await smt.applyPinstripes("rows");
+    const slot = smt.undoTarget();
+
+    helpers.seed("Model!A1", [
+      ["Driver", "Low", "High"],
+      ["Volume", 90, 115],
+      ["Price", 60, 140],
+    ]);
+    helpers.select("Model!A1:C3");
+    helpers.protectSheet("Model");
+
+    expect(await rejects(() => smt.insertTornado())).toBe(
+      "tornado: this sheet is protected, nothing was changed",
+    );
+    expect(smt.undoTarget()).toBe(slot);
+    expect(workbook.charts).toHaveLength(0);
+    expect(helpers.value("Model!D1")).toBe("");
+  });
+});
