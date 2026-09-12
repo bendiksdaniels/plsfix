@@ -48,6 +48,20 @@ interface CommandEvent {
   completed: () => void;
 }
 
+// The two ids whose whole answer is in the pane: Super Find lists what it
+// found in the Workbook tab and the style scrubber lists the unused styles
+// there, so a keystroke with the pane shut would draw where nobody is
+// looking. Everything else on the shortcut card writes to the workbook -
+// cells, formats, a chart, a sheet, or the selection the trace pair jumps -
+// and is read there with the pane open or not.
+const NEEDS_PANE = new Set(["PLSFIX_FIND", "PLSFIX_STYLES_SCAN"]);
+
+// Office chrome, not a workbook action: a host without the API, or one that
+// refuses, still lets the action behind it run.
+async function showPane(): Promise<void> {
+  await Promise.resolve(Office.addin?.showAsTaskpane()).catch(() => undefined);
+}
+
 export function registerCommands(): void {
   if (!Office.actions?.associate) return;
 
@@ -105,8 +119,12 @@ export function registerCommands(): void {
   };
 
   for (const [id, run] of Object.entries(commands)) {
+    const start = NEEDS_PANE.has(id) ? showPane : () => Promise.resolve();
     Office.actions.associate(id, (event?: CommandEvent) => {
-      void run()
+      void start()
+        // Wrapped, never `.then(run)`: that hands the action the resolved
+        // value as an argument, and half this table takes arguments.
+        .then(() => run())
         .then(() => refreshSelection())
         .catch((error: unknown) => {
           const { message, details } = describeError(
@@ -126,8 +144,6 @@ export function registerCommands(): void {
   }
 
   Office.actions.associate("PLSFIX_SHOWPANE", (event?: CommandEvent) => {
-    void Promise.resolve(Office.addin?.showAsTaskpane())
-      .catch(() => undefined)
-      .finally(() => event?.completed());
+    void showPane().finally(() => event?.completed());
   });
 }
