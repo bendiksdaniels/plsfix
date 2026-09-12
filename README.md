@@ -24,21 +24,29 @@ For IT teams and developers: [docs/SELF-HOSTING.md](docs/SELF-HOSTING.md) (your 
 - Five financial-model formatting presets
 - Whole-number, decimal, euro, and percentage number formats
 - Format cycles: press the same key again to step through number formats (general, date, currency, percent, multiple), title, result and item row styles, brand fill or font colors, borders (bottom rule, total, result line, box, grid), and row heights or column widths
+- Hygiene cycles (v2.7): indent 0 / 1 / 2 / 3, alignment left / center / right / general and underline single / double / none, each stepping from the cell's read-back state; Pinstripes band every second row (or column) of the selection in the brand tint and a second press clears them, refusing while an audit or autocolor overlay owns the fills
 - Paintbrush: three slots that capture the active cell's number format, font, fill, alignment and border rules and paint any of them over a selection (Save 1-3 / Use 1-3); the slots are saved with the workbook, so a shared model carries its formatting kit, and a workbook that never saved any falls back to the slots kept on the machine
 - Fill, paste and undo: fills sized by the neighbouring column or row, a marked copy source pasted as values, formats, exact formulas or transposed, quick CAGR, sign flip and decimal steppers, and **Undo last pls,fix action**, which puts back the formulas, number formats and colors the add-in last wrote (Office.js writes never reach Excel's own undo stack)
+- Three narrow pastes (v2.7): Paste: duplicate formulas (references inside the copied block move with it, references outside it stay on their cells, across sheets too), Paste number formats only, Paste row heights only
 - Reversible `IFERROR(..., 0)` guard: the same action strips it again
 - Financial-model autocoloring: hardcodes blue, formulas black, cross-sheet links green
 - Autocolor v2: external-file links and numbers hardcoded inside formulas get their own palette colors, an optional on-edit toggle recolors as you type, and "Insert color key" drops the legend on the sheet
 - Multiply or divide selected constants and formulas by 1,000
 - Audit: a reversible formula-consistency overlay whose snapshot travels with the file, so reopening a workbook saved mid-audit restores your original fills (striped where a formula matches its neighbours, soft red where one breaks the pattern) and a Smart Track panel that walks direct precedents and dependents
+- Select consistent region and Precedents of selection (v2.7): the rectangle whose every cell carries the active cell's formula in R1C1 form, and the direct precedents of up to 50 selected cells grouped by cell, the same-sheet ones selected
 - Charts: a native waterfall built from a two-column bridge table with branded opening, closing, up and down columns and a reconciliation of the deltas against the closing total, a one-click brand restyle of any selected chart, and a CAGR callout beside the selected series
 - Tornado chart: a driver, low and high table becomes a sensitivity bar chart ranked by swing, plotted as deltas from the base stated above the outcome columns (or their mean when none is)
+- Football field (v2.7): a method, low and high table becomes the valuation-range chart, stacked bars with a cleared floor series, first row on top, the axis number format taken from the low column, low above high swapped and reported
+- Comps stats (v2.7): six rows of live formulas (min, 25th percentile, median, average, 75th percentile, max) one blank row under the selected comps table, the number format copied per numeric column, text columns left alone
 - Unpivot selection: a cross-tab block is rewritten as Row / Column / Value lines on a new sheet, blanks skipped and the source untouched
 - Consistent rounding: `=PLSFIX.ROUND` and `=PLSFIX.ROUNDSUM` custom functions round a row or column so the rounded numbers still add up to the rounded total (largest remainder, think-cell TCROUND style), written beside the selection by one button in the Model tools list
+- `=PLSFIX.CAGR(first, last, periods)` (v2.7): the compound annual growth rate as a custom function, `#VALUE!` on a non-positive value, fewer than one period or an overflowing ratio; all three functions carry a help link to the support page
 - Templates: six ready calculation blocks written at the active cell in your brand styles (annuity debt schedule, DCF, NPV / IRR with a formula-based payback, working-capital days, a two-way sensitivity grid and an EBITDA bridge shaped for the waterfall), each refused rather than written where something already stands
 - Brand tab: company palette (pickers, hex entry, or logo upload with local color extraction), font, language and currency settings (the language sets the house number style: thousands with a space in Latvian and Russian, a comma in English, the decimal always a point, the currency after the amount or before it; the pane also reads which separators Excel is set to and says where to change them), JSON import/export; all presets and autocolor follow the palette; persisted in the task pane and saved with the workbook, so a model keeps its brand when it is opened on another computer
 - pls,fix ribbon tab with one-click commands (autocolor, fills, IFERROR), each with its own icon, and customizable keyboard shortcuts via the shared runtime (`public/shortcuts.json`)
+- Keyboard shortcuts section (v2.7, Brand tab): remap any pls,fix key per signed-in user through the Office shortcut runtime, clashes with the effective keys named before anything is written, Reset all restores the defaults
 - Workbook tab: a sheet explorer that jumps to, hides and shows sheets (very hidden ones are listed but never touched), a hyperlinked contents sheet rebuilt on demand, and a scrubber that finds and deletes defined names left pointing at `#REF!`
+- Sheet tools and Clean past the data (v2.7): Unhide all (very hidden sheets only with the tick), Show only this, Bury this, Move up / down / to end above the explorer, and one button that deletes the formatted rows and columns past a sheet's values (formats only cleared when a chart or shape sits on the sheet, or the host cannot count them), with the counts in the toast
 - Super Find: one search across every sheet (hidden ones included) over values, formula text, workbook-level defined names, sheet names and cell comments, listed in workbook order with one click to jump to the hit
 - Style scrubber: the custom cell styles no cell in the workbook wears, listed with a count and deleted on a confirmed second click; a sheet too large to scan is named and blocks the delete, so a partial answer never removes a style still in use
 - Prepare for sharing: one pass that puts every visible sheet back at A1 and leaves the workbook on the first of them, then reports what a reader would still find - hidden sheets, links to other workbooks, names left on `#REF!` and autocolor still running on every edit; nothing is deleted, hidden sheets are untouched, and zoom cannot be reset because Office.js does not expose it
@@ -199,6 +207,8 @@ Export a range or a chart from Excel and keep it fresh in a deck without re-past
   six alignments and both distributions), so a deck can be tidied without opening the pane.
 - The relay stores only encrypted blobs for 30 days; anyone holding the deck can pull a
   linked picture for that long, so **break links before sending a deck outside**.
+- Every relay call gives up after 20 s on the client and 30 s on the server (v2.7): the pane
+  says "The link relay did not answer in time." instead of hanging, and a retry is one press away.
 
 ## Architecture
 

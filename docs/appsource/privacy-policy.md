@@ -1,5 +1,9 @@
 # pls,fix privacy policy
 
+> Source of truth: `public/privacy.html`, served at `https://dbautomatizacijas.com/modelis/privacy.html`
+> (the URL the manifest and the listing carry). Change the HTML first; this file mirrors it for the
+> AppSource kit and must say the same things.
+
 Effective 12 September 2026. This policy covers the pls,fix add-in for Microsoft Excel and
 PowerPoint and the pls,fix link relay at `https://dbautomatizacijas.com/modelis/`, both
 published by Daniels Bendiks ("we"). It is the policy the Microsoft AppSource listing links to;

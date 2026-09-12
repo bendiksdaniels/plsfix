@@ -239,3 +239,34 @@ old loop hangs every test, the fixed helper passes. Rules:
   `testTimeout` changes nothing (the 09.09 note said "a longer timeout"; that was wrong).
 - Reproduce the runner locally by slowing the async work (a spy with a real delay), not by
   loading the CPU: ten `yes` processes and `UV_THREADPOOL_SIZE=1` did not reproduce it.
+
+## 2026-09-13: the v2.7 wave (ten agents, two sessions on one checkout)
+
+- Two slices that both APPEND to the same file conflict at the rebase even when they append to
+  different sections (taskpane.html, dispatch.ts, dispatch.test.ts imports, copy.excel.ts,
+  excel/index.ts): keep both sides, HEAD first; an HTML block cut by the marker needs its own
+  closing tags before the other block; an import list becomes the sorted union; a function
+  boundary cut by the marker needs its closing brace back before prettier runs. Budget one
+  conflict commit per feature slice.
+- Agents that do not touch CLAUDE.md / README / FEATURES / tasks (the report carries the Map,
+  FEATURES and launch-check blocks) removed the docs conflict every 09.09 merge had.
+- `npm run ux:check` and `ux:sweep` default to ports 3131/3132, shared by every worktree: two
+  gate runs at once answer ERR_CONNECTION_REFUSED or test the other worktree's build. Every run
+  gets its own `--port`, and the brief names the pair per agent.
+- The account session limit kills every agent at once, mid-edit. A resumed agent (SendMessage
+  to its id) keeps its worktree INCLUDING uncommitted files; brief "commit after every green
+  test file" anyway. A merge helper must remove its scratch worktree before checking the
+  rebased branch out elsewhere (a branch cannot be checked out twice).
+- The merge helper leaves the checkout on `merge-<branch>`: `release.sh` runs only after
+  `git checkout main && git merge --ff-only merge-<branch>`. Run from the merge branch it tags
+  a commit main does not have yet, the hook pushes the tag alone, and main waits for a push
+  by hand (v2.7.10).
+- Several agents writing gate logs into the one session scratchpad clobber each other; log into
+  the worktree.
+- A reviewer's "the validator says X" needs the tool's whole output pasted: the store validator's
+  "unreachable" lines meant "not deployed yet", not Cloudflare.
+- `git cherry` reports a conflict-resolved commit as unmerged (new patch-id): after a resolved
+  rebase, the merged proof is the rebased branch's log, not cherry.
+- The CI `check` workflow flaked three times on a fake-clock settle loop (hung-sync tests); the
+  last copy is on `settleHungSync` since v2.7.1; the workflow is disabled on Daniel's word and
+  re-enabling it is his call.
