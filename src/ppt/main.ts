@@ -36,10 +36,10 @@ import {
 import { installChangeSource } from "./chooser";
 import { registerCommands } from "./commands";
 import { activeSlideId, breakLink, goToSlide } from "./host";
+import { latestInboxItem } from "./inbox-queue";
 import {
   insertFromInbox,
   insertNote,
-  latestInboxItem,
   listInbox,
   listLinks,
   summarize,

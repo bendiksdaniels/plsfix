@@ -11,6 +11,7 @@ import {
   bootPane,
   button,
   click,
+  copiedDetails,
   deck,
   hasDetails,
   linkRows,
@@ -145,34 +146,59 @@ describe("a relay that answers badly", () => {
     expect(linkRows()).toHaveLength(1);
   });
 
-  // REPORTED (slice K3 owns src/ppt/links.ts): a 429, 507 or 500 travels to
-  // the modeller as the relay's own HTTP sentence, while a 413 is reworded by
-  // TOO_LARGE. Fix: give `failureLine` and `insertFromInbox` in
-  // src/ppt/links.ts a wording per RelayError status - "the relay is busy, try
-  // again in a minute" for 429, "the relay is full" for 507 - the way
-  // TOO_LARGE already answers a 413.
-  it.skip("says a rate-limited relay is busy rather than showing 429", async () => {
+  // The relay's own HTTP sentence is nothing a modeller can act on:
+  // src/link/relay-reason.ts gives each answer one of the pane's, the way a
+  // 413 has always been reworded.
+  it.each([
+    [429, "The relay is busy. Try again in a minute."],
+    [507, "The relay is full. Ask for space to be cleared."],
+    [500, "The relay had a problem. Try again in a minute."],
+  ])("says what a %i means instead of showing it", async (status, sentence) => {
     await bootPane();
     await waiting();
     click("refresh-inbox");
     await settle();
     vi.spyOn(paneRelay(), "getLink").mockRejectedValue(
-      new RelayError("server", "relay GET /api/links: 429", 429),
+      new RelayError(
+        "server",
+        `relay GET /api/links: ${String(status)}`,
+        status,
+      ),
     );
 
     click("paste-latest-linked");
     await settle();
 
-    expect(toastText()).not.toMatch(/429|\/api\//);
+    expect(toastText()).toContain(sentence);
+    expect(toastText()).not.toMatch(/\d{3}|\/api\//);
+    expect(button("paste-latest-linked").disabled).toBe(false);
   });
 
-  // REPORTED (slice K3 owns src/ppt/links.ts): insertFromInbox deletes the
-  // inbox row after the shape is on the slide, and a delete that fails with
-  // anything but a 404 throws - so the insert reports failure with the shape
-  // already inserted, the item stays in the list, and a second press lands a
-  // duplicate. Fix: in src/ppt/links.ts, treat a failed deleteInbox as a note
-  // on a successful insert (the row expires on its own after 7 days).
-  it.skip("keeps a landed insert a success when the inbox row cannot be dropped", async () => {
+  it("says the same about a row an update could not fetch", async () => {
+    await bootPane();
+    const planted = await plant();
+    click("refresh-links");
+    await settle();
+    await pushPlanted(planted);
+    for (const call of ["fetchLinks", "getLink"] as const) {
+      vi.spyOn(paneRelay(), call).mockRejectedValue(
+        new RelayError("server", "relay POST /api/links/fetch: 429", 429),
+      );
+    }
+
+    click("update-all");
+    await settle();
+
+    expect(toastText()).toBe("1 failed");
+    expect(await copiedDetails()).toContain(
+      "Model!B4:F12: The relay is busy. Try again in a minute.",
+    );
+  });
+
+  // The shape is on the slide before the inbox row is dropped, so a delete the
+  // relay refuses must not turn a landed insert into a reported failure: the
+  // modeller presses again and lands a second copy.
+  it("keeps a landed insert a success when the inbox row cannot be dropped", async () => {
     await bootPane();
     await waiting();
     click("refresh-inbox");
@@ -185,6 +211,12 @@ describe("a relay that answers badly", () => {
     await settle();
 
     expect(toastText()).toContain("Inserted");
+    expect(deck().slides[0]!.shapes).toHaveLength(1);
+
+    // The row is still on the relay, so the Inbox still offers it: pressing
+    // again must not leave the slide holding the same picture twice.
+    click("paste-latest-linked");
+    await settle();
     expect(deck().slides[0]!.shapes).toHaveLength(1);
   });
 });

@@ -197,6 +197,24 @@ export function toastText(): string {
 export function hasDetails(): boolean {
   return document.querySelector("#toast .toast-copy") !== null;
 }
+
+// What that button would put on the clipboard: the only way to read the
+// details a modeller would paste into a bug report.
+export async function copiedDetails(): Promise<string> {
+  let copied = "";
+  Object.defineProperty(navigator, "clipboard", {
+    configurable: true,
+    value: {
+      writeText: (text: string) => {
+        copied = text;
+        return Promise.resolve();
+      },
+    },
+  });
+  document.querySelector<HTMLButtonElement>("#toast .toast-copy")?.click();
+  await settle(2);
+  return copied;
+}
 export function linkRows(): HTMLTableRowElement[] {
   return [...document.querySelectorAll<HTMLTableRowElement>("#link-rows tr")];
 }

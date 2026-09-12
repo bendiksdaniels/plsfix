@@ -19,6 +19,7 @@ import {
   type RelayApi,
   type StatusQuery,
 } from "../link/relay";
+import { relayReason } from "../link/relay-reason";
 import {
   deriveStatus,
   sourceChanged,
@@ -27,6 +28,7 @@ import {
 } from "../link/status";
 import type { Workspace } from "../link/workspace";
 import { chunk, planBatches, REPAINT_BUDGET_BYTES } from "./batching";
+import { queueOrder, rememberPasted } from "./inbox-queue";
 import { isDrawTimeout } from "./chart-draw";
 import { chartPlan, declineReason } from "./charts";
 import { GROUP_TYPE } from "./shapes";
@@ -346,21 +348,14 @@ function countFailure(
   }
 }
 
-// The one refusal the user can do something about, said in words. A 413 is
-// the relay's 4 MiB link route or an nginx or Cloudflare hop in front of it,
-// and "413 payload too large" tells a modeller nothing they can act on.
-export const TOO_LARGE =
-  "That export is too big to send. Export a smaller range from Excel.";
-
-function tooLarge(error: unknown): boolean {
-  return isRelayError(error) && error.kind === "tooLarge";
-}
-
 // Every failure names its link. The host already stages its own errors as
-// "refresh <label>: ...", so the label is not stuttered back onto those.
+// "refresh <label>: ...", so the label is not stuttered back onto those, and
+// a relay answer with a sentence of its own (relay-reason.ts) is said in
+// words rather than as its status line.
 export function failureLine(found: FoundLink, error: unknown): string {
   const label = sourceLabel(found.tag.src, found.tag.kind);
-  if (tooLarge(error)) return `${label}: ${TOO_LARGE}`;
+  const reason = relayReason(error);
+  if (reason !== undefined) return `${label}: ${reason}`;
   const message = error instanceof Error ? error.message : String(error);
   return message.includes(label) ? message : `${label}: ${message}`;
 }
@@ -395,15 +390,7 @@ export async function listInbox(
       // Sealed with another workspace key, or corrupt: not ours to show.
     }
   }
-  // The relay already orders rows newest first with ties broken by arrival;
-  // sort is stable, so equal createdAt values keep that server order here too.
-  return items
-    .sort((left, right) => right.createdAt - left.createdAt)
-    .map(({ item }) => item);
-}
-
-export function latestInboxItem(items: InboxItem[]): InboxItem | null {
-  return items[0] ?? null;
+  return queueOrder(items);
 }
 
 // What the pane adds to "Inserted <label>." after a host that had something to
@@ -425,9 +412,10 @@ export async function insertFromInbox(
   const stage = `insert ${item.label}`;
   const keys = await deriveLinkKeys(item.token);
   const result = await relay.getLink(item.id, keys.auth).catch((error) => {
-    // The toast is the whole report on an insert, so the refusal the user can
-    // act on is reworded here; anything else travels as the relay said it.
-    if (tooLarge(error)) throw new Error(`${stage}: ${TOO_LARGE}`);
+    // The toast is the whole report on an insert, so a relay answer with a
+    // sentence is reworded here; anything else travels as the relay said it.
+    const reason = relayReason(error);
+    if (reason !== undefined) throw new Error(`${stage}: ${reason}`);
     throw error as Error;
   });
   if (result === "unchanged") {
@@ -435,6 +423,10 @@ export async function insertFromInbox(
   }
   const payload = decodePayload(await open(keys.enc, item.id, result.blob));
   const placed = await host.insertLink(item, payload, result.rev);
-  await relay.deleteInbox(ws.id, ws.auth, item.id);
+  rememberPasted(item.id);
+  // The shape is on the slide: a row the relay will not drop expires by itself
+  // after 7 days, and throwing here would have the user press again and land
+  // a second copy. Same rule as the 404 relay.ts already treats as done.
+  await relay.deleteInbox(ws.id, ws.auth, item.id).catch(() => undefined);
   return placed;
 }

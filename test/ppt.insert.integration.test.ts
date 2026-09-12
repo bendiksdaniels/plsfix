@@ -19,6 +19,7 @@ import {
   type FakePresentation,
 } from "./fakeppt";
 import { bootPpt, memoryStore, seedLink } from "./ppt.support";
+import { latestInboxItem } from "../src/ppt/inbox-queue";
 import type * as LinksModule from "../src/ppt/links";
 
 enableStrictLoadSemantics();
@@ -63,7 +64,7 @@ describe("insert from inbox", () => {
     );
     const inbox = await links.listInbox(ws, relay);
     expect(inbox.map((item) => item.id)).toEqual([newer.id, older.id]);
-    expect(links.latestInboxItem(inbox)?.id).toBe(newer.id);
+    expect(latestInboxItem(inbox)?.id).toBe(newer.id);
   });
 
   it("breaks a same-second tie with the server's own order, last export first", async () => {
