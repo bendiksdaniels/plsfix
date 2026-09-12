@@ -157,3 +157,25 @@ PowerPoint
 - [ ] Excel desktop and web: `=PLSFIX.CAGR(100,200,4)` returns 0.189207 in a cell, the function
       appears in the formula autocomplete with its three argument names, and its help link opens
       the support page (needs slice K3's page to exist).
+
+## Added by the v2.7 wave (13.09): PowerPoint and shell follow-ups
+
+
+- [ ] Excel -> PowerPoint: export a very tall, narrow chart (a sheet chart about 200 x 2000 px, e.g. a
+      40-row bar chart squeezed into two columns). It must arrive as the picture with "as a picture: the
+      chart would be smaller than 200 x 120 pt on this slide", never as a group of hairlines.
+- [ ] PowerPoint: insert a bar chart of 30 to 40 rows whose values are nine digits. Every value label
+      must sit inside the chart's own box - the longest bar's label ending at the bar's tip, right
+      aligned - and the group's box must be the one the placement gave it.
+- [ ] Both panes, keyboard only: Tab into the tab strip (one press), walk it with the arrows, Home and
+      End, then Tab again - the next press must leave the strip, not walk the remaining tabs. Landing on
+      the Excel pane's Workbook tab by arrow must show freshly read sheets, exactly like a click.
+- [ ] Excel, pane closed, cold launch: Ctrl+Shift+Alt+F (Find in workbook) and Ctrl+Shift+Alt+S (Scan
+      unused styles) must each open the pane on the Workbook tab, with the caret in the box / the style
+      list showing, not run silently.
+- [ ] PowerPoint: a chart link pushed from an Excel build whose chart data this pane cannot read (a
+      newer schema, or a hand-edited relay blob) must still insert - the picture with "as a picture:
+      chart data unreadable" - and Update all must keep repainting it. Only a real cross-version push
+      exercises this; the fakes cannot.
+- [ ] PowerPoint: insert a chart onto a slide already holding a large shape: the group must arrive full size (never shrunken below 200 x 120 pt) and the pane says "Placed over other objects".
+- [ ] PowerPoint: a stacked bar chart with 3 and with 6 series: one row per category, segments side by side, nothing outside the group box.
