@@ -1,8 +1,7 @@
-// The formula-consistency maths both audit tools share, pure and grid-shaped.
-// Owns two readings of one R1C1 grid: `auditGrid` classifies every cell for the
-// overlay's stripes, `consistentRegion` grows the block "Select consistent
-// region" selects. Two cells are the same formula only when their R1C1 strings
-// are identical, which is what a filled range gives.
+// The formula-consistency maths both audit tools share, pure and grid-shaped:
+// `auditGrid` classifies every cell of one R1C1 grid for the overlay's stripes,
+// `consistentRegion` grows the block "Select consistent region" selects. Two
+// cells are the same formula only when their R1C1 strings are identical.
 
 import { type CellValue, isFormula } from "./model";
 
