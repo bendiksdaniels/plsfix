@@ -8,6 +8,7 @@ import {
   numberFormat,
   requireEmptyBlock,
   selectedSingleRange,
+  SELECTION_CELL_CAP,
   SHEET_COLUMNS,
   SHEET_ROWS,
   withinCap,
@@ -124,6 +125,14 @@ export async function fastFillAuto(direction: "right" | "down"): Promise<void> {
       throw new Error("No neighbor data to size the fill.");
     }
     const extent = neighbours > 0 ? neighbours : own;
+    // Counted before the destination is ever asked for: a large selection with
+    // nothing beside it (the "own" fallback) would otherwise size a fill whose
+    // capture and write no cap has looked at yet.
+    if (extent > SELECTION_CELL_CAP) {
+      throw new Error(
+        `Fast fill supports up to ${SELECTION_CELL_CAP.toLocaleString()} cells at once.`,
+      );
+    }
 
     const destination = down
       ? cell.getResizedRange(extent - 1, 0)
