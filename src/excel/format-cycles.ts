@@ -1,7 +1,8 @@
-// The format cycles: fill, font colour, row style, number format and borders.
-// Each one reads its current state from the selection's first cell (borders
-// from the first area's own edges), steps once through the brand's cycle and
-// writes the next look into every area of the selection.
+// The format cycles: fill, font colour, row style, number format, borders and
+// the three hygiene ones (indent, alignment, underline). Each one reads its
+// current state from the selection's first cell (borders from the first area's
+// own edges), steps once through the brand's cycle and writes the next look
+// into every area of the selection.
 //
 // Owns: the Office.js side of the cycles only; which looks follow which lives
 // in the pure src/cycles.ts, and the presets in selection.ts.
@@ -24,7 +25,10 @@ import {
   CLEAR_FILL,
   matchBorderIndex,
   matchStyleIndex,
+  nextAlignment,
+  nextIndent,
   nextInCycle,
+  nextUnderline,
   type NumberCycleFamily,
   type RowStyleKind,
   type StyleSpec,
@@ -257,6 +261,69 @@ function writeEdges(handles: EdgeHandle[], state: BorderCycleState): void {
     }
     border.color = line.color;
   }
+}
+
+// The hygiene cycles read one scalar off the active cell and write one scalar
+// into every area, exactly as the font colour cycle does, so the three share
+// their whole shape: what to load, how to step it, where to put it back.
+interface HygieneCycle<T> {
+  stage: string;
+  /** The load path of the one property the position is read from. */
+  property: string;
+  read: (format: Excel.RangeFormat) => T;
+  step: (current: T) => T;
+  write: (format: Excel.RangeFormat, next: T) => void;
+}
+
+async function applyHygieneCycle<T>(cycle: HygieneCycle<T>): Promise<void> {
+  await Excel.run(async (context) => {
+    const areas = await selectedAreas(context, cycle.stage);
+    const active = activeArea(areas).getCell(0, 0);
+    active.load(cycle.property);
+    await context.sync();
+
+    const next = cycle.step(cycle.read(active.format));
+    await captureUndoAreas(context, areas);
+
+    for (const area of areas) cycle.write(area.format, next);
+    await syncWrite(context, cycle.stage);
+  });
+}
+
+export async function applyIndentCycle(): Promise<void> {
+  await applyHygieneCycle({
+    stage: "Indent cycling",
+    property: "format/indentLevel",
+    read: (format) => format.indentLevel,
+    step: nextIndent,
+    write: (format, next) => {
+      format.indentLevel = next;
+    },
+  });
+}
+
+export async function applyAlignmentCycle(): Promise<void> {
+  await applyHygieneCycle({
+    stage: "Alignment cycling",
+    property: "format/horizontalAlignment",
+    read: (format) => format.horizontalAlignment as string,
+    step: nextAlignment,
+    write: (format, next) => {
+      format.horizontalAlignment = next as Excel.HorizontalAlignment;
+    },
+  });
+}
+
+export async function applyUnderlineCycle(): Promise<void> {
+  await applyHygieneCycle({
+    stage: "Underline cycling",
+    property: "format/font/underline",
+    read: (format) => format.font.underline as string,
+    step: nextUnderline,
+    write: (format, next) => {
+      format.font.underline = next as Excel.RangeUnderlineStyle;
+    },
+  });
 }
 
 export async function applyBorderCycle(): Promise<void> {

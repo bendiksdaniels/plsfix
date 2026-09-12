@@ -3664,6 +3664,7 @@ export interface FakeHelpers {
   protectSheet(name: string, unlocked?: string[]): void;
   setFill(address: string, fill: Partial<FakeFill>): void;
   setAlignment(address: string, horizontal: string): void;
+  setIndent(address: string, level: number): void;
   setFont(address: string, font: Partial<FakeFont>): void;
   addStyle(name: string, builtIn?: boolean): void;
   setStyle(address: string, name: string): void;
@@ -3966,6 +3967,14 @@ export function installFakeHost(options: FakeHostOptions = {}): {
         for (let c = 0; c < rect.colCount; c += 1) {
           sheet.edit(rect.row + r, rect.col + c).horizontalAlignment =
             horizontal;
+        }
+      }
+    },
+    setIndent(address, level) {
+      const { sheet, rect } = resolve(workbook, address);
+      for (let r = 0; r < rect.rowCount; r += 1) {
+        for (let c = 0; c < rect.colCount; c += 1) {
+          sheet.edit(rect.row + r, rect.col + c).indentLevel = level;
         }
       }
     },
