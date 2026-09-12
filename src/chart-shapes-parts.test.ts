@@ -200,6 +200,29 @@ describe("the kinds the clamp does not touch", () => {
     expect(outside(out, ROOMY)).toEqual([]);
   });
 
+  // A stacked bar's segments share their row the way a stacked column's share
+  // their slot: same band, same thickness, the stacking done by the values.
+  // The clustered offset put each series in a band of its own, which pushed
+  // the outer ones past the chart box as soon as there were three.
+  it.each([2, 3, 6])("bands %i stacked series into one row each", (count) => {
+    const stacked: ChartData = {
+      ...base,
+      kind: "stackedBar",
+      categories: ["A", "B"],
+      series: Array.from({ length: count }, (_, j) =>
+        series([100, 100], `s${String(j)}`),
+      ),
+    };
+    const out = layoutChart(stacked, ROOMY);
+    expect(outside(out, ROOMY)).toEqual([]);
+    const row = out.filter(
+      (one) => one.name.startsWith("bar ") && one.name.endsWith(".0"),
+    );
+    expect(row).toHaveLength(count);
+    expect(new Set(row.map((one) => one.box.top)).size).toBe(1);
+    expect(new Set(row.map((one) => one.box.height)).size).toBe(1);
+  });
+
   it("keeps a waterfall's labels over and under its bars", () => {
     const bridge: ChartData = {
       ...base,

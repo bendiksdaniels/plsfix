@@ -290,12 +290,14 @@ function barBars(
       const series = data.series[j]!;
       const value = series.values[i]!;
       const [lo, hi] = barRange(stacked, cursor, value);
-      const top = overlap
-        ? plot.top + i * rowSlot + (rowSlot - barHeight) / 2
-        : plot.top +
-          i * rowSlot +
-          (rowSlot - data.series.length * barHeight) / 2 +
-          slotIndex * barHeight;
+      // A stacked row is one band, like a stacked column's one slot.
+      const top =
+        overlap || stacked
+          ? plot.top + i * rowSlot + (rowSlot - barHeight) / 2
+          : plot.top +
+            i * rowSlot +
+            (rowSlot - data.series.length * barHeight) / 2 +
+            slotIndex * barHeight;
       const left = valueX(lo, scale, plot);
       const box = boxAt(left, top, valueX(hi, scale, plot) - left, barHeight);
       out.push(rect(box, series.colors[i]!, `bar ${j}.${i}`));
