@@ -131,3 +131,29 @@ PowerPoint
 - [ ] Pinstripes over columns on a sheet with grouped or hidden columns: the bands follow the
       selection's own column order, not the visible one.
 - [ ] All three: the toasts fit the pane at a 320 px dock without wrapping past two lines.
+
+## Added by the v2.7 wave (12.09): the hygiene tools
+
+
+- [ ] Excel desktop: the Indent, Align and Underline buttons step a real selection and, pressed
+      again, keep stepping - the read-back Excel gives (`SingleAccountant`, `General`, a null
+      indent on a mixed range) lands on the rung the fake predicts.
+- [ ] Excel desktop: pls,fix Undo puts back an indent, an alignment and an underline the cycles
+      overwrote (the fake proves the capture; only Excel proves `setCellProperties` restores all
+      three).
+- [ ] Excel desktop: Unhide all, Show only this, Bury this and the three moves against a real
+      multi-sheet workbook, including a VBA-set `xlSheetVeryHidden` sheet, and Bury on the last
+      visible sheet answering "Excel needs one visible sheet."
+- [ ] Excel desktop: with Review > Protect Workbook (structure) on, each of the four sheet tools
+      answers "this workbook's structure is protected, nothing was changed" and the tab strip is
+      unchanged - confirms Excel really returns AccessDenied there and `workbook.protection`
+      reads true.
+- [ ] Excel desktop: Clean past the data on a real workbook whose used range runs to row 60 000
+      shrinks it (Ctrl+End lands on the data afterwards, and the saved file gets smaller).
+- [ ] Excel desktop: Clean past the data on a sheet with a chart keeps every row and moves no
+      chart, and the toast names the reason.
+- [ ] Excel for the web: Clean past the data on a large sheet finishes inside the pane's patience
+      (one delete per band, not per row).
+- [ ] Excel desktop and web: `=PLSFIX.CAGR(100,200,4)` returns 0.189207 in a cell, the function
+      appears in the formula autocomplete with its three argument names, and its help link opens
+      the support page (needs slice K3's page to exist).

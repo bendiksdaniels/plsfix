@@ -53,7 +53,7 @@ not yet built.
 | Pinstripes (alternate row/col shading) | MB | Odd/even shading via conditional format | Yes (ConditionalFormat API) | shipped v2.7 |
 | Custom Styles / Style Cycles (user-defined, 8 slots) | MB | Reusable multi-property styles on one key | Yes (settings-driven) | P2 |
 | Paintbrush (multi-slot format painter) | MB | Copy/apply formatting without clipboard, FIFO slots | shipped v2.1; slots saved with the workbook v2.5 | P2 |
-| Indent cycles, center cycle, underline cycle | MB | Alignment/underline cycling | Yes | P2 |
+| Indent cycles, center cycle, underline cycle | MB | Alignment/underline cycling | Yes | shipped v2.7 |
 | Footnote cycle/toggle/hide/checker (in-cell superscripts) | MB | Numbered footnote management in cells | Partial (number-format superscript tricks; font runs limited) | P3 |
 | Standard Sizes (conform cells/charts to preset dims) | MB | Preset output dimensions | Yes | P3 |
 
@@ -91,7 +91,7 @@ not yet built.
 | Super Find (values/formulas/comments across workbook) | MB | Better Find with results pane | shipped v2.1 (this workbook only, no other open workbooks; comments and replies searched on ExcelApi 1.10, author included) | P2 |
 | Explorer (workbook/sheet tree navigator) | US | Sheet navigation pane with search | shipped v1.1 | P1 |
 | Workbook TOC sheet | both | Hyperlinked contents sheet, auto-updating | shipped v1.1 | P1 |
-| Sheet tools (move/bury/unhide-multi/activate dialog) | MB | Sheet management | Yes (visibility incl. VeryHidden) | P2 |
+| Sheet tools (move/bury/unhide-multi/activate dialog) | MB | Sheet management | Yes (visibility incl. VeryHidden) | shipped v2.7 (no activate dialog: the explorer activates on click) |
 | NavAid (crosshair shading of selection row/col) | MB | Visual navigation aid | Yes* (onSelectionChanged + fills; perf care, restore on move) | P3 |
 | Reverse rows/columns preserving formulas | MB | Reorder periods | Yes (careful formula rewrite) | P3 |
 
@@ -105,7 +105,7 @@ not yet built.
 | Summary statistics block (min/max/mean/median under data) | MB | Auto stats for comps | Yes | shipped v2.7 |
 | Add Scenarios (toggle-driven projection cases) | MB | Scenario switch cells + duplicated rows | Yes (structured but doable) | P3 |
 | Replicate Module | MB | Duplicate an analysis block across sheets | Yes | P3 |
-| Custom functions (UDFs) e.g. =PLSFIX.CAGR | - | Namespaced functions | Yes (CustomFunctions set; not iPad/perpetual<=2021) | P2 |
+| Custom functions (UDFs) e.g. =PLSFIX.CAGR | - | Namespaced functions | Yes (CustomFunctions set; not iPad/perpetual<=2021) | shipped v2.7 (=PLSFIX.CAGR) |
 
 ## 6. Charts
 
@@ -126,7 +126,7 @@ not yet built.
 |---|---|---|---|---|
 | Clean: broken/hidden defined names | both | Name scrubber | shipped v1.1 | P1 |
 | Clean: unused styles | both | Style scrubber (style-ceiling fix) | shipped v2.1 | P2 |
-| Clean: crop used range | US | Clear stray formatting past data | Yes | P2 |
+| Clean: crop used range | US | Clear stray formatting past data | Yes | shipped v2.7 (rows and columns deleted when no chart or shape sits on the sheet) |
 | Prepare for sharing (every visible sheet to A1, report hidden content, external links, broken names, autocolor on edit) | US | Externalize workbook | shipped v2.1 (zoom is not in the Office.js worksheet API) | P2 |
 | Smart Print (headers, orientation, print areas) | US | Print prep | Partial (PageLayout API exists; verify coverage) | P3 |
 | Send via email (attachment/PDF/image) | both | Outlook handoff | Partial (no Outlook automation; mailto/Graph sendMail via backend) | P3 |
