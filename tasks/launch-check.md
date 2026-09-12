@@ -242,3 +242,35 @@ PowerPoint
 The Mac row in section 8 is replaced by these two:
 - [ ] Excel desktop (Mac, signed in): a `Ctrl+...` row fires on the physical key the Mac reports, and the pane prints `Ctrl`, not `Cmd`. Record which physical key it actually is: the documentation states only Cmd -> Ctrl on Windows and Alt -> Option on Mac, so this is the open question.
 - [ ] Excel desktop (Mac, signed in): set one action to a `Cmd+Shift+<key>` combination and confirm Office accepts the string and the Command key fires it, since the docs say Cmd is supported on macOS but no sample sends it through `replaceShortcuts`.
+
+## Added by the v2.7 wave (13.09): the paste suite
+
+- [ ] Duplicate Formulas paste on a real model: copy a 3-column block whose formulas mix
+      in-block references and absolute references to an assumptions cell, paste it four rows
+      down, and confirm Excel recalculates to the same numbers the source block shows.
+- [ ] Duplicate Formulas paste onto a DIFFERENT sheet, now that outside references are
+      qualified: confirm Excel accepts `=Model!Z9` and `='P&L 2025'!Z9` as written and the
+      pasted block returns the same numbers as the source block.
+- [ ] Duplicate Formulas paste from a sheet whose name Excel would quote (`P&L 2025`, `Q1`,
+      `Bob's`) onto another sheet: confirm no `#NAME?` and no repair prompt on reopen.
+- [ ] Duplicate Formulas paste over a source containing an array/dynamic formula and a
+      `LAMBDA`/`LET` name: confirm Excel accepts the rewritten text without a spill or name error.
+- [ ] **Real Excel's `copyFrom` tiling vs `tileGrid`'s modulo:** paste formats (the existing
+      button) and then number formats only (the new one) into a destination that is NOT a whole
+      multiple of the source - a 2x2 source into a 3x3 selection - and confirm both leave the
+      same formats in the same cells. `tileGrid` repeats by modulo, cutting the last tile short,
+      which is what the fake host's `copyFrom` does; real Excel may instead paste the source
+      once at the top-left or refuse the shape, and if it does, `planFormatWrites` is the place
+      to match it.
+- [ ] Paste number formats only onto cells carrying conditional formatting and a table style:
+      confirm the number format lands and neither the fill nor the table banding changes.
+- [ ] Paste number formats only over a merged block in real Excel: confirm the format applies and
+      Excel does not refuse the write the way it refuses a value write across part of a merge.
+- [ ] Paste row heights only with an autofit row and a wrapped-text row in the source: confirm
+      the target rows take the source's rendered heights and do not re-autofit on the next edit.
+- [ ] Paste row heights only on a sheet with a frozen pane and a filter-hidden row: confirm a
+      filter-hidden TARGET row is written and a filter-hidden SOURCE row is treated as hidden and
+      skipped, which is what `rowHidden` reports.
+- [ ] Paste row heights only on a protected sheet whose protection granted `allowFormatRows`:
+      confirm Excel accepts the write instead of returning AccessDenied (the fake refuses it
+      either way).

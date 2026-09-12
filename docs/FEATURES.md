@@ -78,8 +78,8 @@ not yet built.
 | Fast Fill with auto-extent (no pre-selection) | US | Detects how far to fill from neighbors | shipped v1.1 | P1 |
 | Paste values / formulas / formats / transpose / skip blanks (button-driven) | both | Paste-special suite | shipped v1.1 | P1 |
 | Preserve Formulas paste (exact references) | both | Paste keeping original refs | shipped v1.1 | P1 |
-| Duplicate Formulas paste | US | In-range refs adapt, external absolutes kept | Yes (formula rewrite) | P2 |
-| Paste row heights / number formats only | US | Targeted format transfer | Yes | P2 |
+| Duplicate Formulas paste | US | In-range refs adapt, external absolutes kept | Yes (formula rewrite) | shipped v2.7 (Paste: duplicate formulas; outside refs keep their cells across sheets) |
+| Paste row heights / number formats only | US | Targeted format transfer | Yes | shipped v2.7 (Paste number formats only / Paste row heights only) |
 | Intercept native Ctrl+C/Ctrl+V | - | True clipboard interception | parked | X |
 
 ## 4. Formula auditing and navigation
