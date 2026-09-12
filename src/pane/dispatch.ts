@@ -7,11 +7,13 @@
 
 import {
   addCagrLabel,
+  applyAlignmentCycle,
   applyBorderCycle,
   applyColumnWidthCycle,
   applyDecimalStep,
   applyFillCycle,
   applyFontColorCycle,
+  applyIndentCycle,
   applyNumberCycle,
   applyNumberFormat,
   applyPinstripes,
@@ -19,6 +21,7 @@ import {
   applyRowHeightCycle,
   applyRowStyleCycle,
   applySignFlip,
+  applyUnderlineCycle,
   autocolorSelection,
   clearFormats,
   fastFillAuto,
@@ -51,7 +54,14 @@ import { runReconciliation } from "./reconcile-panel";
 import { isExcelReady } from "./shared";
 import { deleteStyles, scanStyles } from "./styles-panel";
 import { startTrace, toggleAudit } from "./trace-panel";
-import { insertTocSheet, scanNames } from "./workbook-tab";
+import {
+  buryThisSheet,
+  insertTocSheet,
+  moveThisSheet,
+  scanNames,
+  showOnlyThisSheet,
+  unhideAllSheets,
+} from "./workbook-tab";
 
 // The card is a static page, not a workbook write: it needs Office chrome to
 // exist at all, not a connected Excel, so it works even before isExcelReady()
@@ -221,6 +231,27 @@ export async function dispatch(action: string): Promise<string> {
         return applyPinstripes("rows");
       case "pinstripes-columns":
         return applyPinstripes("columns");
+      case "cycle-indent":
+        await applyIndentCycle();
+        break;
+      case "cycle-align":
+        await applyAlignmentCycle();
+        break;
+      case "cycle-underline":
+        await applyUnderlineCycle();
+        break;
+      case "sheets-unhide-all":
+        return unhideAllSheets();
+      case "sheets-show-only":
+        return showOnlyThisSheet();
+      case "sheets-bury":
+        return buryThisSheet();
+      case "sheets-move-up":
+        return moveThisSheet("up");
+      case "sheets-move-down":
+        return moveThisSheet("down");
+      case "sheets-move-end":
+        return moveThisSheet("end");
       default:
         throw new Error(`Unknown action: ${action}`);
     }

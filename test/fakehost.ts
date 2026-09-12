@@ -614,6 +614,11 @@ export class FakeWorkbook {
   activeChart: FakeChart | null = null;
   precedents = new Map<string, TraceConfig>();
   dependents = new Map<string, TraceConfig>();
+  // Workbook-structure protection: while it is on, Excel refuses every change
+  // to the sheet list - a visibility or a position write - with AccessDenied.
+  // Only what the sheet tools write is policed here; adding and deleting a
+  // sheet, which Excel refuses too, stays open for the flows that do it.
+  isStructureProtected = false;
   private nextId = 1;
 
   constructor(sheetNames: string[] = ["Sheet1"]) {
@@ -764,6 +769,7 @@ const SHAPES: Record<string, Shape> = {
       names: "names",
       styles: "styles",
       comments: "comments",
+      protection: "workbookProtection",
     },
     returns: {
       getSelectedRange: "range",
@@ -808,6 +814,7 @@ const SHAPES: Record<string, Shape> = {
     },
   },
   sheetProtection: { scalars: ["protected"] },
+  workbookProtection: { scalars: ["protected"] },
   charts: {
     scalars: ["items"],
     items: "chart",
@@ -3100,6 +3107,7 @@ class WorksheetProxy {
   }
 
   set visibility(value: string) {
+    if (this.refusedByStructure()) return;
     this.sheet.visibility = value;
   }
 
@@ -3108,7 +3116,22 @@ class WorksheetProxy {
   }
 
   set position(value: number) {
+    if (this.refusedByStructure()) return;
     this.runtime.workbook.move(this.sheet, value);
+  }
+
+  // A change to the sheet list under workbook-structure protection: queued the
+  // way office.js reports it, so the batch carrying it is rejected on the next
+  // sync and none of its writes reach the workbook.
+  private refusedByStructure(): boolean {
+    if (!this.runtime.workbook.isStructureProtected) return false;
+    this.ctx.queueError(
+      hostError(
+        ErrorCodes.accessDenied,
+        "The workbook structure is protected.",
+      ),
+    );
+    return true;
   }
 
   get showGridlines(): boolean {
@@ -3562,6 +3585,18 @@ class WorkbookProxy {
       },
     };
   }
+
+  // Excel.WorkbookProtection, read-only here: whether the sheet list is locked
+  // is what a sheet tool asks before it writes a visibility or a position.
+  get protection(): { protected: boolean; load: () => void } {
+    const workbook = this.runtime.workbook;
+    return {
+      get protected(): boolean {
+        return workbook.isStructureProtected;
+      },
+      load: () => undefined,
+    };
+  }
 }
 
 // Excel.Application: the separators the host is set to, read-only here as in
@@ -3662,6 +3697,9 @@ export interface FakeHelpers {
   // Sheet protection: every write to a cell outside `unlocked` is then refused
   // with AccessDenied, and worksheet.protection.protected reads true.
   protectSheet(name: string, unlocked?: string[]): void;
+  // Workbook-structure protection: workbook.protection.protected then reads
+  // true and every visibility or position write is refused with AccessDenied.
+  protectWorkbook(): void;
   setFill(address: string, fill: Partial<FakeFill>): void;
   setAlignment(address: string, horizontal: string): void;
   setIndent(address: string, level: number): void;
@@ -3944,6 +3982,9 @@ export function installFakeHost(options: FakeHostOptions = {}): {
       sheet.unlocked = unlocked.map(
         (address) => resolve(workbook, address).rect,
       );
+    },
+    protectWorkbook() {
+      workbook.isStructureProtected = true;
     },
     setFill(address, fill) {
       const { sheet, rect } = resolve(workbook, address);

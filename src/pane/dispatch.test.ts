@@ -9,23 +9,35 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  applyAlignmentCycle,
   applyColumnWidthCycle,
+  applyIndentCycle,
+  applyNumberCycle,
   applyPinstripes,
   applyRowHeightCycle,
   applyRowStyleCycle,
+  applyUnderlineCycle,
   insertCompsStats,
   insertFootballField,
 } from "../excel";
 import { isExcelReady } from "./shared";
 import { dispatch } from "./dispatch";
+import {
+  buryThisSheet,
+  moveThisSheet,
+  showOnlyThisSheet,
+  unhideAllSheets,
+} from "./workbook-tab";
 
 vi.mock("../excel", () => ({
   addCagrLabel: vi.fn(async () => "cagr label"),
+  applyAlignmentCycle: vi.fn(async () => undefined),
   applyBorderCycle: vi.fn(async () => undefined),
   applyColumnWidthCycle: vi.fn(async () => undefined),
   applyDecimalStep: vi.fn(async () => undefined),
   applyFillCycle: vi.fn(async () => undefined),
   applyFontColorCycle: vi.fn(async () => undefined),
+  applyIndentCycle: vi.fn(async () => undefined),
   applyNumberCycle: vi.fn(async () => undefined),
   applyNumberFormat: vi.fn(async () => undefined),
   applyPinstripes: vi.fn(async () => "pinstripes ok"),
@@ -33,6 +45,7 @@ vi.mock("../excel", () => ({
   applyRowHeightCycle: vi.fn(async () => undefined),
   applyRowStyleCycle: vi.fn(async () => undefined),
   applySignFlip: vi.fn(async () => undefined),
+  applyUnderlineCycle: vi.fn(async () => undefined),
   autocolorSelection: vi.fn(async () => "autocolor ok"),
   clearFormats: vi.fn(async () => undefined),
   fastFillAuto: vi.fn(async () => undefined),
@@ -77,8 +90,12 @@ vi.mock("./trace-panel", () => ({
   toggleAudit: vi.fn(async () => "audit ok"),
 }));
 vi.mock("./workbook-tab", () => ({
+  buryThisSheet: vi.fn(async () => "buried ok"),
   insertTocSheet: vi.fn(async () => "toc ok"),
+  moveThisSheet: vi.fn(async () => "moved ok"),
   scanNames: vi.fn(async () => "names ok"),
+  showOnlyThisSheet: vi.fn(async () => "show only ok"),
+  unhideAllSheets: vi.fn(async () => "unhidden ok"),
 }));
 vi.mock("./shared", () => ({ isExcelReady: vi.fn(() => true) }));
 
@@ -236,5 +253,39 @@ describe("dispatch: unknown action", () => {
     await expect(dispatch("not-a-real-action")).rejects.toThrow(
       "Unknown action: not-a-real-action",
     );
+  });
+});
+
+describe("dispatch: the hygiene cycles and the sheet tools", () => {
+  it("routes each hygiene cycle to its own adapter", async () => {
+    await dispatch("cycle-indent");
+    await dispatch("cycle-align");
+    await dispatch("cycle-underline");
+
+    expect(applyIndentCycle).toHaveBeenCalledTimes(1);
+    expect(applyAlignmentCycle).toHaveBeenCalledTimes(1);
+    expect(applyUnderlineCycle).toHaveBeenCalledTimes(1);
+    // The cycle- prefixes own the number and row-style ids only.
+    expect(applyRowStyleCycle).not.toHaveBeenCalled();
+    expect(applyNumberCycle).not.toHaveBeenCalled();
+  });
+
+  it("routes the three moves with the direction each button promises", async () => {
+    await dispatch("sheets-move-up");
+    await dispatch("sheets-move-down");
+    await dispatch("sheets-move-end");
+
+    expect(moveThisSheet).toHaveBeenNthCalledWith(1, "up");
+    expect(moveThisSheet).toHaveBeenNthCalledWith(2, "down");
+    expect(moveThisSheet).toHaveBeenNthCalledWith(3, "end");
+  });
+
+  it("routes the visibility tools and hands their line back", async () => {
+    await expect(dispatch("sheets-unhide-all")).resolves.toBe("unhidden ok");
+    await expect(dispatch("sheets-show-only")).resolves.toBe("show only ok");
+    await expect(dispatch("sheets-bury")).resolves.toBe("buried ok");
+    expect(unhideAllSheets).toHaveBeenCalledTimes(1);
+    expect(showOnlyThisSheet).toHaveBeenCalledTimes(1);
+    expect(buryThisSheet).toHaveBeenCalledTimes(1);
   });
 });

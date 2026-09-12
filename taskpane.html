@@ -502,6 +502,29 @@
               Pinstripes ↔
             </button>
           </div>
+          <div class="scale-row" role="group" aria-label="Hygiene cycles">
+            <button
+              data-action="cycle-indent"
+              type="button"
+              title="Indent: 0 / 1 / 2 / 3 levels"
+            >
+              Indent
+            </button>
+            <button
+              data-action="cycle-align"
+              type="button"
+              title="Alignment: left / center / right / general"
+            >
+              Align
+            </button>
+            <button
+              data-action="cycle-underline"
+              type="button"
+              title="Underline: single / double / none"
+            >
+              Underline
+            </button>
+          </div>
           <p class="hint">
             Press the same button or shortcut again to step to the next look.
           </p>
@@ -1182,10 +1205,65 @@
               ↻
             </button>
           </div>
+          <div class="io-row">
+            <button
+              data-action="sheets-unhide-all"
+              type="button"
+              title="Show every hidden sheet in this workbook"
+            >
+              Unhide all
+            </button>
+            <button
+              data-action="sheets-show-only"
+              type="button"
+              title="Hide every other sheet and keep this one on show"
+            >
+              Show only this
+            </button>
+            <button
+              data-action="sheets-bury"
+              type="button"
+              title="Make this sheet very hidden, out of Excel's own unhide list"
+            >
+              Bury this
+            </button>
+            <button
+              data-action="sheets-move-end"
+              type="button"
+              title="Move this sheet to the end of the tab strip"
+            >
+              Move to end
+            </button>
+            <button
+              data-action="sheets-move-up"
+              type="button"
+              title="Move this sheet one place left"
+            >
+              Move up
+            </button>
+            <button
+              data-action="sheets-move-down"
+              type="button"
+              title="Move this sheet one place right"
+            >
+              Move down
+            </button>
+          </div>
+          <label class="toggle-row" for="sheets-very-hidden">
+            <input type="checkbox" id="sheets-very-hidden" />
+            <span
+              ><strong>Include very hidden</strong
+              ><small
+                >Unhide all then brings back the sheets buried outside Excel's
+                own unhide list</small
+              ></span
+            >
+          </label>
           <div class="sheet-list" id="sheet-list"></div>
           <p class="hint">
             Click a name to go there. The circle hides or shows a sheet; very
-            hidden sheets are left alone.
+            hidden sheets are left alone. Sheet changes are outside pls,fix
+            Undo.
           </p>
         </section>
 

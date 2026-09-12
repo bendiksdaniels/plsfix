@@ -1,8 +1,16 @@
 // Workbook tools: the contents (TOC) sheet, the sheet explorer (list/show/hide/
-// activate) and the broken-name scrubber. The TOC sheet is rewritten in full on
-// every run and only ever touches a sheet it marked as its own (the A1 marker).
+// activate), the sheet tools (unhide all, show only this, bury, move) and the
+// broken-name scrubber. The TOC sheet is rewritten in full on every run and
+// only ever touches a sheet it marked as its own (the A1 marker).
+//
+// The sheet tools run outside pls,fix Undo, the way the size cycles in
+// sizes.ts do: visibility and position are sheet state, getCellProperties
+// carries neither, so captureUndo could not put one back and is not called.
+// Every one of them ends on syncWrite with structureNote, so a workbook whose
+// structure is protected answers the pane's sentence, not Excel's own string.
 
 import { brokenIn, loadNames } from "./internal";
+import { structureNote, structureProtected, syncWrite } from "./protection";
 import { activeTheme, getActiveSettings } from "../settings";
 import { tocRows } from "../workbook";
 
@@ -152,6 +160,128 @@ export async function activateSheet(name: string): Promise<void> {
   await Excel.run(async (context) => {
     context.workbook.worksheets.getItem(name).activate();
     await context.sync();
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Sheet tools: the six buttons above the explorer. Each one asks first, so a
+// locked sheet list is refused before anything is written rather than after.
+// ---------------------------------------------------------------------------
+
+export type SheetMove = "up" | "down" | "end";
+
+/** Where a move lands the sheet. Already there is not a move (see moveSheet). */
+function movedTo(direction: SheetMove, from: number, last: number): number {
+  if (direction === "up") return Math.max(0, from - 1);
+  if (direction === "down") return Math.min(last, from + 1);
+  return last;
+}
+
+async function requireSheetList(
+  context: Excel.RequestContext,
+  stage: string,
+): Promise<void> {
+  if (await structureProtected(context)) throw new Error(structureNote(stage));
+}
+
+/**
+ * Unhide all: every hidden sheet back on show. A very hidden sheet was put out
+ * of sight outside Excel's UI, so it only comes back when asked for by name.
+ */
+export async function setSheetsVisibility(
+  includeVeryHidden: boolean,
+): Promise<number> {
+  return Excel.run(async (context) => {
+    await requireSheetList(context, "Unhide all");
+    const sheets = context.workbook.worksheets;
+    sheets.load("items/name,items/visibility");
+    await context.sync();
+
+    const hidden = sheets.items.filter(
+      (item) =>
+        item.visibility === Excel.SheetVisibility.hidden ||
+        (includeVeryHidden &&
+          item.visibility === Excel.SheetVisibility.veryHidden),
+    );
+    for (const item of hidden) {
+      item.visibility = Excel.SheetVisibility.visible;
+    }
+    await syncWrite(context, "Unhide all", structureNote);
+    return hidden.length;
+  });
+}
+
+/** Show only this: every other visible sheet hidden, this one on show. */
+export async function showOnlySheet(): Promise<{
+  name: string;
+  hidden: number;
+}> {
+  return Excel.run(async (context) => {
+    await requireSheetList(context, "Show only this");
+    const sheets = context.workbook.worksheets;
+    const active = sheets.getActiveWorksheet();
+    sheets.load("items/id,items/visibility");
+    active.load("id,name");
+    await context.sync();
+
+    const others = sheets.items.filter(
+      (item) =>
+        item.id !== active.id &&
+        item.visibility === Excel.SheetVisibility.visible,
+    );
+    for (const item of others) item.visibility = Excel.SheetVisibility.hidden;
+    active.visibility = Excel.SheetVisibility.visible;
+    await syncWrite(context, "Show only this", structureNote);
+    return { name: active.name, hidden: others.length };
+  });
+}
+
+/** Bury this: the active sheet out of the tab strip and out of the unhide list. */
+export async function burySheet(): Promise<string> {
+  return Excel.run(async (context) => {
+    await requireSheetList(context, "Bury this sheet");
+    const sheets = context.workbook.worksheets;
+    const active = sheets.getActiveWorksheet();
+    sheets.load("items/visibility");
+    active.load("name,visibility");
+    await context.sync();
+
+    const visible = sheets.items.filter(
+      (item) => item.visibility === Excel.SheetVisibility.visible,
+    ).length;
+    if (active.visibility === Excel.SheetVisibility.visible && visible <= 1) {
+      throw new Error("Excel needs one visible sheet.");
+    }
+
+    active.visibility = Excel.SheetVisibility.veryHidden;
+    await syncWrite(context, "Bury this sheet", structureNote);
+    return active.name;
+  });
+}
+
+/** Move the active sheet one place, or to the end of the tab strip. */
+export async function moveSheet(direction: SheetMove): Promise<{
+  name: string;
+  position: number;
+}> {
+  return Excel.run(async (context) => {
+    await requireSheetList(context, "Move sheet");
+    const sheets = context.workbook.worksheets;
+    const active = sheets.getActiveWorksheet();
+    sheets.load("items/name");
+    active.load("name,position");
+    await context.sync();
+
+    const from = active.position;
+    const to = movedTo(direction, from, sheets.items.length - 1);
+    if (to === from) {
+      const edge = direction === "up" ? "first" : "last";
+      throw new Error(`${active.name} is already the ${edge} sheet.`);
+    }
+
+    active.position = to;
+    await syncWrite(context, "Move sheet", structureNote);
+    return { name: active.name, position: to };
   });
 }
 

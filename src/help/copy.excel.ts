@@ -91,6 +91,12 @@ const tools: HelpCopy = {
         "Bands every second row of the selection in a light brand tint, so a wide grid reads across. Press again to take the bands off.",
       "pinstripes-columns":
         "The same bands running down the columns instead of across the rows. Press again to take them off.",
+      "cycle-indent":
+        "Steps the indent one level at a time: 0, 1, 2, 3, then 0.",
+      "cycle-align":
+        "Steps the alignment: left, center, right, then back to general.",
+      "cycle-underline":
+        "Steps the underline: single, double, then off. Accounting counts as single.",
     },
   },
   "tools-heading": {
@@ -214,6 +220,15 @@ const workbook: HelpCopy = {
     buttons: {
       "refresh-sheets":
         "Reads the sheet list again, after sheets were added, renamed or deleted.",
+      "sheets-unhide-all":
+        "Shows every hidden sheet. Very hidden ones come too when the tick below is on.",
+      "sheets-show-only":
+        "Hides every other sheet and leaves this one on show. Outside pls,fix Undo.",
+      "sheets-bury":
+        "Makes this sheet very hidden, out of Excel's own unhide list. Never the last one.",
+      "sheets-move-up": "Moves this sheet one place left in the tab strip.",
+      "sheets-move-down": "Moves this sheet one place right in the tab strip.",
+      "sheets-move-end": "Moves this sheet to the end of the tab strip.",
     },
   },
   "find-heading": {

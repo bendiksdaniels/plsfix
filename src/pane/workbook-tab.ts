@@ -1,16 +1,25 @@
-// Workbook tools: the sheet explorer (go to, show/hide), the broken-name
-// scrubber and the contents-sheet writer. The "click again to confirm" arm on
-// the delete button lapses on its own. Office.js only reaches here through
-// ../excel.
+// Workbook tools: the sheet explorer (go to, show/hide), the six sheet tools
+// above it, the broken-name scrubber and the contents-sheet writer. The "click
+// again to confirm" arm on the delete button lapses on its own. Office.js only
+// reaches here through ../excel.
+//
+// Every sheet tool re-renders the explorer, and every one of them says in its
+// own line that it changed the sheet list: those changes are outside pls,fix
+// Undo (see the header of src/excel/workbook.ts).
 
 import {
   activateSheet,
+  burySheet,
   deleteBrokenNames,
   insertToc,
   listBrokenNames,
   listSheets,
+  moveSheet,
+  setSheetsVisibility,
   setSheetVisibility,
   type SheetEntry,
+  type SheetMove,
+  showOnlySheet,
 } from "../excel";
 import { getElement } from "../ui/dom";
 import {
@@ -173,4 +182,41 @@ export async function insertTocSheet(): Promise<string> {
   await insertToc();
   await refreshSheets();
   return "Contents sheet updated";
+}
+
+// The sheet tools. Each one acts, re-renders the explorer and hands back the
+// line the toast shows; the counts are plural-correct because a modeller reads
+// them as a receipt for a change Excel's own undo cannot take back.
+function sheetWord(count: number): string {
+  return count === 1 ? "sheet" : "sheets";
+}
+
+function includeVeryHidden(): boolean {
+  return getElement<HTMLInputElement>("sheets-very-hidden").checked;
+}
+
+export async function unhideAllSheets(): Promise<string> {
+  const shown = await setSheetsVisibility(includeVeryHidden());
+  await refreshSheets();
+  if (shown === 0) return "No hidden sheets to show";
+  return `${String(shown)} ${sheetWord(shown)} shown`;
+}
+
+export async function showOnlyThisSheet(): Promise<string> {
+  const { name, hidden } = await showOnlySheet();
+  await refreshSheets();
+  if (hidden === 0) return `${name} was already the only visible sheet`;
+  return `Only ${name} is visible now: ${String(hidden)} ${sheetWord(hidden)} hidden`;
+}
+
+export async function buryThisSheet(): Promise<string> {
+  const name = await burySheet();
+  await refreshSheets();
+  return `${name} is very hidden now. Unhide all brings it back with the tick on`;
+}
+
+export async function moveThisSheet(direction: SheetMove): Promise<string> {
+  const { name, position } = await moveSheet(direction);
+  await refreshSheets();
+  return `${name} is now sheet ${String(position + 1)}`;
 }
