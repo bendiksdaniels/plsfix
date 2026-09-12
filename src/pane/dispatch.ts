@@ -36,6 +36,9 @@ import {
   insertTornado,
   insertWaterfall,
   markCopySource,
+  pasteDuplicateFormulas,
+  pasteNumberFormats,
+  pasteRowHeights,
   pasteSpecial,
   pastePreserveFormulas,
   scaleSelection,
@@ -201,6 +204,14 @@ export async function dispatch(action: string): Promise<string> {
       case "paste-exact":
         await pastePreserveFormulas();
         break;
+      case "paste-duplicate":
+        await pasteDuplicateFormulas();
+        break;
+      case "paste-number-formats":
+        await pasteNumberFormats();
+        break;
+      case "paste-row-heights":
+        return pasteRowHeights();
       case "chart-waterfall":
         return insertWaterfall();
       case "tornado":

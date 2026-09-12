@@ -125,6 +125,12 @@ const tools: HelpCopy = {
       "paste-exact":
         "Pastes the marked source's formulas exactly, references unchanged.",
       "paste-transpose": "Pastes the marked source with its rows as columns.",
+      "paste-duplicate":
+        "Pastes the source's formulas here. References inside the copied block move with it, references outside it keep their cells.",
+      "paste-number-formats":
+        "Pastes the marked source's number formats only, tiled over the selection. Values, formulas and fills are left alone.",
+      "paste-row-heights":
+        "Pastes the source's row heights, row by row. Hidden rows are skipped, and heights sit outside pls,fix Undo.",
       "divide-1000":
         "Divides the selection by a thousand. Works on typed numbers and on formulas.",
       "multiply-1000":

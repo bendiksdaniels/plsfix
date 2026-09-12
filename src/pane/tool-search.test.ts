@@ -61,6 +61,24 @@ describe("toolEntries", () => {
     expect(entries.some((e) => e.action === "styles-delete")).toBe(false);
   });
 
+  it("catalogues the three narrow pastes under their own labels", async () => {
+    const { toolEntries } = await load();
+    const entries = toolEntries(document);
+    const labels = new Map(entries.map((e) => [e.action, e.label]));
+    expect(labels.get("paste-duplicate")).toBe("Paste: duplicate formulas");
+    expect(labels.get("paste-number-formats")).toBe("Paste: number formats");
+    expect(labels.get("paste-row-heights")).toBe("Paste: row heights");
+    for (const action of [
+      "paste-duplicate",
+      "paste-number-formats",
+      "paste-row-heights",
+    ]) {
+      const entry = entries.find((e) => e.action === action);
+      expect(entry?.tab).toBe("Tools");
+      expect(entry?.sentence.length).toBeGreaterThan(0);
+    }
+  });
+
   it("still catalogues a button on a tab that is not the active one", async () => {
     const { toolEntries } = await load();
     // Workbook, Links and Brand all start hidden; only Tools is active.

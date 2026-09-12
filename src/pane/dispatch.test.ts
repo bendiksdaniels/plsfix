@@ -20,6 +20,10 @@ import {
   cleanPastData,
   insertCompsStats,
   insertFootballField,
+  pasteDuplicateFormulas,
+  pasteNumberFormats,
+  pastePreserveFormulas,
+  pasteRowHeights,
   selectConsistentRegion,
 } from "../excel";
 import { isExcelReady } from "./shared";
@@ -66,6 +70,9 @@ vi.mock("../excel", () => ({
   markCopySource: vi.fn(async () => "Model!A1"),
   pasteSpecial: vi.fn(async () => undefined),
   pastePreserveFormulas: vi.fn(async () => undefined),
+  pasteDuplicateFormulas: vi.fn(async () => undefined),
+  pasteNumberFormats: vi.fn(async () => undefined),
+  pasteRowHeights: vi.fn(async () => "Paste: 2 row heights"),
   scaleSelection: vi.fn(async () => undefined),
   selectConsistentRegion: vi.fn(async () => "3 cells share this formula"),
   toggleIfErrorGuard: vi.fn(async () => undefined),
@@ -346,5 +353,29 @@ describe("dispatch: the hygiene cycles and the sheet tools", () => {
   it("routes Clean past the data and hands its count back", async () => {
     await expect(dispatch("clean-past-data")).resolves.toBe("cleaned ok");
     expect(cleanPastData).toHaveBeenCalledTimes(1);
+  });
+});
+
+// Four ids share the "paste-" prefix with the three narrow pastes, and the
+// switch is where a longer id would be shadowed by a shorter one.
+describe("dispatch: the three narrow pastes", () => {
+  it("routes paste-duplicate to the duplicate-formula paste only", async () => {
+    await dispatch("paste-duplicate");
+    expect(pasteDuplicateFormulas).toHaveBeenCalledTimes(1);
+    expect(pastePreserveFormulas).not.toHaveBeenCalled();
+    expect(pasteNumberFormats).not.toHaveBeenCalled();
+  });
+
+  it("routes paste-number-formats to the number-format paste only", async () => {
+    await dispatch("paste-number-formats");
+    expect(pasteNumberFormats).toHaveBeenCalledTimes(1);
+    expect(pasteDuplicateFormulas).not.toHaveBeenCalled();
+  });
+
+  it("routes paste-row-heights and hands its count back to the toast", async () => {
+    await expect(dispatch("paste-row-heights")).resolves.toBe(
+      "Paste: 2 row heights",
+    );
+    expect(pasteRowHeights).toHaveBeenCalledTimes(1);
   });
 });

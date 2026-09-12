@@ -693,6 +693,50 @@
           <p class="hint" id="paste-source">
             Mark a source, then paste it into any selection.
           </p>
+          <div class="action-list">
+            <button
+              data-action="paste-duplicate"
+              type="button"
+              title="Paste the source formulas, in-range references adapted"
+            >
+              <span class="action-icon">ƒ</span
+              ><span
+                ><strong>Paste: duplicate formulas</strong
+                ><small
+                  >References pointing inside the copied block move with it;
+                  references pointing outside it keep the cells they had</small
+                ></span
+              >
+            </button>
+            <button
+              data-action="paste-number-formats"
+              type="button"
+              title="Paste the source number formats only"
+            >
+              <span class="action-icon">#</span
+              ><span
+                ><strong>Paste: number formats</strong
+                ><small
+                  >Only the number formats, tiled over the selection. Values,
+                  formulas and fills stay as they are</small
+                ></span
+              >
+            </button>
+            <button
+              data-action="paste-row-heights"
+              type="button"
+              title="Paste the source row heights only"
+            >
+              <span class="action-icon">↕</span
+              ><span
+                ><strong>Paste: row heights</strong
+                ><small
+                  >Only the row heights, row by row. A hidden source row is
+                  skipped, and heights sit outside pls,fix Undo</small
+                ></span
+              >
+            </button>
+          </div>
           <div class="scale-row">
             <button
               data-action="divide-1000"
