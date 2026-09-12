@@ -24,6 +24,8 @@ mod tests {
             std::fs::create_dir_all(&assets).unwrap();
             std::fs::write(dir.join("taskpane.html"), "<title>pls,fix</title>").unwrap();
             std::fs::write(dir.join("shortcuts.json"), "{\"actions\":[]}").unwrap();
+            std::fs::write(dir.join("support.html"), "<title>pls,fix support</title>").unwrap();
+            std::fs::write(dir.join("privacy.html"), "<title>pls,fix privacy</title>").unwrap();
             std::fs::write(assets.join("taskpane-Bfs8s79m.js"), "// bundle").unwrap();
             std::fs::write(assets.join("pptpane-abc.js"), "// bundle").unwrap();
             std::fs::write(assets.join("icon-32.png"), [0x89, 0x50]).unwrap();
@@ -153,5 +155,30 @@ mod tests {
     async fn missing_files_are_404() {
         let (status, _, _) = call("/nope.html").await;
         assert_eq!(status, StatusCode::NOT_FOUND);
+    }
+
+    // public/support.html and public/privacy.html ride into dist/ with every
+    // other static file (Vite copies public/ verbatim), so MODELIS_STATIC
+    // serving them is the same ServeDir fallback as the pane itself - this
+    // only proves the two names are not shadowed by a route or by no_dotfiles.
+    #[tokio::test]
+    async fn support_and_privacy_pages_are_served_as_html() {
+        for path in ["/support.html", "/privacy.html"] {
+            let response = app(test_dir(), test_state())
+                .oneshot(Request::get(path).body(Body::empty()).unwrap())
+                .await
+                .unwrap();
+            assert_eq!(response.status(), StatusCode::OK, "{path}");
+            let content_type = response
+                .headers()
+                .get(header::CONTENT_TYPE)
+                .and_then(|value| value.to_str().ok())
+                .unwrap_or("")
+                .to_string();
+            assert!(
+                content_type.starts_with("text/html"),
+                "{path} content-type was {content_type}"
+            );
+        }
     }
 }

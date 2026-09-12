@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>pls,fix support</title>
+    <style>
+      :root {
+        color-scheme: light;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        padding: 32px 20px 64px;
+        color: #14213d;
+        background: #fbfcfd;
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica,
+          Arial, sans-serif;
+        font-size: 16px;
+        line-height: 1.5;
+      }
+      main {
+        max-width: 640px;
+        margin: 0 auto;
+      }
+      header {
+        margin-bottom: 28px;
+        padding-bottom: 16px;
+        border-bottom: 2px solid #14213d;
+      }
+      .mark {
+        color: #2ec4b6;
+        font-family: Georgia, "Times New Roman", serif;
+        font-weight: 700;
+      }
+      h1 {
+        margin: 0 0 6px;
+        font-size: 26px;
+      }
+      .tagline {
+        margin: 0;
+        color: #475467;
+        font-size: 15px;
+      }
+      h2 {
+        margin: 36px 0 10px;
+        font-size: 18px;
+        border-left: 4px solid #2ec4b6;
+        padding-left: 10px;
+      }
+      p {
+        margin: 10px 0;
+      }
+      ul {
+        margin: 10px 0;
+        padding-left: 22px;
+      }
+      li {
+        margin: 4px 0;
+      }
+      a {
+        color: #14213d;
+        text-decoration-color: #2ec4b6;
+        text-decoration-thickness: 2px;
+      }
+      code {
+        font:
+          600 0.92em ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        background: #eef2f5;
+        border-radius: 4px;
+        padding: 1px 5px;
+      }
+      .fn {
+        margin: 18px 0;
+        padding: 14px 16px;
+        background: #f3f6f7;
+        border-left: 3px solid #14213d;
+        border-radius: 0 6px 6px 0;
+      }
+      .fn code {
+        display: block;
+        margin-bottom: 6px;
+        background: none;
+        padding: 0;
+        font-size: 1.05em;
+        color: #0b6d63;
+        overflow-wrap: anywhere;
+      }
+      .fn p {
+        margin: 0;
+        color: #344054;
+      }
+      .fn .since {
+        display: inline-block;
+        margin-left: 8px;
+        padding: 1px 7px;
+        border-radius: 999px;
+        background: #14213d;
+        color: #fff;
+        font-size: 11px;
+        font-weight: 600;
+        vertical-align: middle;
+      }
+      footer {
+        margin-top: 48px;
+        padding-top: 16px;
+        border-top: 1px solid #d8e0e6;
+        color: #667085;
+        font-size: 13px;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <h1><span class="mark">,</span>pls,fix support</h1>
+        <p class="tagline">
+          Fast, consistent financial modelling tools for Excel, and tracked
+          links that carry a range, table or chart from a workbook onto a
+          PowerPoint slide and keep it up to date.
+        </p>
+      </header>
+
+      <h2>Where it runs</h2>
+      <p>
+        pls,fix has two panes: a task pane in Excel with the modelling tools,
+        and a task pane in PowerPoint for the linked objects a workbook has
+        sent it. Both load from the same hosted add-in - nothing is installed
+        on the computer.
+      </p>
+      <p>
+        Requirements: Excel and PowerPoint with Microsoft 365, or Excel 2019
+        and PowerPoint 2021 or later, on Windows, Mac or the web.
+      </p>
+
+      <h2>Reporting a problem</h2>
+      <p>
+        When something goes wrong, pls,fix shows a red message with a
+        <strong>Copy details</strong> button. Click it, then send what was
+        copied to the pls,fix owner. That text already carries
+        what happened and where - no need to describe it separately, and
+        nothing on this page asks for a personal e-mail address.
+      </p>
+
+      <h2 id="functions">Excel functions</h2>
+      <p>
+        Three custom functions, all under the <code>PLSFIX</code> namespace.
+        They run in the same pane as everything else, so no extra add-in or
+        runtime is involved.
+      </p>
+
+      <div class="fn">
+        <code>=PLSFIX.ROUND(range, index, decimals)</code>
+        <p>
+          One cell's share of a consistently rounded group: the rounded
+          values add up to the rounded total.
+        </p>
+      </div>
+
+      <div class="fn">
+        <code>=PLSFIX.ROUNDSUM(range, decimals)</code>
+        <p>
+          The group's total, rounded so it equals the sum of
+          <code>PLSFIX.ROUND</code> over the same range.
+        </p>
+      </div>
+
+      <div class="fn">
+        <code>=PLSFIX.CAGR(first, last, periods)<span class="since">from v2.7</span></code>
+        <p>The compound annual growth rate from first to last over the given number of periods.</p>
+      </div>
+
+      <footer>
+        <p>
+          pls,fix is free and open source (MIT). Source, releases and
+          self-hosting guide:
+          <a href="https://github.com/bendiksdaniels/plsfix">github.com/bendiksdaniels/plsfix</a>.
+          See also <a href="privacy.html">what pls,fix stores</a>.
+        </p>
+      </footer>
+    </main>
+  </body>
+</html>
