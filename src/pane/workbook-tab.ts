@@ -195,10 +195,21 @@ function includeVeryHidden(): boolean {
   return getElement<HTMLInputElement>("sheets-very-hidden").checked;
 }
 
+// The buried sheets a pass left behind. "1 sheet shown" on its own reads as
+// "that was all of them" on a workbook still hiding two the tick would find.
+function buriedNote(buried: number): string {
+  if (buried === 0) return "";
+  const many = buried > 1;
+  const count = `${String(buried)} more ${many ? "are" : "is"} very hidden`;
+  return `. ${count}: tick "include very hidden" for ${many ? "them" : "it"}`;
+}
+
 export async function unhideAllSheets(): Promise<string> {
   const { shown, buried } = await setSheetsVisibility(includeVeryHidden());
   await refreshSheets();
-  if (shown > 0) return `${String(shown)} ${sheetWord(shown)} shown`;
+  if (shown > 0) {
+    return `${String(shown)} ${sheetWord(shown)} shown${buriedNote(buried)}`;
+  }
   // "No hidden sheets" would be a lie while the tick would still find some.
   if (buried > 0) {
     return 'No hidden sheets to show. Tick "include very hidden" for the buried ones.';
