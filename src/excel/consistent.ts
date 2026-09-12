@@ -1,7 +1,7 @@
 // "Select consistent region": the block of cells the active cell's formula was
-// filled into, handed back as the selection. Owns the one read of the sheet's
-// used range and the growth call into the pure audit module. Invariant: the
-// flow only reads and selects, so it never goes through syncWrite.
+// filled into, handed back as the selection. Owns the one read of the current
+// region around that cell and the growth call into the pure audit module.
+// Invariant: it only reads and selects, so it never goes through syncWrite.
 
 import { scanCapSentence } from "./audit";
 import { overCap, selectedSingleRange } from "./internal";
@@ -16,8 +16,8 @@ const OVER_CAP = scanCapSentence("Select consistent region");
 
 /**
  * Grows the rectangle of cells that share the active cell's R1C1 formula and
- * selects it. Read-only: four syncs (the area count, the used range's size,
- * its grid, the select), and no pls,fix Undo slot, because nothing is written.
+ * selects it. Read-only: four syncs (the area count, the current region's
+ * size, its grid, the select), and no pls,fix Undo slot, nothing is written.
  */
 export async function selectConsistentRegion(): Promise<string> {
   return Excel.run(async (context) => {
@@ -28,29 +28,30 @@ export async function selectConsistentRegion(): Promise<string> {
     const cell = context.workbook.getActiveCell();
     cell.load("rowIndex,columnIndex");
     const sheet = cell.worksheet;
-    const used = sheet.getUsedRangeOrNullObject(true);
-    // The cap is counted before the grid is asked for: a sheet used down to
-    // the last row would otherwise queue a million cells into one sync.
-    used.load("isNullObject,cellCount,rowIndex,columnIndex");
+    // The current region, not the sheet: growth stops at the first blank line
+    // in a direction, and the region's own edge is a blank line, so the answer
+    // can never leave it - and an ordinary model sheet is used far past the
+    // cap. Counted before the grid is asked for, the way the overlay does it.
+    const block = cell.getSurroundingRegion();
+    block.load("cellCount,rowIndex,columnIndex");
     await context.sync();
 
-    if (used.isNullObject) return NO_FORMULA;
-    if (overCap(used.cellCount)) throw new Error(OVER_CAP);
+    if (overCap(block.cellCount)) throw new Error(OVER_CAP);
 
-    used.load("formulasR1C1");
+    block.load("formulasR1C1");
     await context.sync();
 
     const region = consistentRegion(
-      used.formulasR1C1 as CellValue[][],
-      cell.rowIndex - used.rowIndex,
-      cell.columnIndex - used.columnIndex,
+      block.formulasR1C1 as CellValue[][],
+      cell.rowIndex - block.rowIndex,
+      cell.columnIndex - block.columnIndex,
     );
     if (region === null) return NO_FORMULA;
 
     sheet
       .getRangeByIndexes(
-        used.rowIndex + region.row,
-        used.columnIndex + region.column,
+        block.rowIndex + region.row,
+        block.columnIndex + region.column,
         region.rowCount,
         region.columnCount,
       )

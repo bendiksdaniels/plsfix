@@ -122,13 +122,29 @@ describe("selectConsistentRegion", () => {
     );
   });
 
-  it("says so when the active cell sits outside the used range", async () => {
+  it("says so when the active cell sits away from every block", async () => {
     helpers.seed("Model!A1", [[formula(GROWTH)]]);
     helpers.select("Model!H20");
 
     expect(await smt.selectConsistentRegion()).toBe(
       "The active cell has no formula.",
     );
+  });
+
+  // The cap belongs on the block around the active cell, not on the sheet: a
+  // used range of 6 000 cells is an ordinary model sheet, and the region can
+  // never leave its own block anyway.
+  it("grows inside a sheet whose used range is past the cap", async () => {
+    helpers.seed("Model!B2", [
+      [formula(GROWTH), formula(GROWTH), formula(GROWTH)],
+    ]);
+    helpers.seed("Model!A1500", [[42]]);
+    helpers.select("Model!C2");
+
+    expect(await smt.selectConsistentRegion()).toBe(
+      "3 cells share this formula",
+    );
+    expect(selected()).toBe("B2:D2");
   });
 
   it("refuses a ctrl-clicked selection with the staged sentence", async () => {
@@ -140,9 +156,13 @@ describe("selectConsistentRegion", () => {
     );
   });
 
-  it("refuses a used range past the overlay's scan cap", async () => {
-    helpers.seed("Model!A1", [[formula(GROWTH)]]);
-    helpers.seed("Model!A6000", [[42]]);
+  it("refuses a block of its own past the overlay's scan cap", async () => {
+    // One unbroken block of 6 000 cells: 1 500 rows of four columns.
+    const row = [1, 2, 3, 4];
+    helpers.seed(
+      "Model!A1",
+      Array.from({ length: 1_500 }, () => row),
+    );
     helpers.select("Model!A1");
 
     expect(await rejects(() => smt.selectConsistentRegion())).toBe(
