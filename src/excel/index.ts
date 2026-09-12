@@ -10,6 +10,7 @@ export * from "./formulas";
 export * from "./paste";
 export * from "./autocolor";
 export * from "./audit";
+export * from "./consistent";
 export * from "./trace";
 export * from "./charts";
 export * from "./tornado";
