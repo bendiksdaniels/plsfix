@@ -37,17 +37,23 @@ where
     }
 }
 
+/// What the server can still do while the store is busy: `/healthz` while a
+/// query waits for the connection, and how many writes may be in flight at
+/// once. Both need the store's own lock, which is `pub(crate)`, so they are
+/// unit tests rather than a suite under `server/tests`.
 #[cfg(test)]
 mod tests {
     use std::{
         path::PathBuf,
         sync::{mpsc, Arc},
+        thread::JoinHandle,
         time::{Duration, Instant},
     };
 
     use axum::{
         body::Body,
         http::{header, Request, StatusCode},
+        Router,
     };
     use tower::ServiceExt;
 
@@ -55,6 +61,28 @@ mod tests {
 
     const ID: &str = "0123456789abcdef0123456789abcdef";
     const AUTH: &str = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+    const BUSY: Duration = Duration::from_millis(300);
+
+    /// Holds the store's one connection for `BUSY`, and only answers once it
+    /// really is held.
+    fn hold_the_store(state: &Arc<AppState>) -> JoinHandle<()> {
+        let holder = Arc::clone(state);
+        let (locked, held) = mpsc::channel();
+        let keeper = std::thread::spawn(move || {
+            let _conn = holder.store.conn();
+            locked.send(()).unwrap();
+            std::thread::sleep(BUSY);
+        });
+        held.recv().unwrap();
+        keeper
+    }
+
+    fn put(id: &str) -> Request<Body> {
+        Request::put(format!("/api/links/{id}"))
+            .header(header::AUTHORIZATION, format!("Bearer {AUTH}"))
+            .body(Body::from("sealed"))
+            .unwrap()
+    }
 
     /// I2/I3 of the N1 security review: the store is one `Mutex<Connection>`
     /// called from async handlers, so a slow query used to hold a worker
@@ -70,17 +98,7 @@ mod tests {
             Duration::from_secs(30),
         );
 
-        // Hold the store's one connection on an OS thread of its own, and only
-        // start timing once it really is held.
-        let holder = Arc::clone(&state);
-        let (locked, held) = mpsc::channel();
-        let keeper = std::thread::spawn(move || {
-            let _conn = holder.store.conn();
-            locked.send(()).unwrap();
-            std::thread::sleep(Duration::from_millis(300));
-        });
-        held.recv().unwrap();
-
+        let keeper = hold_the_store(&state);
         let started = Instant::now();
         let waiting = tokio::spawn(
             app.clone().oneshot(
@@ -106,7 +124,43 @@ mod tests {
             "healthz waited {:?} for a busy store",
             started.elapsed()
         );
-        assert_eq!(waiting.await.unwrap().unwrap().status(), StatusCode::NOT_FOUND);
+        assert_eq!(
+            waiting.await.unwrap().unwrap().status(),
+            StatusCode::NOT_FOUND
+        );
         keeper.join().unwrap();
+    }
+
+    /// I2 of the N1 security review: nothing bounded how many 4 MiB bodies
+    /// could be buffered at once, so the practical ceiling was RAM. The
+    /// payload router carries `MODELIS_MAX_INFLIGHT_WRITES`, and a request
+    /// past it waits for a permit instead of being answered.
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn the_payload_router_runs_only_so_many_writes_at_once() {
+        // A push to a bad id is refused before any store call, so how long it
+        // takes is entirely how long it waited for its turn.
+        assert!(waits_behind_a_busy_write(1).await > BUSY / 2);
+        assert!(waits_behind_a_busy_write(8).await < BUSY / 4);
+    }
+
+    /// How long a second, storeless push waits while one write is stuck in the
+    /// store, on a router that admits `inflight` writes at a time.
+    async fn waits_behind_a_busy_write(inflight: usize) -> Duration {
+        let mut state = AppState::new(Store::in_memory().unwrap());
+        state.max_inflight_writes = inflight;
+        let state = Arc::new(state);
+        let app: Router = crate::relay::routes(Arc::clone(&state));
+        let keeper = hold_the_store(&state);
+
+        let busy = tokio::spawn(app.clone().oneshot(put(ID)));
+        tokio::time::sleep(BUSY / 6).await;
+        let started = Instant::now();
+        let second = app.oneshot(put("not-a-link-id")).await.unwrap();
+        let waited = started.elapsed();
+
+        assert_eq!(second.status(), StatusCode::BAD_REQUEST);
+        assert_eq!(busy.await.unwrap().unwrap().status(), StatusCode::OK);
+        keeper.join().unwrap();
+        waited
     }
 }
