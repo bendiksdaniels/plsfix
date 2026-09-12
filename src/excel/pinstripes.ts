@@ -8,10 +8,8 @@
 // stripes and the linked-cell highlight each hand back what they covered, and
 // a band on top of one would be given back as the modeller's own formatting.
 
-import { auditOverlayOn } from "./audit";
 import { applyFillKey, selectedSingleRange, withinCap } from "./internal";
-import { fillGrid, requestFills } from "./fill-store";
-import { linkHighlightOn } from "./link-highlight";
+import { fillGrid, requestFills, requireNoOverlayOwner } from "./fill-store";
 import { paintSync, protectedNote, sheetProtected } from "./protection";
 import { captureUndo } from "./undo";
 import { getActiveSettings, tint } from "../settings";
@@ -40,18 +38,6 @@ function bandLines(count: number): number[] {
   const lines: number[] = [];
   for (let line = FIRST_BAND; line < count; line += BAND_STEP) lines.push(line);
   return lines;
-}
-
-// An overlay's fills are not the modeller's, and the overlay hands them back on
-// the way out: banding over one would return our tint as their formatting. The
-// refusal is worded exactly as the two overlays word it to each other.
-function requireNoOverlay(): void {
-  if (auditOverlayOn()) {
-    throw new Error(`${STAGE}: turn the audit overlay off first`);
-  }
-  if (linkHighlightOn()) {
-    throw new Error(`${STAGE}: turn the linked-cell highlight off first`);
-  }
 }
 
 // On means every cell of every banded line already carries exactly this tint;
@@ -89,7 +75,10 @@ function done(axis: PinstripeAxis, lines: number, banded: boolean): string {
  * were there before back, either way.
  */
 export async function applyPinstripes(axis: PinstripeAxis): Promise<string> {
-  requireNoOverlay();
+  // An overlay's fills are not the modeller's, and the overlay hands them back
+  // on the way out: banding over one would return our tint as their
+  // formatting. The store itself names whichever overlay is holding them.
+  requireNoOverlayOwner(STAGE);
   return Excel.run(async (context) => {
     // The cap answers before the fills are asked for: a clicked column header
     // is a million cells, and a grid read of those would freeze the pane.

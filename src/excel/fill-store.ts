@@ -76,14 +76,25 @@ export function fillGrid(
 // construction rather than by one of them remembering to check the other.
 const stores: FillStore[] = [];
 
+/**
+ * Refuses while an overlay owns the fills, naming the flow that asked and the
+ * overlay standing in its way. `except` is the store the caller owns itself, so
+ * the two overlays ask only about each other; a flow that paints without a
+ * store of its own - the pinstripes - passes none and both hold it off.
+ */
+export function requireNoOverlayOwner(stage: string, except?: FillStore): void {
+  const owner = stores.find((store) => store !== except && store.painted);
+  if (owner) throw new Error(`${stage}: turn ${owner.label} off first`);
+}
+
 export class FillStore {
   private readonly snapshots = new Map<string, FillSnapshot>();
 
   // The setting key is the store's identity: two overlays never share one. The
-  // label is how the *other* overlay names this one when it refuses to paint.
+  // label is how anything else names this one when it refuses to paint.
   constructor(
     private readonly setting: string,
-    private readonly label: string,
+    readonly label: string,
   ) {
     stores.push(this);
   }
@@ -91,8 +102,7 @@ export class FillStore {
   // Refuses while another overlay owns the fills, naming both the flow that
   // asked and the overlay standing in its way.
   requireSoleOwner(stage: string): void {
-    const other = stores.find((store) => store !== this && store.painted);
-    if (other) throw new Error(`${stage}: turn ${other.label} off first`);
+    requireNoOverlayOwner(stage, this);
   }
 
   // Whether this overlay is on: it owns a fill exactly while it remembers what

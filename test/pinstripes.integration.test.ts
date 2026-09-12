@@ -236,6 +236,20 @@ describe("what Pinstripes refuses", () => {
     expect(helpers.cellMap("Data")).toEqual(painted);
     expect(helpers.fill("Model!A2").pattern).toBe("None");
   });
+
+  it("names whichever overlay owns the fills, by the store's own label", async () => {
+    // Not the audit stripes and not the highlight: any store that holds fills
+    // stands in the way, and the sentence is built from its label.
+    const { FillStore } = await import("../src/excel/fill-store");
+    const other = new FillStore("PLSFIX_TEST_OVERLAY", "the test overlay");
+    other.remember("sheet-id", "A1:B2", [["none", "none"]]);
+
+    seedBlock();
+    expect(await rejects(() => smt.applyPinstripes("rows"))).toBe(
+      "Pinstripes: turn the test overlay off first",
+    );
+    expect(helpers.fill("Model!A2").pattern).toBe("None");
+  });
 });
 
 describe("Pinstripes on an empty and a merged selection", () => {
