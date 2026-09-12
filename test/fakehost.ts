@@ -467,6 +467,7 @@ export interface FakeDataLabels {
 
 export interface FakeSeries {
   showConnectorLines?: boolean;
+  showLeaderLines?: boolean;
   fillColor?: string;
   // A series painted with no fill and no outline: the invisible floor of a
   // stacked bar the football field draws its bands on.
@@ -2866,6 +2867,9 @@ function seriesProxy(series: FakeSeries) {
     },
     set showConnectorLines(value: boolean) {
       series.showConnectorLines = value;
+    },
+    set showLeaderLines(value: boolean) {
+      series.showLeaderLines = value;
     },
     set gapWidth(value: number) {
       series.gapWidth = value;

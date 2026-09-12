@@ -216,6 +216,16 @@ export async function formatSelectedChart(): Promise<void> {
 
     // Its own batch, tolerated the way the waterfall's own surface is.
     styleChartSurface(chart);
+    // The series-level route: ChartSeries.showLeaderLines is ExcelApi 1.9, the
+    // same floor this whole flow already requires, so it reaches every host
+    // the label-level property (1.19) does not - desktop 365 included. Riding
+    // the tolerated batch means a refusal here never drops the rest of the
+    // restyle either.
+    if (leaderLines(type) && hostSupports("1.9")) {
+      for (let index = 0; index < chart.series.count; index += 1) {
+        chart.series.getItemAt(index).showLeaderLines = true;
+      }
+    }
     await syncTolerating(context, Excel.ErrorCodes.unsupportedOperation);
   });
 }
