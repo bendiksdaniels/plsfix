@@ -6,6 +6,7 @@ import { prepareForSharing, type ShareResult } from "../excel";
 import { type ShareIssue, summarizeShare } from "../share";
 import { getElement } from "../ui/dom";
 import { refreshSheets } from "./workbook-tab";
+import { plural } from "../model-check";
 
 // Long lists belong in the workbook, not in a pane the reader has to scroll.
 const SHARE_ROW_CAP = 20;
@@ -23,10 +24,6 @@ const SHARE_BADGES: Record<ShareIssue["kind"], string> = {
 // so the pane says what it cannot do rather than quietly leaving it out.
 const SHARE_HINT =
   "Nothing is deleted and hidden sheets are left as they are. Zoom cannot be reset by the add-in, so it stays where you left it.";
-
-function plural(count: number, word: string): string {
-  return `${String(count)} ${count === 1 ? word : `${word}s`}`;
-}
 
 // Names how many sheets were skipped and over what cap: the row list already
 // names each one (badge "Too large"), but not how many there were out of how

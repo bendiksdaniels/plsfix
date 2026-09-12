@@ -12,6 +12,7 @@ import { FIND_HIT_CAP } from "../find";
 import { getElement } from "../ui/dom";
 import { guard, tabs } from "./shared";
 import { refreshSheets } from "./workbook-tab";
+import { plural } from "../model-check";
 
 const FIND_TEXT_LIMIT = 90;
 const FIND_ICONS: Record<FindHit["kind"], string> = {
@@ -62,10 +63,6 @@ function findRow(hit: FindHit): HTMLButtonElement {
   // Named, so a jump that cannot land says which flow refused it.
   row.addEventListener("click", () => void guard(() => jumpTo(hit), "find"));
   return row;
-}
-
-function plural(count: number, word: string): string {
-  return `${String(count)} ${count === 1 ? word : `${word}s`}`;
 }
 
 // Names which sheets were too large as well as how many and over what cap, so
