@@ -1,8 +1,8 @@
 // The formula-consistency maths both audit tools share, pure and grid-shaped.
 // Owns two readings of one R1C1 grid: `auditGrid` classifies every cell for the
-// overlay's stripes, `consistentRegion` grows the rectangle "Select consistent
-// region" hands to Excel. Invariant: two cells are the same formula only when
-// their R1C1 strings are identical, which is what a filled range gives.
+// overlay's stripes, `consistentRegion` grows the block "Select consistent
+// region" selects. Two cells are the same formula only when their R1C1 strings
+// are identical, which is what a filled range gives.
 
 import { type CellValue, isFormula } from "./model";
 
@@ -66,7 +66,7 @@ function sameAcross(
   formula: string,
 ): boolean {
   for (let column = from; column <= to; column += 1) {
-    if ((grid[row]?.[column] ?? null) !== formula) return false;
+    if (formulaAt(grid, row, column) !== formula) return false;
   }
   return true;
 }
@@ -79,17 +79,18 @@ function sameDown(
   formula: string,
 ): boolean {
   for (let row = from; row <= to; row += 1) {
-    if ((grid[row]?.[column] ?? null) !== formula) return false;
+    if (formulaAt(grid, row, column) !== formula) return false;
   }
   return true;
 }
 
 /**
- * The largest rectangle of identical R1C1 formulas around one cell, or null
- * when that cell holds no formula at all. Growth is horizontal first, then
- * vertical, repeated until the rectangle stops changing: where an L of
- * matching cells could become either, the row wins - the same preference
- * auditGrid shows when it calls a cell "horizontal".
+ * A rectangle of identical R1C1 formulas grown out of one cell, or null when
+ * that cell holds no formula at all. The growth is greedy, not a search for
+ * the biggest rectangle there is: horizontal first, then vertical, repeated
+ * until nothing moves. So where an L of matching cells could become either,
+ * the row wins - the same preference auditGrid shows when it calls a cell
+ * "horizontal", and the column those cells sit in is never selected.
  */
 export function consistentRegion(
   formulasR1C1: CellValue[][],

@@ -48,12 +48,11 @@ function chipFor(area: TraceArea): HTMLButtonElement {
   return chip;
 }
 
-// The chip strip wraps, so a line of its own is a flex item that takes the
-// whole row: that is what makes a group read as a group.
+// The chip strip wraps, and .chip-group takes a whole row of it: that is what
+// makes the chips under a label read as belonging to it.
 function lineFor(text: string): HTMLParagraphElement {
   const line = document.createElement("p");
-  line.className = "hint";
-  line.style.flexBasis = "100%";
+  line.className = "hint chip-group";
   line.textContent = text;
   return line;
 }

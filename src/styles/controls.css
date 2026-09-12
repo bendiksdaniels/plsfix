@@ -263,6 +263,11 @@ select,
   flex-wrap: wrap;
   gap: var(--gap-tight);
 }
+/* A label that starts a group of chips: a whole row of the wrapping strip, so
+   the chips under it read as belonging to it. */
+.chip-group {
+  flex-basis: 100%;
+}
 .chip {
   max-width: 100%;
   overflow: hidden;
