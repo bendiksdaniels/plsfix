@@ -40,10 +40,10 @@ describe("a protected sheet", () => {
     helpers.protectSheet("Model");
 
     expect(await rejects(() => smt.applyRowHeightCycle())).toBe(
-      "row height: this sheet is protected, nothing was changed",
+      "Row height: this sheet is protected, nothing was changed",
     );
     expect(await rejects(() => smt.applyColumnWidthCycle())).toBe(
-      "column width: this sheet is protected, nothing was changed",
+      "Column width: this sheet is protected, nothing was changed",
     );
   });
 

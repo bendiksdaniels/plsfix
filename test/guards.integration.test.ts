@@ -106,10 +106,10 @@ describe("a multi-area selection", () => {
   it("is refused by the size cycles", async () => {
     helpers.selectAreas(["Model!A2:C4", "Model!A6:C8"]);
     await expect(smt.applyRowHeightCycle()).rejects.toThrow(
-      "row height: select a single range",
+      "Row height: select a single range",
     );
     await expect(smt.applyColumnWidthCycle()).rejects.toThrow(
-      "column width: select a single range",
+      "Column width: select a single range",
     );
   });
 

@@ -20,7 +20,7 @@ import { buildSizeCycles, nextSize } from "../cycles";
 // Excel reports null for a range whose rows differ in height.
 export async function applyRowHeightCycle(): Promise<void> {
   await Excel.run(async (context) => {
-    const range = await selectedSingleRange(context, "row height");
+    const range = await selectedSingleRange(context, "Row height");
     const first = range.getRow(0);
     first.load("format/rowHeight");
     await context.sync();
@@ -29,13 +29,13 @@ export async function applyRowHeightCycle(): Promise<void> {
     // The whole rows the selection touches, not the selected cells: a height
     // belongs to the row, and Excel would widen the band on its own anyway.
     range.getEntireRow().format.rowHeight = next;
-    await syncWrite(context, "row height");
+    await syncWrite(context, "Row height");
   });
 }
 
 export async function applyColumnWidthCycle(): Promise<void> {
   await Excel.run(async (context) => {
-    const range = await selectedSingleRange(context, "column width");
+    const range = await selectedSingleRange(context, "Column width");
     const first = range.getColumn(0);
     first.load("format/columnWidth");
     await context.sync();
@@ -45,6 +45,6 @@ export async function applyColumnWidthCycle(): Promise<void> {
       buildSizeCycles().columnWidth,
     );
     range.getEntireColumn().format.columnWidth = next;
-    await syncWrite(context, "column width");
+    await syncWrite(context, "Column width");
   });
 }

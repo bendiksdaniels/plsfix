@@ -282,10 +282,10 @@ describe("the two size cycles", () => {
   it("refuses a ctrl-clicked selection by name", async () => {
     helpers.selectAreas(["Model!A1", "Model!C1"]);
     expect(await rejects(() => smt.applyRowHeightCycle())).toBe(
-      "row height: select a single range",
+      "Row height: select a single range",
     );
     expect(await rejects(() => smt.applyColumnWidthCycle())).toBe(
-      "column width: select a single range",
+      "Column width: select a single range",
     );
   });
 
@@ -296,10 +296,10 @@ describe("the two size cycles", () => {
     const before = helpers.cellMap("Model");
 
     expect(await rejects(() => smt.applyRowHeightCycle())).toBe(
-      "row height: this sheet is protected, nothing was changed",
+      "Row height: this sheet is protected, nothing was changed",
     );
     expect(await rejects(() => smt.applyColumnWidthCycle())).toBe(
-      "column width: this sheet is protected, nothing was changed",
+      "Column width: this sheet is protected, nothing was changed",
     );
     expect(helpers.cellMap("Model")).toEqual(before);
   });
