@@ -299,11 +299,39 @@ export async function moveSheet(direction: SheetMove): Promise<{
   });
 }
 
+// A name can be scoped to the workbook or to one sheet (Worksheet.names,
+// ExcelApi 1.4): the two collections are separate, so a broken name defined on
+// a sheet never showed up in workbook.names at all. Loaded the same way,
+// sheet by sheet, once the sheet list itself is in hand.
+function loadSheetNameItems(names: Excel.NamedItemCollection): void {
+  names.load("items/name,items/formula");
+}
+
+async function loadEveryNameCollection(context: Excel.RequestContext): Promise<{
+  workbook: Excel.NamedItemCollection;
+  sheets: Excel.Worksheet[];
+  perSheet: Excel.NamedItemCollection[];
+}> {
+  const workbook = loadNames(context);
+  const sheets = context.workbook.worksheets;
+  sheets.load("items/name");
+  await context.sync();
+
+  const perSheet = sheets.items.map((sheet) => sheet.names);
+  for (const collection of perSheet) loadSheetNameItems(collection);
+  await context.sync();
+
+  return { workbook, sheets: sheets.items, perSheet };
+}
+
 export async function listBrokenNames(): Promise<string[]> {
   return Excel.run(async (context) => {
-    const names = loadNames(context);
-    await context.sync();
-    return brokenIn(names);
+    const { workbook, sheets, perSheet } =
+      await loadEveryNameCollection(context);
+    const scoped = sheets.flatMap((sheet, index) =>
+      brokenIn(perSheet[index]!).map((name) => `${sheet.name}!${name}`),
+    );
+    return [...brokenIn(workbook), ...scoped];
   });
 }
 
@@ -311,14 +339,25 @@ export async function listBrokenNames(): Promise<string[]> {
 // Excel's own undo stack. The pane therefore asks twice before calling this.
 export async function deleteBrokenNames(): Promise<number> {
   return Excel.run(async (context) => {
-    const names = loadNames(context);
-    await context.sync();
+    const { workbook, perSheet } = await loadEveryNameCollection(context);
 
-    const broken = new Set(brokenIn(names));
-    for (const item of names.items) {
+    const broken = new Set(brokenIn(workbook));
+    for (const item of workbook.items) {
       if (broken.has(item.name)) item.delete();
     }
+
+    let deleted = broken.size;
+    for (const collection of perSheet) {
+      const scopedBroken = new Set(brokenIn(collection));
+      for (const item of collection.items) {
+        if (scopedBroken.has(item.name)) {
+          item.delete();
+          deleted += 1;
+        }
+      }
+    }
+
     await context.sync();
-    return broken.size;
+    return deleted;
   });
 }

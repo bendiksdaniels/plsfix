@@ -278,6 +278,9 @@ export class FakeSheet {
   // formula written back over a clobbered cell shows its result again. Kept off
   // the cell record, which is what tests deep-compare.
   formulaValues = new Map<string, Map<string, CellValue>>();
+  // Sheet-scoped defined names, alongside workbook.names: the same shape, a
+  // separate collection (Worksheet.names, ExcelApi 1.4).
+  names: FakeName[] = [];
 
   constructor(
     public name: string,
@@ -3000,10 +3003,22 @@ class NamedItemProxy {
     this.record.visible = value;
   }
 
+  // The record may live in the workbook's own list or in one sheet's: this
+  // proxy is handed out for both (WorkbookProxy.names and WorksheetProxy.names
+  // wrap the same class), so delete looks in whichever list actually holds it
+  // rather than assuming the workbook-scoped one.
   delete(): void {
-    const list = this.runtime.workbook.names;
-    const index = list.indexOf(this.record);
-    if (index >= 0) list.splice(index, 1);
+    const lists = [
+      this.runtime.workbook.names,
+      ...this.runtime.workbook.sheets.map((sheet) => sheet.names),
+    ];
+    for (const list of lists) {
+      const index = list.indexOf(this.record);
+      if (index >= 0) {
+        list.splice(index, 1);
+        return;
+      }
+    }
   }
 
   // A name Excel rewrote to #REF! (the rows under it went away), or one
@@ -3401,6 +3416,52 @@ class WorksheetProxy {
           (record) => record.sheetName === sheet.name,
         ).length;
         return { value: count };
+      },
+    };
+  }
+
+  // Worksheet.names (ExcelApi 1.4): the same shape as workbook.names, scoped to
+  // this sheet's own list.
+  get names() {
+    const runtime = this.runtime;
+    const ctx = this.ctx;
+    const list = this.sheet.names;
+    const wrap = (record: FakeName) => new NamedItemProxy(runtime, ctx, record);
+    return {
+      load: () => undefined,
+      get items() {
+        return list.map(wrap);
+      },
+      add(name: string, reference: RangeProxy | string): NamedItemProxy {
+        if (list.some((entry) => entry.name === name)) {
+          throw hostError(
+            ErrorCodes.itemAlreadyExists,
+            `${name} already exists.`,
+          );
+        }
+        const formula =
+          typeof reference === "string"
+            ? reference.startsWith("=")
+              ? reference
+              : `=${reference}`
+            : `=${quoteSheet(reference.sheet.name)}!${absoluteA1(reference.rect)}`;
+        const record: FakeName = { name, formula, visible: true };
+        list.push(record);
+        return wrap(record);
+      },
+      getItem(name: string): NamedItemProxy {
+        const record = list.find((entry) => entry.name === name);
+        if (!record) {
+          throw hostError(ErrorCodes.itemNotFound, `No name ${name}.`);
+        }
+        return wrap(record);
+      },
+      getItemOrNullObject(name: string): NamedItemProxy {
+        const record = list.find((entry) => entry.name === name);
+        if (record) return wrap(record);
+        const missing = wrap({ name, formula: "", visible: false });
+        missing.isNullObject = true;
+        return missing;
       },
     };
   }
