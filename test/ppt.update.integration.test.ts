@@ -107,6 +107,25 @@ describe("update", () => {
     expect(getLink).toHaveBeenCalledTimes(1);
   });
 
+  // A timed-out batch is a relay that cannot be reached, same as a network
+  // failure: every row fails with that one reason, not a 20s GET per row.
+  it("fails every row once on a timed-out batch, without a GET per row", async () => {
+    const ws = await createWorkspace(memoryStore());
+    const item = await seedLink(fakePng(10, 10));
+    await links.insertFromInbox(item, ws, relay);
+    await pushAgain(item, fakePng(10, 10));
+    const rows = await links.listLinks(relay);
+    vi.spyOn(relay, "fetchLinks").mockRejectedValue(
+      new RelayError("timeout", "The link relay did not answer in time."),
+    );
+    const getLink = vi.spyOn(relay, "getLink");
+
+    const summary = await links.updateLinks(rows, relay);
+    expect(summary).toMatchObject({ updated: 0, failed: 1 });
+    expect(summary.failures[0]).toContain("did not answer in time");
+    expect(getLink).not.toHaveBeenCalled();
+  });
+
   // The poll and the fetch are two round trips, and the relay can move
   // between them. Whatever the batch leaves out lands on the counter the row
   // would have had if the poll had seen it.

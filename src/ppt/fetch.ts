@@ -183,10 +183,15 @@ async function fetchBatch(
   } catch (error) {
     // A relay that cannot be reached answers no row on its own either: every
     // row fails with that one reason, rather than one GET per row to say it
-    // again. A batch refused for any other cause says nothing about any one
-    // link - an older relay does not know the route at all - so every row
-    // falls back to the GET it would have made, which reports its own reason.
-    if (isRelayError(error) && error.kind === "network") {
+    // again - a timeout is the same story, and a GET per row would only wait
+    // out the same deadline once more per row. A batch refused for any other
+    // cause says nothing about any one link - an older relay does not know
+    // the route at all - so every row falls back to the GET it would have
+    // made, which reports its own reason.
+    if (
+      isRelayError(error) &&
+      (error.kind === "network" || error.kind === "timeout")
+    ) {
       for (const group of batch) {
         for (const row of group.rows) {
           outcome.failures.push({ found: row.found, error });

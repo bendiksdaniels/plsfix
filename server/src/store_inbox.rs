@@ -41,10 +41,12 @@ impl Store {
     /// Live items of a workspace, newest first. `created_at` is whole seconds,
     /// so two exports in the same second tie; the old tiebreak, `id DESC`,
     /// sorted on the link's random hex id and so picked either one with even
-    /// odds. `rowid` only ever grows (this table keeps its default rowid, and
-    /// a re-export upserts the existing row rather than reinserting it), so a
-    /// tie now reads as "the one exported last of the two", matching what
-    /// "Paste latest linked" promises. A foreign key simply sees no rows.
+    /// odds. `rowid` only ever grows (this table keeps its default rowid), so
+    /// a tie now reads as "the row inserted last of the two" - for two
+    /// distinct links, the one exported last, which is what "Paste latest
+    /// linked" promises; a re-export upserts its existing row rather than
+    /// reinserting it, so it keeps its original rowid and does not itself
+    /// move up a tie. A foreign key simply sees no rows.
     pub fn list_inbox(
         &self,
         ws: &str,

@@ -7,7 +7,7 @@
 use std::{sync::Arc, time::Duration};
 
 use axum::{
-    body::Body,
+    body::{Body, Bytes},
     http::{Request, StatusCode},
     routing::get,
     Router,
@@ -61,6 +61,42 @@ async fn the_real_router_is_bounded_by_the_duration_it_is_given() {
     // A fast route on a short deadline still answers normally: the layer
     // bounds a stalled handler, it does not race every request against it.
     assert_eq!(response.status(), StatusCode::OK);
+}
+
+// The two tests above build their own router with their own TimeoutLayer, so
+// deleting the layer from the shipped router in lib.rs would leave them
+// green - they guard the layer's own behaviour, not that app_with_timeout
+// actually installs one on the real routes.
+//
+// A timing race against a real route turns out not to be reliably
+// deterministic here (Duration::ZERO against /healthz was tried first, per
+// fix-round-1 review): none of the shipped handlers take a controllable
+// delay - /healthz never awaits anything and resolves on its very first poll
+// regardless of the deadline (Duration::ZERO measured 0/10 timeouts against
+// it), and even the ServeDir file read behind /taskpane.html, though it does
+// yield once through a real
+// spawn_blocking dispatch, resolves faster than any deadline from 0ms to 10ms
+// could reliably beat (0-40% across repeated runs, worse the larger the
+// deadline). A request whose BODY never finishes arriving sidesteps the race
+// entirely: PUT /api/links/:id reads its body with the `Bytes` extractor
+// before put_link's own code (and its auth check) ever runs, so a body that
+// never produces a chunk and never signals EOF makes normal completion
+// impossible - only the layer's own deadline can ever answer this request,
+// so any positive duration is deterministic, not just likely.
+#[tokio::test]
+async fn the_real_router_answers_408_when_its_own_layer_is_exhausted() {
+    let state = Arc::new(AppState::new(Store::in_memory().unwrap()));
+    let app = app_with_timeout(static_dir("timeout"), state, Duration::from_millis(10));
+    let never_arrives = futures_util::stream::pending::<Result<Bytes, std::io::Error>>();
+    let request = Request::put(format!("/api/links/{}", "a".repeat(32)))
+        .header(
+            "authorization",
+            "Bearer AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        )
+        .body(Body::from_stream(never_arrives))
+        .unwrap();
+    let response = app.oneshot(request).await.unwrap();
+    assert_eq!(response.status(), StatusCode::REQUEST_TIMEOUT);
 }
 
 #[test]
