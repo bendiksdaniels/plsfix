@@ -4,9 +4,10 @@
 //! set on the state, so nothing here writes a gigabyte or waits a minute.
 
 use plsfix_server::{
-    limits::RateLimiter,
+    limits::{RateLimiter, TrustedProxy},
     relay::*,
     store::{auth_hash, Store, LINK_TTL},
+    store_room::Caps,
 };
 
 use axum::{
@@ -24,10 +25,20 @@ const OTHER: &str = "fedcba9876543210fedcba9876543210";
 const WS: &str = "CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC"; // 43 chars
 const MINE: &str = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
 
+/// Every client in this suite names itself with `CF-Connecting-IP`, which only
+/// a deployment that declares Cloudflare in front of it may trust.
 fn state(build: impl FnOnce(&mut AppState)) -> Arc<AppState> {
     let mut state = AppState::new(Store::in_memory().unwrap());
+    state.trusted_proxy = TrustedProxy::Cloudflare;
     build(&mut state);
     Arc::new(state)
+}
+
+fn ceiling(bytes: i64) -> Caps {
+    Caps {
+        max_bytes: bytes,
+        inbox_rows: INBOX_MAX_PER_WS,
+    }
 }
 
 fn put(id: &str, bytes: usize) -> Request<Body> {
@@ -58,7 +69,7 @@ async fn body_of(response: Response) -> String {
 
 #[tokio::test]
 async fn a_push_over_the_byte_ceiling_sweeps_first_and_only_then_refuses() {
-    let state = state(|state| state.max_bytes = 100);
+    let state = state(|state| state.store.set_caps(ceiling(100)));
     let app = routes(state.clone());
     // 100 dead bytes: over the ceiling on paper, gone the moment it matters.
     state

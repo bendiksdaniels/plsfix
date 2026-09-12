@@ -6,7 +6,7 @@
 
 use axum::{
     body::Bytes,
-    extract::{Path, State},
+    extract::{Extension, Path, State},
     http::HeaderMap,
     response::IntoResponse,
     Json,
@@ -14,10 +14,10 @@ use axum::{
 use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine as _};
 use serde::Serialize;
 
-use crate::relay::{
-    failed, is_link_id, now, ok_json, workspace_auth, Api, Refused, Reply, LINK_ID_HEADER,
-};
-use crate::relay_gates::{inbox_room, room_for};
+use crate::blocking::store_call;
+use crate::relay::{is_link_id, now, ok_json, workspace_auth, Api, Refused, Reply, LINK_ID_HEADER};
+use crate::relay_gates::{charge_bytes, full, ClientKey};
+use crate::store_inbox::Posted;
 
 #[derive(Serialize)]
 struct InboxOut {
@@ -30,6 +30,7 @@ struct InboxOut {
 pub(crate) async fn post_inbox(
     State(state): Api,
     Path(ws): Path<String>,
+    client: Option<Extension<ClientKey>>,
     headers: HeaderMap,
     body: Bytes,
 ) -> Reply {
@@ -38,16 +39,20 @@ pub(crate) async fn post_inbox(
         .get(LINK_ID_HEADER)
         .and_then(|value| value.to_str().ok())
         .filter(|id| is_link_id(id))
-        .ok_or(Refused::BadId)?;
-    room_for(&state, "post_inbox", id, body.len())?;
-    inbox_room(&state, &ws, id)?;
+        .ok_or(Refused::BadId)?
+        .to_string();
+    charge_bytes(&state, client.as_deref(), body.len())?;
     // No ownership check: the row is keyed by the writer's hash, so a foreign
     // key writes beside the pane's item rather than over it, and never sees it.
-    state
-        .store
-        .post_inbox(&ws, &auth, id, &body, now())
-        .map_err(|error| failed("post_inbox", id, &error))?;
-    Ok(ok_json())
+    let (space, link, item, at) = (ws.clone(), id.clone(), body.clone(), now());
+    let posted = store_call(&state, "post_inbox", &id, move |store| {
+        store.post_inbox(&space, &auth, &link, &item, at)
+    })
+    .await?;
+    match posted {
+        Posted::Stored => Ok(ok_json()),
+        Posted::Full => Err(full("post_inbox", &id, &state)),
+    }
 }
 
 pub(crate) async fn list_inbox(
@@ -56,10 +61,11 @@ pub(crate) async fn list_inbox(
     headers: HeaderMap,
 ) -> Reply {
     let auth = workspace_auth(&headers, &ws)?;
-    let rows = state
-        .store
-        .list_inbox(&ws, &auth, now())
-        .map_err(|error| failed("list_inbox", &ws, &error))?;
+    let (space, at) = (ws.clone(), now());
+    let rows = store_call(&state, "list_inbox", &ws, move |store| {
+        store.list_inbox(&space, &auth, at)
+    })
+    .await?;
     let out: Vec<InboxOut> = rows
         .into_iter()
         .map(|row| InboxOut {
@@ -80,10 +86,11 @@ pub(crate) async fn delete_inbox(
     if !is_link_id(&id) {
         return Err(Refused::BadId);
     }
-    let deleted = state
-        .store
-        .delete_inbox(&ws, &auth, &id, now())
-        .map_err(|error| failed("delete_inbox", &id, &error))?;
+    let (space, link, at) = (ws.clone(), id.clone(), now());
+    let deleted = store_call(&state, "delete_inbox", &id, move |store| {
+        store.delete_inbox(&space, &auth, &link, at)
+    })
+    .await?;
     // A row this key did not write is invisible, so "not yours" is 404 here.
     if deleted {
         Ok(ok_json())

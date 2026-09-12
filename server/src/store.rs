@@ -1,14 +1,19 @@
 //! sqlite store behind the relay: sealed link revisions plus the schema both
 //! tables share. Owns ownership by `sha256(authKey)`, the two-revision
-//! retention rule, TTL expiry (30 d links, 7 d inbox) and the row and byte
-//! counts the storage ceiling and `/version` are read from; the inbox rows
-//! themselves live in `store_inbox`.
+//! retention rule, TTL expiry (30 d links, 7 d inbox) and the ceilings a write
+//! is held to; the counting behind those ceilings lives in `store_room` and
+//! the inbox rows in `store_inbox`.
 //! Invariant: blobs are opaque ciphertext - the server holds no key.
 
-use std::{path::Path, sync::Mutex, sync::MutexGuard};
+use std::{
+    path::Path,
+    sync::{Mutex, MutexGuard, PoisonError},
+};
 
 use rusqlite::{params, Connection};
 use sha2::{Digest, Sha256};
+
+use crate::store_room::{room_locked, Caps};
 
 /// A link lives thirty days from its last push or touch: a deck reopened
 /// after a month of holidays still repaints.
@@ -32,16 +37,21 @@ DROP TABLE IF EXISTS inbox;
 const INSERT_REV: &str = "INSERT INTO links (id, rev, auth_hash, pushed_at, expires_at, blob) VALUES (?1, ?2, ?3, ?4, ?5, ?6)";
 
 /// Sealed blobs keyed by link id and workspace, guarded by one connection.
+/// That one mutex is also the critical section every ceiling is read in, so a
+/// write's "does it fit" and its insert cannot be split by another write.
 pub struct Store {
     conn: Mutex<Connection>,
+    caps: Caps,
 }
 
-/// Outcome of a push: a new link, a new revision, or a foreign owner.
+/// Outcome of a push: a new link, a new revision, a foreign owner, or a store
+/// that has no room for the blob.
 #[derive(Debug)]
 pub enum Put {
     Created(i64),
     Updated(i64),
     Forbidden,
+    Full,
 }
 
 /// The newest live revision of a link.
@@ -68,7 +78,7 @@ pub enum Delete {
 
 /// What the store holds right now, for `/version`: distinct links, the
 /// revisions behind them, live-or-not inbox rows and the blob bytes of both.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Counts {
     pub links: i64,
     pub revisions: i64,
@@ -159,15 +169,30 @@ impl Store {
         conn.execute_batch(SCHEMA)?;
         Ok(Store {
             conn: Mutex::new(conn),
+            caps: Caps::OPEN,
         })
     }
 
+    /// The ceilings this store holds writes to. Set once at startup, from the
+    /// environment; a store nobody configured holds whatever it is given.
+    pub fn set_caps(&mut self, caps: Caps) {
+        self.caps = caps;
+    }
+
+    pub fn caps(&self) -> Caps {
+        self.caps
+    }
+
+    /// A poisoned connection is a query that lost a race, never corrupt state:
+    /// one panic elsewhere must not turn every later request into a panic too.
     pub(crate) fn conn(&self) -> MutexGuard<'_, Connection> {
-        self.conn.lock().expect("store connection mutex poisoned")
+        self.conn.lock().unwrap_or_else(PoisonError::into_inner)
     }
 
     /// First push creates rev 1 and fixes the owner; later pushes from the same
-    /// owner add a revision, keep the last two and refresh the TTL.
+    /// owner add a revision, keep the last two and refresh the TTL. The byte
+    /// ceiling is read after the sweep and inside the same lock as the insert,
+    /// so concurrent pushes cannot all pass one pre-write total.
     pub fn put_link(
         &self,
         id: &str,
@@ -177,6 +202,9 @@ impl Store {
     ) -> rusqlite::Result<Put> {
         let conn = self.conn();
         sweep_locked(&conn, now)?;
+        if !room_locked(&conn, blob.len(), self.caps.max_bytes)? {
+            return Ok(Put::Full);
+        }
         let expires = now + LINK_TTL;
         let tx = conn.unchecked_transaction()?;
         let outcome = match head(&tx, id, now)? {
@@ -343,35 +371,6 @@ impl Store {
         }
         tx.commit()?;
         Ok(touched)
-    }
-
-    /// Blob bytes both tables hold together: what the storage ceiling counts.
-    /// Expired rows count until they are swept, which is why a write that
-    /// finds itself over the ceiling sweeps before it refuses.
-    pub fn total_bytes(&self) -> rusqlite::Result<i64> {
-        self.conn().query_row(
-            "SELECT (SELECT COALESCE(SUM(LENGTH(blob)), 0) FROM links)
-                  + (SELECT COALESCE(SUM(LENGTH(blob)), 0) FROM inbox_v2)",
-            [],
-            |row| row.get(0),
-        )
-    }
-
-    /// What `/version` reports: rows held, links behind them, bytes on disk.
-    pub fn counts(&self) -> rusqlite::Result<Counts> {
-        let conn = self.conn();
-        let one =
-            |sql: &str| -> rusqlite::Result<i64> { conn.query_row(sql, [], |row| row.get(0)) };
-        let links = one("SELECT COUNT(DISTINCT id) FROM links")?;
-        let revisions = one("SELECT COUNT(*) FROM links")?;
-        let inbox = one("SELECT COUNT(*) FROM inbox_v2")?;
-        drop(conn);
-        Ok(Counts {
-            links,
-            revisions,
-            inbox,
-            bytes: self.total_bytes()?,
-        })
     }
 
     /// Deletes expired rows from both tables; runs on every write and hourly.

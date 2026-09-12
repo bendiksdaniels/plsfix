@@ -10,7 +10,8 @@ use axum::{body::Bytes, extract::State, response::IntoResponse, Json};
 use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine as _};
 use serde::{Deserialize, Serialize};
 
-use crate::relay::{failed, now, Api, Refused, Reply, MAX_BATCH_ITEMS};
+use crate::blocking::store_call;
+use crate::relay::{now, Api, Refused, Reply, MAX_BATCH_ITEMS};
 use crate::store::{auth_hash, Found, Get, StatusRow, Store};
 
 /// Blobs one response may carry. A deck of full-slide renders is far past this,
@@ -130,7 +131,10 @@ pub(crate) async fn fetch(State(state): Api, body: Bytes) -> Reply {
     if items.len() > MAX_BATCH_ITEMS {
         return Err(Refused::TooManyItems);
     }
-    let out =
-        collect(&state.store, &items, now()).map_err(|error| failed("fetch", "batch", &error))?;
+    let at = now();
+    let out = store_call(&state, "fetch", "batch", move |store| {
+        collect(store, &items, at)
+    })
+    .await?;
     Ok(Json(out).into_response())
 }

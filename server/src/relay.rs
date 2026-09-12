@@ -10,7 +10,7 @@ use std::sync::Arc;
 
 use axum::{
     body::Bytes,
-    extract::{DefaultBodyLimit, Path, Query, State},
+    extract::{DefaultBodyLimit, Extension, Path, Query, State},
     http::{header, HeaderMap, StatusCode},
     middleware,
     response::{IntoResponse, Response},
@@ -18,11 +18,14 @@ use axum::{
     Json, Router,
 };
 use serde::{Deserialize, Serialize};
+use tower::limit::ConcurrencyLimitLayer;
 
-use crate::limits::RateLimiter;
+use crate::blocking::store_call;
+use crate::limits::{RateLimiter, TrustedProxy};
 use crate::manifest::ManifestSource;
-use crate::relay_gates::{rate_limit, room_for};
+use crate::relay_gates::{charge_bytes, full, rate_limit, ClientKey};
 use crate::store::{auth_hash, Delete, Found, Get, Put, StatusRow, Store};
+use crate::store_room::{Caps, CountsCache};
 use crate::{fetch, relay_inbox, relay_touch};
 
 /// A sealed picture is the big payload; 4 MiB covers a full-slide render.
@@ -46,30 +49,58 @@ pub const DEFAULT_MAX_BYTES: i64 = 1024 * 1024 * 1024;
 pub const DEFAULT_WRITE_PER_MIN: u32 = 300;
 /// Reads are polls and batches (MODELIS_RATE_READ_PER_MIN).
 pub const DEFAULT_READ_PER_MIN: u32 = 1200;
+/// A second write budget, charged by the body rather than by the request
+/// (MODELIS_RATE_WRITE_KIB_PER_MIN): 64 MiB a minute per client. A working day
+/// of exports is far below it - a few hundred pushes of 50-500 KiB and the odd
+/// 1 MiB chart picture is single-digit MiB a minute - while a client trying to
+/// fill a 1 GiB store now needs a quarter of an hour instead of a minute.
+pub const DEFAULT_WRITE_KIB_PER_MIN: u32 = 64 * 1024;
+/// Writes the payload router runs at once (MODELIS_MAX_INFLIGHT_WRITES). Each
+/// one buffers its body in memory, so this is what bounds the relay's RAM.
+pub const DEFAULT_MAX_INFLIGHT_WRITES: usize = 32;
 /// Live inbox rows one workspace may hold. A deck takes its items within
 /// minutes, so a workspace this deep is a loop, not a busy week.
 pub const INBOX_MAX_PER_WS: i64 = 500;
 
-/// Everything the routes share: one store, the storage ceiling, the two
-/// rate limiters and the manifest source. Built by `AppState::new`, so a new limit cannot be forgotten
-/// at one call site; `main` overrides the fields from the environment.
+/// Everything the routes share: one store, the storage ceiling, the three rate
+/// limiters, which forwarding header names a client, how many writes may run
+/// at once, the cached `/version` counters and the manifest source. Built by
+/// `AppState::new`, so a new limit cannot be forgotten at one call site;
+/// `main` overrides the fields from the environment.
 pub struct AppState {
     pub store: Store,
-    pub max_bytes: i64,
     pub writes: RateLimiter,
+    pub write_bytes: RateLimiter,
     pub reads: RateLimiter,
+    pub trusted_proxy: TrustedProxy,
+    pub max_inflight_writes: usize,
+    pub counts: CountsCache,
     pub manifest: ManifestSource,
 }
 
 impl AppState {
     pub fn new(store: Store) -> AppState {
+        let mut store = store;
+        store.set_caps(Caps {
+            max_bytes: DEFAULT_MAX_BYTES,
+            inbox_rows: INBOX_MAX_PER_WS,
+        });
         AppState {
             store,
-            max_bytes: DEFAULT_MAX_BYTES,
             writes: RateLimiter::new(DEFAULT_WRITE_PER_MIN),
+            write_bytes: RateLimiter::new(DEFAULT_WRITE_KIB_PER_MIN),
             reads: RateLimiter::new(DEFAULT_READ_PER_MIN),
+            trusted_proxy: TrustedProxy::default(),
+            max_inflight_writes: DEFAULT_MAX_INFLIGHT_WRITES,
+            counts: CountsCache::default(),
             manifest: ManifestSource::default(),
         }
+    }
+
+    /// The storage ceiling this relay runs with: the store enforces it inside
+    /// each write, `/version` reports it, and it lives in exactly one place.
+    pub fn max_bytes(&self) -> i64 {
+        self.store.caps().max_bytes
     }
 }
 
@@ -133,11 +164,15 @@ pub fn now() -> i64 {
         .unwrap_or(0)
 }
 
-/// One router per body limit, so only the payload route carries 4 MiB.
+/// One router per body limit, so only the payload route carries 4 MiB. That
+/// same router carries the concurrency limit: each request in flight there
+/// buffers its whole body in memory, so without one the practical ceiling is
+/// RAM rather than `MODELIS_MAX_BYTES` (I2 of the N1 security review).
 pub fn routes(state: Arc<AppState>) -> Router {
     let links = Router::new()
         .route("/:id", get(get_link).put(put_link).delete(delete_link))
-        .layer(DefaultBodyLimit::max(LINK_LIMIT));
+        .layer(DefaultBodyLimit::max(LINK_LIMIT))
+        .layer(ConcurrencyLimitLayer::new(state.max_inflight_writes));
     let batch = Router::new()
         .route("/status", post(status))
         .route("/fetch", post(fetch::fetch))
@@ -218,20 +253,23 @@ pub(crate) fn workspace_auth(headers: &HeaderMap, ws: &str) -> Result<[u8; 32], 
 async fn put_link(
     State(state): Api,
     Path(id): Path<String>,
+    client: Option<Extension<ClientKey>>,
     headers: HeaderMap,
     body: Bytes,
 ) -> Reply {
     let auth = link_auth(&headers, &id)?;
-    room_for(&state, "put_link", &id, body.len())?;
-    let put = state
-        .store
-        .put_link(&id, &auth, &body, now())
-        .map_err(|error| failed("put_link", &id, &error))?;
+    charge_bytes(&state, client.as_deref(), body.len())?;
+    let (key, blob, at) = (id.clone(), body.clone(), now());
+    let put = store_call(&state, "put_link", &id, move |store| {
+        store.put_link(&key, &auth, &blob, at)
+    })
+    .await?;
     match put {
         Put::Created(rev) | Put::Updated(rev) => {
             Ok(Json(serde_json::json!({ "rev": rev })).into_response())
         }
         Put::Forbidden => Err(Refused::Forbidden),
+        Put::Full => Err(full("put_link", &id, &state)),
     }
 }
 
@@ -263,11 +301,12 @@ async fn get_link(
     headers: HeaderMap,
 ) -> Reply {
     let auth = link_auth(&headers, &id)?;
-    let found = match wanted_rev(&query)? {
-        Some(rev) => state.store.get_link_rev(&id, &auth, rev, now()),
-        None => state.store.get_link(&id, &auth, now()),
-    }
-    .map_err(|error| failed("get_link", &id, &error))?;
+    let (key, wanted, at) = (id.clone(), wanted_rev(&query)?, now());
+    let found = store_call(&state, "get_link", &id, move |store| match wanted {
+        Some(rev) => store.get_link_rev(&key, &auth, rev, at),
+        None => store.get_link(&key, &auth, at),
+    })
+    .await?;
     match found {
         Get::Found(found) => Ok(link_response(&headers, found)),
         Get::Forbidden => Err(Refused::Forbidden),
@@ -303,10 +342,11 @@ fn link_response(headers: &HeaderMap, found: Found) -> Response {
 
 async fn delete_link(State(state): Api, Path(id): Path<String>, headers: HeaderMap) -> Reply {
     let auth = link_auth(&headers, &id)?;
-    let deleted = state
-        .store
-        .delete_link(&id, &auth, now())
-        .map_err(|error| failed("delete_link", &id, &error))?;
+    let (key, at) = (id.clone(), now());
+    let deleted = store_call(&state, "delete_link", &id, move |store| {
+        store.delete_link(&key, &auth, at)
+    })
+    .await?;
     match deleted {
         Delete::Deleted => Ok(ok_json()),
         Delete::Forbidden => Err(Refused::Forbidden),
@@ -340,10 +380,11 @@ async fn status(State(state): Api, body: Bytes) -> Reply {
         .into_iter()
         .map(|item| (item.id, auth_hash(&item.auth)))
         .collect();
-    let rows = state
-        .store
-        .status(&queries, now())
-        .map_err(|error| failed("status", "batch", &error))?;
+    let at = now();
+    let rows = store_call(&state, "status", "batch", move |store| {
+        store.status(&queries, at)
+    })
+    .await?;
     let out: Vec<StatusOut> = rows.into_iter().map(status_out).collect();
     Ok(Json(out).into_response())
 }

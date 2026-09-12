@@ -4,6 +4,7 @@
 //! Cloudflare Access bypass on this path never exposes readable content; the
 //! one document served on purpose is `/manifest.xml`, made to be handed out.
 
+mod blocking;
 mod fetch;
 pub mod limits;
 pub mod manifest;
@@ -12,7 +13,8 @@ mod relay_gates;
 mod relay_inbox;
 mod relay_touch;
 pub mod store;
-mod store_inbox;
+pub mod store_inbox;
+pub mod store_room;
 
 use std::{path::PathBuf, sync::Arc, time::Duration};
 
@@ -26,19 +28,21 @@ use axum::{
 };
 use tower_http::{services::ServeDir, timeout::TimeoutLayer};
 
-use crate::relay::AppState;
+use crate::blocking::store_call;
+use crate::relay::{now, AppState};
+use crate::relay_gates::rate_limit;
+use crate::store::Counts;
 
 /// A stalled connection - a slow client, a wedged upstream - must not hold a
 /// worker forever: past this, the layer below answers 408 on its own.
 pub const REQUEST_TIMEOUT_SECS: u64 = 30;
 
 /// The gateway parses `version`, so that field never changes shape. `relay` is
-/// counted on request and is what the VPS is watched by: rows held, the links
-/// behind them and how close the store is to its ceiling. A store that cannot
-/// be counted still answers, with nulls, because `/version` is also the health
-/// check the suite polls.
+/// what the VPS is watched by: rows held, the links behind them and how close
+/// the store is to its ceiling. A store that cannot be counted still answers,
+/// with nulls, because `/version` is also the health check the suite polls.
 async fn version(State(state): State<Arc<AppState>>) -> Json<serde_json::Value> {
-    let counts = state.store.counts().ok();
+    let counts = relay_counts(&state).await;
     Json(serde_json::json!({
         "version": env!("CARGO_PKG_VERSION"),
         "source": option_env!("PLSFIX_VERSION").unwrap_or("dev"),
@@ -47,9 +51,24 @@ async fn version(State(state): State<Arc<AppState>>) -> Json<serde_json::Value> 
             "revisions": counts.as_ref().map(|counts| counts.revisions),
             "inbox": counts.as_ref().map(|counts| counts.inbox),
             "bytes": counts.as_ref().map(|counts| counts.bytes),
-            "max_bytes": state.max_bytes,
+            "max_bytes": state.max_bytes(),
         },
     }))
+}
+
+/// Counting scans both tables under the connection mutex every push also
+/// needs, and this route is anonymous, so the answer is reused for
+/// `VERSION_COUNTS_TTL` seconds (I3 of the N1 security review).
+async fn relay_counts(state: &Arc<AppState>) -> Option<Counts> {
+    let at = now();
+    if let Some(cached) = state.counts.get(at) {
+        return Some(cached);
+    }
+    let counted = store_call(state, "counts", "version", |store| store.counts())
+        .await
+        .ok()?;
+    state.counts.set(at, &counted);
+    Some(counted)
 }
 
 fn healthz() -> Json<serde_json::Value> {
@@ -80,20 +99,26 @@ async fn manifest_xml(State(state): State<Arc<AppState>>) -> Response {
 // Office webviews cache aggressively, so a JS-only redeploy must reach them:
 // everything is no-cache except vite's hashed bundles, which never change
 // under the same name (only icons share `/assets/`, and they are not .js/.css).
+// Sealed blobs are `no-store, private` instead: `no-cache` still permits a
+// shared cache to keep the body, and one in front that ignored `Authorization`
+// could hand one client's ciphertext to another (M4 of the N1 security
+// review). The pane sends `If-None-Match` from its own state, so nothing in
+// the 304 path depends on a cache holding the body.
 async fn cache_control(request: Request, next: Next) -> Response {
-    let hashed = {
-        let path = request.uri().path();
-        path.starts_with("/assets/") && (path.ends_with(".js") || path.ends_with(".css"))
-    };
+    let path = request.uri().path();
+    let hashed = path.starts_with("/assets/") && (path.ends_with(".js") || path.ends_with(".css"));
+    let sealed = path.starts_with("/api/");
     let mut response = next.run(request).await;
-    let value = if hashed {
-        "public, max-age=31536000, immutable"
-    } else {
-        "no-cache"
+    let value = match (hashed, sealed) {
+        (_, true) => "no-store, private",
+        (true, _) => "public, max-age=31536000, immutable",
+        _ => "no-cache",
     };
-    response
-        .headers_mut()
-        .insert(header::CACHE_CONTROL, HeaderValue::from_static(value));
+    let headers = response.headers_mut();
+    headers.insert(header::CACHE_CONTROL, HeaderValue::from_static(value));
+    if sealed {
+        headers.insert(header::VARY, HeaderValue::from_static("Authorization"));
+    }
     response
 }
 
@@ -119,13 +144,19 @@ async fn no_dotfiles(request: Request, next: Next) -> Response {
 /// Suite endpoints, the manifest, the relay and the built panes, in that
 /// order, every request bounded by `timeout`. Split from `app` so a test can
 /// pass a short deadline instead of waiting out the real one.
+/// The three suite routes carry the read limiter too: they are anonymous, they
+/// sit on the Access-bypassed path, and `/version` and `/manifest.xml` each do
+/// real work (I3 of the N1 security review).
 pub fn app_with_timeout(static_dir: PathBuf, state: Arc<AppState>, timeout: Duration) -> Router {
-    Router::new()
+    let suite = Router::new()
         .route("/healthz", get(|| async { healthz() }))
         .route("/version", get(version))
         .route("/manifest.xml", get(manifest_xml))
+        .layer(middleware::from_fn_with_state(state.clone(), rate_limit))
+        .with_state(state.clone());
+    Router::new()
         .route("/", get(|| async { Redirect::temporary("taskpane.html") }))
-        .with_state(state.clone())
+        .merge(suite)
         .merge(relay::routes(state))
         .fallback_service(ServeDir::new(static_dir))
         .layer(middleware::from_fn(no_dotfiles))

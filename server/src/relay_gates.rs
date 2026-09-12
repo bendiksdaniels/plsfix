@@ -1,9 +1,12 @@
-//! What a write passes before it reaches the store: the per-client rate limit
-//! (the buckets themselves live in `limits`), the byte ceiling over both
-//! tables and the per-workspace inbox row cap. Owns the three refusals and
-//! their log lines; the routes own everything else.
-//! Invariant: a gate that finds itself full sweeps before it refuses, so a
-//! store of dead rows heals itself rather than turning a pane away.
+//! What a request passes before it reaches the store: the per-client rate
+//! limit by request and, for a write, a second one by body size (the buckets
+//! themselves live in `limits`). Owns the client key a request is counted
+//! under, the two refusals and their log lines; the storage ceilings are the
+//! store's own, checked inside the write it guards (`store_room`).
+//! Invariant: a client is named once, by the middleware, and the bytes of its
+//! body are charged to that same bucket.
+
+use std::sync::Arc;
 
 use axum::{
     extract::{Request, State},
@@ -11,88 +14,70 @@ use axum::{
     response::{IntoResponse, Response},
 };
 
-use crate::limits::{client_key, is_write, Allowed};
-use crate::relay::{failed, now, short, Api, AppState, Refused, INBOX_MAX_PER_WS};
+use crate::limits::{client_key, is_write, token_cost, Allowed};
+use crate::relay::{now, short, Api, AppState, Refused};
+
+/// Who a request is counted as, resolved once and carried in the request
+/// extensions so a handler charges its body to the bucket the request itself
+/// was counted in.
+#[derive(Clone, Debug)]
+pub(crate) struct ClientKey(pub String);
 
 /// One token per request, spent before the body is read: the write allowance
 /// for a push or a delete, the read one for a GET or a batch. The refusal
 /// names the bucket and the wait, never anything the request carried.
-pub(crate) async fn rate_limit(State(state): Api, request: Request, next: Next) -> Response {
+pub(crate) async fn rate_limit(State(state): Api, mut request: Request, next: Next) -> Response {
     let write = is_write(request.method(), request.uri().path());
-    let key = client_key(request.headers(), request.extensions());
+    let key = client_key(
+        state.trusted_proxy,
+        request.headers(),
+        request.extensions(),
+    );
     let limiter = if write { &state.writes } else { &state.reads };
     match limiter.take(&key, now()) {
-        Allowed::Yes => next.run(request).await,
+        Allowed::Yes => {
+            request.extensions_mut().insert(ClientKey(key));
+            next.run(request).await
+        }
         Allowed::No { retry_after } => {
-            let kind = if write { "write" } else { "read" };
-            eprintln!("relay rate {kind} {key}: retry after {retry_after}s");
+            refused(write, &key, retry_after);
             Refused::RateLimited(retry_after).into_response()
         }
     }
 }
 
-/// The byte gate every write passes. A store over its ceiling sweeps first, so
-/// a month of dead links heals the write instead of refusing it; only a store
-/// that is still full afterwards answers 507.
-pub(crate) fn room_for(
-    state: &AppState,
-    stage: &str,
-    id: &str,
-    adding: usize,
+/// The second half of the write allowance: a token per KiB of body, charged
+/// once the size is known. A minute of 300 pushes is 300 requests but it is
+/// also up to 1.2 GiB, which is the whole store, so the requests alone were
+/// never a budget (C1 of the N1 security review).
+pub(crate) fn charge_bytes(
+    state: &Arc<AppState>,
+    client: Option<&ClientKey>,
+    bytes: usize,
 ) -> Result<(), Refused> {
-    let adding = i64::try_from(adding).unwrap_or(i64::MAX);
-    let fits = |bytes: i64| bytes.saturating_add(adding) <= state.max_bytes;
-    let mut bytes = state
-        .store
-        .total_bytes()
-        .map_err(|e| failed(stage, id, &e))?;
-    if fits(bytes) {
-        return Ok(());
+    let key = client.map_or("unknown", |client| client.0.as_str());
+    match state.write_bytes.take_tokens(key, now(), token_cost(bytes)) {
+        Allowed::Yes => Ok(()),
+        Allowed::No { retry_after } => {
+            refused(true, key, retry_after);
+            Err(Refused::RateLimited(retry_after))
+        }
     }
-    state
-        .store
-        .sweep(now())
-        .map_err(|e| failed(stage, id, &e))?;
-    bytes = state
-        .store
-        .total_bytes()
-        .map_err(|e| failed(stage, id, &e))?;
-    if fits(bytes) {
-        return Ok(());
-    }
-    eprintln!(
-        "store full {stage} {}: {} of {} bytes",
-        short(id),
-        bytes.saturating_add(adding),
-        state.max_bytes
-    );
-    Err(Refused::Full)
 }
 
-/// The row gate on one workspace's inbox, swept the same way. Counted over
-/// every key that wrote into the workspace, because the cap protects the
-/// store, not one pane's view of it.
-pub(crate) fn inbox_room(state: &AppState, ws: &str, id: &str) -> Result<(), Refused> {
-    let count = || {
-        state
-            .store
-            .inbox_count(ws, now())
-            .map_err(|e| failed("post_inbox", id, &e))
-    };
-    if count()? < INBOX_MAX_PER_WS {
-        return Ok(());
-    }
-    state
-        .store
-        .sweep(now())
-        .map_err(|e| failed("post_inbox", id, &e))?;
-    let rows = count()?;
-    if rows < INBOX_MAX_PER_WS {
-        return Ok(());
-    }
+fn refused(write: bool, key: &str, retry_after: u64) {
+    let kind = if write { "write" } else { "read" };
+    eprintln!("relay rate {kind} {key}: retry after {retry_after}s");
+}
+
+/// The one log line a full store gets. The store itself decides there is no
+/// room, inside the write's own lock; this is only how it reads in the
+/// journal.
+pub(crate) fn full(stage: &str, id: &str, state: &AppState) -> Refused {
     eprintln!(
-        "store full post_inbox {}: workspace holds {rows} of {INBOX_MAX_PER_WS} rows",
-        short(id)
+        "store full {stage} {}: at the {} byte ceiling",
+        short(id),
+        state.max_bytes()
     );
-    Err(Refused::Full)
+    Refused::Full
 }

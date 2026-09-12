@@ -7,6 +7,7 @@
 use rusqlite::params;
 
 use crate::store::{sweep_locked, Store, INBOX_TTL};
+use crate::store_room::{inbox_room_locked, room_locked};
 
 #[derive(Debug)]
 pub struct InboxRow {
@@ -15,11 +16,20 @@ pub struct InboxRow {
     pub blob: Vec<u8>,
 }
 
+/// Outcome of an inbox write: stored, or no room for it - the store's byte
+/// ceiling or the workspace's row cap.
+#[derive(Debug)]
+pub enum Posted {
+    Stored,
+    Full,
+}
+
 impl Store {
     /// Drops a sealed item into a workspace inbox; a re-export from the same
     /// key replaces its own row. A foreign key writes a row of its own, which
     /// only that key can list or delete, so it can neither block nor shadow
-    /// the pane's item.
+    /// the pane's item. Both ceilings are read after the sweep and inside the
+    /// same lock as the insert, so concurrent posts cannot all pass one count.
     pub fn post_inbox(
         &self,
         ws: &str,
@@ -27,15 +37,21 @@ impl Store {
         id: &str,
         blob: &[u8],
         now: i64,
-    ) -> rusqlite::Result<()> {
+    ) -> rusqlite::Result<Posted> {
         let conn = self.conn();
         sweep_locked(&conn, now)?;
+        let caps = self.caps();
+        if !room_locked(&conn, blob.len(), caps.max_bytes)?
+            || !inbox_room_locked(&conn, ws, now, caps.inbox_rows)?
+        {
+            return Ok(Posted::Full);
+        }
         conn.execute(
             "INSERT INTO inbox_v2 (ws, id, auth_hash, created_at, expires_at, blob) VALUES (?1, ?2, ?3, ?4, ?5, ?6)
              ON CONFLICT (ws, id, auth_hash) DO UPDATE SET created_at = excluded.created_at, expires_at = excluded.expires_at, blob = excluded.blob",
             params![ws, id, auth_hash.as_slice(), now, now + INBOX_TTL, blob],
         )?;
-        Ok(())
+        Ok(Posted::Stored)
     }
 
     /// Live items of a workspace, newest first. `created_at` is whole seconds,
@@ -87,7 +103,8 @@ impl Store {
     }
 
     /// Live rows one workspace holds, over every key that wrote into it: what
-    /// the per-workspace cap is measured against.
+    /// the per-workspace cap is measured against. The cap itself is applied
+    /// inside `post_inbox`; this is the same count for a caller that only asks.
     pub fn inbox_count(&self, ws: &str, now: i64) -> rusqlite::Result<i64> {
         self.conn().query_row(
             "SELECT COUNT(*) FROM inbox_v2 WHERE ws = ?1 AND expires_at > ?2",

@@ -158,10 +158,13 @@ async fn the_static_host_serves_no_dotfiles_no_listing_and_nothing_above_it() {
     assert_eq!(get(&app, "/taskpane.html").await.0, StatusCode::OK);
 }
 
-/// The cache rule lets an Office webview pick up a redeploy, and it must never
-/// mark a relay answer cacheable: only the hashed bundles are immutable.
+/// The cache rule lets an Office webview pick up a redeploy, and a sealed blob
+/// must never be storable by a cache at all: `no-cache` still allows a shared
+/// cache to keep the body, and one that ignored `Authorization` could hand one
+/// client's ciphertext to another (M4 of the N1 security review). Only the
+/// hashed bundles are immutable.
 #[tokio::test]
-async fn no_api_answer_is_ever_marked_cacheable() {
+async fn no_api_answer_is_ever_stored_by_a_cache() {
     let state = Arc::new(AppState::new(Store::in_memory().unwrap()));
     let auth = plsfix_server::store::auth_hash(AUTH);
     let now = plsfix_server::relay::now();
@@ -180,11 +183,37 @@ async fn no_api_answer_is_ever_marked_cacheable() {
             .oneshot(req(method, &path, Some(AUTH), body.to_vec()))
             .await
             .unwrap();
-        let cache = response.headers().get(header::CACHE_CONTROL);
+        let header_of = |name: header::HeaderName| {
+            response
+                .headers()
+                .get(name)
+                .map(|value| value.to_str().unwrap().to_string())
+        };
         assert_eq!(
-            cache.map(|value| value.to_str().unwrap()),
-            Some("no-cache"),
+            header_of(header::CACHE_CONTROL),
+            Some("no-store, private".to_string()),
             "{method} {path}"
+        );
+        assert_eq!(
+            header_of(header::VARY),
+            Some("Authorization".to_string()),
+            "{method} {path}"
+        );
+    }
+    // The pane and the suite endpoints keep the redeploy rule they had.
+    for path in ["/taskpane.html", "/healthz", "/version"] {
+        let response = app
+            .clone()
+            .oneshot(req("GET", path, None, Vec::new()))
+            .await
+            .unwrap();
+        assert_eq!(
+            response
+                .headers()
+                .get(header::CACHE_CONTROL)
+                .map(|value| value.to_str().unwrap()),
+            Some("no-cache"),
+            "GET {path}"
         );
     }
 }

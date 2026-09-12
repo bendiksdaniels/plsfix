@@ -11,7 +11,13 @@ use std::sync::Arc;
 use axum::http::{header, StatusCode};
 use common::*;
 use http_body_util::BodyExt;
-use plsfix_server::{app, limits::RateLimiter, relay::*, store::Store};
+use plsfix_server::{
+    app,
+    limits::{RateLimiter, TrustedProxy},
+    relay::*,
+    store::Store,
+    store_room::VERSION_COUNTS_TTL,
+};
 use tower::ServiceExt;
 
 /// RFC 7232 §3.2: If-None-Match compares weakly. Cloudflare hands the webview
@@ -143,20 +149,49 @@ async fn a_batch_fetch_holds_at_two_hundred_items_and_four_mebibytes() {
     }
 }
 
-/// The bucket a request is counted under is the forwarding header the gateway
-/// passes through, which only Cloudflare may write: nginx listens on
+/// The bucket a request is counted under follows `MODELIS_TRUSTED_PROXY`, and
+/// nothing else. The hosted deployment declares `cloudflare`: nginx listens on
 /// 127.0.0.1:8750 and the relay on 127.0.0.1:8804, so the sole way in is the
 /// tunnel, and Cloudflare overwrites CF-Connecting-IP on every request it
-/// proxies. A peer that could reach either port directly would pick its own
-/// bucket - which is what this pins, so exposing one is a visible change and
-/// not a silent one.
+/// proxies. A deployment that declares nothing - the default, and every
+/// self-hoster until they say otherwise - ignores the header, because any
+/// client can write one and would then pick its own bucket (I1 of the N1
+/// security review).
 #[tokio::test]
-async fn the_rate_bucket_follows_the_forwarding_header_the_gateway_passes_on() {
-    let state = Arc::new(AppState {
+async fn the_rate_bucket_follows_the_trusted_proxy_and_nothing_else() {
+    let cloudflare = Arc::new(AppState {
+        writes: RateLimiter::new(1),
+        trusted_proxy: TrustedProxy::Cloudflare,
+        ..AppState::new(Store::in_memory().unwrap())
+    });
+    assert_eq!(
+        header_buckets(&routes(cloudflare)).await,
+        vec![
+            StatusCode::OK,
+            StatusCode::TOO_MANY_REQUESTS,
+            StatusCode::OK
+        ]
+    );
+
+    // Trusting nothing, the three requests are one client (the route tests
+    // carry no peer address either), so the second one is already too many and
+    // a new header buys the third nothing.
+    let untrusted = Arc::new(AppState {
         writes: RateLimiter::new(1),
         ..AppState::new(Store::in_memory().unwrap())
     });
-    let app = routes(state);
+    assert_eq!(
+        header_buckets(&routes(untrusted)).await,
+        vec![
+            StatusCode::OK,
+            StatusCode::TOO_MANY_REQUESTS,
+            StatusCode::TOO_MANY_REQUESTS
+        ]
+    );
+}
+
+/// Three pushes naming two different clients in `CF-Connecting-IP`.
+async fn header_buckets(app: &axum::Router) -> Vec<StatusCode> {
     let mut codes = Vec::new();
     for client in ["9.9.9.1", "9.9.9.1", "9.9.9.2"] {
         let mut request = req(
@@ -168,21 +203,14 @@ async fn the_rate_bucket_follows_the_forwarding_header_the_gateway_passes_on() {
         request
             .headers_mut()
             .insert("cf-connecting-ip", client.parse().unwrap());
-        codes.push(send(&app, request).await.0);
+        codes.push(send(app, request).await.0);
     }
-    assert_eq!(
-        codes,
-        vec![
-            StatusCode::OK,
-            StatusCode::TOO_MANY_REQUESTS,
-            StatusCode::OK
-        ]
-    );
+    codes
 }
 
 /// `/version` is what the suite watches the relay by, and it counts what is
 /// held right now: a sweep that drops a month-old link drops it from the
-/// counters too.
+/// counters too, once the sweeper has cleared the cached answer with it.
 #[tokio::test]
 async fn version_counts_fall_when_the_sweeper_drops_dead_rows() {
     let state = Arc::new(AppState::new(Store::in_memory().unwrap()));
@@ -195,8 +223,30 @@ async fn version_counts_fall_when_the_sweeper_drops_dead_rows() {
     assert_eq!(before["relay"]["links"], 1);
     assert_eq!(before["relay"]["bytes"], 5);
     assert_eq!(state.store.sweep(now()).unwrap(), 1);
+    state.counts.clear();
     let after = json(&get(&app, "/version").await.1);
     assert_eq!(after["relay"]["links"], 0);
     assert_eq!(after["relay"]["revisions"], 0);
     assert_eq!(after["relay"]["bytes"], 0);
+}
+
+/// Counting scans both tables under the one connection mutex every push needs,
+/// and `/version` is anonymous on an Access-bypassed path, so the answer is
+/// reused: a link pushed between two reads does not show up in the second
+/// (I3 of the N1 security review). The hourly sweeper clears it.
+#[tokio::test]
+async fn version_reuses_its_counters_instead_of_scanning_per_request() {
+    let state = Arc::new(AppState::new(Store::in_memory().unwrap()));
+    let auth = plsfix_server::store::auth_hash(AUTH);
+    let second = "1123456789abcdef0123456789abcdef";
+    state.store.put_link(ID, &auth, b"one", now()).unwrap();
+    let app = app(static_dir("version-cache"), state.clone());
+
+    assert_eq!(json(&get(&app, "/version").await.1)["relay"]["links"], 1);
+    state.store.put_link(second, &auth, b"two", now()).unwrap();
+    assert_eq!(json(&get(&app, "/version").await.1)["relay"]["links"], 1);
+
+    state.counts.clear();
+    assert_eq!(json(&get(&app, "/version").await.1)["relay"]["links"], 2);
+    assert_eq!(VERSION_COUNTS_TTL, 30);
 }

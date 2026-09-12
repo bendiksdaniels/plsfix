@@ -8,7 +8,8 @@
 use axum::{body::Bytes, extract::State, response::IntoResponse, Json};
 use serde::Deserialize;
 
-use crate::relay::{failed, now, Api, Refused, Reply, MAX_BATCH_ITEMS};
+use crate::blocking::store_call;
+use crate::relay::{now, Api, Refused, Reply, MAX_BATCH_ITEMS};
 use crate::store::auth_hash;
 
 /// One link a workbook still holds: which link, and the key that owns it.
@@ -30,9 +31,10 @@ pub(crate) async fn touch(State(state): Api, body: Bytes) -> Reply {
         .into_iter()
         .map(|item| (item.id, auth_hash(&item.auth)))
         .collect();
-    let touched = state
-        .store
-        .touch_links(&queries, now())
-        .map_err(|error| failed("touch", "batch", &error))?;
+    let at = now();
+    let touched = store_call(&state, "touch", "batch", move |store| {
+        store.touch_links(&queries, at)
+    })
+    .await?;
     Ok(Json(serde_json::json!({ "touched": touched })).into_response())
 }

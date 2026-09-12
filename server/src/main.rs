@@ -1,8 +1,11 @@
 //! Binary for the pls,fix host: environment, bind and the hourly
 //! sweeper. The router lives in `lib.rs`, the relay in `relay.rs`; this file
 //! only reads `MODELIS_PORT`, `MODELIS_BIND`, `MODELIS_STATIC`, `MODELIS_DATA`,
-//! `MODELIS_MANIFEST`, `MODELIS_PUBLIC_URL` and the three limits, and starts
-//! the server, so the interesting parts stay testable without a socket.
+//! `MODELIS_MANIFEST`, `MODELIS_PUBLIC_URL`, `MODELIS_TRUSTED_PROXY` and the
+//! limits (`MODELIS_MAX_BYTES`, `MODELIS_RATE_WRITE_PER_MIN`,
+//! `MODELIS_RATE_WRITE_KIB_PER_MIN`, `MODELIS_RATE_READ_PER_MIN`,
+//! `MODELIS_RATE_MAX_CLIENTS`, `MODELIS_MAX_INFLIGHT_WRITES`), and starts the
+//! server, so the interesting parts stay testable without a socket.
 
 use std::{
     env,
@@ -15,10 +18,14 @@ use std::{
 
 use plsfix_server::{
     app,
-    limits::{RateLimiter, BUCKET_IDLE_SECS},
+    limits::{RateLimiter, TrustedProxy, BUCKET_IDLE_SECS, DEFAULT_MAX_CLIENTS},
     manifest::ManifestSource,
-    relay::{now, AppState, DEFAULT_MAX_BYTES, DEFAULT_READ_PER_MIN, DEFAULT_WRITE_PER_MIN},
+    relay::{
+        now, AppState, DEFAULT_MAX_BYTES, DEFAULT_MAX_INFLIGHT_WRITES, DEFAULT_READ_PER_MIN,
+        DEFAULT_WRITE_KIB_PER_MIN, DEFAULT_WRITE_PER_MIN, INBOX_MAX_PER_WS,
+    },
     store::Store,
+    store_room::Caps,
 };
 
 /// Expired rows and idle rate-limit buckets die on every write too; this only
@@ -31,7 +38,11 @@ fn spawn_sweeper(state: Arc<AppState>) {
             if let Err(error) = state.store.sweep(now()) {
                 eprintln!("store sweep hourly: {error}");
             }
+            // The sweep just changed what the store holds, so the counters
+            // `/version` reuses are no longer the truth.
+            state.counts.clear();
             state.writes.prune(now(), BUCKET_IDLE_SECS);
+            state.write_bytes.prune(now(), BUCKET_IDLE_SECS);
             state.reads.prune(now(), BUCKET_IDLE_SECS);
         }
     });
@@ -50,22 +61,51 @@ fn env_parsed<T: FromStr + Copy>(name: &str, default: T) -> T {
     }
 }
 
+/// `MODELIS_TRUSTED_PROXY`: which forwarding header, if any, may name a client
+/// for the rate limiter. Unset trusts nothing, so a deployment behind a proxy
+/// must say so - a header a client can write is a bucket a client can choose.
+fn trusted_proxy_from_env() -> TrustedProxy {
+    match env::var("MODELIS_TRUSTED_PROXY").ok() {
+        None => TrustedProxy::None,
+        Some(text) => text.parse().unwrap_or_else(|()| {
+            eprintln!("warning: MODELIS_TRUSTED_PROXY={text} is not none, cloudflare or xff - trusting nothing");
+            TrustedProxy::None
+        }),
+    }
+}
+
+/// One limiter: its per-minute allowance from `name`, and the same bucket-map
+/// cap as every other limiter, so no one map can grow while another is bounded.
+fn limiter_from_env(name: &str, default: u32, clients: usize) -> RateLimiter {
+    RateLimiter::new(env_parsed(name, default)).max_clients(clients)
+}
+
 /// The store, the limits the routes gate on and the manifest source, straight
-/// from the unit file (or the container's environment).
+/// from the unit file (or the container's environment). The storage ceiling is
+/// set on the store itself, which is where a write is held to it.
 fn state_from_env(store: Store) -> AppState {
-    AppState {
-        max_bytes: env_parsed("MODELIS_MAX_BYTES", DEFAULT_MAX_BYTES),
-        writes: RateLimiter::new(env_parsed(
-            "MODELIS_RATE_WRITE_PER_MIN",
-            DEFAULT_WRITE_PER_MIN,
-        )),
-        reads: RateLimiter::new(env_parsed(
-            "MODELIS_RATE_READ_PER_MIN",
-            DEFAULT_READ_PER_MIN,
-        )),
+    let clients = env_parsed("MODELIS_RATE_MAX_CLIENTS", DEFAULT_MAX_CLIENTS);
+    let mut state = AppState {
+        writes: limiter_from_env("MODELIS_RATE_WRITE_PER_MIN", DEFAULT_WRITE_PER_MIN, clients),
+        write_bytes: limiter_from_env(
+            "MODELIS_RATE_WRITE_KIB_PER_MIN",
+            DEFAULT_WRITE_KIB_PER_MIN,
+            clients,
+        ),
+        reads: limiter_from_env("MODELIS_RATE_READ_PER_MIN", DEFAULT_READ_PER_MIN, clients),
+        trusted_proxy: trusted_proxy_from_env(),
+        max_inflight_writes: env_parsed(
+            "MODELIS_MAX_INFLIGHT_WRITES",
+            DEFAULT_MAX_INFLIGHT_WRITES,
+        ),
         manifest: ManifestSource::from_env(),
         ..AppState::new(store)
-    }
+    };
+    state.store.set_caps(Caps {
+        max_bytes: env_parsed("MODELIS_MAX_BYTES", DEFAULT_MAX_BYTES),
+        inbox_rows: INBOX_MAX_PER_WS,
+    });
+    state
 }
 
 #[tokio::main]
@@ -100,10 +140,13 @@ async fn main() {
         data_dir.display()
     );
     println!(
-        "limits: {} bytes max, {} writes/min, {} reads/min per client",
-        state.max_bytes,
+        "limits: {} bytes max, {} writes/min, {} KiB/min, {} reads/min per client, {} writes at once, client key from {:?}",
+        state.max_bytes(),
         state.writes.per_minute(),
-        state.reads.per_minute()
+        state.write_bytes.per_minute(),
+        state.reads.per_minute(),
+        state.max_inflight_writes,
+        state.trusted_proxy,
     );
     println!(
         "manifest: {}{}",
