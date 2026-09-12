@@ -274,3 +274,12 @@ The Mac row in section 8 is replaced by these two:
 - [ ] Paste row heights only on a protected sheet whose protection granted `allowFormatRows`:
       confirm Excel accepts the write instead of returning AccessDenied (the fake refuses it
       either way).
+
+## Added by the v2.7 wave (13.09): the Excel follow-ups
+
+- [ ] Fast fill's new refusal ("Fast fill supports up to 5,000 cells at once.") shows as a clean pane toast on a real 6,000+ row/column fill, not a raw host timeout, on both desktop Excel and Excel for the web.
+- [ ] Super Find and Prepare for sharing on a real ~200,000-cell sheet (a genuine deal model, not the fake's bounding-box shortcut) complete within the pane's usual response time and do not trip the host's own `RequestPayloadSizeLimitExceeded` the old, lower total cap existed to avoid.
+- [ ] `Worksheet.names` (ExcelApi 1.4) behaves on a real host exactly as the fake now models it - add a name scoped to one sheet in real Excel, break it (delete what it points at), and confirm the Workbook tab's scrubber lists it as `Sheet!Name` and deletes it.
+- [ ] A real desktop-365 pie chart (ExcelApi 1.9 available, 1.19 not yet) visibly shows leader lines after "Chart Smart Format" - this is the entire point of the series-level fix and only a real host can confirm the line actually renders, not just that the property was set.
+- [ ] The "Linked chart · xxxx" label reads well at the narrowest supported pane width (320px) with a real, longer chart list in the Links tab dropdown (ux:check only exercises synthetic fixture data).
+- [ ] Excel desktop: delete broken names on a workbook whose structure is protected: the toast says "The workbook's structure is protected, so nothing was deleted." and no name is gone afterwards (Office.js may have applied the first deletes of the batch before the refusal; if any name is missing, the sentence must change).
