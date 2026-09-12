@@ -292,6 +292,50 @@ describe("the same export inserted twice in a row", () => {
   });
 });
 
+describe("a deck the modeller rearranged", () => {
+  it("repaints a link three groups deep where it sits", async () => {
+    const item = await seedLink(fakePng(200, 100));
+    await links.insertFromInbox(item, ws, relay);
+    const slide = presentation.slides[0]!;
+    let inner = shapes()[0]!.id;
+    for (let level = 0; level < 3; level += 1) {
+      const neighbour = presentation.addShape(slide, {
+        left: 400 + level * 20,
+        top: 10,
+        width: 20,
+        height: 20,
+      });
+      inner = presentation.groupShapes([inner, neighbour.id], slide.id).id;
+    }
+    await pushAgain(item, fakePng(240, 120));
+
+    const rows = await links.listLinks(relay);
+
+    expect(rows[0]!.found.groupPath).toHaveLength(3);
+    expect(await links.updateLinks(rows, relay)).toMatchObject({ updated: 1 });
+    // Still inside the group the user built, repainted in place.
+    expect(shapes()).toHaveLength(1);
+    expect(shapes()[0]!.type).toBe("Group");
+  });
+
+  it("inserts an inbox item whose kind does not match its payload as the payload", async () => {
+    // A relay row nobody in this deck wrote: the announcement says table, the
+    // sealed payload is a picture. The shape follows the payload, so the deck
+    // never ends up with a rectangle something later reads as a table.
+    const item = {
+      ...(await seedLink(fakePng(200, 100))),
+      kind: "table" as const,
+    };
+
+    const placed = await links.insertFromInbox(item, ws, relay);
+
+    const shape = shapes().find((one) => one.id === placed.shapeId)!;
+    expect(shape.type).toBe("GeometricShape");
+    expect(shape.table).toBeNull();
+    expect(await links.listLinks(relay)).toHaveLength(1);
+  });
+});
+
 // Placeholder so vi is used when a suite variant drops its fake timers.
 afterEach(() => {
   vi.useRealTimers();
