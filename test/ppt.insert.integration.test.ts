@@ -87,7 +87,7 @@ describe("insert from inbox", () => {
     );
     const inbox = await links.listInbox(ws, relay);
     expect(inbox.map((item) => item.id)).toEqual([second.id, first.id]);
-    expect(links.latestInboxItem(inbox)?.id).toBe(second.id);
+    expect(latestInboxItem(inbox)?.id).toBe(second.id);
   });
 
   it("creates a tagged picture-filled rectangle sized to the image, at the first free spot, and clears the inbox", async () => {
