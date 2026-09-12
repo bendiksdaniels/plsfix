@@ -26,6 +26,12 @@ export interface CommandDeps {
   context: { host: string; version: string };
   // The ribbon's "Object tools" button: the pane up, on its Tools tab.
   showTools: () => Promise<void>;
+  // The pane's guard, when the page has one: the ribbon then shares its busy
+  // state and its re-entrancy latch, so a press while an action is still in
+  // the host is answered rather than queued behind it (and left to spend its
+  // own sync deadline waiting). Without it a command runs on its own chain -
+  // all a ribbon press can do before any pane has booted.
+  run?: (work: () => Promise<string>, action: string) => Promise<void>;
 }
 
 const ALIGN_COMMANDS: readonly (readonly [string, AlignMode])[] = [
@@ -65,15 +71,25 @@ export function registerCommands(deps: CommandDeps): void {
   if (!Office.actions?.associate) return;
   for (const [id, run] of Object.entries(commandTable(deps))) {
     Office.actions.associate(id, (event?: CommandEvent) => {
-      void run()
-        .then((message) => {
-          if (message !== "") deps.notify(message, "success");
-        })
-        .catch((error: unknown) => {
-          const { message, details } = describeError(error, deps.context, id);
-          deps.notify(message, "error", details);
-        })
-        .finally(() => event?.completed());
+      void runCommand(deps, id, run).finally(() => event?.completed());
     });
   }
+}
+
+// The pane's guard where there is one, this module's own chain where there is
+// not; either way the ribbon's event is completed by the caller above.
+async function runCommand(
+  deps: CommandDeps,
+  id: string,
+  work: () => Promise<string>,
+): Promise<void> {
+  if (deps.run) return deps.run(work, id);
+  return work()
+    .then((message) => {
+      if (message !== "") deps.notify(message, "success");
+    })
+    .catch((error: unknown) => {
+      const { message, details } = describeError(error, deps.context, id);
+      deps.notify(message, "error", details);
+    });
 }

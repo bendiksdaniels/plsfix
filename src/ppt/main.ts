@@ -56,6 +56,7 @@ import {
   selectSimilar,
   swapSelected,
 } from "./object-tools";
+import { createPaneDetails } from "./pane-details";
 import { renderInbox, renderLinkRows } from "./views";
 
 const APP_VERSION = formatVersion(__APP_VERSION__);
@@ -101,7 +102,7 @@ const tabs = installTabs(getElement("tab-bar"));
 // Ribbon commands share this runtime, so they register with the page and
 // toast into it whether or not the pane is showing.
 registerCommands({
-  notify: (message, kind, details) => toast.show(message, kind, details),
+  notify: (message, kind, lines) => toast.show(message, kind, lines),
   context: REPORT_CONTEXT,
   showTools: async () => {
     await Office.addin?.showAsTaskpane();
@@ -197,18 +198,8 @@ function renderPairing(): void {
 // ---------------------------------------------------------------------------
 
 // makeGuard's success path notifies with a message only, so an action with
-// per-link lines to show stages them here; the guard clears them afterwards,
-// and a follow-up read that failed is named the same way.
-let stagedDetails: string | undefined;
-
-function noteDetail(line: string): void {
-  stagedDetails =
-    stagedDetails === undefined ? line : `${stagedDetails}\n${line}`;
-}
-
-function noteFailure(error: unknown, what: string): void {
-  noteDetail(`${what}: ${describeError(error, REPORT_CONTEXT).message}`);
-}
+// per-link lines to show stages them here; the guard reads and clears them.
+const details = createPaneDetails(REPORT_CONTEXT);
 
 // What setBusy last wrote: a list redrawn while an action is still running
 // has to come back as disabled as the buttons it replaced.
@@ -225,12 +216,15 @@ function setBusy(busy: boolean): void {
 
 const guard = makeGuard({
   setBusy,
-  notify: (message, kind, details) =>
-    toast.show(message, kind, details ?? stagedDetails),
+  // A ribbon command whose whole answer is the pane coming up returns "".
+  notify: (message, kind, lines) => {
+    if (message !== "") toast.show(message, kind, lines ?? details.value);
+  },
   describe: (error, action) => describeError(error, REPORT_CONTEXT, action),
   finally: () => {
-    stagedDetails = undefined;
+    details.set(undefined);
   },
+  busyMessage: STILL_BUSY,
 });
 
 // Set once Office.onReady has confirmed PowerPoint and PowerPointApi 1.5.
@@ -240,16 +234,7 @@ let ready = false;
 // in a deck on a PowerPoint the pane rejected - would reach PowerPoint.run and
 // toast a raw "Cannot read properties of undefined". Every handler starts here
 // instead, and the connection badge is not the only thing that says so.
-//
-// One action at a time, too: setBusy disables every button, but the link key
-// field's Enter is not a button, and a ribbon command shares this runtime - a
-// second flow starting mid-batch would re-enable every button the moment it
-// finished, with the first still in the host.
 function act(run: () => Promise<string>, action: string): void {
-  if (isBusy) {
-    toast.show(STILL_BUSY, "error");
-    return;
-  }
   void guard(async () => {
     if (!ready) throw new Error("PowerPoint is not connected.");
     return run();
@@ -272,7 +257,7 @@ async function refreshQuietly(): Promise<void> {
   try {
     await reloadLinks();
   } catch (error) {
-    noteFailure(error, "The list was not refreshed");
+    details.addFailure(error, "The list was not refreshed");
   }
 }
 
@@ -284,7 +269,7 @@ async function refreshLinks(): Promise<string> {
 
 async function updateRows(subset: LinkRow[]): Promise<string> {
   const summary = await updateLinks(subset, relay);
-  stagedDetails = updateDetails(summary);
+  details.set(updateDetails(summary));
   await refreshQuietly();
   return summarize(summary);
 }
@@ -310,8 +295,9 @@ async function revertSelected(): Promise<string> {
     "Tick the rows to revert.",
   );
   const summary = await revertLinks(subset, relay);
-  stagedDetails =
-    summary.failures.length > 0 ? summary.failures.join("\n") : undefined;
+  details.set(
+    summary.failures.length > 0 ? summary.failures.join("\n") : undefined,
+  );
   await refreshQuietly();
   return summarizeRevert(summary);
 }
@@ -385,7 +371,9 @@ const syncChangeSource = installChangeSource({
   rows: () => selectedRows(rows, selected),
   inbox: () => inboxItems,
   workspace: requireWorkspace,
-  note: noteDetail,
+  note: (line) => {
+    details.add(line);
+  },
   after: async () => {
     await inboxQuietly();
     await refreshQuietly();
@@ -439,7 +427,7 @@ async function inboxQuietly(): Promise<void> {
   try {
     await refreshInbox();
   } catch (error) {
-    noteFailure(error, "The inbox was not read");
+    details.addFailure(error, "The inbox was not read");
   }
 }
 

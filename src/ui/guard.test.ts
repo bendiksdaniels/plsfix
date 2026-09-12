@@ -38,4 +38,63 @@ describe("makeGuard", () => {
     }, "export");
     expect(notify).toHaveBeenCalledWith("boom", "error", "action=export");
   });
+
+  it("runs one action at a time once busyMessage is set", async () => {
+    const notify = vi.fn();
+    const guard = makeGuard({
+      setBusy: () => undefined,
+      notify,
+      describe: (e) => ({ message: String(e), details: "" }),
+      busyMessage: "Wait for the last action to finish.",
+    });
+    let release = (): void => undefined;
+    const held = new Promise<void>((done) => {
+      release = () => done();
+    });
+    const second = vi.fn(async () => "second");
+
+    const first = guard(async () => {
+      await held;
+      return "first";
+    });
+    await guard(second, "update-all");
+
+    expect(second).not.toHaveBeenCalled();
+    expect(notify).toHaveBeenCalledWith(
+      "Wait for the last action to finish.",
+      "error",
+    );
+    release();
+    await first;
+    // The latch clears with the flow: the next press runs.
+    await guard(second);
+    expect(second).toHaveBeenCalledTimes(1);
+  });
+
+  it("leaves the latch off for a guard with no busyMessage", async () => {
+    const running: string[] = [];
+    const guard = makeGuard({
+      setBusy: () => undefined,
+      notify: () => undefined,
+      describe: (e) => ({ message: String(e), details: "" }),
+    });
+    let release = (): void => undefined;
+    const held = new Promise<void>((done) => {
+      release = () => done();
+    });
+
+    const first = guard(async () => {
+      await held;
+      return "first";
+    });
+    await guard(async () => {
+      running.push("second");
+      return "second";
+    });
+
+    // The Excel pane's guard is unchanged: the second action still runs.
+    expect(running).toEqual(["second"]);
+    release();
+    await first;
+  });
 });
