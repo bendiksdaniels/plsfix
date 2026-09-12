@@ -1,7 +1,7 @@
 // The pure model behind the shortcut manager: reading the shipped
-// public/shortcuts.json into rows, the key grammar Office documents, the Mac
-// display swap and the map replaceShortcuts takes. No DOM, no Office.js - the
-// panel that drives all of this is covered in src/pane/shortcuts-panel.test.ts.
+// public/shortcuts.json into rows, the key grammar Microsoft documents, and the
+// map replaceShortcuts takes. No DOM, no Office.js - the panel that drives all
+// of this is covered in src/pane/shortcuts-panel*.test.ts.
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
@@ -9,7 +9,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   diffShortcuts,
-  duplicateKeys,
+  firstClash,
   formatCombo,
   INVALID_COMBO_REASON,
   parseCombo,
@@ -38,6 +38,11 @@ function reason(text: string): string {
 }
 
 const ROWS: ShortcutRow[] = [
+  {
+    id: "PLSFIX_SHOWPANE",
+    name: "Open pls,fix",
+    defaultKey: "Ctrl+Shift+M",
+  },
   {
     id: "PLSFIX_AUTOCOLOR",
     name: "Autocolor selection",
@@ -106,9 +111,18 @@ describe("parseCombo: the grammar Office documents", () => {
     expect(formatCombo(combo("Alt+shift+ctrl+8"))).toBe("Ctrl+Shift+Alt+8");
   });
 
-  it("takes Cmd and Option as the Mac names of Ctrl and Alt", () => {
-    expect(formatCombo(combo("Cmd+Shift+A"))).toBe("Ctrl+Shift+A");
-    expect(formatCombo(combo("Command+Option+P"))).toBe("Ctrl+Alt+P");
+  // The docs say Cmd is supported on macOS and map Cmd to Ctrl on Windows, so
+  // Cmd is a modifier of its own and is passed to Office as written.
+  it("keeps Cmd as its own modifier and folds only its long spelling", () => {
+    expect(formatCombo(combo("Cmd+Shift+A"))).toBe("Cmd+Shift+A");
+    expect(formatCombo(combo("Command+Shift+A"))).toBe("Cmd+Shift+A");
+    expect(combo("Cmd+Ctrl+A").modifiers).toEqual(["Ctrl", "Cmd"]);
+  });
+
+  // "On macOS, the Alt key is mapped to the Option key": one modifier, two names.
+  it("folds Option onto Alt, the documented equivalence", () => {
+    expect(formatCombo(combo("Option+P"))).toBe("Alt+P");
+    expect(formatCombo(combo("Cmd+Opt+P"))).toBe("Cmd+Alt+P");
   });
 
   it("uppercases the letter and folds the two synonyms of one physical key", () => {
@@ -118,7 +132,16 @@ describe("parseCombo: the grammar Office documents", () => {
 
   it("takes the three punctuation keys the docs list, + included", () => {
     expect(combo("Ctrl+Shift++").key).toBe("+");
+    expect(combo("Ctrl + +").key).toBe("+");
     expect(combo("Ctrl+-").key).toBe("-");
+  });
+
+  // Microsoft's own manifest samples bind Ctrl+Alt+Up and Ctrl+Alt+Down.
+  it("takes the four arrow keys the docs' own samples use", () => {
+    expect(formatCombo(combo("Ctrl+Alt+Up"))).toBe("Ctrl+Alt+Up");
+    expect(formatCombo(combo("ctrl+alt+down"))).toBe("Ctrl+Alt+Down");
+    expect(formatCombo(combo("Ctrl+Alt+left"))).toBe("Ctrl+Alt+Left");
+    expect(formatCombo(combo("Ctrl+Alt+RIGHT"))).toBe("Ctrl+Alt+Right");
   });
 
   it("refuses a combination with no modifier, or with Shift as the only one", () => {
@@ -130,7 +153,8 @@ describe("parseCombo: the grammar Office documents", () => {
     expect(reason("Ctrl+A+B")).toBe(INVALID_COMBO_REASON);
     expect(reason("Ctrl+Shift")).toBe(INVALID_COMBO_REASON);
     expect(reason("Ctrl+Ctrl+A")).toBe(INVALID_COMBO_REASON);
-    expect(reason("Ctrl+Up")).toBe(INVALID_COMBO_REASON);
+    expect(reason("Ctrl+Home")).toBe(INVALID_COMBO_REASON);
+    expect(reason("Ctrl+++")).toBe(INVALID_COMBO_REASON);
     expect(reason("")).toBe(INVALID_COMBO_REASON);
     expect(reason("   ")).toBe(INVALID_COMBO_REASON);
   });
@@ -140,33 +164,26 @@ describe("parseCombo: the grammar Office documents", () => {
   });
 });
 
-describe("formatCombo and showKey: what the pane shows", () => {
-  it("writes the API form off a Mac", () => {
-    expect(formatCombo(combo("Ctrl+Shift+A"), "windows")).toBe("Ctrl+Shift+A");
-    expect(showKey("Ctrl+Shift+A", "windows")).toBe("Ctrl+Shift+A");
-  });
-
-  it("shows Cmd and Option on a Mac while the API still takes Ctrl and Alt", () => {
-    expect(formatCombo(combo("Ctrl+Shift+Alt+8"), "mac")).toBe(
-      "Cmd+Shift+Option+8",
-    );
-    expect(showKey("Ctrl+Alt+R", "mac")).toBe("Cmd+Option+R");
-    // The value that goes to Office is untouched by the display swap.
-    expect(formatCombo(combo("Ctrl+Alt+R"))).toBe("Ctrl+Alt+R");
+describe("showKey: what the pane prints", () => {
+  it("prints a key exactly as Office takes it, on every platform", () => {
+    expect(showKey("ctrl+shift+a")).toBe("Ctrl+Shift+A");
+    expect(showKey("Cmd+Shift+A")).toBe("Cmd+Shift+A");
   });
 
   it("hands back a key it cannot parse unchanged rather than hiding it", () => {
-    expect(showKey("Ctrl+Alt+Up", "mac")).toBe("Ctrl+Alt+Up");
+    expect(showKey("Ctrl+Alt+PgUp")).toBe("Ctrl+Alt+PgUp");
   });
 });
 
 describe("diffShortcuts: the map replaceShortcuts takes", () => {
   it("sends null for a box left empty", () => {
     expect(diffShortcuts(ROWS, {})).toEqual({
+      PLSFIX_SHOWPANE: null,
       PLSFIX_AUTOCOLOR: null,
       PLSFIX_FILLRIGHT: null,
     });
     expect(diffShortcuts(ROWS, { PLSFIX_AUTOCOLOR: "  " })).toEqual({
+      PLSFIX_SHOWPANE: null,
       PLSFIX_AUTOCOLOR: null,
       PLSFIX_FILLRIGHT: null,
     });
@@ -174,6 +191,7 @@ describe("diffShortcuts: the map replaceShortcuts takes", () => {
 
   it("sends the canonical combination for a box that differs", () => {
     expect(diffShortcuts(ROWS, { PLSFIX_AUTOCOLOR: "alt+ctrl+j" })).toEqual({
+      PLSFIX_SHOWPANE: null,
       PLSFIX_AUTOCOLOR: "Ctrl+Alt+J",
       PLSFIX_FILLRIGHT: null,
     });
@@ -183,13 +201,18 @@ describe("diffShortcuts: the map replaceShortcuts takes", () => {
     expect(
       diffShortcuts(ROWS, {
         PLSFIX_AUTOCOLOR: "ctrl+shift+k",
-        PLSFIX_FILLRIGHT: "Cmd+Option+R",
+        PLSFIX_FILLRIGHT: " Alt + Ctrl + r ",
       }),
-    ).toEqual({ PLSFIX_AUTOCOLOR: null, PLSFIX_FILLRIGHT: null });
+    ).toEqual({
+      PLSFIX_SHOWPANE: null,
+      PLSFIX_AUTOCOLOR: null,
+      PLSFIX_FILLRIGHT: null,
+    });
   });
 
   it("ignores a box for an action the file no longer lists", () => {
     expect(diffShortcuts(ROWS, { PLSFIX_GONE: "Ctrl+Shift+Z" })).toEqual({
+      PLSFIX_SHOWPANE: null,
       PLSFIX_AUTOCOLOR: null,
       PLSFIX_FILLRIGHT: null,
     });
@@ -202,26 +225,49 @@ describe("diffShortcuts: the map replaceShortcuts takes", () => {
   });
 });
 
-describe("duplicateKeys: one combination on two actions", () => {
-  it("finds nothing in a map with no repeat", () => {
+describe("firstClash: two actions on one key", () => {
+  it("finds nothing when every effective key is its own", () => {
+    expect(firstClash(ROWS, diffShortcuts(ROWS, {}))).toBeNull();
     expect(
-      duplicateKeys({ a: "Ctrl+Shift+A", b: "Ctrl+Shift+B", c: null }),
-    ).toEqual([]);
+      firstClash(ROWS, diffShortcuts(ROWS, { PLSFIX_AUTOCOLOR: "Ctrl+Alt+J" })),
+    ).toBeNull();
   });
 
-  it("names each repeated combination once, in the order it first appears", () => {
-    expect(
-      duplicateKeys({
-        a: "Ctrl+Shift+A",
-        b: "Ctrl+Shift+B",
-        c: "Ctrl+Shift+A",
-        d: "Ctrl+Shift+B",
-        e: "Ctrl+Shift+A",
-      }),
-    ).toEqual(["Ctrl+Shift+A", "Ctrl+Shift+B"]);
+  it("catches a custom key that lands on another action's SHIPPED default", () => {
+    const map = diffShortcuts(ROWS, { PLSFIX_AUTOCOLOR: "Ctrl+Shift+M" });
+    expect(firstClash(ROWS, map)).toEqual({
+      key: "Ctrl+Shift+M",
+      first: "Open pls,fix",
+      second: "Autocolor selection",
+    });
   });
 
-  it("does not count the nulls as a repeat", () => {
-    expect(duplicateKeys({ a: null, b: null })).toEqual([]);
+  it("catches one combination typed into two boxes", () => {
+    const map = diffShortcuts(ROWS, {
+      PLSFIX_AUTOCOLOR: "Ctrl+Alt+J",
+      PLSFIX_FILLRIGHT: "ctrl+alt+j",
+    });
+    expect(firstClash(ROWS, map)).toEqual({
+      key: "Ctrl+Alt+J",
+      first: "Autocolor selection",
+      second: "Fill formula right",
+    });
+  });
+
+  it("reports the pair the reader meets first, in row order", () => {
+    const map = diffShortcuts(ROWS, {
+      PLSFIX_AUTOCOLOR: "Ctrl+Alt+R",
+      PLSFIX_FILLRIGHT: "Ctrl+Shift+M",
+    });
+    expect(firstClash(ROWS, map)?.first).toBe("Open pls,fix");
+    expect(firstClash(ROWS, map)?.key).toBe("Ctrl+Shift+M");
+  });
+
+  it("frees a default the action that owned it has moved off", () => {
+    const map = diffShortcuts(ROWS, {
+      PLSFIX_SHOWPANE: "Ctrl+Alt+P",
+      PLSFIX_AUTOCOLOR: "Ctrl+Shift+M",
+    });
+    expect(firstClash(ROWS, map)).toBeNull();
   });
 });
