@@ -4,10 +4,22 @@
 // Office.js only reaches here through ../excel.
 
 import { listActiveSheetCharts, watchActiveSheet } from "../excel";
+import { ANCHOR_PREFIX } from "../link/model";
 
 interface ChartPickTab {
   chartPick: HTMLSelectElement;
   deps: { root: ParentNode };
+}
+
+// A chart exported as a link is renamed to its anchor (PLSFIX_LINK_<id>), so
+// the picker shows what the chart is instead of that bookkeeping name; the
+// option's own value stays the real name, since an export by name has to keep
+// finding it under whichever label is showing.
+const LINK_LABEL_CHARS = 4;
+
+function chartPickLabel(name: string): string {
+  if (!name.startsWith(ANCHOR_PREFIX)) return name;
+  return `Linked chart · ${name.slice(-LINK_LABEL_CHARS)}`;
 }
 
 // The chart list stays hidden on a sheet without charts; the first option
@@ -31,7 +43,7 @@ export async function refreshChartPick(tab: ChartPickTab): Promise<void> {
   const keep = tab.chartPick.value;
   tab.chartPick.replaceChildren(
     new Option("Selected chart", ""),
-    ...names.map((name) => new Option(name, name)),
+    ...names.map((name) => new Option(chartPickLabel(name), name)),
   );
   tab.chartPick.value = names.includes(keep) ? keep : "";
   tab.chartPick.hidden = names.length === 0;
