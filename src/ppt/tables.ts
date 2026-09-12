@@ -7,7 +7,9 @@
 import type { Box, Size } from "../layout";
 import {
   encodeTag,
+  overTableCap,
   sourceLabel,
+  TABLE_TOO_BIG,
   TAG_KEY,
   TAG_LINK,
   type InboxItem,
@@ -41,6 +43,14 @@ export function requireTableApi(): void {
   if (!hasPowerPointApi(TABLE_API)) throw new Error(TABLES_NEED_1_8);
 }
 
+// The cap Excel refuses an export at, checked again on the way in: a payload
+// from another build - or a relay row nobody in this deck exported - would
+// otherwise be written a round trip per eight cells, 161 of them for a
+// 61 x 21 grid. The sentence is the one Excel already shows.
+export function requireTableSize(payload: TablePayload): void {
+  if (overTableCap(payload.rows, payload.cols)) throw new Error(TABLE_TOO_BIG);
+}
+
 // As wide as the source columns are, capped to the slide's content width.
 // Excel reports zero for a hidden column, so a source whose columns are all
 // hidden adds up to nothing: that takes the content width instead, because a
@@ -69,6 +79,7 @@ export async function insertTable(
   tag: LinkTag,
 ): Promise<InsertResult> {
   requireTableApi();
+  requireTableSize(payload);
   return PowerPoint.run(async (context) => {
     const slideId = await selectedSlideId(context, stage);
     const placed = await placeOnSlide(context, slideId, tableSize(payload));
@@ -104,6 +115,7 @@ export async function refreshTable(
   tag: LinkTag,
 ): Promise<void> {
   requireTableApi();
+  requireTableSize(payload);
   const stage = `refresh ${sourceLabel(found.tag.src, found.tag.kind)}`;
   await PowerPoint.run(async (context) => {
     const shape = shapeAt(context, found);
@@ -119,14 +131,21 @@ export async function refreshTable(
       );
       return;
     }
-    const built = recreate(context, shape, found, payload, tag, stage);
+    const built = recreate(context, shape, found, payload, stage);
     await withSyncDeadline(context.sync(), "rebuilding the table");
+    // The same rule as the repaint above: the new revision is written only
+    // once every cell of it is, so a format round trip the host swallows
+    // leaves a row that still says "Update available" rather than a half
+    // formatted table the pane calls current and no later press finishes.
     await writeCellsInChunks(
       context,
       built.getTable(),
       payload,
       false,
       FORMATTING,
+      () => {
+        built.tags.add(TAG_LINK, encodeTag(tag));
+      },
     );
   });
 }
@@ -134,13 +153,14 @@ export async function refreshTable(
 // A table cannot grow a row through the API, so it is built again at the
 // corner and width the user left it at and tagged, and the old one is deleted
 // in the same batch. The add is queued first, so a host that refuses it never
-// gets as far as taking the old table - and both its tags - down.
+// gets as far as taking the old table - and both its tags - down. The tags it
+// carries out of here are the ones the deck already held: the new revision is
+// the caller's to write once the formats have landed.
 function recreate(
   context: PowerPoint.RequestContext,
   old: PowerPoint.Shape,
   found: FoundLink,
   payload: TablePayload,
-  tag: LinkTag,
   stage: string,
 ): PowerPoint.Shape {
   if (isGrouped(found)) {
@@ -155,7 +175,7 @@ function recreate(
   const label = sourceLabel(found.tag.src, found.tag.kind);
   const shapes = context.presentation.slides.getItem(found.slideId).shapes;
   const shape = addTable(shapes, payload, box, label);
-  shape.tags.add(TAG_LINK, encodeTag(tag));
+  shape.tags.add(TAG_LINK, encodeTag(found.tag));
   shape.tags.add(TAG_KEY, found.token);
   old.delete();
   return shape;
