@@ -39,7 +39,7 @@ Excel->PowerPoint links), TypeScript/Vite/Vitest, plus a Rust axum host (`server
   the manifest = the GitHub repo. Guides: `docs/INSTALL.md` (one-line installers per platform, manual sideload, admin deployment),
   `docs/SELF-HOSTING.md` (compose + `/manifest.xml`), `CONTRIBUTING.md`, `SECURITY.md`.
 
-State pins: `tasks/AUTORESUME.md` (resume here), `tasks/v1-plan.md`, `tasks/lessons.md`.
+State pins: `tasks/AUTORESUME.md` (resume here), `tasks/launch-next-steps.md` (the path to the AppSource listing, paused 13.09), `tasks/v1-plan.md`, `tasks/lessons.md`.
 
 ## Map
 
