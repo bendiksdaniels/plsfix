@@ -346,16 +346,14 @@ export function nextSize(
 }
 
 // ---------------------------------------------------------------------------
-// Hygiene cycles: the indent, the horizontal alignment and the font underline
-// a label column and a total row get tidied with. Excel rewrites these on
-// read-back too (an accounting underline answers "SingleAccountant", a range
-// whose cells disagree answers nothing), so each ladder canonicalises both
-// sides before it looks for its position, as the number formats do.
+// Hygiene cycles: the indent, the horizontal alignment and the font underline.
+// Excel rewrites these on read-back too (an accounting underline answers
+// "SingleAccountant"), so each ladder canonicalises both sides before matching.
 // ---------------------------------------------------------------------------
 
-export const INDENT_CYCLE = [0, 1, 2, 3];
-export const ALIGN_CYCLE = ["Left", "Center", "Right", "General"];
-export const UNDERLINE_CYCLE = ["Single", "Double", "None"];
+export const INDENT_CYCLE = [0, 1, 2, 3] as const;
+export const ALIGN_CYCLE = ["Left", "Center", "Right", "General"] as const;
+export const UNDERLINE_CYCLE = ["Single", "Double", "None"] as const;
 
 /** Excel spells these "Center" and "SingleAccountant"; case is not evidence. */
 export function canonicalAlignment(value: string | null | undefined): string {
@@ -370,7 +368,7 @@ export function canonicalUnderline(value: string | null | undefined): string {
 // Shared step: the entry after the one the cell is already wearing, and entry 0
 // for a state we did not apply (-1 + 1), so the next press starts our ladder.
 function stepThrough(
-  cycle: string[],
+  cycle: readonly string[],
   current: string | null | undefined,
   canonical: (value: string | null | undefined) => string,
 ): string {
@@ -386,7 +384,8 @@ export function nextIndent(current: number | null | undefined): number {
     typeof current === "number" && Number.isFinite(current)
       ? Math.max(0, Math.round(current))
       : 0;
-  const index = INDENT_CYCLE.indexOf(level);
+  // findIndex, not indexOf: the ladder is a tuple of its own literal types.
+  const index = INDENT_CYCLE.findIndex((entry) => entry === level);
   return INDENT_CYCLE[(index + 1) % INDENT_CYCLE.length] ?? 0;
 }
 

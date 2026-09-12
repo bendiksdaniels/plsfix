@@ -2122,13 +2122,16 @@ class RangeProxy {
   // Range.delete: the cells of the range go and what sat past them is pulled
   // back - Up for a band of rows, Left for a band of columns. Walked over the
   // sheet's populated cells rather than over the rectangle, so a whole-row
-  // delete (16 384 columns wide) is one pass over the map. Deliberately
-  // simple: row heights, column widths and merges stay where they are, which
-  // no flow here reads back after a delete.
+  // delete (16 384 columns wide) is one pass over the map. A merged block the
+  // band covers goes with it and one past the band moves back, the way Excel
+  // treats a merge when its rows are deleted; row heights and column widths
+  // stay where they are, which no flow here reads back after a delete.
   delete(shift: string = DeleteShiftDirection.up): void {
     if (refuseProtected(this.ctx, this.sheet, this.rect)) return;
     const { row, col, rowCount, colCount } = this.rect;
     const up = shift !== DeleteShiftDirection.left;
+    const from = up ? row : col;
+    const span = up ? rowCount : colCount;
     const kept = new Map<string, FakeCell>();
 
     for (const [key, cell] of this.sheet.cells) {
@@ -2141,14 +2144,41 @@ class RangeProxy {
         continue;
       }
       const along = up ? r : c;
-      const from = up ? row : col;
-      const span = up ? rowCount : colCount;
       if (along >= from && along < from + span) continue;
       const moved = along >= from + span ? along - span : along;
       kept.set(up ? this.sheet.key(moved, c) : this.sheet.key(r, moved), cell);
     }
     this.sheet.cells = kept;
+    this.sheet.merges = shiftMerges(this.sheet.merges, up, from, span);
   }
+}
+
+// What a delete does to the sheet's merged blocks: one the band covers whole
+// is gone with it, one entirely past the band moves back by the band's size,
+// and one the band only cuts through is left as it is (Excel shrinks it; no
+// flow here reads a half-deleted merge back).
+function shiftMerges(
+  merges: Rect[],
+  up: boolean,
+  from: number,
+  span: number,
+): Rect[] {
+  const moved: Rect[] = [];
+  for (const merge of merges) {
+    const start = up ? merge.row : merge.col;
+    const size = up ? merge.rowCount : merge.colCount;
+    if (start >= from && start + size <= from + span) continue;
+    if (start < from + span) {
+      moved.push(merge);
+      continue;
+    }
+    moved.push(
+      up
+        ? { ...merge, row: merge.row - span }
+        : { ...merge, col: merge.col - span },
+    );
+  }
+  return moved;
 }
 
 // ---------------------------------------------------------------------------

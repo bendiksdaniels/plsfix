@@ -184,19 +184,30 @@ async function requireSheetList(
   if (await structureProtected(context)) throw new Error(structureNote(stage));
 }
 
+/** What one unhide-all pass found: what it showed, and what it left buried. */
+export interface UnhideResult {
+  shown: number;
+  buried: number;
+}
+
 /**
  * Unhide all: every hidden sheet back on show. A very hidden sheet was put out
- * of sight outside Excel's UI, so it only comes back when asked for by name.
+ * of sight outside Excel's UI, so it only comes back when asked for; the ones
+ * left behind are counted, because "no hidden sheets" would otherwise be a lie
+ * on a workbook whose only hidden sheets are buried.
  */
 export async function setSheetsVisibility(
   includeVeryHidden: boolean,
-): Promise<number> {
+): Promise<UnhideResult> {
   return Excel.run(async (context) => {
     await requireSheetList(context, "Unhide all");
     const sheets = context.workbook.worksheets;
     sheets.load("items/name,items/visibility");
     await context.sync();
 
+    const veryHidden = sheets.items.filter(
+      (item) => item.visibility === Excel.SheetVisibility.veryHidden,
+    );
     const hidden = sheets.items.filter(
       (item) =>
         item.visibility === Excel.SheetVisibility.hidden ||
@@ -207,7 +218,10 @@ export async function setSheetsVisibility(
       item.visibility = Excel.SheetVisibility.visible;
     }
     await syncWrite(context, "Unhide all", structureNote);
-    return hidden.length;
+    return {
+      shown: hidden.length,
+      buried: includeVeryHidden ? 0 : veryHidden.length,
+    };
   });
 }
 

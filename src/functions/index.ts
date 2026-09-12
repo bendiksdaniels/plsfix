@@ -84,11 +84,16 @@ export function smtRound(
 // A growth rate needs a positive start, a positive end and time to run in;
 // Excel can hand a scalar text or an infinity too. All of them are the bad
 // argument the rounding functions report, so the cell shows one #VALUE!.
-function requirePositive(value: number, what: string): number {
+function requirePositive(value: number, what: string): void {
   if (typeof value !== "number" || !Number.isFinite(value) || value <= 0) {
     throw valueError(`PLSFIX.CAGR: ${what} must be a positive number.`);
   }
-  return value;
+}
+
+// A throw is not always an Error; String() on one that is would print its
+// class name in front of the sentence, so the message is read off it first.
+function reason(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
 }
 
 // The compound annual growth rate: what one period's growth would have to be
@@ -102,7 +107,7 @@ export function smtCagr(first: number, last: number, periods: number): number {
   } catch (error) {
     // The pure maths refuses what the pane's own CAGR refuses - a period
     // shorter than one - and its sentence travels in the same error kind.
-    throw valueError(`PLSFIX.CAGR: ${(error as Error).message}`);
+    throw valueError(`PLSFIX.CAGR: ${reason(error)}`);
   }
 }
 

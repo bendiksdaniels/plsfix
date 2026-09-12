@@ -54,7 +54,10 @@ describe("unhide all", () => {
     helpers.sheet("Data").visibility = "Hidden";
     helpers.sheet("Notes").visibility = "Hidden";
 
-    expect(await smt.setSheetsVisibility(false)).toBe(2);
+    expect(await smt.setSheetsVisibility(false)).toEqual({
+      shown: 2,
+      buried: 0,
+    });
     expect(visibility("Data")).toBe("Visible");
     expect(visibility("Notes")).toBe("Visible");
   });
@@ -63,15 +66,36 @@ describe("unhide all", () => {
     helpers.sheet("Data").visibility = "Hidden";
     helpers.sheet("Notes").visibility = "VeryHidden";
 
-    expect(await smt.setSheetsVisibility(false)).toBe(1);
+    expect(await smt.setSheetsVisibility(false)).toEqual({
+      shown: 1,
+      buried: 1,
+    });
     expect(visibility("Notes")).toBe("VeryHidden");
 
-    expect(await smt.setSheetsVisibility(true)).toBe(1);
+    expect(await smt.setSheetsVisibility(true)).toEqual({
+      shown: 1,
+      buried: 0,
+    });
     expect(visibility("Notes")).toBe("Visible");
   });
 
+  // The pane's line turns on this: "no hidden sheets" is a lie while there
+  // are buried ones the tick would bring back.
+  it("counts the buried sheets it left alone", async () => {
+    helpers.sheet("Data").visibility = "VeryHidden";
+    helpers.sheet("Notes").visibility = "VeryHidden";
+
+    expect(await smt.setSheetsVisibility(false)).toEqual({
+      shown: 0,
+      buried: 2,
+    });
+  });
+
   it("counts nothing when every sheet is already showing", async () => {
-    expect(await smt.setSheetsVisibility(true)).toBe(0);
+    expect(await smt.setSheetsVisibility(true)).toEqual({
+      shown: 0,
+      buried: 0,
+    });
   });
 });
 
@@ -167,11 +191,18 @@ describe("the universality rows", () => {
   });
 
   it("hides and moves sheets on a protected sheet: cells are not touched", async () => {
+    helpers.seed("Model!A1", [["Revenue", 100]]);
     helpers.protectSheet("Model");
     workbook.activeSheetId = helpers.sheet("Data").id;
+    const before = helpers.cellMap("Model");
 
     expect(await smt.burySheet()).toBe("Data");
-    expect(await smt.setSheetsVisibility(true)).toBe(1);
+    expect(await smt.moveSheet("end")).toEqual({ name: "Data", position: 2 });
+    expect(await smt.setSheetsVisibility(true)).toEqual({
+      shown: 1,
+      buried: 0,
+    });
+    expect(helpers.cellMap("Model")).toEqual(before);
   });
 
   it("answers a protected workbook structure with the pane's sentence", async () => {

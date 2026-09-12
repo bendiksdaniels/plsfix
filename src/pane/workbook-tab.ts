@@ -196,10 +196,14 @@ function includeVeryHidden(): boolean {
 }
 
 export async function unhideAllSheets(): Promise<string> {
-  const shown = await setSheetsVisibility(includeVeryHidden());
+  const { shown, buried } = await setSheetsVisibility(includeVeryHidden());
   await refreshSheets();
-  if (shown === 0) return "No hidden sheets to show";
-  return `${String(shown)} ${sheetWord(shown)} shown`;
+  if (shown > 0) return `${String(shown)} ${sheetWord(shown)} shown`;
+  // "No hidden sheets" would be a lie while the tick would still find some.
+  if (buried > 0) {
+    return 'No hidden sheets to show. Tick "include very hidden" for the buried ones.';
+  }
+  return "No hidden sheets to show";
 }
 
 export async function showOnlyThisSheet(): Promise<string> {

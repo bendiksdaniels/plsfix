@@ -24,6 +24,10 @@ vi.mock("../excel", () => ({
   listBrokenNames: vi.fn(async () => [] as string[]),
   listSheets: vi.fn(async () => [] as unknown[]),
   setSheetVisibility: vi.fn(async () => undefined),
+  setSheetsVisibility: vi.fn(async () => ({ shown: 0, buried: 0 })),
+  showOnlySheet: vi.fn(async () => ({ name: "Model", hidden: 0 })),
+  burySheet: vi.fn(async () => "Model"),
+  moveSheet: vi.fn(async () => ({ name: "Model", position: 0 })),
 }));
 
 import {
@@ -32,6 +36,7 @@ import {
   insertToc,
   listBrokenNames,
   listSheets,
+  setSheetsVisibility,
   setSheetVisibility,
 } from "../excel";
 
@@ -251,6 +256,44 @@ describe("broken-name scrubber", () => {
       "No broken names.",
     );
     expect(deleteButton().hidden).toBe(true);
+  });
+});
+
+describe("unhide all", () => {
+  function tick(on: boolean): void {
+    (
+      document.getElementById("sheets-very-hidden") as HTMLInputElement
+    ).checked = on;
+  }
+
+  it("counts what it showed and passes the tick box on", async () => {
+    vi.mocked(setSheetsVisibility).mockResolvedValue({ shown: 3, buried: 0 });
+    const { tab } = await load();
+    tick(true);
+
+    expect(await tab.unhideAllSheets()).toBe("3 sheets shown");
+    expect(setSheetsVisibility).toHaveBeenCalledWith(true);
+  });
+
+  it("says nothing was hidden when nothing was", async () => {
+    vi.mocked(setSheetsVisibility).mockResolvedValue({ shown: 0, buried: 0 });
+    const { tab } = await load();
+    tick(false);
+
+    expect(await tab.unhideAllSheets()).toBe("No hidden sheets to show");
+    expect(setSheetsVisibility).toHaveBeenCalledWith(false);
+  });
+
+  // "No hidden sheets" alone would be a lie on a workbook whose only hidden
+  // sheets are buried: the tick would still find them.
+  it("points at the tick box when the hidden ones are all buried", async () => {
+    vi.mocked(setSheetsVisibility).mockResolvedValue({ shown: 0, buried: 2 });
+    const { tab } = await load();
+    tick(false);
+
+    expect(await tab.unhideAllSheets()).toBe(
+      'No hidden sheets to show. Tick "include very hidden" for the buried ones.',
+    );
   });
 });
 

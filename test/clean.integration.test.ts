@@ -7,6 +7,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   enableStrictLoadSemantics,
   type FakeHelpers,
+  type FakeHostOptions,
   installFakeHost,
   uninstallFakeHost,
 } from "./fakehost";
@@ -17,12 +18,20 @@ enableStrictLoadSemantics();
 let helpers: FakeHelpers;
 let smt: typeof ExcelModule;
 
-async function boot(): Promise<void> {
+async function boot(options: FakeHostOptions = {}): Promise<void> {
   vi.resetModules();
   uninstallFakeHost();
-  const host = installFakeHost({ sheets: ["P&L", "Data"] });
+  const host = installFakeHost({ sheets: ["P&L", "Data"], ...options });
   helpers = host.helpers;
   smt = await import("../src/excel");
+}
+
+// A host that answers no to one API set and yes to everything else.
+function without(apiSet: string): FakeHostOptions {
+  return {
+    isSetSupported: (set, version) =>
+      !(set === "ExcelApi" && version === apiSet),
+  };
 }
 
 async function rejects(run: () => Promise<unknown>): Promise<string> {
@@ -149,5 +158,60 @@ describe("clean past the data", () => {
     seedStrays(10, 0);
     await smt.cleanPastData();
     expect(smt.undoTarget()).toBeNull();
+  });
+
+  // A merged block is the one thing that tells the two branches apart in the
+  // fake: a format clear leaves it standing, a whole-row delete takes it with
+  // the rows, which is what Excel does to a merge the deleted rows cover.
+  it("deletes through a merged block sitting past the data", async () => {
+    seedStrays(10, 0);
+    helpers.merge("P&L!A6:B6");
+
+    expect(await smt.cleanPastData()).toBe(
+      "Removed 10 rows past the data on P&L",
+    );
+    expect(helpers.sheet("P&L").merges).toEqual([]);
+    expect(helpers.value("P&L!C3")).toBe(70);
+    expect(helpers.fill("P&L!A4").pattern).toBe("None");
+  });
+});
+
+// An un-undoable delete may never run on a guess: a host that cannot be asked
+// how many charts or shapes sit on the sheet takes the safe branch, because a
+// logo or a text box past the data would be destroyed with the rows.
+describe("clean past the data on a host that cannot count drawings", () => {
+  const CANNOT_COUNT =
+    "Cleared the formats past the data on P&L; rows and columns kept because this Excel cannot count the sheet's charts or shapes";
+
+  it("keeps the rows when shapes cannot be counted (below ExcelApi 1.9)", async () => {
+    await boot(without("1.9"));
+    seedStrays(1000, 2);
+    // The witness for "the rows are still there": a delete would take this
+    // merge with them, a format clear leaves it standing.
+    helpers.merge("P&L!A6:B6");
+
+    expect(await smt.cleanPastData()).toBe(CANNOT_COUNT);
+    expect(helpers.sheet("P&L").merges).toHaveLength(1);
+    // The formatting past the data went all the same.
+    expect(helpers.fill("P&L!A4").pattern).toBe("None");
+    expect(helpers.fill("P&L!D1").pattern).toBe("None");
+  });
+
+  it("keeps the rows when charts cannot be counted (below ExcelApi 1.4)", async () => {
+    await boot(without("1.4"));
+    seedStrays(40, 0);
+    helpers.merge("P&L!A6:B6");
+
+    expect(await smt.cleanPastData()).toBe(CANNOT_COUNT);
+    expect(helpers.sheet("P&L").merges).toHaveLength(1);
+  });
+
+  it("still deletes on a host that can count both and has neither", async () => {
+    await boot();
+    seedStrays(40, 0);
+
+    expect(await smt.cleanPastData()).toBe(
+      "Removed 40 rows past the data on P&L",
+    );
   });
 });
