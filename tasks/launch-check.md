@@ -283,3 +283,19 @@ The Mac row in section 8 is replaced by these two:
 - [ ] A real desktop-365 pie chart (ExcelApi 1.9 available, 1.19 not yet) visibly shows leader lines after "Chart Smart Format" - this is the entire point of the series-level fix and only a real host can confirm the line actually renders, not just that the property was set.
 - [ ] The "Linked chart · xxxx" label reads well at the narrowest supported pane width (320px) with a real, longer chart list in the Links tab dropdown (ux:check only exercises synthetic fixture data).
 - [ ] Excel desktop: delete broken names on a workbook whose structure is protected: the toast says "The workbook's structure is protected, so nothing was deleted." and no name is gone afterwards (Office.js may have applied the first deletes of the batch before the refusal; if any name is missing, the sentence must change).
+
+## Added by the v2.7 wave (13.09): the comps polish
+
+Host-only behaviours the fakes cannot confirm (P1, v2.7.10):
+
+- [ ] Comps stats over a comps table with hidden rows inside the selection: the six formulas span the whole block (hidden rows included) and the block lands under the last row, hidden or not.
+- [ ] Comps stats under a filtered table: the block lands under the table's last row, not under the last visible one, and the statistics count every filtered-out row.
+- [ ] Comps stats over a column a modeller formatted by hand (a text or date column beside the multiples): its format survives the block.
+- [ ] Football field with hidden columns between the label and the numbers: the helper block still lands in the first three columns right of the whole selection.
+- [ ] Football field on Excel for the web, and on a build below ExcelApi 1.7: row 1 on top with `reversePlotOrder`, and the "plain axes on this build" note when the host has neither 1.7 nor 1.8.
+- [ ] Football field on a real protected sheet: the pane says "this sheet is protected, nothing was changed" and the Undo row still names the previous action.
+- [ ] Pinstripes over a range with hidden rows: Excel bands the hidden ones too, and unhiding shows the band (decide whether that is what we want).
+- [ ] Pinstripes over an Excel table with its own banded-row style: our tint over theirs, and the second press still clears ours.
+- [ ] Pinstripes on a protected sheet with an unlocked island: the note, and nothing painted.
+- [ ] Comps stats, the football field and the tornado on a protected sheet whose target block is an unlocked island: all three now refuse with "this sheet is protected, nothing was changed" where before they would have written (house-consistent with Autocolor and the audit overlay; a user of protected templates will notice).
+- [ ] The Charts section reading order in a real docked pane at 320 px: waterfall, tornado, football field, brand-format, CAGR, no wrapping or clipping of the moved button's label.
