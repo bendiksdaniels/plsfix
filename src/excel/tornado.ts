@@ -29,6 +29,7 @@ import { tornadoSeries } from "../chartmath";
 import { type CellValue } from "../model";
 import { getActiveSettings } from "../settings";
 
+const STAGE = "tornado";
 const TORNADO_ROW_CAP = 100;
 // Both halves of a driver share one bar row, with the rows drawn close together.
 const TORNADO_OVERLAP = 100;
@@ -101,6 +102,25 @@ function styleTornado(chart: Excel.Chart, heading: string): void {
   });
 }
 
+// Three columns, at least two drivers, no more than the cap, and room for the
+// helper block beside them.
+function requireTornadoShape(range: Excel.Range): void {
+  if (range.columnCount !== CHART_BLOCK_COLUMNS || range.rowCount < 2) {
+    throw new Error(TORNADO_SHAPE_ERROR);
+  }
+  if (range.rowCount > TORNADO_ROW_CAP) {
+    throw new Error(`${STAGE}: supports up to ${TORNADO_ROW_CAP} drivers`);
+  }
+  requireRoomBeside(range, STAGE);
+}
+
+function notes(placed: boolean): string {
+  return [
+    placed ? "" : UNPLACED_NOTE,
+    hostSupports("1.7") && hostSupports("1.8") ? "" : BASIC_BARS_NOTE,
+  ].join("");
+}
+
 // Label, low outcome, high outcome; the helper block lands immediately right of
 // the selection, and pls,fix Undo captures whatever stood there first.
 export async function insertTornado(): Promise<string> {
@@ -109,20 +129,13 @@ export async function insertTornado(): Promise<string> {
     // is a million cells, and the driver cap only runs after the read.
     const range = await withinCap(
       context,
-      await selectedSingleRange(context, "tornado"),
-      "tornado",
+      await selectedSingleRange(context, STAGE),
+      STAGE,
     );
     const sheet = range.worksheet;
     range.load("rowCount,columnCount,rowIndex,columnIndex,values,numberFormat");
     await context.sync();
-
-    if (range.columnCount !== CHART_BLOCK_COLUMNS || range.rowCount < 2) {
-      throw new Error(TORNADO_SHAPE_ERROR);
-    }
-    if (range.rowCount > TORNADO_ROW_CAP) {
-      throw new Error(`tornado: supports up to ${TORNADO_ROW_CAP} drivers`);
-    }
-    requireRoomBeside(range, "tornado");
+    requireTornadoShape(range);
 
     const drivers = readTriples(range.values as CellValue[][], TORNADO_RULES);
     const format = valueFormat(
@@ -133,7 +146,7 @@ export async function insertTornado(): Promise<string> {
     const series = tornadoSeries(drivers, base);
 
     const block = await writeHelperBlock(context, sheet, range, {
-      stage: "tornado",
+      stage: STAGE,
       headers: TORNADO_HEADERS,
       rows: series.labels.map((label, index) => [
         label,
@@ -154,10 +167,7 @@ export async function insertTornado(): Promise<string> {
     await context.sync();
 
     const count = series.labels.length;
-    const notes = [
-      placed ? "" : UNPLACED_NOTE,
-      hostSupports("1.7") && hostSupports("1.8") ? "" : BASIC_BARS_NOTE,
-    ].join("");
-    return `Tornado added: ${count} drivers, base ${formatChartAmount(series.base)}${notes}`;
+    const tail = notes(placed);
+    return `Tornado added: ${count} drivers, base ${formatChartAmount(series.base)}${tail}`;
   });
 }
