@@ -2,25 +2,33 @@
 // drawn as a bar spanning its low and high around the base. Office charts plot
 // ranges only and the deltas are not in the model, so they are written to a
 // helper block beside the selection and charted from there.
+//
+// Owns: the base read off the row above, the ranking's styling and the notes.
+// The helper block itself is shared with the football field, in
+// src/excel/chart-blocks.ts.
 
 import { placeChartBeside, UNPLACED_NOTE } from "./chart-place";
 import {
+  CHART_BLOCK_COLUMNS,
+  isFiniteNumber,
+  readTriples,
+  requireRoomBeside,
+  type TripleRules,
+  valueFormat,
+  writeHelperBlock,
+} from "./chart-blocks";
+import {
   formatChartAmount,
   hostSupports,
-  requireEmptyBlock,
   selectedSingleRange,
-  SHEET_COLUMNS,
   styleChartLabels,
   styleChartShell,
   withinCap,
 } from "./internal";
-import { syncWrite } from "./protection";
-import { captureUndo } from "./undo";
-import { type TornadoDriver, tornadoSeries } from "../chartmath";
+import { tornadoSeries } from "../chartmath";
 import { type CellValue } from "../model";
 import { getActiveSettings } from "../settings";
 
-const TORNADO_COLUMNS = 3;
 const TORNADO_ROW_CAP = 100;
 // Both halves of a driver share one bar row, with the rows drawn close together.
 const TORNADO_OVERLAP = 100;
@@ -33,42 +41,13 @@ const TORNADO_SHAPE_ERROR =
 // is drawn as a plain clustered bar chart, which is worth saying out loud.
 const BASIC_BARS_NOTE = "; plain bars on this build";
 
-function isFiniteNumber(value: CellValue | undefined): value is number {
-  return typeof value === "number" && Number.isFinite(value);
-}
-
-// The header row is optional and detected, not declared: a first row whose two
-// outcome cells hold no numbers is a pair of column titles, never a driver.
-function readDrivers(grid: CellValue[][]): TornadoDriver[] {
-  const first = grid[0] ?? [];
-  const headed = !isFiniteNumber(first[1]) && !isFiniteNumber(first[2]);
-  const body = headed ? grid.slice(1) : grid;
-  if (body.length < 2) throw new Error(TORNADO_SHAPE_ERROR);
-
-  return body.map((row) => {
-    const [label, low, high] = row;
-    if (!isFiniteNumber(low) || !isFiniteNumber(high)) {
-      throw new Error("tornado: the low and high columns must hold numbers");
-    }
-    return { label: label === null ? "" : String(label), low, high };
-  });
-}
-
-// The helper block's deltas share the outcomes' unit, so they wear the format
-// of the first driver's low cell; a headed selection has one row above it.
-function outcomeFormat(formats: string[][], driverCount: number): string {
-  const firstDriverRow = formats.length - driverCount;
-  return formats[firstDriverRow]?.[1] ?? "General";
-}
-
-// The block's header row and label column stay plain; the two delta columns
-// carry the outcomes' format, which the chart's labels read off them.
-function blockFormats(format: string, driverCount: number): string[][] {
-  return [
-    TORNADO_HEADERS.map(() => "General"),
-    ...Array.from({ length: driverCount }, () => ["General", format, format]),
-  ];
-}
+// The row cap is counted off the selection before the grid is read, so the
+// reader itself carries none.
+const TORNADO_RULES: TripleRules = {
+  minRows: 2,
+  tooFew: TORNADO_SHAPE_ERROR,
+  notNumbers: "tornado: the low and high columns must hold numbers",
+};
 
 interface TornadoHeader {
   heading: string;
@@ -89,7 +68,7 @@ async function readTornadoHeader(
     range.rowIndex - 1,
     range.columnIndex,
     1,
-    TORNADO_COLUMNS,
+    CHART_BLOCK_COLUMNS,
   );
   above.load("values");
   await context.sync();
@@ -137,51 +116,32 @@ export async function insertTornado(): Promise<string> {
     range.load("rowCount,columnCount,rowIndex,columnIndex,values,numberFormat");
     await context.sync();
 
-    if (range.columnCount !== TORNADO_COLUMNS || range.rowCount < 2) {
+    if (range.columnCount !== CHART_BLOCK_COLUMNS || range.rowCount < 2) {
       throw new Error(TORNADO_SHAPE_ERROR);
     }
     if (range.rowCount > TORNADO_ROW_CAP) {
       throw new Error(`tornado: supports up to ${TORNADO_ROW_CAP} drivers`);
     }
-    if (
-      range.columnIndex + range.columnCount + TORNADO_COLUMNS >
-      SHEET_COLUMNS
-    ) {
-      throw new Error("tornado: no room to the right of the selection");
-    }
+    requireRoomBeside(range, "tornado");
 
-    const drivers = readDrivers(range.values as CellValue[][]);
-    const format = outcomeFormat(
+    const drivers = readTriples(range.values as CellValue[][], TORNADO_RULES);
+    const format = valueFormat(
       range.numberFormat as string[][],
       drivers.length,
     );
     const { heading, base } = await readTornadoHeader(context, sheet, range);
     const series = tornadoSeries(drivers, base);
 
-    const block = sheet.getRangeByIndexes(
-      range.rowIndex,
-      range.columnIndex + range.columnCount,
-      series.labels.length + 1,
-      TORNADO_COLUMNS,
-    );
-    await requireEmptyBlock(
-      context,
-      block,
-      "tornado: cells to the right of the selection are not empty",
-    );
-    await captureUndo(context, block);
-    block.values = [
-      TORNADO_HEADERS,
-      ...series.labels.map((label, index) => [
+    const block = await writeHelperBlock(context, sheet, range, {
+      stage: "tornado",
+      headers: TORNADO_HEADERS,
+      rows: series.labels.map((label, index) => [
         label,
         series.low[index] ?? 0,
         series.high[index] ?? 0,
       ]),
-    ];
-    block.numberFormat = blockFormats(format, series.labels.length);
-    // A locked sheet refuses the helper block by name, before a chart is added
-    // over a block that never landed.
-    await syncWrite(context, "tornado");
+      format,
+    });
 
     const chart = sheet.charts.add(
       Excel.ChartType.barClustered,

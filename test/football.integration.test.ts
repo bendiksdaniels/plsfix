@@ -270,6 +270,19 @@ describe("what the football field refuses", () => {
     );
     expect(workbook.charts).toHaveLength(0);
   });
+
+  it("spends no Undo slot on the protected-sheet refusal", async () => {
+    // One real action first, so there is something on the stack to lose.
+    helpers.select("Model!A1:C2");
+    await smt.applyPinstripes("rows");
+    const slot = smt.undoTarget();
+
+    seedMethods();
+    helpers.protectSheet("Model");
+    await rejects(() => smt.insertFootballField());
+
+    expect(smt.undoTarget()).toBe(slot);
+  });
 });
 
 describe("the football field on a merged selection and an older host", () => {

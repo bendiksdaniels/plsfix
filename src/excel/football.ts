@@ -5,33 +5,36 @@
 // stacked bar whose lower series is invisible.
 //
 // Owns: the Office.js side only; the low/high/range split is pure, in
-// src/chartmath.ts. Invariant: the first selected row sits at the top of the
-// chart, which is what reversePlotOrder buys.
+// src/chartmath.ts, and the helper block itself is shared with the tornado in
+// src/excel/chart-blocks.ts. Invariant: the first selected row sits at the top
+// of the chart, which is what reversePlotOrder buys.
 
 import { placeChartBeside, UNPLACED_NOTE } from "./chart-place";
 import {
+  CHART_BLOCK_COLUMNS,
+  readTriples,
+  requireRoomBeside,
+  type TripleRules,
+  valueFormat,
+  writeHelperBlock,
+} from "./chart-blocks";
+import {
   hostSupports,
-  requireEmptyBlock,
   selectedSingleRange,
-  SHEET_COLUMNS,
   styleChartShell,
   withinCap,
 } from "./internal";
-import { syncWrite } from "./protection";
-import { captureUndo } from "./undo";
 import { seriesPalette } from "../chart-colors";
-import { footballField, type FootballRow } from "../chartmath";
+import { footballField } from "../chartmath";
 import { type CellValue } from "../model";
 import { getActiveSettings } from "../settings";
 
 const STAGE = "Football field";
-const FOOTBALL_COLUMNS = 3;
-export const FOOTBALL_ROW_CAP = 20;
+const FOOTBALL_ROW_CAP = 20;
 const FOOTBALL_MIN_ROWS = 2;
 const FOOTBALL_TITLE = "Valuation range";
 const FOOTBALL_HEADERS = ["Method", "Low", "Range"];
 const SHAPE_ERROR = `${STAGE}: select at least three columns - label, low and high.`;
-const NUMBERS_ERROR = `${STAGE}: the low and high columns must hold numbers`;
 // Only the first three columns are plotted: Excel cannot mix a bar with a
 // marker series, so a fourth column - a point estimate, usually - is ignored.
 const EXTRA_COLUMNS_NOTE = "; only label, low and high are used";
@@ -40,47 +43,15 @@ const EXTRA_COLUMNS_NOTE = "; only label, low and high are used";
 // with the host's own axis labels, which is worth saying out loud.
 const BASIC_AXES_NOTE = "; plain axes on this build";
 
-function isFiniteNumber(value: CellValue | undefined): value is number {
-  return typeof value === "number" && Number.isFinite(value);
-}
-
-// The header row is detected, not declared: a first row whose low and high
-// cells hold no numbers is a set of column titles, never a valuation method.
-function readRows(grid: CellValue[][]): FootballRow[] {
-  const first = grid[0] ?? [];
-  const headed = !isFiniteNumber(first[1]) && !isFiniteNumber(first[2]);
-  const body = headed ? grid.slice(1) : grid;
-  if (body.length < FOOTBALL_MIN_ROWS) {
-    throw new Error(`${STAGE}: need at least two rows`);
-  }
-  if (body.length > FOOTBALL_ROW_CAP) {
-    throw new Error(`${STAGE} supports up to ${FOOTBALL_ROW_CAP} rows.`);
-  }
-
-  return body.map((row) => {
-    const [label, low, high] = row;
-    if (!isFiniteNumber(low) || !isFiniteNumber(high)) {
-      throw new Error(NUMBERS_ERROR);
-    }
-    return { label: label === null ? "" : String(label), low, high };
-  });
-}
-
-// The floor and the band share the valuation's unit, so both wear the format of
-// the first row's low cell; a headed selection has one row above it.
-function lowFormat(formats: string[][], rowCount: number): string {
-  const firstRow = formats.length - rowCount;
-  return formats[firstRow]?.[1] ?? "General";
-}
-
-// The header row and the label column stay plain; the two number columns carry
-// the valuation's format, which the value axis reads off them.
-function blockFormats(format: string, rowCount: number): string[][] {
-  return [
-    FOOTBALL_HEADERS.map(() => "General"),
-    ...Array.from({ length: rowCount }, () => ["General", format, format]),
-  ];
-}
+const FOOTBALL_RULES: TripleRules = {
+  minRows: FOOTBALL_MIN_ROWS,
+  tooFew: `${STAGE}: need at least two rows`,
+  notNumbers: `${STAGE}: the low and high columns must hold numbers`,
+  rowCap: {
+    max: FOOTBALL_ROW_CAP,
+    message: `${STAGE} supports up to ${FOOTBALL_ROW_CAP} rows.`,
+  },
+};
 
 function styleFootball(chart: Excel.Chart, format: string): void {
   styleChartShell(chart, FOOTBALL_TITLE, true);
@@ -107,6 +78,15 @@ function swapNote(swaps: number): string {
   return `; ${String(swaps)} ${rows} had low above high, swapped`;
 }
 
+function notes(swaps: number, columnCount: number, placed: boolean): string {
+  return [
+    swapNote(swaps),
+    columnCount > CHART_BLOCK_COLUMNS ? EXTRA_COLUMNS_NOTE : "",
+    hostSupports("1.7") && hostSupports("1.8") ? "" : BASIC_AXES_NOTE,
+    placed ? "" : UNPLACED_NOTE,
+  ].join("");
+}
+
 /**
  * Label, low and high in three columns. The helper block lands immediately
  * right of the selection, and pls,fix Undo captures whatever stood there first.
@@ -121,45 +101,25 @@ export async function insertFootballField(): Promise<string> {
       STAGE,
     );
     const sheet = range.worksheet;
-    range.load("rowCount,columnCount,rowIndex,columnIndex,values,numberFormat");
+    range.load("columnCount,rowIndex,columnIndex,values,numberFormat");
     await context.sync();
 
-    if (range.columnCount < FOOTBALL_COLUMNS) throw new Error(SHAPE_ERROR);
-    if (
-      range.columnIndex + range.columnCount + FOOTBALL_COLUMNS >
-      SHEET_COLUMNS
-    ) {
-      throw new Error(`${STAGE}: no room to the right of the selection`);
-    }
+    if (range.columnCount < CHART_BLOCK_COLUMNS) throw new Error(SHAPE_ERROR);
+    requireRoomBeside(range, STAGE);
 
-    const rows = readRows(range.values as CellValue[][]);
+    const rows = readTriples(range.values as CellValue[][], FOOTBALL_RULES);
     const field = footballField(rows);
-    const format = lowFormat(range.numberFormat as string[][], rows.length);
-
-    const block = sheet.getRangeByIndexes(
-      range.rowIndex,
-      range.columnIndex + range.columnCount,
-      rows.length + 1,
-      FOOTBALL_COLUMNS,
-    );
-    await requireEmptyBlock(
-      context,
-      block,
-      `${STAGE}: cells to the right of the selection are not empty`,
-    );
-    await captureUndo(context, block);
-    block.values = [
-      FOOTBALL_HEADERS,
-      ...field.labels.map((label, index) => [
+    const format = valueFormat(range.numberFormat as string[][], rows.length);
+    const block = await writeHelperBlock(context, sheet, range, {
+      stage: STAGE,
+      headers: FOOTBALL_HEADERS,
+      rows: field.labels.map((label, index) => [
         label,
         field.low[index] ?? 0,
         field.range[index] ?? 0,
       ]),
-    ];
-    block.numberFormat = blockFormats(format, rows.length);
-    // A locked sheet refuses the helper block by name, before a chart is added
-    // over a block that never landed.
-    await syncWrite(context, STAGE);
+      format,
+    });
 
     const chart = sheet.charts.add(
       Excel.ChartType.barStacked,
@@ -171,12 +131,7 @@ export async function insertFootballField(): Promise<string> {
     const placed = await placeChartBeside(context, sheet, chart, block);
     await context.sync();
 
-    const notes = [
-      swapNote(field.swaps),
-      range.columnCount > FOOTBALL_COLUMNS ? EXTRA_COLUMNS_NOTE : "",
-      hostSupports("1.7") && hostSupports("1.8") ? "" : BASIC_AXES_NOTE,
-      placed ? "" : UNPLACED_NOTE,
-    ].join("");
-    return `${STAGE} added: ${String(rows.length)} ranges${notes}`;
+    const tail = notes(field.swaps, range.columnCount, placed);
+    return `${STAGE} added: ${String(rows.length)} ranges${tail}`;
   });
 }
