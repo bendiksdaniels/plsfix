@@ -15,9 +15,8 @@ import {
   brokenIn,
   loadNames,
   pickScannableSheets,
-  SCAN_CELL_CAP,
   type ScannedSheet,
-  SELECTION_CELL_CAP,
+  SHEET_SCAN_CELL_CAP,
 } from "./internal";
 import { linkHighlightOn } from "./link-highlight";
 import { cellAddress } from "../find";
@@ -33,9 +32,10 @@ import {
 
 export interface ShareOptions {
   // The used range a sheet may have before it is skipped instead of read.
-  // Defaults to the selection cap; the tests use a smaller one.
+  // Defaults to the sheet-scan cap; the tests use a smaller one.
   maxCells?: number;
-  // What the whole scan may read across every sheet.
+  // What the whole scan may read across every sheet. Defaults to the same
+  // sheet-scan cap, since each sheet is already read in its own batch.
   maxTotalCells?: number;
 }
 
@@ -162,8 +162,8 @@ export async function prepareForSharing(
     const { scanned, skippedSheets } = pickScannableSheets(
       sheets.items,
       used,
-      options.maxCells ?? SELECTION_CELL_CAP,
-      options.maxTotalCells ?? SCAN_CELL_CAP,
+      options.maxCells ?? SHEET_SCAN_CELL_CAP,
+      options.maxTotalCells ?? SHEET_SCAN_CELL_CAP,
     );
     for (const sheet of scanned) sheet.range.load("formulas");
     await context.sync();

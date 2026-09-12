@@ -23,9 +23,8 @@ import {
 import {
   hostSupports,
   pickScannableSheets,
-  SCAN_CELL_CAP,
   type ScannedSheet,
-  SELECTION_CELL_CAP,
+  SHEET_SCAN_CELL_CAP,
 } from "./internal";
 import { ANCHOR_PREFIX } from "../link/model";
 import { type CellValue } from "../model";
@@ -49,10 +48,12 @@ export interface FindHit {
 
 export interface FindOptions extends MatchOptions {
   // The used range a sheet may have before it is skipped instead of read.
-  // Defaults to the selection cap; the tests use a smaller one.
+  // Defaults to the sheet-scan cap; the tests use a smaller one.
   maxCells?: number;
   // What the whole scan may read across every sheet, so a workbook of middling
-  // sheets cannot queue one request the host refuses.
+  // sheets cannot queue one request the host refuses. Defaults to the same
+  // sheet-scan cap: each sheet is already read in its own batch, so the total
+  // only has to stop a run of many sheets adding up, not a single one.
   maxTotalCells?: number;
   // Comments are their own phase with their own host requirement, so the pane
   // can leave them out; on unless the box is unticked, as it is on screen.
@@ -285,8 +286,8 @@ export async function findInWorkbook(
     const { scanned, skippedSheets } = pickScannableSheets(
       sheets.items,
       used,
-      options.maxCells ?? SELECTION_CELL_CAP,
-      options.maxTotalCells ?? SCAN_CELL_CAP,
+      options.maxCells ?? SHEET_SCAN_CELL_CAP,
+      options.maxTotalCells ?? SHEET_SCAN_CELL_CAP,
     );
     for (const sheet of scanned) sheet.range.load("values,formulas");
     await context.sync();

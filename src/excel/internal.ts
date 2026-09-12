@@ -40,6 +40,14 @@ export const SHEET_COLUMNS = 16_384;
 // thousand cells into a single sync, which a real model reaches easily and the
 // host answers with a bare RequestPayloadSizeLimitExceeded.
 export const SCAN_CELL_CAP = SELECTION_CELL_CAP * 4;
+// The per-sheet cap Find, prepare-for-sharing and the model check all read
+// under: a deal model's largest sheet is 50,000+ cells, well past the
+// selection cap above, so a scan that walks sheet by sheet (never loading more
+// than one sheet's grid in a batch) can afford a much higher ceiling than a
+// single-request selection can. The three moved onto one constant so they never
+// drift apart again; also the default total a Find or share pass may read
+// across every sheet, since each already reads one sheet's grid at a time.
+export const SHEET_SCAN_CELL_CAP = 200_000;
 const NO_FILL = "none";
 export const BASE_WHITE = "#FFFFFF";
 

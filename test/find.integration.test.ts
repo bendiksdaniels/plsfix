@@ -180,6 +180,22 @@ describe("find in workbook", () => {
     });
   });
 
+  // A deal model's largest sheet runs past the old selection-scan cap easily;
+  // the default now matches the model check's own per-sheet cap so Find can
+  // read it, and still names a sheet that runs past that.
+  it("scans a sheet at the sheet-scan cap by default, skips one past it", async () => {
+    helpers.seed("Model!A1", [["Total"]]);
+    helpers.seed("Model!A50000", [[1]]);
+    helpers.seed("Data!A1", [["Total revenue"]]);
+    helpers.seed("Data!A250000", [[1]]);
+
+    expect(await smt.findInWorkbook("Total", LOOSE)).toEqual({
+      hits: [{ kind: "cell", sheet: "Model", address: "A1", text: "Total" }],
+      skippedSheets: ["Data"],
+      commentsSkipped: false,
+    });
+  });
+
   it("finds nothing in an empty workbook without reading a null range", async () => {
     expect(await smt.findInWorkbook("anything", LOOSE)).toEqual({
       hits: [],

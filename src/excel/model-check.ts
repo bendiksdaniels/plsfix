@@ -10,6 +10,7 @@ import {
   loadNames,
   pickScannableSheets,
   type ScannedSheet,
+  SHEET_SCAN_CELL_CAP,
 } from "./internal";
 import { listUnusedStyles } from "./styles";
 import { type AuditMark, auditGrid } from "../audit";
@@ -29,7 +30,10 @@ import { isExternalFormula } from "../share";
 // it is named as skipped rather than half-read, and the same number bounds the
 // whole pass: four grids of a sheet this size already make one of the largest
 // requests the host will answer, and a workbook of them would overflow it.
-export const MODEL_CHECK_CELL_CAP = 200_000;
+// The same cap Find and prepare-for-sharing scan under (internal.ts); kept
+// under its own name here since every existing caller of this module imports
+// it by it.
+export const MODEL_CHECK_CELL_CAP = SHEET_SCAN_CELL_CAP;
 
 interface CellRead {
   formula: CellValue;

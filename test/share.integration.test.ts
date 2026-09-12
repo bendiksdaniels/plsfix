@@ -158,6 +158,22 @@ describe("prepare for sharing", () => {
     ]);
   });
 
+  // A deal model's largest sheet runs past the old selection-scan cap easily;
+  // the default now matches the model check's own per-sheet cap.
+  it("scans a sheet at the sheet-scan cap by default, skips one past it", async () => {
+    helpers.seed("Model!A1", [[{ value: 1, formula: "=[Budget.xlsx]S!$A$1" }]]);
+    helpers.seed("Model!A50000", [[1]]);
+    helpers.seed("Data!A1", [[{ value: 1, formula: "=[Budget.xlsx]S!$A$1" }]]);
+    helpers.seed("Data!A250000", [[1]]);
+
+    const { report } = await smt.prepareForSharing();
+
+    expect(labels(report, "skippedSheet")).toEqual(["Data"]);
+    expect(labels(report, "externalLink")).toEqual([
+      "Model!A1: =[Budget.xlsx]S!$A$1",
+    ]);
+  });
+
   // The three this release introduced: the add-in's own functions, the paint an
   // overlay leaves in the file, and the tokens the link registry carries.
   it("reports the cells only this add-in can evaluate", async () => {
