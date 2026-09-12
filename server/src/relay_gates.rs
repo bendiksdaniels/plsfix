@@ -28,11 +28,7 @@ pub(crate) struct ClientKey(pub String);
 /// names the bucket and the wait, never anything the request carried.
 pub(crate) async fn rate_limit(State(state): Api, mut request: Request, next: Next) -> Response {
     let write = is_write(request.method(), request.uri().path());
-    let key = client_key(
-        state.trusted_proxy,
-        request.headers(),
-        request.extensions(),
-    );
+    let key = client_key(state.trusted_proxy, request.headers(), request.extensions());
     let limiter = if write { &state.writes } else { &state.reads };
     match limiter.take(&key, now()) {
         Allowed::Yes => {

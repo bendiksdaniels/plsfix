@@ -8,6 +8,7 @@ mod blocking;
 mod fetch;
 pub mod limits;
 pub mod manifest;
+mod refused;
 pub mod relay;
 mod relay_gates;
 mod relay_inbox;

@@ -94,10 +94,7 @@ fn state_from_env(store: Store) -> AppState {
         ),
         reads: limiter_from_env("MODELIS_RATE_READ_PER_MIN", DEFAULT_READ_PER_MIN, clients),
         trusted_proxy: trusted_proxy_from_env(),
-        max_inflight_writes: env_parsed(
-            "MODELIS_MAX_INFLIGHT_WRITES",
-            DEFAULT_MAX_INFLIGHT_WRITES,
-        ),
+        max_inflight_writes: env_parsed("MODELIS_MAX_INFLIGHT_WRITES", DEFAULT_MAX_INFLIGHT_WRITES),
         manifest: ManifestSource::from_env(),
         ..AppState::new(store)
     };

@@ -77,7 +77,11 @@ pub(crate) fn bytes_locked(conn: &Connection) -> rusqlite::Result<i64> {
 /// Whether `adding` more bytes still fit. Called from inside the write's own
 /// lock, after the sweep every write starts with, so nothing can be written
 /// between the answer and the insert it authorises.
-pub(crate) fn room_locked(conn: &Connection, adding: usize, max_bytes: i64) -> rusqlite::Result<bool> {
+pub(crate) fn room_locked(
+    conn: &Connection,
+    adding: usize,
+    max_bytes: i64,
+) -> rusqlite::Result<bool> {
     let adding = i64::try_from(adding).unwrap_or(i64::MAX);
     Ok(bytes_locked(conn)?.saturating_add(adding) <= max_bytes)
 }

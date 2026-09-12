@@ -81,7 +81,10 @@ async fn two_clients_have_independent_byte_budgets() {
     let state = state(|state| state.write_bytes = RateLimiter::new(4));
     let app = routes(state);
     for index in 0..2 {
-        assert_eq!(send(&app, put(index, "1.2.3.4", 2048)).await, StatusCode::OK);
+        assert_eq!(
+            send(&app, put(index, "1.2.3.4", 2048)).await,
+            StatusCode::OK
+        );
     }
     let refused = send(&app, put(2, "1.2.3.4", 2048)).await;
     assert_eq!(refused, StatusCode::TOO_MANY_REQUESTS);
@@ -95,11 +98,7 @@ async fn a_push_over_the_byte_budget_answers_429_with_a_retry_after() {
     let state = state(|state| state.write_bytes = RateLimiter::new(1));
     let app = routes(state);
     assert_eq!(send(&app, put(0, "1.2.3.4", 1024)).await, StatusCode::OK);
-    let response = app
-        .clone()
-        .oneshot(put(1, "1.2.3.4", 1024))
-        .await
-        .unwrap();
+    let response = app.clone().oneshot(put(1, "1.2.3.4", 1024)).await.unwrap();
     assert_eq!(response.status(), StatusCode::TOO_MANY_REQUESTS);
     assert_eq!(response.headers().get(header::RETRY_AFTER).unwrap(), "60");
 }
@@ -124,7 +123,10 @@ async fn parallel_pushes_at_the_ceiling_admit_exactly_what_fits() {
         let (app, gate) = (app.clone(), Arc::clone(&gate));
         racing.push(tokio::spawn(async move {
             gate.wait().await;
-            app.oneshot(put(index, "1.2.3.4", MIB)).await.unwrap().status()
+            app.oneshot(put(index, "1.2.3.4", MIB))
+                .await
+                .unwrap()
+                .status()
         }));
     }
     let mut codes = Vec::new();

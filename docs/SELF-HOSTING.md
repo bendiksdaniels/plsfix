@@ -63,6 +63,7 @@ a day.
 | `MODELIS_MAX_BYTES`          | 1 GiB               | Relay storage ceiling; a push past it answers 507.                                                                   |
 | `MODELIS_RATE_WRITE_PER_MIN` | 300                 | Relay writes per minute per client IP (429 with `Retry-After` past it).                                              |
 | `MODELIS_RATE_READ_PER_MIN`  | 1200                | Relay reads per minute per client IP.                                                                                |
+| `MODELIS_TRUSTED_PROXY`      | unset               | Which forwarding header names the client for the rate limits: unset or `none` = the peer address, `cloudflare` = `CF-Connecting-IP`, `xff` = the last `X-Forwarded-For` hop. |
 
 The `MODELIS_` prefix and the binary name `plsfix-server` are historical (the first host was
 the `modelis` key of a tools suite) and stay, so existing deployments keep working.
@@ -79,6 +80,21 @@ Rate limits and the byte ceiling protect a host that is open to the internet. Pu
 own rate limiting in front as well; the pane URL itself cannot sit behind a login page
 (Office webviews cannot complete one, see `docs/research/launch-path.md`), so restrict who
 receives the manifest, not the URL.
+
+### Tell the server which proxy to trust
+
+The rate limits are per client, so the server has to know which client a request came from.
+Behind a proxy every connection arrives from the proxy, and the real address is in a header
+that the client can also write, so nothing is trusted unless you say so: with
+`MODELIS_TRUSTED_PROXY` unset, every request is counted under the peer address. Behind the
+Caddy in `docker-compose.yml`, behind nginx, or behind any proxy that appends to
+`X-Forwarded-For`, set `MODELIS_TRUSTED_PROXY=xff`: the server takes the LAST hop, the one
+your proxy wrote, never the first, which the client chose. Behind Cloudflare, set
+`MODELIS_TRUSTED_PROXY=cloudflare` for `CF-Connecting-IP`. Set it only when the proxy really
+does rewrite that header on every request and the origin cannot be reached around it -
+otherwise a client picks its own bucket by sending its own header, and the limits stop
+limiting anything. Leaving it unset behind a proxy is safe but blunt: every client shares one
+bucket, so a busy team will see 429s.
 
 ## The bare binary
 

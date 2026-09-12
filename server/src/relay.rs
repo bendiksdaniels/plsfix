@@ -106,52 +106,9 @@ impl AppState {
 
 pub(crate) type Api = State<Arc<AppState>>;
 
-/// Every refusal the routes can produce, mapped to code and message in one
-/// place so the JSON error shape cannot drift between handlers.
-pub(crate) enum Refused {
-    Unauthorized,
-    BadId,
-    BadRev,
-    BadBody,
-    TooManyItems,
-    Forbidden,
-    Missing,
-    Full,
-    RateLimited(u64),
-    Store,
-}
-
-impl Refused {
-    fn parts(&self) -> (StatusCode, &'static str) {
-        match self {
-            Refused::Unauthorized => (StatusCode::UNAUTHORIZED, "bearer required"),
-            Refused::BadId => (StatusCode::BAD_REQUEST, "bad id"),
-            Refused::BadRev => (StatusCode::BAD_REQUEST, "bad rev"),
-            Refused::BadBody => (StatusCode::BAD_REQUEST, "bad body"),
-            Refused::TooManyItems => (StatusCode::BAD_REQUEST, "too many items"),
-            Refused::Forbidden => (StatusCode::FORBIDDEN, "another key owns this"),
-            Refused::Missing => (StatusCode::NOT_FOUND, "not found"),
-            Refused::Full => (StatusCode::INSUFFICIENT_STORAGE, "storage full"),
-            Refused::RateLimited(_) => (StatusCode::TOO_MANY_REQUESTS, "too many requests"),
-            Refused::Store => (StatusCode::INTERNAL_SERVER_ERROR, "store error"),
-        }
-    }
-}
-
-impl IntoResponse for Refused {
-    fn into_response(self) -> Response {
-        let (status, message) = self.parts();
-        let body = Json(serde_json::json!({ "error": message }));
-        match self {
-            // The one refusal that can say when to come back: whole seconds,
-            // the header a client is allowed to obey without parsing a body.
-            Refused::RateLimited(seconds) => {
-                (status, [(header::RETRY_AFTER, seconds.to_string())], body).into_response()
-            }
-            _ => (status, body).into_response(),
-        }
-    }
-}
+/// Which refusal a route answers with is decided here; how it reads is
+/// `refused.rs`, re-exported so every handler keeps one import path.
+pub(crate) use crate::refused::Refused;
 
 /// Handlers answer with a body or with a refusal, never a panic.
 pub(crate) type Reply = Result<Response, Refused>;
