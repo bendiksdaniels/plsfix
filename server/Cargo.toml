@@ -20,5 +20,6 @@ uuid = { version = "1", features = ["v5"] }
 
 [dev-dependencies]
 tower = { version = "0.4", features = ["util"] }
+http-body = "1"
 http-body-util = "0.1"
 futures-util = "0.3"

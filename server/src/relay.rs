@@ -6,7 +6,7 @@
 //! routes live in `relay_inbox`.
 //! Invariant: a request is answered from the bearer's hash, never its key.
 
-use std::sync::Arc;
+use std::{convert::Infallible, sync::Arc, time::Duration};
 
 use axum::{
     body::Bytes,
@@ -14,11 +14,12 @@ use axum::{
     http::{header, HeaderMap, StatusCode},
     middleware,
     response::{IntoResponse, Response},
-    routing::{delete, get, post},
+    routing::{delete, get, post, put},
     Json, Router,
 };
 use serde::{Deserialize, Serialize};
-use tower::limit::ConcurrencyLimitLayer;
+use tower::{limit::GlobalConcurrencyLimitLayer, ServiceBuilder};
+use tower_http::timeout::RequestBodyTimeoutLayer;
 
 use crate::blocking::store_call;
 use crate::limits::{RateLimiter, TrustedProxy};
@@ -45,8 +46,16 @@ pub(crate) const LINK_ID_HEADER: &str = "x-plsfix-link-id";
 /// Blob bytes the store may hold before a write is refused (MODELIS_MAX_BYTES).
 pub const DEFAULT_MAX_BYTES: i64 = 1024 * 1024 * 1024;
 /// Writes are the expensive half - a push carries a picture - so they get the
-/// smaller allowance (MODELIS_RATE_WRITE_PER_MIN).
-pub const DEFAULT_WRITE_PER_MIN: u32 = 300;
+/// smaller allowance (MODELIS_RATE_WRITE_PER_MIN). Held below
+/// `DEFAULT_MAX_INFLIGHT_WRITES x 60 / DEFAULT_BODY_DEADLINE_SECS`, so a client
+/// spending its whole minute on bodies that never arrive still cannot hold
+/// every permit of the payload router (`relay_budget.rs` pins the arithmetic).
+pub const DEFAULT_WRITE_PER_MIN: u32 = 100;
+/// How long a write's body may go without a frame before the request is given
+/// up on. It bounds how long one stalled client holds a permit, so it is well
+/// inside `REQUEST_TIMEOUT_SECS`; a slow but steady upload never meets it,
+/// because the deadline is per frame, not per body.
+pub const DEFAULT_BODY_DEADLINE_SECS: u64 = 10;
 /// Reads are polls and batches (MODELIS_RATE_READ_PER_MIN).
 pub const DEFAULT_READ_PER_MIN: u32 = 1200;
 /// A second write budget, charged by the body rather than by the request
@@ -74,6 +83,7 @@ pub struct AppState {
     pub reads: RateLimiter,
     pub trusted_proxy: TrustedProxy,
     pub max_inflight_writes: usize,
+    pub body_deadline: Duration,
     pub counts: CountsCache,
     pub manifest: ManifestSource,
 }
@@ -92,6 +102,7 @@ impl AppState {
             reads: RateLimiter::new(DEFAULT_READ_PER_MIN),
             trusted_proxy: TrustedProxy::default(),
             max_inflight_writes: DEFAULT_MAX_INFLIGHT_WRITES,
+            body_deadline: Duration::from_secs(DEFAULT_BODY_DEADLINE_SECS),
             counts: CountsCache::default(),
             manifest: ManifestSource::default(),
         }
@@ -101,6 +112,13 @@ impl AppState {
     /// each write, `/version` reports it, and it lives in exactly one place.
     pub fn max_bytes(&self) -> i64 {
         self.store.caps().max_bytes
+    }
+
+    /// Writes admitted at once, never zero: a limit of nothing would admit
+    /// nothing, which is a silently bricked relay rather than a tight one.
+    /// Clamped like the rate allowances beside it.
+    pub fn inflight_writes(&self) -> usize {
+        self.max_inflight_writes.max(1)
     }
 }
 
@@ -121,15 +139,27 @@ pub fn now() -> i64 {
         .unwrap_or(0)
 }
 
-/// One router per body limit, so only the payload route carries 4 MiB. That
-/// same router carries the concurrency limit: each request in flight there
-/// buffers its whole body in memory, so without one the practical ceiling is
-/// RAM rather than `MODELIS_MAX_BYTES` (I2 of the N1 security review).
+/// One router per body limit, so only the payload route carries 4 MiB. The two
+/// payload METHODS carry more: each write in flight buffers its whole body in
+/// memory, so without a concurrency limit the practical ceiling is RAM rather
+/// than `MODELIS_MAX_BYTES` (I2 of the N1 security review), and a body that
+/// stops arriving would hold its permit until the 30 s request deadline, so it
+/// gets a deadline of its own inside that limit. A link GET carries no body
+/// and never queues behind either.
 pub fn routes(state: Arc<AppState>) -> Router {
+    // Outermost first: the permit is taken, and only then does the body get
+    // its deadline, so a stalled body cannot hold a permit past that deadline.
+    // GLOBAL, because a `MethodRouter` layers each method separately and a
+    // plain `ConcurrencyLimitLayer` would hand PUT and DELETE a pool each.
+    let guard = ServiceBuilder::new()
+        .layer(GlobalConcurrencyLimitLayer::new(state.inflight_writes()))
+        .layer(RequestBodyTimeoutLayer::new(state.body_deadline));
+    let writes = put(put_link)
+        .delete(delete_link)
+        .layer::<_, Infallible>(guard);
     let links = Router::new()
-        .route("/:id", get(get_link).put(put_link).delete(delete_link))
-        .layer(DefaultBodyLimit::max(LINK_LIMIT))
-        .layer(ConcurrencyLimitLayer::new(state.max_inflight_writes));
+        .route("/:id", get(get_link).merge(writes))
+        .layer(DefaultBodyLimit::max(LINK_LIMIT));
     let batch = Router::new()
         .route("/status", post(status))
         .route("/fetch", post(fetch::fetch))

@@ -619,6 +619,7 @@ dependencies = [
  "axum",
  "base64",
  "futures-util",
+ "http-body",
  "http-body-util",
  "rusqlite",
  "serde",
