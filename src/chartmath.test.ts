@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   bridgeSeries,
   cagr,
+  footballField,
+  type FootballRow,
   formatCagrLabel,
   seriesSpan,
   type TornadoDriver,
@@ -204,5 +206,63 @@ describe("tornadoSeries", () => {
     expect(() => tornadoSeries(drivers, Number.POSITIVE_INFINITY)).toThrow(
       "tornado: the base must be a finite number",
     );
+  });
+});
+
+describe("footballField", () => {
+  const rows: FootballRow[] = [
+    { label: "DCF", low: 90, high: 130 },
+    { label: "Trading comps", low: 100, high: 120 },
+  ];
+
+  it("splits each range into its floor and the band above it", () => {
+    expect(footballField(rows)).toEqual({
+      labels: ["DCF", "Trading comps"],
+      low: [90, 100],
+      high: [130, 120],
+      range: [40, 20],
+      swapped: [false, false],
+      swaps: 0,
+    });
+  });
+
+  it("swaps a row entered high first and counts it", () => {
+    const field = footballField([
+      { label: "DCF", low: 130, high: 90 },
+      rows[1]!,
+    ]);
+    expect(field.low).toEqual([90, 100]);
+    expect(field.high).toEqual([130, 120]);
+    expect(field.range).toEqual([40, 20]);
+    expect(field.swapped).toEqual([true, false]);
+    expect(field.swaps).toBe(1);
+  });
+
+  it("keeps a row whose low and high are the same, as a zero band", () => {
+    const field = footballField([
+      { label: "52-week", low: 8, high: 8 },
+      rows[0]!,
+    ]);
+    expect(field.range).toEqual([0, 40]);
+    expect(field.swaps).toBe(0);
+  });
+
+  it("keeps the rows in the order they were selected", () => {
+    expect(footballField([rows[1]!, rows[0]!]).labels).toEqual([
+      "Trading comps",
+      "DCF",
+    ]);
+  });
+
+  it("refuses fewer than two rows", () => {
+    expect(() => footballField([rows[0]!])).toThrow(
+      "football field: need at least two rows",
+    );
+  });
+
+  it("refuses a low or a high that is not a finite number", () => {
+    expect(() =>
+      footballField([{ label: "DCF", low: Number.NaN, high: 1 }, rows[0]!]),
+    ).toThrow("football field: every low and high must be a finite number");
   });
 });

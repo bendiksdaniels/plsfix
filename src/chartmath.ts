@@ -131,3 +131,54 @@ export function tornadoSeries(
     base: middle,
   };
 }
+
+export interface FootballRow {
+  label: string;
+  low: number;
+  high: number;
+}
+
+export interface FootballField {
+  labels: string[];
+  low: number[];
+  high: number[];
+  /** high - low: the band a stacked bar draws on top of the invisible floor. */
+  range: number[];
+  /** Which rows arrived with their low above their high and were swapped. */
+  swapped: boolean[];
+  swaps: number;
+}
+
+const MIN_FOOTBALL_ROWS = 2;
+
+// A football field stacks an invisible bar up to each method's low and a
+// visible one across its range, so the floating band is the valuation. The
+// rows keep the order they were selected in: a football field is read top down
+// in the order the banker laid the methods out, not by width.
+export function footballField(rows: FootballRow[]): FootballField {
+  if (rows.length < MIN_FOOTBALL_ROWS) {
+    throw new Error("football field: need at least two rows");
+  }
+  const bounds = rows.flatMap((row) => [row.low, row.high]);
+  if (!bounds.every((value) => Number.isFinite(value))) {
+    throw new Error(
+      "football field: every low and high must be a finite number",
+    );
+  }
+
+  const ordered = rows.map((row) => ({
+    label: row.label,
+    low: Math.min(row.low, row.high),
+    high: Math.max(row.low, row.high),
+    swapped: row.low > row.high,
+  }));
+
+  return {
+    labels: ordered.map((row) => row.label),
+    low: ordered.map((row) => row.low),
+    high: ordered.map((row) => row.high),
+    range: ordered.map((row) => row.high - row.low),
+    swapped: ordered.map((row) => row.swapped),
+    swaps: ordered.filter((row) => row.swapped).length,
+  };
+}
