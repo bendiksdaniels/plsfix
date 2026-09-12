@@ -15,7 +15,7 @@ import {
   writeRuns,
 } from "./internal";
 import { applyPresetFormat, type PresetLook } from "./presets";
-import { syncWrite } from "./protection";
+import { protectedNote, sheetProtected, syncWrite } from "./protection";
 import { captureUndo } from "./undo";
 import { type CellValue } from "../model";
 import {
@@ -33,18 +33,65 @@ const NOT_EMPTY = "Comps stats need six empty rows under the block.";
 
 // Every statistic of a column is the same kind of number as the column itself,
 // so it wears the format of the last data row - the row a modeller formats last
-// and the one a total under the block would copy.
+// and the one a total under the block would copy. A column that holds no
+// statistic answers null and is never written to, so the label column and the
+// text columns keep whatever formatting already stood under them.
 function statsFormats(
   formats: string[][],
   block: CompsBlock,
   columnCount: number,
-): string[][] {
+): (string | null)[] {
   const last = formats[formats.length - 1] ?? [];
   const numeric = new Set(block.numericColumns);
-  const row = Array.from({ length: columnCount }, (_unused, column) =>
-    numeric.has(column) ? (last[column] ?? GENERAL) : GENERAL,
+  return Array.from({ length: columnCount }, (_unused, column) =>
+    numeric.has(column) ? (last[column] ?? GENERAL) : null,
   );
-  return Array.from({ length: STATS_ROWS }, () => [...row]);
+}
+
+// One write per statistics column rather than one grid over the whole block:
+// a grid would have to carry something for every position, and "General" over
+// a column that holds no statistic is a formatting change nobody asked for.
+function writeStatsFormats(
+  target: Excel.Range,
+  formats: (string | null)[],
+): void {
+  formats.forEach((format, column) => {
+    if (format === null) return;
+    target.getColumn(column).numberFormat = Array.from(
+      { length: STATS_ROWS },
+      () => [format],
+    );
+  });
+}
+
+// The two batches the block lands in: the formulas first, so a locked cell is
+// named before anything is formatted, then the look each column wears.
+async function writeStatsBlock(
+  context: Excel.RequestContext,
+  target: Excel.Range,
+  block: CompsBlock,
+  source: { formats: string[][]; columnCount: number },
+): Promise<void> {
+  target.formulas = statsGrid(block, source.columnCount);
+  // A locked sheet refuses the formulas with a host string that names neither
+  // the sheet nor the way out; the flow says both itself.
+  await syncWrite(context, STAGE);
+
+  writeStatsFormats(
+    target,
+    statsFormats(source.formats, block, source.columnCount),
+  );
+  // A null look leaves the cell alone: the columns that hold no numbers keep
+  // whatever formatting was already under them.
+  writeRuns<PresetLook>(
+    target,
+    statsPresets(block, source.columnCount),
+    (cells, look) => {
+      applyPresetFormat(cells.format, look);
+    },
+  );
+  target.select();
+  await syncWrite(context, STAGE);
 }
 
 function written(block: CompsBlock): string {
@@ -88,30 +135,17 @@ export async function insertCompsStats(): Promise<string> {
       range.columnCount,
     );
     await requireEmptyBlock(context, target, NOT_EMPTY);
+    // Asked before the capture, not after: a refusal that had spent an Undo
+    // slot would push the modeller's last real action off the five-deep stack.
+    if (await sheetProtected(context, sheet)) {
+      throw new Error(protectedNote(STAGE));
+    }
     await captureUndo(context, target);
 
-    target.formulas = statsGrid(block, range.columnCount);
-    // A locked sheet refuses the formulas with a host string that names neither
-    // the sheet nor the way out; the flow says both itself.
-    await syncWrite(context, STAGE);
-
-    target.numberFormat = statsFormats(
-      range.numberFormat as string[][],
-      block,
-      range.columnCount,
-    );
-    // A null look leaves the cell alone: the columns that hold no numbers keep
-    // whatever formatting was already under them.
-    writeRuns<PresetLook>(
-      target,
-      statsPresets(block, range.columnCount),
-      (cells, look) => {
-        applyPresetFormat(cells.format, look);
-      },
-    );
-    target.select();
-    await syncWrite(context, STAGE);
-
+    await writeStatsBlock(context, target, block, {
+      formats: range.numberFormat as string[][],
+      columnCount: range.columnCount,
+    });
     return written(block);
   });
 }

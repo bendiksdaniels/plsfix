@@ -106,6 +106,20 @@ describe("insertCompsStats", () => {
     expect(helpers.numberFormat("Model!A6")).toBe("General");
   });
 
+  it("leaves the format of every column that holds no statistic alone", async () => {
+    seedComps();
+    // The label column and the text column of the target block, formatted by
+    // hand before the block lands on them.
+    helpers.setNumberFormat("Model!A6:A11", "@");
+    helpers.setNumberFormat("Model!C6:C11", "dd/mm/yyyy");
+    await smt.insertCompsStats();
+
+    expect(helpers.numberFormat("Model!A6")).toBe("@");
+    expect(helpers.numberFormat("Model!A11")).toBe("@");
+    expect(helpers.numberFormat("Model!C6")).toBe("dd/mm/yyyy");
+    expect(helpers.numberFormat("Model!C11")).toBe("dd/mm/yyyy");
+  });
+
   it("gives the labels the plain look and the numbers the formula look", async () => {
     seedComps();
     await smt.insertCompsStats();
@@ -228,6 +242,19 @@ describe("what Comps stats refuses", () => {
       "Comps stats: this sheet is protected, nothing was changed",
     );
     expect(helpers.value("Model!A6")).toBe("");
+  });
+
+  it("spends no Undo slot on the protected-sheet refusal", async () => {
+    // One real action first, so there is something on the stack to lose.
+    helpers.select("Model!A1:C2");
+    await smt.applyPinstripes("rows");
+    const slot = smt.undoTarget();
+
+    seedComps();
+    helpers.protectSheet("Model");
+    await rejects(() => smt.insertCompsStats());
+
+    expect(smt.undoTarget()).toBe(slot);
   });
 });
 
