@@ -15,6 +15,7 @@ import {
 } from "../link/model";
 import { withSyncDeadline } from "./chart-draw";
 import type { FoundLink, InsertResult } from "./host";
+import { isMissingShape, missingShapeError } from "./missing-shape";
 import { CONTENT_WIDTH, placeOnSlide, selectedSlideId } from "./placement";
 import { shapeAt } from "./shapes";
 
@@ -79,6 +80,9 @@ export async function refreshText(
     shape.tags.add(TAG_LINK, encodeTag(tag));
     await withSyncDeadline(context.sync(), "refreshing the text");
   }).catch((error: unknown) => {
+    // A box the modeller deleted since the list was drawn has the pane's own
+    // sentence; wrapping the host's string here would hide it from the caller.
+    if (isMissingShape(error)) throw missingShapeError(stage, error);
     const reason = error instanceof Error ? error.message : String(error);
     throw new Error(`${stage}: ${reason}`);
   });

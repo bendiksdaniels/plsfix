@@ -177,7 +177,12 @@ describe("a text link the host refuses", () => {
 
     expect(summary).toMatchObject({ updated: 0, failed: 1 });
     expect(summary.failures[0]).toContain("refresh Model!B4:F12 text: ");
-    expect(summary.failures[0]).toContain("ItemNotFound");
+    // The reason used to be office.js's own "ItemNotFound: no shape ..."; the
+    // P3 stress pass turned the one host code a stale row can earn into the
+    // pane's sentence (src/ppt/missing-shape.ts).
+    expect(summary.failures[0]).toContain(
+      "that object is no longer where the list had it",
+    );
   });
 });
 

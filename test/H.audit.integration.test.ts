@@ -379,7 +379,7 @@ describe("a group in the selection", () => {
     expect(selectedShapeIds(presentation)).not.toContain(m1.id);
   });
 
-  it("select similar from a shape sub-selected inside a group scans the slide's top level only", async () => {
+  it("select similar from a shape sub-selected inside a group says so and keeps the selection", async () => {
     // Slide.shapes (and this fake's model) only ever lists top-level shapes;
     // a member of a group is reachable by id (double-clicking into a group
     // and selecting one shape inside it is a real PowerPoint gesture,
@@ -395,10 +395,13 @@ describe("a group in the selection", () => {
     // No other top-level shape of member's size and type exists on the slide.
 
     helpers.selectShapes([member.id]);
-    const message = await tools.selectSimilar();
-    // Zero matches, not a crash and not the group re-appearing: an honest
-    // "nothing found" rather than a raw ItemNotFound/InvalidArgument.
-    expect(message).toBe("Selected 0 similar objects.");
-    expect(selectedShapeIds(presentation)).toEqual([]);
+    // Until the P3 stress pass this answered "Selected 0 similar objects."
+    // and set the selection to nothing: a success message for a no-op that
+    // took the user's own selection with it. The scan is unchanged; only the
+    // answer is, because the source matching nothing can only mean this.
+    await expect(tools.selectSimilar()).rejects.toThrow(
+      "Select similar needs an object on the slide, not one inside a group.",
+    );
+    expect(selectedShapeIds(presentation)).toEqual([member.id]);
   });
 });

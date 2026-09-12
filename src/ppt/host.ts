@@ -28,6 +28,7 @@ import {
   insertChart,
   refreshChartGroup,
 } from "./charts";
+import { missingShapeError } from "./missing-shape";
 import { insertPictureBySelection } from "./picture";
 import {
   placeOnSlide,
@@ -259,6 +260,10 @@ function refreshedHeight(found: FoundLink, size: Size): number {
     : found.height;
 }
 
+function refreshStage(found: FoundLink): string {
+  return `refresh ${sourceLabel(found.tag.src, found.tag.kind)}`;
+}
+
 export interface RefreshRequest {
   found: FoundLink;
   payload: Payload;
@@ -274,11 +279,24 @@ function isPicture(entry: RefreshRequest): entry is PictureRequest {
   return entry.payload.kind === "picture" && entry.found.type !== GROUP_TYPE;
 }
 
-// One link repainted: the batch of one on a host with fill.setImage, and the
-// reinsertion fallback below it. Answers with a note when the repaint has
-// something to say about what it painted - a chart group that had to become a
-// picture is the only one that does - and with nothing when it has not.
+// One link repainted, whatever it is made of. The row a button acts on is the
+// last scan's, so the shape it names may have been deleted or dragged out of
+// its group since: that is the one host error this hands back in words.
 export async function refreshLink(
+  found: FoundLink,
+  payload: Payload,
+  rev: number,
+): Promise<string | undefined> {
+  return repaintLink(found, payload, rev).catch((error: unknown) => {
+    throw missingShapeError(refreshStage(found), error);
+  });
+}
+
+// The batch of one on a host with fill.setImage, and the reinsertion fallback
+// below it. Answers with a note when the repaint has something to say about
+// what it painted - a chart group that had to become a picture is the only one
+// that does - and with nothing when it has not.
+async function repaintLink(
   found: FoundLink,
   payload: Payload,
   rev: number,
@@ -305,7 +323,7 @@ export async function refreshLink(
     await refreshLinks([{ found, payload, rev }]);
     return undefined;
   }
-  const stage = `refresh ${sourceLabel(found.tag.src, found.tag.kind)}`;
+  const stage = refreshStage(found);
   // Reinsertion drops the picture on the slide, not back into its group, so
   // a grouped link is left alone and the row says why.
   if (isGrouped(found)) {
@@ -413,6 +431,11 @@ export async function breakLink(found: FoundLink): Promise<void> {
     tags.delete(TAG_LINK);
     tags.delete(TAG_KEY);
     await withSyncDeadline(context.sync(), "breaking the link");
+  }).catch((error: unknown) => {
+    throw missingShapeError(
+      `break ${sourceLabel(found.tag.src, found.tag.kind)}`,
+      error,
+    );
   });
 }
 
