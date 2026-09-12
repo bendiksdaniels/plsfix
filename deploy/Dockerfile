@@ -11,7 +11,7 @@ RUN npm ci --no-audit --no-fund
 COPY . .
 RUN npm run build
 
-FROM rust:1-bookworm AS host
+FROM rust:1.98-bookworm AS host
 ARG PLSFIX_VERSION=dev
 ENV PLSFIX_VERSION=$PLSFIX_VERSION
 WORKDIR /src/server
