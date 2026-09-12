@@ -9,6 +9,9 @@ import {
   selectArea,
   toggleAuditOverlay,
   traceActiveCell,
+  tracePrecedentsOfSelection,
+  type CellPrecedents,
+  type MultiTraceResult,
   type TraceArea,
   type TraceDirection,
   type TraceResult,
@@ -17,10 +20,13 @@ import { getElement } from "../ui/dom";
 import { guard } from "./shared";
 
 const TRACE_STACK_LIMIT = 20;
+const NO_FORMULAS = "No formulas in the selection.";
 
 interface TraceView {
   direction: TraceDirection;
   result: TraceResult;
+  /** Set only by "Precedents of selection": the list is per source cell. */
+  groups?: CellPrecedents[];
 }
 
 const traceStack: TraceView[] = [];
@@ -29,6 +35,42 @@ let auditOn = false;
 
 export function renderAuditState(): void {
   getElement("audit-state").textContent = auditOn ? "On" : "Off";
+}
+
+function chipFor(area: TraceArea): HTMLButtonElement {
+  const label = `${area.sheet}!${area.address}`;
+  const chip = document.createElement("button");
+  chip.type = "button";
+  chip.className = "chip";
+  chip.textContent = label;
+  chip.title = `Select ${label} (${area.cellCount.toLocaleString()} cells)`;
+  chip.addEventListener("click", () => void guard(() => walkTo(area)));
+  return chip;
+}
+
+// The chip strip wraps, so a line of its own is a flex item that takes the
+// whole row: that is what makes a group read as a group.
+function lineFor(text: string): HTMLParagraphElement {
+  const line = document.createElement("p");
+  line.className = "hint";
+  line.style.flexBasis = "100%";
+  line.textContent = text;
+  return line;
+}
+
+// One label per source cell, its own chips under it. A source cell that reads
+// from nothing still gets its line: it is why the count is lower than the
+// number of cells asked about.
+function renderGroups(chips: HTMLElement, groups: CellPrecedents[]): void {
+  if (groups.length === 0) {
+    chips.append(lineFor(NO_FORMULAS));
+    return;
+  }
+  for (const group of groups) {
+    const empty = group.areas.length === 0;
+    chips.append(lineFor(empty ? `${group.cell}: no precedents` : group.cell));
+    for (const area of group.areas) chips.append(chipFor(area));
+  }
 }
 
 function renderTrace(): void {
@@ -43,27 +85,18 @@ function renderTrace(): void {
     return;
   }
 
-  const { direction, result } = traceView;
+  const { direction, result, groups } = traceView;
   getElement("trace-origin").textContent = `${result.origin} · ${direction}`;
   getElement<HTMLButtonElement>("trace-back").disabled =
     traceStack.length === 0;
 
-  if (result.areas.length === 0) {
-    const empty = document.createElement("p");
-    empty.className = "hint";
-    empty.textContent = `No direct ${direction}.`;
-    chips.append(empty);
-  }
-
-  for (const area of result.areas) {
-    const label = `${area.sheet}!${area.address}`;
-    const chip = document.createElement("button");
-    chip.type = "button";
-    chip.className = "chip";
-    chip.textContent = label;
-    chip.title = `Select ${label} (${area.cellCount.toLocaleString()} cells)`;
-    chip.addEventListener("click", () => void guard(() => walkTo(area)));
-    chips.append(chip);
+  if (groups) {
+    renderGroups(chips, groups);
+  } else {
+    if (result.areas.length === 0) {
+      chips.append(lineFor(`No direct ${direction}.`));
+    }
+    for (const area of result.areas) chips.append(chipFor(area));
   }
 
   panel.hidden = false;
@@ -96,6 +129,40 @@ export function startTrace(
 ): Promise<string> {
   traceStack.length = 0;
   return showTrace(direction, jump);
+}
+
+function plural(count: number, one: string, many: string): string {
+  return `${count.toLocaleString()} ${count === 1 ? one : many}`;
+}
+
+// "18 precedents of 6 cells; 2 cells have no formula" - what was found, over
+// how many cells, and why the rest of the selection was left out.
+function precedentsMessage(result: MultiTraceResult): string {
+  if (result.formulaCells === 0) return NO_FORMULAS;
+  const cells = plural(result.formulaCells, "cell", "cells");
+  const found =
+    result.areas.length === 0
+      ? `No precedents of ${cells}`
+      : `${plural(result.areas.length, "precedent", "precedents")} of ${cells}`;
+  if (result.skipped === 0) return found;
+  return `${found}; ${plural(result.skipped, "cell has", "cells have")} no formula`;
+}
+
+/**
+ * "Precedents of selection": every formula cell of the selection at once. The
+ * list is grouped by source cell, and a chip carries on as a one-cell walk, so
+ * the back stack starts empty exactly as a fresh single-cell trace does.
+ */
+export async function startPrecedentsOfSelection(): Promise<string> {
+  const result = await tracePrecedentsOfSelection();
+  traceStack.length = 0;
+  traceView = {
+    direction: "precedents",
+    result: { origin: result.origin, areas: result.areas },
+    groups: result.groups,
+  };
+  renderTrace();
+  return precedentsMessage(result);
 }
 
 async function walkTo(area: TraceArea): Promise<string> {

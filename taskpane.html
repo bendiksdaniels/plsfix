@@ -799,6 +799,36 @@
             <div class="chip-strip" id="trace-chips"></div>
           </div>
           <p class="hint">Click an address to jump there and keep tracing.</p>
+          <div class="action-list">
+            <button
+              data-action="select-consistent"
+              type="button"
+              title="Select every cell filled with the active cell's formula"
+            >
+              <span class="action-icon audit">⌗</span
+              ><span
+                ><strong>Select consistent region</strong
+                ><small
+                  >Grows the block of cells that share the active cell's
+                  formula, and selects it</small
+                ></span
+              >
+            </button>
+            <button
+              data-action="trace-precedents-all"
+              type="button"
+              title="Precedents of every formula cell in the selection"
+            >
+              <span class="action-icon audit">⇤</span
+              ><span
+                ><strong>Precedents of selection</strong
+                ><small
+                  >Lists what every formula cell in the selection reads from,
+                  grouped by cell</small
+                ></span
+              >
+            </button>
+          </div>
         </section>
 
         <section aria-labelledby="charts-heading">

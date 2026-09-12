@@ -39,6 +39,7 @@ import {
   pasteSpecial,
   pastePreserveFormulas,
   scaleSelection,
+  selectConsistentRegion,
   toggleIfErrorGuard,
   undoLastAction,
   unpivotSelection,
@@ -54,7 +55,11 @@ import { prepareShare } from "./share-panel";
 import { runReconciliation } from "./reconcile-panel";
 import { isExcelReady } from "./shared";
 import { deleteStyles, scanStyles } from "./styles-panel";
-import { startTrace, toggleAudit } from "./trace-panel";
+import {
+  startPrecedentsOfSelection,
+  startTrace,
+  toggleAudit,
+} from "./trace-panel";
 import {
   buryThisSheet,
   insertTocSheet,
@@ -205,6 +210,10 @@ export async function dispatch(action: string): Promise<string> {
           action.replace("trace-", "") as TraceDirection,
           false,
         );
+      case "select-consistent":
+        return selectConsistentRegion();
+      case "trace-precedents-all":
+        return startPrecedentsOfSelection();
       case "insert-toc":
         return insertTocSheet();
       case "find":

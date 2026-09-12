@@ -20,8 +20,10 @@ import {
   cleanPastData,
   insertCompsStats,
   insertFootballField,
+  selectConsistentRegion,
 } from "../excel";
 import { isExcelReady } from "./shared";
+import { startPrecedentsOfSelection, startTrace } from "./trace-panel";
 import { dispatch } from "./dispatch";
 import {
   buryThisSheet,
@@ -64,6 +66,7 @@ vi.mock("../excel", () => ({
   pasteSpecial: vi.fn(async () => undefined),
   pastePreserveFormulas: vi.fn(async () => undefined),
   scaleSelection: vi.fn(async () => undefined),
+  selectConsistentRegion: vi.fn(async () => "3 cells share this formula"),
   toggleIfErrorGuard: vi.fn(async () => undefined),
   undoLastAction: vi.fn(async () => "undone"),
   unpivotSelection: vi.fn(async () => "unpivoted ok"),
@@ -88,6 +91,7 @@ vi.mock("./styles-panel", () => ({
   scanStyles: vi.fn(async () => "styles scanned"),
 }));
 vi.mock("./trace-panel", () => ({
+  startPrecedentsOfSelection: vi.fn(async () => "precedents of selection ok"),
   startTrace: vi.fn(async () => "trace ok"),
   toggleAudit: vi.fn(async () => "audit ok"),
 }));
@@ -169,6 +173,31 @@ describe("dispatch: the cycle-row-height / cycle-row- prefix shadowing bug", () 
   it("routes cycle-col-width to the width cycle (the same class of bug, checked)", async () => {
     await dispatch("cycle-col-width");
     expect(applyColumnWidthCycle).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("dispatch: the audit tools", () => {
+  it("routes select-consistent to the region adapter", async () => {
+    await expect(dispatch("select-consistent")).resolves.toBe(
+      "3 cells share this formula",
+    );
+    expect(selectConsistentRegion).toHaveBeenCalledTimes(1);
+  });
+
+  // trace-precedents-all is a longer id than trace-precedents: the shorter one
+  // must never swallow it, whatever order the cases end up in.
+  it("routes trace-precedents-all to the whole-selection walk, not the one-cell one", async () => {
+    await expect(dispatch("trace-precedents-all")).resolves.toBe(
+      "precedents of selection ok",
+    );
+    expect(startPrecedentsOfSelection).toHaveBeenCalledTimes(1);
+    expect(startTrace).not.toHaveBeenCalled();
+  });
+
+  it("still routes trace-precedents to the one-cell walk", async () => {
+    await dispatch("trace-precedents");
+    expect(startTrace).toHaveBeenCalledWith("precedents", false);
+    expect(startPrecedentsOfSelection).not.toHaveBeenCalled();
   });
 });
 

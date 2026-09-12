@@ -148,6 +148,10 @@ const tools: HelpCopy = {
       "trace-dependents":
         "Lists the cells that read from the active cell, the same way round.",
       "trace-back": "Steps the trace panel back to the cell you came from.",
+      "select-consistent":
+        "Selects every cell around the active one that was filled with the same formula, and says how many there are.",
+      "trace-precedents-all":
+        "Lists what every formula cell in the selection reads from, grouped by cell, and selects the ones on this sheet.",
     },
   },
   "charts-heading": {
