@@ -102,13 +102,23 @@ export function smtCagr(first: number, last: number, periods: number): number {
   requirePositive(first, "the start value");
   requirePositive(last, "the end value");
   requirePositive(periods, "the number of periods");
+  let rate: number;
   try {
-    return cagr(first, last, periods);
+    rate = cagr(first, last, periods);
   } catch (error) {
     // The pure maths refuses what the pane's own CAGR refuses - a period
     // shorter than one - and its sentence travels in the same error kind.
     throw valueError(`PLSFIX.CAGR: ${reason(error)}`);
   }
+  // last / first overflows to Infinity once the two are far enough apart, and
+  // Infinity to any power stays Infinity: the cell would hold a number Excel
+  // cannot print. A refusal is the only honest answer.
+  if (!Number.isFinite(rate)) {
+    throw valueError(
+      "PLSFIX.CAGR: these values are too far apart to give a rate.",
+    );
+  }
+  return rate;
 }
 
 // The ids match src/functions/metadata.ts; the manifest's <Namespace> makes
