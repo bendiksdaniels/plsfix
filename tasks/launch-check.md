@@ -179,3 +179,25 @@ PowerPoint
       exercises this; the fakes cannot.
 - [ ] PowerPoint: insert a chart onto a slide already holding a large shape: the group must arrive full size (never shrunken below 200 x 120 pt) and the pane says "Placed over other objects".
 - [ ] PowerPoint: a stacked bar chart with 3 and with 6 series: one row per category, segments side by side, nothing outside the group box.
+
+## Added by the v2.7 wave (13.09): relay timeouts and the store-valid manifest
+
+
+- [ ] A genuinely dead or very slow relay (block the host at the network level, or point
+      MODELIS at an unreachable address) shows "The link relay did not answer in time."
+      within about 20s in both the Excel and PowerPoint panes, and the pane recovers
+      (no permanent "busy") rather than hanging.
+- [ ] Sideload `manifest.prod.xml` and open Office's "My Add-ins" management dialog (or
+      the AppSource-style install card) to confirm the 64px icon actually renders at
+      high DPI, since only Office's own UI (not `office-addin-manifest validate`) draws
+      it.
+- [ ] After deploy, `https://dbautomatizacijas.com/modelis/support.html` and
+      `.../privacy.html` load through the live Cloudflare Access bypass path exactly as
+      `taskpane.html` does today (the dev worktree only proves the route logic, not the
+      live edge).
+- [ ] A real, slow-but-not-hung SQLite write under production load (not this slice's
+      deliberately-`tokio::time::sleep`-ing test handler) still gets a 408 rather than
+      holding the worker - `rusqlite` is a blocking driver, and a genuinely synchronous
+      hold inside a handler is not preemptible by `TimeoutLayer`'s `tokio::time::sleep`
+      race the way an `.await`-yielding handler is. Worth a real load test before
+      leaning on this for abuse protection rather than just slow-client protection.
