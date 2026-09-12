@@ -121,4 +121,75 @@ describe("installTabs", () => {
       "true",
     );
   });
+
+  // The ARIA tabs pattern: the strip is one Tab stop, and the arrows move
+  // inside it. Without this a four-tab pane costs four presses to walk past.
+  function tabStops(): number[] {
+    return ["t1", "t2", "t3"].map(
+      (id) => document.getElementById(id)!.tabIndex,
+    );
+  }
+
+  it("makes the active tab the strip's only Tab stop on install", () => {
+    installTabs(threeTabBar());
+    expect(tabStops()).toEqual([0, -1, -1]);
+  });
+
+  it("moves the Tab stop with the activation, however it happened", () => {
+    const tabs = installTabs(threeTabBar());
+    tabs.activate("t3");
+    expect(tabStops()).toEqual([-1, -1, 0]);
+    document.getElementById("t2")!.click();
+    expect(tabStops()).toEqual([-1, 0, -1]);
+    document.getElementById("t2")!.focus();
+    press("t2", "ArrowRight");
+    expect(tabStops()).toEqual([-1, -1, 0]);
+  });
+
+  it("makes the first tab the stop when the markup selects none", () => {
+    document.body.innerHTML = `
+      <nav id="bar">
+        <button role="tab" id="t1" aria-controls="p1" class="tab"></button>
+        <button role="tab" id="t2" aria-controls="p2" class="tab"></button>
+        <button role="tab" id="t3" aria-controls="p3" class="tab"></button>
+      </nav>
+      <div id="p1"></div><div id="p2"></div><div id="p3"></div>`;
+    installTabs(document.getElementById("bar")!);
+    expect(tabStops()).toEqual([0, -1, -1]);
+  });
+
+  it("survives a bar with no tabs in it at all", () => {
+    document.body.innerHTML = `<nav id="bar"></nav>`;
+    expect(() => installTabs(document.getElementById("bar")!)).not.toThrow();
+  });
+
+  // The Excel pane hangs the sheet explorer's refresh on the Workbook tab's
+  // own click, so an arrow-key activation has to be a click, not a quiet
+  // aria-selected flip, or the tab opens with last session's sheets.
+  it("runs an arrow-key activation through the click every hook is on", () => {
+    installTabs(threeTabBar());
+    const hooked: string[] = [];
+    document
+      .getElementById("t2")!
+      .addEventListener("click", () => hooked.push("t2"));
+    document.getElementById("t1")!.focus();
+    press("t1", "ArrowRight");
+    expect(hooked).toEqual(["t2"]);
+    expect(document.getElementById("p2")!.hidden).toBe(false);
+    expect(document.activeElement?.id).toBe("t2");
+  });
+
+  it("fires that click once per activation, not once per tab", () => {
+    installTabs(threeTabBar());
+    const hooked: string[] = [];
+    for (const id of ["t1", "t2", "t3"]) {
+      document
+        .getElementById(id)!
+        .addEventListener("click", () => hooked.push(id));
+    }
+    document.getElementById("t1")!.focus();
+    press("t1", "End");
+    press("t3", "Home");
+    expect(hooked).toEqual(["t3", "t1"]);
+  });
 });
