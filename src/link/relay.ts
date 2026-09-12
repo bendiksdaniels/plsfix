@@ -1,16 +1,14 @@
 // Relay client: a typed fetch wrapper for the /api/links and /api/inbox
 // routes, mapping every non-success HTTP outcome (and a fetch rejection) to
 // one RelayError kind so callers branch on `.kind` instead of status codes.
-// Owns the calls; the error type and its status map live in relay-error.ts,
-// the body shapes and their guards in wire.ts, and auth, encryption and retry
-// policy live above this.
-// Invariant: every failure leaves this module as a RelayError - a 200 whose
-// body is not the JSON shape the route promises is one too, never a raw parse
-// error, so the pane's toast always has a `kind` to render, and a refusal
-// carries the reason the relay named in its body, not just a status code.
+// Owns the calls; the error type is relay-error.ts, the body shapes wire.ts,
+// the deadline relay-timeout.ts, and auth, encryption and retry policy above.
+// Invariant: every failure surfaces as a RelayError - a 200 with the wrong
+// JSON shape, a timeout, or any other rejected fetch - never anything else.
 
 import { fromBase64Url } from "./crypto";
 import { RelayError, statusKind } from "./relay-error";
+import { RelayTimeoutError, withRelayTimeout } from "./relay-timeout";
 import type { RelayStatus } from "./status";
 import {
   arrayOf,
@@ -134,9 +132,8 @@ export class RelayClient implements RelayApi {
     return new URL(path, this.baseUrl);
   }
 
-  // Every call funnels through here so status-to-kind mapping happens once:
-  // a response whose status is in `expect` is handed back untouched, anything
-  // else becomes a RelayError, and a rejected fetch becomes kind "network".
+  // Every call funnels through here: a response whose status is in `expect`
+  // is handed back untouched; anything else, timeout included, is a RelayError.
   private async request(
     path: string,
     init: RequestInit,
@@ -146,11 +143,14 @@ export class RelayClient implements RelayApi {
     const method = init.method ?? "GET";
     let response: Response;
     try {
-      response = await this.fetchImpl(url.href, init);
-    } catch {
+      response = await withRelayTimeout(this.fetchImpl, url.href, init);
+    } catch (error) {
+      const timedOut = error instanceof RelayTimeoutError;
       throw new RelayError(
-        "network",
-        `relay ${method} ${url.pathname}: network error`,
+        timedOut ? "timeout" : "network",
+        timedOut
+          ? "The link relay did not answer in time."
+          : `relay ${method} ${url.pathname}: network error`,
       );
     }
     if (expect.includes(response.status)) return response;

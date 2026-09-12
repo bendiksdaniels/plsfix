@@ -7,7 +7,7 @@
 // same edit, or the build stops.
 
 export type RelayErrorKind =
-  "network" | "auth" | "missing" | "tooLarge" | "server";
+  "network" | "auth" | "missing" | "tooLarge" | "server" | "timeout";
 
 export class RelayError extends Error {
   readonly kind: RelayErrorKind;
@@ -31,6 +31,7 @@ const RELAY_ERROR_KINDS: Record<RelayErrorKind, true> = {
   missing: true,
   tooLarge: true,
   server: true,
+  timeout: true,
 };
 
 export function isRelayError(error: unknown): error is RelayError {

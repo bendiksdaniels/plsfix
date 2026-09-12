@@ -3,8 +3,9 @@
 // outcome reaches the pane as a typed RelayError carrying the reason the relay
 // named. The bodies a 200 can still be unusable with live in
 // relay.badbody.test.ts; both suites share relay.support.ts.
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { isRelayError, RelayClient, relayBaseUrl, RelayError } from "./relay";
+import { RELAY_TIMEOUT_MS } from "./relay-timeout";
 import { client, rejection } from "./relay.support";
 
 describe("relayBaseUrl", () => {
@@ -307,5 +308,39 @@ describe("RelayClient", () => {
       "a".repeat(32),
     );
     expect(calls[0]!.init.body).toEqual(new Uint8Array([5, 6]));
+  });
+});
+
+// The wrapper's own mechanics (the abort, the cleared timer) live in
+// relay-timeout.test.ts; here only the wiring - a call past RELAY_TIMEOUT_MS
+// reaches the pane as the one sentence every consumer's default error path
+// already shows verbatim, on both panes, with no per-route rewording needed.
+describe("RelayClient timeout", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("maps a call that never answers to a timeout RelayError", async () => {
+    vi.useFakeTimers();
+    const fetchImpl = vi.fn(() => new Promise<Response>(() => undefined));
+    const relay = new RelayClient(
+      "https://x.test/modelis/api/",
+      fetchImpl as unknown as typeof fetch,
+    );
+    const settled = rejection(relay.getLink("a".repeat(32), "AUTH"));
+    await vi.advanceTimersByTimeAsync(RELAY_TIMEOUT_MS);
+    const error = await settled;
+    expect(isRelayError(error) && error.kind).toBe("timeout");
+    expect(String(error)).toBe(
+      "RelayError: The link relay did not answer in time.",
+    );
+  });
+
+  it("still reports a genuine network failure as kind network, not timeout", async () => {
+    const failing = new RelayClient("https://x.test/api/", (async () => {
+      throw new TypeError("offline");
+    }) as unknown as typeof fetch);
+    const error = await rejection(failing.getLink("a".repeat(32), "AUTH"));
+    expect(isRelayError(error) && error.kind).toBe("network");
   });
 });

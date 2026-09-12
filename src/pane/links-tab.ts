@@ -173,10 +173,10 @@ async function boot(tab: Tab): Promise<void> {
   await touchLinks(tab);
 }
 
-// Last, and never in front of anything the tab shows: fetch carries no timeout
-// of its own, so a relay behind a dropped route leaves this open for as long as
-// the webview's socket takes to give up. A failed touch changes nothing the
-// user can see, and the next boot tries again. Never a toast on boot.
+// Last, and never in front of anything the tab shows: a relay behind a
+// dropped route now gives up after RELAY_TIMEOUT_MS rather than hanging on
+// the webview's socket, but even that failure changes nothing the user can
+// see, and the next boot tries again. Never a toast on boot.
 async function touchLinks(tab: Tab): Promise<void> {
   try {
     await touchWorkbookLinks(tab.deps.relay);
