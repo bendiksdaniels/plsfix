@@ -533,7 +533,13 @@ Office.onReady(async ({ host }) => {
   await bootStep(reloadLinks, "refresh-links");
   // Read once here too: refreshInbox only runs paired, and the Slide picker
   // is there whether or not a key has been pasted yet.
-  await bootStep(() => refreshSlideOptions(insertSlideSelect), "refresh-slide");
+  await bootStep(
+    () =>
+      refreshSlideOptions(insertSlideSelect, (error) => {
+        details.addFailure(error, "The slide list was not refreshed");
+      }),
+    "refresh-slide",
+  );
   // Unpaired is not a boot failure: the Inbox says so itself, and the Links
   // list works without a key.
   if (workspace !== null) await bootStep(refreshInbox, "refresh-inbox");
