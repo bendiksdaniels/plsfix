@@ -22,6 +22,17 @@
   Microsoft sign-in + Duo prompt (the NDUS session expired since 09.09): the one check that needs
   Daniel's sign-in in the scratch Chrome, then `register.js` (x, p), `proof-links-excel.js`,
   `proof-insert-one.js`, `proof-update-all.js`.
+  DONE after his sign-in (13.09 ~13:30): both hosts registered on the web (the pls,fix tab in 9 s each),
+  Excel pane connected v2.7.015, new key generated, Proof sheet + charts built, exports sent (the two
+  "ERR" lines are the 08.09 snippet looking for chart names the picker now labels "Linked chart");
+  PowerPoint pane opened by the ribbon's Links button, said "New here? paste the key" because the
+  Excel proof rotated the key: pasted into #workspace-key + #save-key -> "Paired with Excel.", inbox 3;
+  inserts on slides 4-6: table (10 s, native), Doughnut as a picture with its reason, Four series as a
+  picture ("55 shapes is over this host's budget of 30", placed over the layout placeholders); update
+  round: P&L!C4 +500, Proof!B2 +40, Push all 7 pushed / 4 missing (the 08.09 Proof links whose charts
+  the snippet recreated), Update all 160 s: 7 updated, 4 up to date, slide 1 table rev 5 -> 6. Rig
+  Chrome + manifest server stopped afterwards. The demo workbook and "Presentation 2" on the NDUS
+  OneDrive carry the proof's edits, as after every rig run.
 - v2.7.15 13.09 (session "launch readiness"): the former sponsor's name is out of the project (Daniel:
   "remove [the] name from this project everywhere, all md files, all code"; plan
   `~/.claude-accounts/work/plans/refactored-painting-yao.md`). 37 files, 92 hits -> `git grep -i` of the old
