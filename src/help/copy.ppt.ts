@@ -31,12 +31,12 @@ export const PPT_HELP: HelpCopy = {
   },
   "inbox-heading": {
     about:
-      "Exports from Excel not yet in this deck; they expire after 7 days. A chart lands as editable shapes, else a picture.",
+      "Exports from Excel not yet in this deck; they expire after 7 days. Pick a slide and spot below. A chart lands as shapes, else a picture.",
     buttons: {
       "refresh-inbox":
         "Asks the relay for the exports waiting under your link key.",
       "paste-latest-linked":
-        "Inserts the newest Excel export on the active slide and creates its tracked link.",
+        "Inserts the newest Excel export at the picked slide and spot, and creates its tracked link.",
       "first-run-ppt-dismiss":
         "Dismisses this card. It will not show again on this machine.",
     },
