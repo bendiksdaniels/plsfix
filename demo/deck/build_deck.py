@@ -3,6 +3,8 @@ of the Slide/Where pickers. SLIDE/MARGIN/GAP below must equal
 src/link/status.ts SLIDE_16_9 and src/ppt/placement.ts SLIDE_MARGIN/GAP, so
 slides 3-4 never drift from the pane's geometry. Python: no Rust PPTX crate."""
 
+import os
+import zipfile
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -57,12 +59,28 @@ PICTURE_WITH_CAPTION = 8
 
 OUT_PATH = Path(__file__).parent / "pls,fix Demo Deck.pptx"
 
+# Reproducible builds: SOURCE_DATE_EPOCH wins when set; otherwise this
+# fixed date. Bump BUILD_STAMP by hand when the deck's content changes -
+# never datetime.now(), or every rebuild dirties the tracked .pptx even
+# with no content change.
+BUILD_STAMP = "2026-09-13"
+
 
 def new_presentation() -> Presentation:
     prs = Presentation()
     prs.slide_width = SLIDE_WIDTH
     prs.slide_height = SLIDE_HEIGHT
     return prs
+
+
+def _build_timestamp() -> datetime:
+    """SOURCE_DATE_EPOCH (the reproducible-builds convention) when set,
+    else BUILD_STAMP - never datetime.now(), so two rebuilds of the same
+    content are byte-identical."""
+    epoch = os.environ.get("SOURCE_DATE_EPOCH")
+    if epoch:
+        return datetime.fromtimestamp(int(epoch), tz=timezone.utc)
+    return datetime.strptime(BUILD_STAMP, "%Y-%m-%d").replace(tzinfo=timezone.utc)
 
 
 def set_box(shape, left, top, width, height) -> None:
@@ -229,15 +247,16 @@ def build_slide_4(prs: Presentation) -> None:
 def set_core_properties(prs: Presentation) -> None:
     """Overwrite the default template's stale docProps/core.xml: its author,
     description and 2013 timestamps are python-pptx's own template, not this
-    project or this build."""
+    project or this build. Timestamps come from _build_timestamp(), never
+    datetime.now(), so the tracked .pptx stays reproducible."""
     props = prs.core_properties
     props.title = "pls,fix Demo Deck"
     props.author = "pls,fix"
     props.last_modified_by = "pls,fix"
     props.comments = ""
-    now = datetime.now(timezone.utc).replace(microsecond=0)
-    props.created = now
-    props.modified = now
+    stamp = _build_timestamp()
+    props.created = stamp
+    props.modified = stamp
 
 
 def drop_template_baggage(prs: Presentation) -> None:
@@ -268,9 +287,31 @@ def build() -> Presentation:
     return prs
 
 
+def normalize_zip_timestamps(path: Path, stamp: datetime) -> None:
+    """Rewrite every zip entry's stored date_time to `stamp`.
+
+    python-pptx's writer (pptx.opc.serialized._ZipPkgWriter) calls
+    zipfile.writestr() with a plain filename, which stamps each entry with
+    time.localtime() at save() time - unrelated to docProps/core.xml and
+    otherwise enough on its own to make two rebuilds of identical content
+    differ byte for byte.
+    """
+    date_time = stamp.timetuple()[:6]
+    with zipfile.ZipFile(path, "r") as zf:
+        entries = [(info, zf.read(info.filename)) for info in zf.infolist()]
+
+    with zipfile.ZipFile(path, "w", compression=zipfile.ZIP_DEFLATED) as zf:
+        for info, data in entries:
+            new_info = zipfile.ZipInfo(info.filename, date_time=date_time)
+            new_info.compress_type = zipfile.ZIP_DEFLATED
+            new_info.external_attr = info.external_attr
+            zf.writestr(new_info, data)
+
+
 def main() -> None:
     prs = build()
     prs.save(OUT_PATH)
+    normalize_zip_timestamps(OUT_PATH, _build_timestamp())
     print(f"wrote {OUT_PATH}")
 
 
