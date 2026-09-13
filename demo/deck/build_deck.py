@@ -1,0 +1,203 @@
+"""Build the pls,fix PowerPoint pickers demo deck (wave/s3-deck).
+
+Owns: the four-slide walkthrough of the Slide and Where pickers built in the
+parallel PowerPoint-picker slice. Slides 3 and 4 draw the pane's own spots
+(halves, a selected placeholder) to its real geometry, so the diagram never
+drifts from what the pane actually does. Invariant: SLIDE/MARGIN/GAP below
+equal src/link/status.ts SLIDE_16_9 and src/ppt/placement.ts SLIDE_MARGIN /
+SLIDE_GAP exactly (all in points; 72 pt = 1 in) - change one, change both.
+Python because no maintained Rust crate writes PPTX; python-pptx does.
+"""
+
+from pathlib import Path
+
+from pptx import Presentation
+from pptx.dml.color import RGBColor
+from pptx.enum.dml import MSO_LINE_DASH_STYLE
+from pptx.enum.shapes import MSO_SHAPE
+from pptx.enum.text import PP_ALIGN
+from pptx.util import Pt
+
+# Slide geometry in points: src/link/status.ts SLIDE_16_9, src/ppt/placement.ts
+# SLIDE_MARGIN and SLIDE_GAP. The content area is the slide minus the margin on
+# every side; halves split that area with the gap between them.
+SLIDE_WIDTH = Pt(960)
+SLIDE_HEIGHT = Pt(540)
+MARGIN = Pt(36)
+GAP = Pt(12)
+
+CONTENT_LEFT = MARGIN
+CONTENT_TOP = MARGIN
+CONTENT_WIDTH = SLIDE_WIDTH - 2 * MARGIN
+CONTENT_HEIGHT = SLIDE_HEIGHT - 2 * MARGIN
+
+HALF_WIDTH = (CONTENT_WIDTH - GAP) // 2  # exact: divides evenly, never a float
+LEFT_HALF = (CONTENT_LEFT, CONTENT_TOP, HALF_WIDTH, CONTENT_HEIGHT)
+RIGHT_HALF = (CONTENT_LEFT + HALF_WIDTH + GAP, CONTENT_TOP, HALF_WIDTH, CONTENT_HEIGHT)
+
+# Brand colors, matching the panes (tokens.css palette).
+NAVY = RGBColor(0x14, 0x21, 0x3D)
+MINT = RGBColor(0x2E, 0xC4, 0xB6)
+
+TITLE_AND_CONTENT = 1
+TITLE_ONLY = 5
+PICTURE_WITH_CAPTION = 8
+
+OUT_PATH = Path(__file__).parent / "pls,fix Demo Deck.pptx"
+
+
+def new_presentation() -> Presentation:
+    prs = Presentation()
+    prs.slide_width = SLIDE_WIDTH
+    prs.slide_height = SLIDE_HEIGHT
+    return prs
+
+
+def set_box(shape, left, top, width, height) -> None:
+    shape.left, shape.top, shape.width, shape.height = left, top, width, height
+
+
+def add_title(slide, text: str) -> None:
+    """Put the title in the margin band above the content area and rule it
+    off in mint, so every slide's content starts at exactly CONTENT_TOP with
+    nothing above it overlapping."""
+    title = slide.shapes.title
+    title.text = text
+    set_box(title, CONTENT_LEFT, Pt(6), CONTENT_WIDTH, Pt(24))
+    font = title.text_frame.paragraphs[0].font
+    font.size = Pt(20)
+    font.bold = True
+    font.color.rgb = NAVY
+
+    rule = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, CONTENT_LEFT, Pt(32), CONTENT_WIDTH, Pt(2))
+    rule.fill.solid()
+    rule.fill.fore_color.rgb = MINT
+    rule.line.fill.background()
+    rule.shadow.inherit = False
+
+
+def add_slide(prs: Presentation, layout: int, title_text: str):
+    slide = prs.slides.add_slide(prs.slide_layouts[layout])
+    add_title(slide, title_text)
+    return slide
+
+
+def set_notes(slide, text: str) -> None:
+    slide.notes_slide.notes_text_frame.text = text
+
+
+def build_slide_1(prs: Presentation) -> None:
+    """The four PowerPoint tasks as a numbered list, plus how to run them."""
+    slide = add_slide(prs, TITLE_AND_CONTENT, "pls,fix demo deck")
+    body = slide.placeholders[1]
+    set_box(body, CONTENT_LEFT, CONTENT_TOP, CONTENT_WIDTH, CONTENT_HEIGHT)
+    tf = body.text_frame
+    tf.word_wrap = True
+
+    tasks = [
+        "P&L table → Slide 2, Where = Whole slide",
+        "Revenue chart → Slide 3, Where = Left half",
+        "Segment pie → Slide 3, Where = Right half",
+        "Picture from the Data sheet → Slide 4: select the empty "
+        "placeholder, Where = Selected shape",
+    ]
+    tf.paragraphs[0].text = f"1. {tasks[0]}"
+    tf.paragraphs[0].font.size = Pt(18)
+    for n, task in enumerate(tasks[1:], start=2):
+        para = tf.add_paragraph()
+        para.text = f"{n}. {task}"
+        para.font.size = Pt(18)
+
+    commands = tf.add_paragraph()
+    commands.space_before = Pt(20)
+    label = commands.add_run()
+    label.text, label.font.bold, label.font.size = "Commands: ", True, Pt(14)
+    rest = commands.add_run()
+    rest.text = (
+        "open the pane from the pls,fix ribbon tab, Inbox tab, the Slide and "
+        "Where pickers above the list, Insert, Update all."
+    )
+    rest.font.size = Pt(14)
+    set_notes(slide, "This deck demos the PowerPoint Slide and Where pickers across the four tasks above.")
+
+
+def build_slide_2(prs: Presentation) -> None:
+    """One empty content placeholder: free space for the pane to place into."""
+    slide = add_slide(prs, TITLE_AND_CONTENT, "Choose the slide")
+    body = slide.placeholders[1]
+    set_box(body, CONTENT_LEFT, CONTENT_TOP, CONTENT_WIDTH, CONTENT_HEIGHT)
+    # No text written: an empty layout placeholder reads as free space, the
+    # same rule src/ppt/placement.ts applies when it scans a slide's shapes.
+    set_notes(slide, "Choose the slide: pick this slide, then a spot, in the Slide picker.")
+
+
+def add_half_diagram(slide, box, caption_text: str) -> None:
+    left, top, width, height = box
+    rect = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, left, top, width, height)
+    rect.fill.background()
+    rect.line.color.rgb = MINT
+    rect.line.width = Pt(2)
+    rect.line.dash_style = MSO_LINE_DASH_STYLE.DASH
+    rect.shadow.inherit = False
+
+    caption = slide.shapes.add_textbox(left, top + height + Pt(4), width, Pt(24))
+    para = caption.text_frame.paragraphs[0]
+    para.text = caption_text
+    para.alignment = PP_ALIGN.CENTER
+    para.font.size = Pt(12)
+    para.font.color.rgb = NAVY
+
+
+def build_slide_3(prs: Presentation) -> None:
+    """The pane's left and right halves, drawn to their exact geometry."""
+    slide = add_slide(prs, TITLE_ONLY, "Choose the spot")
+    add_half_diagram(slide, LEFT_HALF, "Revenue chart: Where = Left half")
+    add_half_diagram(slide, RIGHT_HALF, "Segment pie: Where = Right half")
+    set_notes(slide, "Choose the spot: Where picks a half, a quarter, the whole slide or the selected shape.")
+
+
+def build_slide_4(prs: Presentation) -> None:
+    """An empty picture placeholder to select and insert into."""
+    slide = add_slide(prs, PICTURE_WITH_CAPTION, "Into a placeholder")
+    picture = slide.placeholders[1]
+    set_box(picture, CONTENT_LEFT, CONTENT_TOP, CONTENT_WIDTH, CONTENT_HEIGHT - Pt(60))
+    # Left empty: no insert_picture() call, so it stays the "click to add
+    # picture" placeholder the pane's occupied-box scan treats as free space.
+
+    caption = slide.placeholders[2]
+    set_box(caption, CONTENT_LEFT, CONTENT_TOP + CONTENT_HEIGHT - Pt(48), CONTENT_WIDTH, Pt(40))
+    para = caption.text_frame.paragraphs[0]
+    para.text = "Select the placeholder, Where = Selected shape, Insert."
+    para.font.size = Pt(14)
+    para.font.color.rgb = NAVY
+    set_notes(slide, "Into a placeholder: select the empty picture placeholder, Where = Selected shape, Insert.")
+
+
+def set_core_properties(prs: Presentation) -> None:
+    """Overwrite the default template's stale docProps/core.xml (its author
+    and description are python-pptx's own maintainer, not this project)."""
+    props = prs.core_properties
+    props.title = "pls,fix Demo Deck"
+    props.author = "pls,fix"
+    props.last_modified_by = "pls,fix"
+    props.comments = ""
+
+
+def build() -> Presentation:
+    prs = new_presentation()
+    build_slide_1(prs)
+    build_slide_2(prs)
+    build_slide_3(prs)
+    build_slide_4(prs)
+    set_core_properties(prs)
+    return prs
+
+
+def main() -> None:
+    prs = build()
+    prs.save(OUT_PATH)
+    print(f"wrote {OUT_PATH}")
+
+
+if __name__ == "__main__":
+    main()
