@@ -40,6 +40,36 @@ export type Spot =
   | "bottom-right"
   | "whole";
 
+// Where a spot sits on one axis: the content area's own start, or past the
+// first half plus the gap, or (halves only) the whole axis.
+type Axis = "start" | "end" | "full";
+
+// Every spot but "whole" as its two axis choices; "whole" needs none, it IS
+// the content box, so the lookup only ever covers the other six.
+const SPOT_AXES: Record<Exclude<Spot, "whole">, { x: Axis; y: Axis }> = {
+  "left-half": { x: "start", y: "full" },
+  "right-half": { x: "end", y: "full" },
+  "top-left": { x: "start", y: "start" },
+  "top-right": { x: "end", y: "start" },
+  "bottom-left": { x: "start", y: "end" },
+  "bottom-right": { x: "end", y: "end" },
+};
+
+// One axis of a spot's box: the full side, or half of it (less the gap,
+// split in two) at its start or past the gap at its end.
+function axisBox(
+  start: number,
+  full: number,
+  gap: number,
+  axis: Axis,
+): { pos: number; size: number } {
+  if (axis === "full") return { pos: start, size: full };
+  const half = (full - gap) / 2;
+  return axis === "start"
+    ? { pos: start, size: half }
+    : { pos: start + half + gap, size: half };
+}
+
 // The named box a spot occupies: the canvas minus margin on every side
 // ("whole"), or that content area split into two or four with gap between
 // the pieces - the same margin and gap placeInFreeSpace keeps.
@@ -55,48 +85,11 @@ export function spotBox(
     width: canvas.width - 2 * margin,
     height: canvas.height - 2 * margin,
   };
-  const halfWidth = (content.width - gap) / 2;
-  const halfHeight = (content.height - gap) / 2;
-  const leftX = content.left;
-  const rightX = content.left + halfWidth + gap;
-  const topY = content.top;
-  const bottomY = content.top + halfHeight + gap;
-  switch (spot) {
-    case "whole":
-      return content;
-    case "left-half":
-      return {
-        left: leftX,
-        top: topY,
-        width: halfWidth,
-        height: content.height,
-      };
-    case "right-half":
-      return {
-        left: rightX,
-        top: topY,
-        width: halfWidth,
-        height: content.height,
-      };
-    case "top-left":
-      return { left: leftX, top: topY, width: halfWidth, height: halfHeight };
-    case "top-right":
-      return { left: rightX, top: topY, width: halfWidth, height: halfHeight };
-    case "bottom-left":
-      return {
-        left: leftX,
-        top: bottomY,
-        width: halfWidth,
-        height: halfHeight,
-      };
-    case "bottom-right":
-      return {
-        left: rightX,
-        top: bottomY,
-        width: halfWidth,
-        height: halfHeight,
-      };
-  }
+  if (spot === "whole") return content;
+  const { x, y } = SPOT_AXES[spot];
+  const h = axisBox(content.left, content.width, gap, x);
+  const v = axisBox(content.top, content.height, gap, y);
+  return { left: h.pos, top: v.pos, width: h.size, height: v.size };
 }
 
 // size scaled down (never up: Placement.scale is never above 1) to fit inside
