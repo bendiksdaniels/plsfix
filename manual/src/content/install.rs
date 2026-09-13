@@ -1,6 +1,7 @@
-// Chapter 2: how the add-in reaches a user, centrally or by hand, and what the
-// ribbon looks like afterwards. Owns the install steps; the ribbon labels come
-// from manifest.prod.xml and must match it word for word.
+// Chapter 2: how the add-in reaches a user, centrally or by hand, what the
+// ribbon looks like afterwards, and the demo files a new user can try it on.
+// Owns the install steps; the ribbon labels come from manifest.prod.xml and
+// must match it word for word.
 
 use super::{Block, Chapter, Section, section};
 
@@ -109,13 +110,13 @@ fn demo_files() -> Section {
         "Paraugdarbgrāmata un paraugprezentācija",
         vec![
             Block::Para(
-                r#"Katram izlaidumam GitHub lapā klāt ir paraugdarbgrāmata pls,fix Demo Model.xlsx un paraugprezentācija pls,fix Demo Deck.pptx; abas der, lai izmēģinātu pievienojumprogrammu pirms darba ar savu darbgrāmatu."#,
+                r#"Katram izlaidumam GitHub lapā ir pievienota paraugdarbgrāmata pls,fix Demo Model.xlsx un paraugprezentācija pls,fix Demo Deck.pptx. Abos failos var izmēģināt pievienojumprogrammu, pirms sākat darbu ar savu darbgrāmatu."#,
             ),
             Block::Para(
-                r#"Katras paraugdarbgrāmatas redzamās lapas augšā ir īss uzdevumu saraksts "Try on this sheet" un rinda "Commands" ar vajadzīgajām lentes pogām un taustiņu kombinācijām."#,
+                r#"Paraugdarbgrāmatā katras redzamās lapas augšā ir īss uzdevumu saraksts "Try on this sheet" un rinda "Commands" ar vajadzīgajām lentes pogām un taustiņu kombinācijām."#,
             ),
             Block::Para(
-                r#"Paraugprezentācijā ir četri uzdevumi: katrā jāievieto kāds objekts izvēlētajā slaidā un vietā, izmantojot izvēlnes "Slide" un "Where" (skatiet nodaļu "Saites uz PowerPoint", sadaļu "Slaidi un vieta")."#,
+                r#"Paraugprezentācijā ir četri uzdevumi: katrā jāievieto kāds objekts izvēlētajā slaidā un vietā, izmantojot izvēlnes "Slide" un "Where" (skatiet nodaļu "Saites uz PowerPoint", sadaļu "Slaids un vieta")."#,
             ),
         ],
     )
