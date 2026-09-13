@@ -1,6 +1,14 @@
 import { describe, expect, it } from "vitest";
 
-import { dropBelow, overlaps, placeInFreeSpace } from "./layout";
+import { SLIDE_16_9 } from "./link/status";
+import {
+  dropBelow,
+  fitInto,
+  overlaps,
+  placeInFreeSpace,
+  spotBox,
+  type Spot,
+} from "./layout";
 
 const size = { width: 300, height: 200 };
 
@@ -67,6 +75,75 @@ describe("placeInFreeSpace", () => {
     expect(placement.box).toMatchObject({
       left: (960 - 3000) / 2,
       top: (540 - 3000) / 2,
+    });
+  });
+});
+
+describe("spotBox", () => {
+  const margin = 36;
+  const gap = 12;
+  // The 16:9 slide minus the margin on every side: 960-72 x 540-72.
+  const content = { left: 36, top: 36, width: 888, height: 468 };
+  const half = { width: 438, height: 468 };
+  const quarter = { width: 438, height: 228 };
+
+  it.each<[Spot, ReturnType<typeof spotBox>]>([
+    ["whole", content],
+    ["left-half", { left: 36, top: 36, ...half }],
+    ["right-half", { left: 486, top: 36, ...half }],
+    ["top-left", { left: 36, top: 36, ...quarter }],
+    ["top-right", { left: 486, top: 36, ...quarter }],
+    ["bottom-left", { left: 36, top: 276, ...quarter }],
+    ["bottom-right", { left: 486, top: 276, ...quarter }],
+  ])("%s", (spot, box) => {
+    expect(spotBox(spot, SLIDE_16_9, margin, gap)).toEqual(box);
+  });
+
+  it("keeps the gap between the two halves and all four quarters", () => {
+    const left = spotBox("left-half", SLIDE_16_9, margin, gap);
+    const right = spotBox("right-half", SLIDE_16_9, margin, gap);
+    expect(right.left - (left.left + left.width)).toBe(gap);
+
+    const topLeft = spotBox("top-left", SLIDE_16_9, margin, gap);
+    const bottomLeft = spotBox("bottom-left", SLIDE_16_9, margin, gap);
+    expect(bottomLeft.top - (topLeft.top + topLeft.height)).toBe(gap);
+  });
+});
+
+describe("fitInto", () => {
+  const box = { left: 100, top: 50, width: 400, height: 200 };
+
+  it("binds to the box's width when the size is proportionally wider", () => {
+    expect(fitInto({ width: 800, height: 100 }, box)).toEqual({
+      left: 100,
+      top: 125,
+      width: 400,
+      height: 50,
+    });
+  });
+
+  it("binds to the box's height when the size is proportionally taller", () => {
+    expect(fitInto({ width: 100, height: 400 }, box)).toEqual({
+      left: 275,
+      top: 50,
+      width: 50,
+      height: 200,
+    });
+  });
+
+  it("returns the box unchanged when the size already matches it exactly", () => {
+    expect(fitInto({ width: 400, height: 200 }, box)).toEqual(box);
+  });
+
+  // Placement.scale is documented as never above 1 ("smaller when it had to
+  // shrink to fit"): a size already smaller than the box stays its own size,
+  // centred, rather than being blown up to fill the spot.
+  it("never enlarges a size that already fits", () => {
+    expect(fitInto({ width: 40, height: 20 }, box)).toEqual({
+      left: 280,
+      top: 140,
+      width: 40,
+      height: 20,
     });
   });
 });

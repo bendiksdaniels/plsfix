@@ -28,6 +28,92 @@ export interface Placement {
   overlapping: boolean;
 }
 
+// A named half or quarter of the canvas, or the whole content area: what the
+// PowerPoint inbox's "Where" picker offers beside "Free space" and "Selected
+// shape" (those two need Office.js, so they live in src/ppt/placement.ts).
+export type Spot =
+  | "left-half"
+  | "right-half"
+  | "top-left"
+  | "top-right"
+  | "bottom-left"
+  | "bottom-right"
+  | "whole";
+
+// The named box a spot occupies: the canvas minus margin on every side
+// ("whole"), or that content area split into two or four with gap between
+// the pieces - the same margin and gap placeInFreeSpace keeps.
+export function spotBox(
+  spot: Spot,
+  canvas: Canvas,
+  margin: number,
+  gap: number,
+): Box {
+  const content: Box = {
+    left: margin,
+    top: margin,
+    width: canvas.width - 2 * margin,
+    height: canvas.height - 2 * margin,
+  };
+  const halfWidth = (content.width - gap) / 2;
+  const halfHeight = (content.height - gap) / 2;
+  const leftX = content.left;
+  const rightX = content.left + halfWidth + gap;
+  const topY = content.top;
+  const bottomY = content.top + halfHeight + gap;
+  switch (spot) {
+    case "whole":
+      return content;
+    case "left-half":
+      return {
+        left: leftX,
+        top: topY,
+        width: halfWidth,
+        height: content.height,
+      };
+    case "right-half":
+      return {
+        left: rightX,
+        top: topY,
+        width: halfWidth,
+        height: content.height,
+      };
+    case "top-left":
+      return { left: leftX, top: topY, width: halfWidth, height: halfHeight };
+    case "top-right":
+      return { left: rightX, top: topY, width: halfWidth, height: halfHeight };
+    case "bottom-left":
+      return {
+        left: leftX,
+        top: bottomY,
+        width: halfWidth,
+        height: halfHeight,
+      };
+    case "bottom-right":
+      return {
+        left: rightX,
+        top: bottomY,
+        width: halfWidth,
+        height: halfHeight,
+      };
+  }
+}
+
+// size scaled down (never up: Placement.scale is never above 1) to fit inside
+// box, aspect kept, then centred in it. Used wherever a link's native size
+// has to land inside a spot or a selected shape's box instead of free space.
+export function fitInto(size: Size, box: Box): Box {
+  const scale = Math.min(1, box.width / size.width, box.height / size.height);
+  const width = size.width * scale;
+  const height = size.height * scale;
+  return {
+    left: box.left + (box.width - width) / 2,
+    top: box.top + (box.height - height) / 2,
+    width,
+    height,
+  };
+}
+
 export function overlaps(a: Box, b: Box, gap = 0): boolean {
   return (
     a.left < b.left + b.width + gap &&
