@@ -1,13 +1,7 @@
-"""Build the pls,fix PowerPoint pickers demo deck (wave/s3-deck).
-
-Owns: the four-slide walkthrough of the Slide and Where pickers built in the
-parallel PowerPoint-picker slice. Slides 3 and 4 draw the pane's own spots
-(halves, a selected placeholder) to its real geometry, so the diagram never
-drifts from what the pane actually does. Invariant: SLIDE/MARGIN/GAP below
-equal src/link/status.ts SLIDE_16_9 and src/ppt/placement.ts SLIDE_MARGIN /
-SLIDE_GAP exactly (all in points; 72 pt = 1 in) - change one, change both.
-Python because no maintained Rust crate writes PPTX; python-pptx does.
-"""
+"""Build the pls,fix PowerPoint pickers demo deck: a four-slide walkthrough
+of the Slide/Where pickers. SLIDE/MARGIN/GAP below must equal
+src/link/status.ts SLIDE_16_9 and src/ppt/placement.ts SLIDE_MARGIN/GAP, so
+slides 3-4 never drift from the pane's geometry. Python: no Rust PPTX crate."""
 
 from datetime import datetime, timezone
 from pathlib import Path

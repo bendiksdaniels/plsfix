@@ -58,7 +58,8 @@ P&L with two planted errors, a bridge table for the waterfall, a tornado block, 
 split, a wide grid to unpivot). Every section of both panes carries a `?` that explains its
 buttons, and the Tools tab prints the keyboard shortcut card.
 
-`pls,fix Demo Deck.pptx` from the same release demos the PowerPoint Slide and Where pickers: pick a target slide and a spot, then Insert or Update all.
+`pls,fix Demo Deck.pptx` from the same release demos the PowerPoint Slide and Where
+pickers: pick a target slide and a spot, then Insert or Update all.
 
 ## For a whole organisation (Microsoft 365 admin)
 
