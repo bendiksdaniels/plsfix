@@ -2,6 +2,18 @@
 
 ## 13.09: the v2.7 wave - comps and hygiene tools, follow-ups closed, stress passes, relay hardening
 
+- v2.7.15 13.09 (session "launch readiness"): the former sponsor's name is out of the project (Daniel:
+  "remove [the] name from this project everywhere, all md files, all code"; plan
+  `~/.claude-accounts/work/plans/refactored-painting-yao.md`). 37 files, 92 hits -> `git grep -i` of the old
+  name returns nothing. Server crate + binary `plsfix-server` (lib `plsfix_server`, every test import);
+  build variable `PLSFIX_VERSION` (Dockerfile ARG/ENV, release.yml build-arg, `lib.rs` `/version.source`);
+  the hosted systemd unit LEFT the repo: it lives in the hosting gateway's `server/systemd/` (same unit
+  name on the server, `ExecStart` = the new binary, pushed and installed by its `deploy.sh modelis`,
+  which also passes `PLSFIX_VERSION` and removes the old binary); the repo keeps the self-host template
+  `deploy/plsfix.service` (`/opt/plsfix` paths). Rig snippet checks for the `pls,fix` tab; support +
+  privacy pages say "the pls,fix owner"; 13 md files reworded (in-house, the hosting gateway, the host's
+  `MODELIS_DATA` directory). Out of scope, on purpose: git history and the existing tags/releases keep
+  the old strings; the server's directory layout and unit name are the host's.
 - v2.7.14 LIVE 13.09 12:20 (2c65e47 + manual 627db2a; session "launch readiness"): the ONLY change is
   `package.json` losing `office-js@0.1.0`, an unrelated 2014 package (googleapis, request, hawk, jszip 2,
   two git+ssh GitHub deps) that sat in `dependencies` since the initial import; nothing imports it, the
@@ -130,7 +142,7 @@
   Screenshots (1366x768, at least one) still to take: Daniel, or the web rig once signed in.
 - Store validator 12.09: "Icon URL Unreachable" was the gateway's Latvia-only country gate
   (nginx answered 403 to `MicrosoftOfficeStoreValidationService`), which also meant no Office
-  user outside Latvia could load the pane. Fixed in the hosting gateway 056d9c3
+  user outside Latvia could load the pane. Fixed in the hosting gateway (056d9c3)
   (`OPEN_COUNTRY_PATHS` = `/modelis/`, apex gates on ``, smoke probes it),
   deployed and proven on the server; the validator now reports only the missing 64 px icon
   (feature wave K3). SupportUrl for the store = `support.html` (K3 sets it).
@@ -273,7 +285,7 @@
   all; series cap 3 -> 6 (the palette's count). 1152 vitest / 104 files, ux:check green, manual
   v2.6.002 regenerated, stale `docs/lietotaja-rokasgramata-saites.md` corrected. Web budget
   measured: column 5x2 = 31 shapes, 6x2 = 36, line 8x1 = 33 (all pictures on the web, with the note).
-- Deploy detour: `db contracts` failed because `the bond tool's Desktop repo` had been parked by
+- Deploy detour: `db contracts` failed because the bond tool's Desktop repo had been parked by
   the iCloud Desktop toggle (07.09 23:24) in `~/Desktop/Desktop - Dāniels’s MacBook Pro/`; moved
   back with a same-volume rename (repo clean, target.nosync intact), the empty folder to Trash.
 - Git: Daniel said "commit to github this version" at 11:15: `git push origin main --follow-tags`
@@ -371,7 +383,7 @@
   `manifest.prod.xml`, reproduce the Mac export, capture "Copy details", verify v2.6.0 and record
   the demo video (in-VM `screencapture -V`, copy via `share/` to his Desktop).
 - NEXT: apply review findings -> merge docs + demo -> `npm run check` -> `sh scripts/release.sh
-  minor` (v2.6.0) -> `the hosting gateway's deploy.sh modelis` -> `/version` 2.6.0 -> VM agent
+  minor` (v2.6.0) -> the hosting gateway's `deploy.sh modelis` -> `/version` 2.6.0 -> VM agent
   (after the sign-in) -> memory + this file. Daniel's gates unchanged: Windows pass, M365 upload,
   Cloudflare rate-limit rule, IT one-pager review, ROADMAP tick-through, the Mac paste.
 
@@ -535,7 +547,7 @@
   "Links" under the "pls,fix" tab; manifest provider "Daniels Bendiks".
 - Repo moved: `~/plsfix` (Desktop symlink `plsfix`), GitHub `bendiksdaniels/plsfix`; gateway
   `deploy.sh` MODELIS path, `workspace/tools.toml` and `tools.json` updated. Hosting identifiers
-  unchanged on purpose: key `modelis`, `/modelis/`, binary + unit `plsfix-server`, `MODELIS_*`.
+  unchanged on purpose: key `modelis`, `/modelis/`, the binary and unit names (the binary became `plsfix-server` and the unit moved to the host's tree on 13.09), `MODELIS_*`.
 - Desktop Excel/PowerPoint still run the old manifest until quit and reopened (`npm run demo`
   restores the new one into wef); the demo file is `demo/out/pls,fix Demo Model.xlsx`.
 
@@ -578,7 +590,7 @@
 
 v2.1.20 is deployed at dbautomatizacijas.com/modelis/ (`/version` -> 2.1.20): Excel pane with the
 new **Links** tab, PowerPoint pane (`pptpane.html`), and the end-to-end encrypted link relay
-(`/api/links`, `/api/inbox`, sqlite at `/opt/plsfix/data`). `npm run check` green on
+(`/api/links`, `/api/inbox`, sqlite in the host's `MODELIS_DATA` directory). `npm run check` green on
 main (700 vitest, 31 cargo, tsc, eslint, prettier, manifest and version gates); GitHub Actions
 runs the same gate. Tags `v2.0.0`, `v2.0.4`, `v2.1.0`, `v2.1.2`, `v2.1.5`, `v2.1.8`, `v2.1.11`, `v2.1.16`, `v2.1.19`, `v2.1.20`. Since v2.0.0 (loop, `tasks/v2-backlog.md`):
 link-record split, shared time/clipboard helpers, active-slide update, server minors, links inside

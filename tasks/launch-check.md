@@ -323,7 +323,7 @@ Against the deployed relay through the real tunnel and unit (S1, v2.7.12):
 - [ ] A real "Push all" / "Update all" over a deck with more than 50 links does not report 429s at 100 writes per minute (the pane does not retry one); if it does, raise `MODELIS_MAX_INFLIGHT_WRITES` to 64 and `MODELIS_RATE_WRITE_PER_MIN` back to 300 in the unit, never lengthen the body deadline.
 - [ ] `curl https://dbautomatizacijas.com/modelis/version` still parses in the gateway's status aggregator and the dashboard, and its `relay` numbers move within 30 s of a push.
 - [ ] A deck's "Update all" over a slow link still gets its 304s (the `no-store` change did not break the ETag round trip in a real Office webview).
-- [ ] `journalctl -u plsfix-server` shows the startup line naming the trust mode, no "every client shares one bucket" warning, and no `relay rate write ...` lines during normal use.
+- [ ] `journalctl -u` on the pane host's unit shows the startup line naming the trust mode, no "every client shares one bucket" warning, and no `relay rate write ...` lines during normal use.
 
 ## Added by the v2.7 wave (13.09): the PowerPoint stress pass
 

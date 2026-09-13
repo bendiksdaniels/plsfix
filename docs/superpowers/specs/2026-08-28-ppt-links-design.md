@@ -219,5 +219,5 @@ inbox + clear error; deck opened without the add-in -> plain pictures.
 ## 12. Rollout
 
 v2.0.000 (new host = major). `db deploy modelis` builds both bundles + server; systemd unit
-gains `MODELIS_DATA=/opt/plsfix/data`. M365 manifest update adds the PowerPoint
+gains `MODELIS_DATA` (the host's data directory). M365 manifest update adds the PowerPoint
 host (admin, same screen as the initial upload); JS-only updates need no admin action.

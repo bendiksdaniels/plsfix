@@ -21,12 +21,12 @@ search pls,fix > Add". Owner in brackets. Resume with this file, then `tasks/AUT
 - [ ] `npx office-addin-manifest validate -p manifest.prod.xml` must print "The manifest is
       valid." Today: one error left, the 64 px `HighResolutionIconUrl` (wave slice K3 adds it).
       The other error, "Icon URL Unreachable", was the gateway's Latvia-only country gate and is
-      fixed and deployed (the hosting gateway 056d9c3).
+      fixed and deployed (the hosting gateway, 056d9c3).
 - [ ] After K3 lands: SupportUrl = `https://dbautomatizacijas.com/modelis/support.html` and
       `public/privacy.html` served; copy `docs/appsource/privacy-policy.md` into that page (or
       the other way round) so the store link and the repo text are one source.
 - [ ] `helpUrl` on both custom functions (wave slice M2).
-- [ ] Re-upload nothing yet: the M365 in-house centralized upload takes the manifest of
+- [ ] Re-upload nothing yet: the in-house M365 centralized upload takes the manifest of
       whichever version passes the validator (SupportUrl changed, so it is a new manifest).
 
 ## 3. Screenshots for the listing [Daniel or the web rig, 20 min]
@@ -82,6 +82,6 @@ the release, browser window sized to 1366 x 768, system screenshot. The rig
 - Installers: `deploy/install/` (attached to every release by `.github/workflows/release.yml`).
 - Store kit: `docs/appsource/` (privacy-policy, listing, test-notes, checklist).
 - Install and self-host guides: `docs/INSTALL.md`, `docs/SELF-HOSTING.md`.
-- Gateway change for the world-open add-in path: `the hosting gateway` `nginx/gen_servers.py`
+- Gateway change for the world-open add-in path: the hosting gateway's `nginx/gen_servers.py`
   `OPEN_COUNTRY_PATHS`.
 - Ledger with the full history of 12.09: `tasks/AUTORESUME.md`.

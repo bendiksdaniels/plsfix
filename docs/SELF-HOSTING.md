@@ -68,8 +68,8 @@ a day.
 | `MODELIS_MAX_INFLIGHT_WRITES` | 32                 | Pushes and deletes served at once. Each buffers its body, so this bounds memory; a body that stalls for 10 s is given up on. |
 | `MODELIS_TRUSTED_PROXY`      | unset               | Which forwarding header names the client for the rate limits: unset or `none` = the peer address, `cloudflare` = `CF-Connecting-IP`, `xff` = the last `X-Forwarded-For` hop. |
 
-The `MODELIS_` prefix and the binary name `plsfix-server` are historical (the first host was
-the `modelis` key of a tools suite) and stay, so existing deployments keep working.
+The `MODELIS_` prefix is historical (the first host was the `modelis` key of a tools suite)
+and stays, so existing deployments keep working.
 
 ## What the relay stores
 

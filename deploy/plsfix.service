@@ -1,3 +1,5 @@
+# Self-hosting template for the pls,fix pane host: copy, adjust the paths, set the
+# public URL, then `systemctl enable --now plsfix`. HTTPS comes from your reverse proxy.
 [Unit]
 Description=pls,fix pane host (Excel and PowerPoint add-in assets, link relay)
 After=network-online.target
@@ -6,7 +8,10 @@ WorkingDirectory=/opt/plsfix
 Environment=MODELIS_PORT=8804
 Environment=MODELIS_STATIC=/opt/plsfix/static
 Environment=MODELIS_DATA=/opt/plsfix/data
-Environment=MODELIS_TRUSTED_PROXY=cloudflare
+# The base URL the add-in is served from; the manifest is re-pointed at it.
+#Environment=MODELIS_PUBLIC_URL=https://models.example.com/
+# Which forwarding header names the client for the rate limits (see docs/SELF-HOSTING.md).
+#Environment=MODELIS_TRUSTED_PROXY=cloudflare
 ExecStart=/opt/plsfix/bin/plsfix-server
 Restart=always
 RestartSec=3
