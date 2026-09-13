@@ -46,6 +46,7 @@
     "rig:manifests": "node scripts/rig/serve-manifest.mjs",
     "demo": "sh scripts/demo-open.sh",
     "demo:build": "cargo run --quiet --manifest-path demo/Cargo.toml",
+    "demo:deck": "demo/deck/.venv/bin/python demo/deck/build_deck.py",
     "test:demo": "cargo test --manifest-path demo/Cargo.toml",
     "manual": "cargo run --quiet --manifest-path manual/Cargo.toml"
   },

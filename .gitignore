@@ -16,6 +16,9 @@ public/functions.js
 demo/target/
 demo/out/
 
+# PowerPoint demo deck generator (the .pptx it writes is committed)
+demo/deck/.venv/
+
 # user manual generator (manual/out holds the committed .docx)
 manual/target/
 
