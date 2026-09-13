@@ -286,12 +286,20 @@ export async function slideCount(): Promise<number> {
 
 // The id of the slide at that position (0-based), so the picker's "Slide N"
 // option - which only ever names a position, never an id - resolves to a
-// real slide right before an insert reads it.
+// real slide right before an insert reads it. Read alongside every slide's
+// id in the one sync, so a deck that lost a slide since the picker was last
+// rendered answers the pane's own sentence, never a raw office.js one.
 export async function slideIdAt(index: number): Promise<string> {
   return PowerPoint.run(async (context) => {
-    const slide = context.presentation.slides.getItemAt(index);
-    slide.load("id");
-    await withSyncDeadline(context.sync(), "reading the slide");
+    const slides = context.presentation.slides;
+    slides.load("items/id");
+    await withSyncDeadline(context.sync(), "reading the slides");
+    const slide = slides.items[index];
+    if (!slide) {
+      throw new Error(
+        `Slide ${String(index + 1)} is gone: pick a slide again.`,
+      );
+    }
     return slide.id;
   });
 }

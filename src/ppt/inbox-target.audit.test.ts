@@ -151,6 +151,10 @@ function inboxButtons(): HTMLButtonElement[] {
   ];
 }
 
+function isError(): boolean {
+  return document.getElementById("toast")?.className.includes("error") ?? true;
+}
+
 afterEach(() => {
   uninstallFakePpt();
   vi.restoreAllMocks();
@@ -254,5 +258,31 @@ describe("the Slide picker follows the deck's slide count", () => {
     await settle();
 
     expect([...select("insert-slide").options]).toHaveLength(1);
+  });
+});
+
+describe("a Slide pick that has gone stale", () => {
+  beforeEach(async () => {
+    await boot();
+  });
+
+  // The picker only ever learns a position (target.ts), so a deck that lost
+  // a slide after the picker was last rendered must answer the pane's own
+  // sentence at the moment of the click, never a raw office.js error.
+  it("answers plainly, not a raw error, when the picked slide is gone by click time", async () => {
+    await seed();
+    click("refresh-inbox");
+    await settle();
+    select("insert-slide").value = "3";
+    presentation.slides.pop();
+
+    inboxButtons()[0]!.click();
+    await settle();
+
+    expect(toastText()).toBe("Slide 3 is gone: pick a slide again.");
+    expect(isError()).toBe(true);
+    // The item is still waiting, and every button is live again.
+    expect(inboxButtons()).toHaveLength(1);
+    expect(inboxButtons()[0]?.disabled).toBe(false);
   });
 });
