@@ -182,8 +182,8 @@ async (page, ctx, pages, shot, h) => {
   );
   await step("export Four series", () => exportChart("Proof", "Four series"));
   await step("export Doughnut", () => exportChart("Proof", "Doughnut"));
-  await step("export table P&L!B4:E9", async () => {
-    log.push("  nav P&L: " + (await nameBox("'P&L'!B4:E9")));
+  await step("export table P&L!B11:E16", async () => {
+    log.push("  nav P&L: " + (await nameBox("'P&L'!B11:E16")));
     await xtab("Links");
     await excel.waitForTimeout(1500);
     await xp.locator("#export-table").click({ timeout: 15000 });

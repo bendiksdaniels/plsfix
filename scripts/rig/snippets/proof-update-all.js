@@ -1,4 +1,4 @@
-// 08.09 links proof, update half: bump P&L!C4 and Proof!B2 in Excel, Push all, then
+// 08.09 links proof, update half: bump P&L!C11 and Proof!B2 in Excel, Push all, then
 // Update all in PowerPoint and read every link's rev back from its tag.
 async (page, ctx, pages, shot, h) => {
   const excel = h.hostPage(ctx, "x"),
@@ -44,7 +44,7 @@ async (page, ctx, pages, shot, h) => {
   await excel.waitForTimeout(800);
   await step("change sources", () =>
     xrun(async (c) => {
-      const r = c.workbook.worksheets.getItem("P&L").getRange("C4");
+      const r = c.workbook.worksheets.getItem("P&L").getRange("C11");
       r.load("values");
       await c.sync();
       r.values = [[Number(r.values[0][0]) + 500]];
@@ -53,7 +53,7 @@ async (page, ctx, pages, shot, h) => {
       await c.sync();
       p.values = [[Number(p.values[0][0]) + 40]];
       await c.sync();
-      return "P&L!C4 +500, Proof!B2 +40";
+      return "P&L!C11 +500, Proof!B2 +40";
     }),
   );
   await step("push all", async () => {

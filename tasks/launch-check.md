@@ -17,7 +17,7 @@ demo:build` if missing) and a blank deck.
       "4 cells selected · Sum 2 230 · Variance 0".
 - [ ] Tools > Format: Save 1 on a formatted cell, Use 1 on another block; close and reopen the
       workbook, the three slot labels are still there (they travel with the file).
-- [ ] Links > Export selection on P&L!B4:E9, Export as table on the same block, Export chart on
+- [ ] Links > Export selection on P&L!B11:E16, Export as table on the same block, Export chart on
       the Revenue chart, Export as text on one cell. Each shows a green toast within seconds.
       A "GeneralException" toast here is the Mac bug: Copy details and paste it.
 - [ ] Links > Export the line chart on the Bridge sheet (Revenue trend) as a chart.
@@ -33,7 +33,7 @@ demo:build` if missing) and a blank deck.
       segment drawn correctly, labels above the markers); the table is a native table.
 - [ ] Links list: type "Bridge" in the search box, then try the Source workbook, Slide and
       Link status filters; a ticked row stays ticked when a filter hides it.
-- [ ] Excel: change P&L!C4, Push all. PowerPoint: Update all. Every object refreshes in place,
+- [ ] Excel: change P&L!C11, Push all. PowerPoint: Update all. Every object refreshes in place,
       sizes kept.
 - [ ] Draw three rectangles. Tools tab: Align left, Distribute across, Match size, Select
       similar, Swap (two selected). Then the same from the ribbon's Arrange and Objects groups.
