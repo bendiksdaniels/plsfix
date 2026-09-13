@@ -69,5 +69,6 @@ jobs:
         run: |
           gh release create "$TAG" --title "pls,fix $TAG" --generate-notes \
             manifest.prod.xml "plsfix-pane-$TAG.zip" "demo/out/pls,fix Demo Model.xlsx" \
+            "demo/deck/pls,fix Demo Deck.pptx" \
             deploy/install/plsfix-install-windows.ps1 deploy/install/plsfix-uninstall-windows.ps1 \
             deploy/install/plsfix-install-mac.command deploy/install/plsfix-uninstall-mac.command
