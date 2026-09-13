@@ -301,3 +301,17 @@ old loop hangs every test, the fixed helper passes. Rules:
   is the last grep's, 1 on no match. Test the list explicitly.
 - Chrome `--restore-last-session` on an expired Office session restores the sign-in page, not the
   documents; the document URLs survive in the profile's `Sessions/` files (`strings | grep sharepoint`).
+
+## 2026-09-13: the v2.8 wave, what the web proof taught
+
+- SharePoint REST: `ListItemAllFields` answers the list item's GUID, not the file's; a `Doc.aspx?sourcedoc=`
+  link built from it says "Item does not exist". The file id is `UniqueId` from the folder's `/Files`
+  listing (`GetFolderByServerRelativeUrl(...)/Files?$select=Name,UniqueId`).
+- A tab opened through the DevTools `/json/new` endpoint has its cross-origin frames unattached until it
+  navigates once: `ribbonTabs` reads the ribbon but `clickIn` times out and `body.innerText` is empty.
+  Reload the tab (the `wdaddin*` registration parameters survive) before driving it.
+- The driver's `hostPage` picks the host tab with the most frames: close this morning's document tabs
+  before registering on a new one, or the registration lands on the old deck.
+- An explicit spot is the user's choice: `overlapping` must stay false there, or every insert into a
+  guided spot prints "no free space" (v2.8.1).
+- The export snippet's toast reads lag one export behind on the web; read the sequence, not each line.

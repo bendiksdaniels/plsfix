@@ -2,20 +2,32 @@
 
 ## 13.09: the v2.7 wave - comps and hygiene tools, follow-ups closed, stress passes, relay hardening
 
-- IN FLIGHT 13.09 ~14:00 (session "launch readiness"): the v2.8.0 wave, plan
-  `~/.claude-accounts/work/plans/refactored-painting-yao.md` (approved, budget 2.1-3.1M): guided demo
-  sheets, a Slide + Where picker in the PowerPoint inbox, a demo deck, docs. Four sonnet worktrees under
-  `~/.worktrees/plsfix/` from bbcfcb8, one opus review each, merged one at a time (order S2, S1, S3, S4),
-  ONE release `release.sh minor` -> v2.8.0 at the end, one deploy, then the web-rig proof:
-  `wave/s1-demo-guide` (demo/: GUIDE_ROWS = 7 band on every visible sheet, guide.rs, tests, the three
-  hardcoded cell references in the rig snippets + launch-check), `wave/s2-pickers` (src/layout.ts spotBox
-  + fitInto, src/ppt/placement.ts resolveTarget + InsertTarget, target.ts, the two selects in
-  pptpane.html, tests with the fake host; ux ports 3141/3142), `wave/s3-deck` (demo/deck/build_deck.py
-  with python-pptx in a git-ignored venv, the tracked pls,fix Demo Deck.pptx, release asset, README +
-  INSTALL lines), `wave/s4-docs` (manual links.rs "Slaids un vieta", FEATURES rows, README feature line,
-  CLAUDE.md Map, launch-check section). Not on main until reviewed; merge with
-  `git rebase main && npm run check` per branch, trailers stripped. Old container images still wait for
-  Daniel's `gh auth refresh -h github.com -s read:packages,delete:packages`.
+- v2.8.0 + v2.8.1 LIVE 13.09 (session "launch readiness"; plan
+  `~/.claude-accounts/work/plans/refactored-painting-yao.md`, approved, budget 2.1-3.1M, spent ~3.6M
+  incl. reviews): guided demos + slide/spot placement, four sonnet worktree slices, one opus review + fix
+  round + re-review each, merged S3, S1, S2, S4 in that order (all fast-forwards, no conflicts), one
+  `release.sh minor`, one deploy, the web proof, then v2.8.1 for the one thing the proof showed.
+  S1 demo/: `GUIDE_ROWS = 7`, `sheets/guide.rs` (column A only, row-format mint tint, no wrap: a wrapped
+  band was unreadable in a 4-wide column), every row constant `GUIDE_ROWS + n`, tests assert the band shape
+  and that every cited button + key exists in shortcuts.json, compile-time task-count asserts; four rig
+  snippets and the launch-check moved to the new addresses (P&L!C11, B11:E16, Variance B11:B24 / B13, B17,
+  B19, B23). S2 src/: `layout.ts` spotBox + fitInto, `ppt/placement.ts` resolveTarget / finishTarget /
+  InsertTarget (a cross-slide selection refused via getParentSlide, consume through getItemOrNullObject,
+  stale slide pick -> "Slide N is gone: pick a slide again."), `ppt/target.ts`, `ppt/chart-picture.ts`
+  (split out of charts.ts for the cap), the two selects in pptpane.html, help copy, 48 tests. S3 demo/deck/:
+  python-pptx generator (venv git-ignored, requirements pinned), tracked reproducible deck (fixed stamp,
+  normalised zip times), title band within 0..24 pt so free space starts at the content top, real
+  numbering, template thumbnail/printer parts dropped. S4: manual "Slaids un vieta" (LV) + demo files
+  section, FEATURES rows, README, Map, launch-check section, AppSource test notes re-addressed. Proof on
+  Office for the web (both docs uploaded to the NDUS OneDrive through SharePoint REST from the scratch
+  Chrome: workbook 0b... no: use the folder listing's UniqueId, the ListItem GUID is a different id;
+  Excel file 0BD2C61F-1294-4D48-B83E-63B3AD972D11 was the list id, the real ids are in the profile's
+  Sessions after this run): table -> slide 2 whole (368,216,225,108 centred), revenue chart -> slide 3
+  left half (36..474), pie -> right half (502..908), Data picture -> slide 4 selected placeholder
+  (283,199,395,91, placeholder consumed). v2.8.1: a chosen spot never reports the free-space overlap note
+  (the deck's dashed guides made it fire on every insert). Gates at v2.8.1: 2679 vitest / 108 cargo,
+  ux:check 0/72, ux:sweep 0/149. Release assets now 8 (the deck). OPEN: old ghcr image versions still
+  need Daniel's `gh auth refresh -h github.com -s read:packages,delete:packages`; his desktop pass.
 - 13.09 afternoon (session "launch readiness", plan `~/.claude-accounts/work/plans/refactored-painting-yao.md`,
   approved): the old brand's name is gone from everywhere it could still be found, and the app re-proven.
   History: `git filter-repo --replace-text/--replace-message` with a 53-line literal map (product name ->
