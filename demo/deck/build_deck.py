@@ -10,7 +10,7 @@ from pptx import Presentation
 from pptx.dml.color import RGBColor
 from pptx.enum.dml import MSO_LINE_DASH_STYLE
 from pptx.enum.shapes import MSO_SHAPE
-from pptx.enum.text import PP_ALIGN
+from pptx.enum.text import MSO_ANCHOR, PP_ALIGN
 from pptx.opc.constants import RELATIONSHIP_TYPE as RT
 from pptx.oxml import parse_xml
 from pptx.oxml.ns import nsdecls
@@ -37,8 +37,8 @@ RIGHT_HALF = (CONTENT_LEFT + HALF_WIDTH + GAP, CONTENT_TOP, HALF_WIDTH, CONTENT_
 # placeInFreeSpace) blocks anything whose top is less than a shape's bottom + GAP,
 # so the title (text + rule) must end by here for CONTENT_TOP to read as free.
 TITLE_BAND_LIMIT = CONTENT_TOP - GAP  # 24 pt
-TITLE_HEIGHT = Pt(18)
 RULE_HEIGHT = Pt(2)
+TITLE_HEIGHT = TITLE_BAND_LIMIT - RULE_HEIGHT  # 22 pt: right up to the rule
 
 # Slide 4's caption band: CAPTION_HEIGHT is the one named constant, GAP is
 # the breathing room above it, so picture + GAP + caption ties out to
@@ -73,12 +73,19 @@ def add_title(slide, text: str) -> None:
     """Put the title in the margin band (0..TITLE_BAND_LIMIT) above the
     content area and rule it off in mint, so the pane's free-space scan
     reads CONTENT_TOP as free rather than blocked by the title's own gap
-    buffer. Centered on every slide: a layout's own alignment (Picture with
-    Caption defaults to left) is not trusted."""
+    buffer. Vertical anchor and insets set explicitly - "Picture with
+    Caption" bottom-anchors its title with a bottom inset, which clipped a
+    16 pt line at the top of an 18 pt box - so no layout's own anchoring is
+    inherited on any slide. Centered on every slide too: a layout's own
+    alignment (Picture with Caption defaults to left) is not trusted."""
     title = slide.shapes.title
     title.text = text
     set_box(title, CONTENT_LEFT, Pt(0), CONTENT_WIDTH, TITLE_HEIGHT)
-    paragraph = title.text_frame.paragraphs[0]
+    tf = title.text_frame
+    tf.vertical_anchor = MSO_ANCHOR.TOP
+    tf.margin_top = 0
+    tf.margin_bottom = 0
+    paragraph = tf.paragraphs[0]
     paragraph.alignment = PP_ALIGN.CENTER
     font = paragraph.font
     font.size = Pt(16)
