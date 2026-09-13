@@ -2,6 +2,20 @@
 
 ## 13.09: the v2.7 wave - comps and hygiene tools, follow-ups closed, stress passes, relay hardening
 
+- IN FLIGHT 13.09 ~14:00 (session "launch readiness"): the v2.8.0 wave, plan
+  `~/.claude-accounts/work/plans/refactored-painting-yao.md` (approved, budget 2.1-3.1M): guided demo
+  sheets, a Slide + Where picker in the PowerPoint inbox, a demo deck, docs. Four sonnet worktrees under
+  `~/.worktrees/plsfix/` from bbcfcb8, one opus review each, merged one at a time (order S2, S1, S3, S4),
+  ONE release `release.sh minor` -> v2.8.0 at the end, one deploy, then the web-rig proof:
+  `wave/s1-demo-guide` (demo/: GUIDE_ROWS = 7 band on every visible sheet, guide.rs, tests, the three
+  hardcoded cell references in the rig snippets + launch-check), `wave/s2-pickers` (src/layout.ts spotBox
+  + fitInto, src/ppt/placement.ts resolveTarget + InsertTarget, target.ts, the two selects in
+  pptpane.html, tests with the fake host; ux ports 3141/3142), `wave/s3-deck` (demo/deck/build_deck.py
+  with python-pptx in a git-ignored venv, the tracked pls,fix Demo Deck.pptx, release asset, README +
+  INSTALL lines), `wave/s4-docs` (manual links.rs "Slaids un vieta", FEATURES rows, README feature line,
+  CLAUDE.md Map, launch-check section). Not on main until reviewed; merge with
+  `git rebase main && npm run check` per branch, trailers stripped. Old container images still wait for
+  Daniel's `gh auth refresh -h github.com -s read:packages,delete:packages`.
 - 13.09 afternoon (session "launch readiness", plan `~/.claude-accounts/work/plans/refactored-painting-yao.md`,
   approved): the old brand's name is gone from everywhere it could still be found, and the app re-proven.
   History: `git filter-repo --replace-text/--replace-message` with a 53-line literal map (product name ->
