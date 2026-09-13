@@ -20,9 +20,7 @@
   numbering, template thumbnail/printer parts dropped. S4: manual "Slaids un vieta" (LV) + demo files
   section, FEATURES rows, README, Map, launch-check section, AppSource test notes re-addressed. Proof on
   Office for the web (both docs uploaded to the NDUS OneDrive through SharePoint REST from the scratch
-  Chrome: workbook 0b... no: use the folder listing's UniqueId, the ListItem GUID is a different id;
-  Excel file 0BD2C61F-1294-4D48-B83E-63B3AD972D11 was the list id, the real ids are in the profile's
-  Sessions after this run): table -> slide 2 whole (368,216,225,108 centred), revenue chart -> slide 3
+  Chrome; both opened by the folder listing's UniqueId, the ListItem GUID is a different id and answers "Item does not exist"; the working URLs sit in the scratch profile's Sessions files): table -> slide 2 whole (368,216,225,108 centred), revenue chart -> slide 3
   left half (36..474), pie -> right half (502..908), Data picture -> slide 4 selected placeholder
   (283,199,395,91, placeholder consumed). v2.8.1: a chosen spot never reports the free-space overlap note
   (the deck's dashed guides made it fire on every insert). Gates at v2.8.1: 2679 vitest / 108 cargo,
