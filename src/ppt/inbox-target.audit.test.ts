@@ -219,6 +219,30 @@ describe("the pickers drive where an insert lands", () => {
     expect(presentation.slides[0]!.shapes).toHaveLength(0);
   });
 
+  it("sends Insert to a selected placeholder and consumes it", async () => {
+    const item = await seed();
+    click("refresh-inbox");
+    await settle();
+    const placeholder = presentation.addShape(presentation.slides[0]!, {
+      type: "Placeholder",
+      hasText: false,
+      left: 100,
+      top: 80,
+      width: 300,
+      height: 150,
+    });
+    helpers.selectShapes([placeholder.id]);
+    select("insert-where").value = "selected-shape";
+
+    inboxButtons()[0]!.click();
+    await settle();
+
+    expect(toastText()).toBe(`Inserted ${item.label}.`);
+    const ids = presentation.slides[0]!.shapes.map((one) => one.id);
+    expect(ids).not.toContain(placeholder.id);
+    expect(ids).toHaveLength(1);
+  });
+
   it("keeps This slide and Free space acting exactly as before the pickers", async () => {
     await seed();
     click("refresh-inbox");

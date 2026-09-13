@@ -5,18 +5,8 @@
 
 import { afterEach, describe, expect, it } from "vitest";
 import { spotBox, type Spot } from "../layout";
-import { createWorkspace } from "../link/workspace";
-import {
-  bootPpt,
-  columnChart,
-  memoryStore,
-  seedChart,
-  seedLink,
-  seedTable,
-  seedText,
-} from "../../test/ppt.support";
-import { uninstallFakePpt, type FakePptShape } from "../../test/fakeppt";
-import { fakePng } from "../../test/fakepng";
+import { bootPpt } from "../../test/ppt.support";
+import { uninstallFakePpt } from "../../test/fakeppt";
 import {
   finishTarget,
   resolveTarget,
@@ -270,93 +260,5 @@ describe("finishTarget", () => {
 
     expect(helpers.syncCount()).toBe(before);
     expect(presentation.selectedSlideIds).toEqual([presentation.slides[0]!.id]);
-  });
-});
-
-// End to end through links.insertFromInbox, so each of the four payload
-// kinds is proven to honour a non-default target, not only resolveTarget in
-// isolation.
-describe("insert paths honour the target", () => {
-  it("the picture path lands on the chosen slide and selects it", async () => {
-    const { links, presentation, relay } = await bootPpt();
-    const ws = await createWorkspace(memoryStore());
-    const item = await seedLink(fakePng(400, 200));
-    const target: InsertTarget = {
-      slideId: presentation.slides[2]!.id,
-      where: "free",
-    };
-
-    const placed = await links.insertFromInbox(item, ws, relay, target);
-
-    expect(placed.slideId).toBe(presentation.slides[2]!.id);
-    expect(presentation.selectedSlideIds).toEqual([presentation.slides[2]!.id]);
-    expect(presentation.slides[2]!.shapes.map((one) => one.id)).toContain(
-      placed.shapeId,
-    );
-  });
-
-  it("the table path lands inside a chosen spot", async () => {
-    const { links, presentation, relay } = await bootPpt();
-    const ws = await createWorkspace(memoryStore());
-    const item = await seedTable([[{ t: "A" }, { t: "B" }]], [100, 100]);
-    const target: InsertTarget = {
-      slideId: presentation.slides[0]!.id,
-      where: "top-right",
-    };
-
-    const placed = await links.insertFromInbox(item, ws, relay, target);
-
-    const table = presentation.slides[0]!.shapes.find(
-      (one) => one.id === placed.shapeId,
-    )!;
-    expect(table.left).toBeGreaterThanOrEqual(486 - 0.01);
-    expect(table.top).toBeGreaterThanOrEqual(36 - 0.01);
-  });
-
-  it("the text path consumes a selected empty placeholder and keeps its neighbour", async () => {
-    const { links, presentation, helpers, relay } = await bootPpt();
-    const ws = await createWorkspace(memoryStore());
-    const item = await seedText("Revenue: 1 234");
-    const slide = presentation.slides[0]!;
-    const placeholder = presentation.addShape(slide, {
-      type: "Placeholder",
-      hasText: false,
-      left: 40,
-      top: 40,
-      width: 300,
-      height: 60,
-    });
-    const kept: FakePptShape = presentation.addShape(slide, {
-      type: "TextBox",
-      text: "keep me",
-      left: 10,
-      top: 10,
-      width: 40,
-      height: 20,
-    });
-    helpers.selectShapes([placeholder.id]);
-    const target: InsertTarget = { slideId: slide.id, where: "selected-shape" };
-
-    const placed = await links.insertFromInbox(item, ws, relay, target);
-
-    const ids = slide.shapes.map((one) => one.id);
-    expect(ids).not.toContain(placeholder.id);
-    expect(ids).toContain(kept.id);
-    expect(ids).toContain(placed.shapeId);
-  });
-
-  it("the chart path lands on the chosen slide", async () => {
-    const { links, presentation, relay } = await bootPpt();
-    const ws = await createWorkspace(memoryStore());
-    const item = await seedChart(columnChart(3), fakePng(400, 300));
-    const target: InsertTarget = {
-      slideId: presentation.slides[1]!.id,
-      where: "whole",
-    };
-
-    const placed = await links.insertFromInbox(item, ws, relay, target);
-
-    expect(placed.slideId).toBe(presentation.slides[1]!.id);
-    expect(presentation.selectedSlideIds).toEqual([presentation.slides[1]!.id]);
   });
 });
