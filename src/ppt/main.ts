@@ -63,7 +63,7 @@ import { renderInbox, renderLinkRows } from "./views";
 const APP_VERSION = formatVersion(__APP_VERSION__);
 const REPORT_CONTEXT = { host: "PowerPoint", version: APP_VERSION };
 const NOT_PAIRED =
-  "Not paired: paste the link key from Excel > Links > Settings";
+  "Not paired: paste the link key from Excel > Links > Link key";
 const PAIR_FIRST = "Paste the link key in Settings";
 const STILL_BUSY = "Wait for the last action to finish.";
 

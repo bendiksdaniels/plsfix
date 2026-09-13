@@ -50,9 +50,10 @@ class FakeRuntime {
   // Armed by helpers.failNextSync(): consumed by the sync whose ordinal
   // matches, in case more than one is queued for the same host.
   syncFailures: ArmedSyncFailure[] = [];
-  // Office.context.platform: the desktop until a test says otherwise, because
-  // the web is the host with the tighter shape budget.
-  platform = "Mac";
+  // Office.context.platform: the Windows desktop until a test says otherwise,
+  // because the web is the host with the tighter shape budget and the Mac the
+  // one that keeps every chart a picture (charts.ts hostDrawsCharts).
+  platform = "PC";
   // Every context.sync() this host served: one round trip to PowerPoint, and
   // the only cost a deck's size is allowed to multiply.
   syncs = 0;

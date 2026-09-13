@@ -2,6 +2,22 @@
 
 ## 13.09: the v2.7 wave - comps and hygiene tools, follow-ups closed, stress passes, relay hardening
 
+- 13.09 evening, the desktop pass on Daniel's Mac (computer use for Excel and PowerPoint, granted): Excel
+  16.107 passes (pane, Autocolor, audit overlay, four exports); PowerPoint 16.107 pairs and takes the
+  P&L table (Slide 2, Whole slide) and a range picture, but a shape chart crashes it twice (Revenue chart
+  on Slide 3 / Left half, Segment pie on This slide / Free space): both draw batches return, then the app
+  dies on its repaint; no crash report. Branch `mac-charts-as-pictures` (worktree
+  `~/.worktrees/plsfix/mac-charts-as-pictures`, base e054652) = v2.8.2: `hostDrawsCharts` in
+  `src/ppt/charts.ts` keeps every chart a picture on PlatformType.Mac, on insert and on Update all (the
+  decline reason now travels back from `refreshChartGroup`), the fake host defaults to "PC", tests in
+  `src/ppt/charts.test.ts`; the pairing copy says where the key really lives (Excel: Links > Link key,
+  PowerPoint: Settings); FEATURES, CLAUDE map, manual (LV) and launch-check updated. OPEN: desktop
+  re-check of the Mac picture route before release (the Mac was Daniel's live desktop at 16:54, paused);
+  the bisection on the Mac (E1 = drawGroup without addGroup, then without lines / labels / wedges) to
+  bring native charts back there; the ghcr cleanup still waits for the 2FA sudo step in Safari
+  (`$S/ghcr-clean.sh` ready; the device code must be re-issued); the rest of the v2.8 desktop section.
+  Merge: `git merge --ff-only mac-charts-as-pictures` on main after the desktop re-check, then
+  `sh scripts/release.sh patch` + `deploy.sh modelis`.
 - v2.8.0 + v2.8.1 LIVE 13.09 (session "launch readiness"; plan
   `~/.claude-accounts/work/plans/refactored-painting-yao.md`, approved, budget 2.1-3.1M, spent ~3.6M
   incl. reviews): guided demos + slide/spot placement, four sonnet worktree slices, one opus review + fix

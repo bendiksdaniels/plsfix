@@ -44,7 +44,7 @@ export { renderWorkbookLinks };
 
 const NO_KEY = "No link key yet.";
 const KEY_UNREADABLE = "Could not read the link key on this computer.";
-const NO_KEY_ERROR = "Generate a link key first (Links > Settings).";
+const NO_KEY_ERROR = "Generate a link key first (Links > Link key).";
 const NO_SELECTION_ERROR = "Select a link in the list first.";
 // Enough of the key to tell two apart, never enough to pair a deck with.
 const KEY_EDGE = 4;

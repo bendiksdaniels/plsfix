@@ -268,8 +268,9 @@ describe("insert a chart link", () => {
     expect(placed.note).toBe(
       `as a picture: ${String(WIDE_SHAPES)} shapes is over this host's budget of 30`,
     );
-    // The same chart is inside the desktop budget and draws there.
-    helpers.setPlatform("Mac");
+    // The same chart is inside the Windows desktop budget and draws there
+    // (the Mac keeps every chart a picture, src/ppt/charts.test.ts).
+    helpers.setPlatform("PC");
     helpers.selectSlide(presentation.slides[1]!.id);
     const second = await insert(WIDE);
     expect(second.placed.note).toBeUndefined();

@@ -193,7 +193,7 @@ describe("installLinksTab", () => {
     click("export-selection");
     await settle(h);
 
-    expect(h.errors).toEqual(["Generate a link key first (Links > Settings)."]);
+    expect(h.errors).toEqual(["Generate a link key first (Links > Link key)."]);
     expect(exportSelection).not.toHaveBeenCalled();
   });
 

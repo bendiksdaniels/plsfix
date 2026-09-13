@@ -142,7 +142,7 @@ survive row/column moves (Macabacus mechanism).
 
 | Feature | Source | What it does | Feasibility | Priority |
 |---|---|---|---|---|
-| Export range/chart as image to PPT | both | Range.getImage/Chart.getImage base64 -> PPT shape | shipped v2.0; column, bar, waterfall and pie charts land as native shape groups (picture fallback) v2.4 | P1 (M2) |
+| Export range/chart as image to PPT | both | Range.getImage/Chart.getImage base64 -> PPT shape | shipped v2.0; column, bar, waterfall and pie charts land as native shape groups (picture fallback; PowerPoint for Mac keeps the picture since v2.8.2, its shape draw crashes 16.107) v2.4 | P1 (M2) |
 | Link registry + refresh one object | both | Stable link IDs, update in place preserving position/size | shipped v2.0 | P1 (M2) |
 | Link Manager pane (by slide / by source, batch update, filters) | both | Central link control | shipped v2.0 | P1 (M3) |
 | Slide picker for inserts | - | Choose the target slide before an Insert or Paste latest linked, instead of always the active slide | shipped v2.8 | P1 (M3) |

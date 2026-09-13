@@ -172,9 +172,9 @@ describe("fake PowerPoint shapes", () => {
     });
   });
 
-  it("is a Mac until a test says the host is something else", () => {
+  it("is the Windows desktop until a test says the host is something else", () => {
     const { helpers } = installFakePpt({ slides: 1 });
-    expect(Office.context.platform).toBe("Mac");
+    expect(Office.context.platform).toBe("PC");
     helpers.setPlatform("OfficeOnline");
     expect(Office.context.platform).toBe(Office.PlatformType.OfficeOnline);
   });

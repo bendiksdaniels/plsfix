@@ -315,3 +315,37 @@ old loop hangs every test, the fixed helper passes. Rules:
 - An explicit spot is the user's choice: `overlapping` must stay false there, or every insert into a
   guided spot prints "no free space" (v2.8.1).
 - The export snippet's toast reads lag one export behind on the web; read the sequence, not each line.
+
+## 2026-09-13 evening: the desktop pass on Daniel's Mac (computer use, granted for Excel and PowerPoint)
+
+- PowerPoint for Mac 16.107 (macOS 26.6) crashes on a shape chart: the chunk batch and the group batch both
+  come back (25-28 s and 9-10 s, `RichApi Batch Info`), the last invocation logged is a paragraph alignment
+  or a shape id read, then the app dies on its own repaint and relaunches with the deck as [Autosaved]. No
+  crash report lands in DiagnosticReports (Microsoft Error Reporting takes it). The table route and the
+  picture route (fill.setImage) are fine on the same host. v2.8.2 keeps every chart a picture there
+  (`hostDrawsCharts`); the bisection (E1 = no group) is written up in AUTORESUME and waits for the Mac.
+- A desktop sideload on the Mac shows no ribbon tab on its own: Home > Add-ins > pls,fix (Developer
+  Add-ins) loads it once per launch. After a crash relaunch the pane is gone and the pairing key can be
+  gone with it (WebKit storage not flushed).
+- `office-addin-debugging start` hard-links `manifest.xml` into BOTH wef folders and fails with EEXIST when
+  a file is already there: delete the wef manifests first. Never `cp` over those links afterwards (it would
+  overwrite the repo's manifest.xml through the link): delete, then `scripts/wef-restore-prod.sh`.
+- The dev pane's `/api` proxies to 127.0.0.1:8804; for a desktop test against the live relay point the
+  vite proxy at `https://dbautomatizacijas.com/modelis` (uncommitted, changeOrigin) and the inbox fills.
+- PowerPoint AppleScript queries hang (AppleEvent timed out) while the add-in pane is open; `out` is a
+  reserved word in its dictionary; `open -a "Microsoft PowerPoint"` activates it safely. Excel AppleScript
+  (`select range`, `activate object worksheet`) is the reliable way to set a selection for the pane.
+- Computer use: clicking the active ribbon tab collapses the ribbon; a Safari `activate` from a script
+  dismisses an open Excel popover; the batch tool's scroll takes `scroll_direction` and `scroll_amount`.
+- Safari is read-only for computer use, but System Events reaches its page through the accessibility tree:
+  walk `UI elements` recursively (buttons carry the label in `name` or `description`), `click` the element
+  or `click at` its centre, `keystroke` after `activate`. GitHub's device page is eight one-char fields
+  (type the code without the dash) and its Authorize button stays disabled until a focus or visibility
+  event fires with the page focused and the button fully in the viewport: switch tabs and back, then press.
+- `gh auth refresh` under expect: reply to the colour query (`ESC]11;?ESC\`) and the cursor query
+  (`ESC[6n` -> `ESC[24;80R`) or the prompt never reads the answer; the code is bold, so match
+  `[A-Z0-9]{4}-[A-Z0-9]{4}` alone; it expires after 15 min; "Confirm access" (sudo mode, 2FA) is the
+  user's own step and cannot be automated.
+- A foreign document in front of the app you are driving means the user is at the machine: stop, revert
+  what the desktop still runs (dev manifest, experiment edits), say so, and wait for the go.
+
