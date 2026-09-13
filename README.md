@@ -14,7 +14,7 @@ Free, MIT-licensed, nothing to install but one line that tells Office where to l
 - **Mac**, in Terminal: `curl -fsSL https://github.com/bendiksdaniels/plsfix/releases/latest/download/plsfix-install-mac.command | sh`
 - **Excel on the web**: Home > Add-ins > More Settings > Upload My Add-in, with [`manifest.prod.xml`](https://github.com/bendiksdaniels/plsfix/releases/latest/download/manifest.prod.xml).
 
-Reopen Excel and PowerPoint: the **pls,fix** tab is on the ribbon, Ctrl+Shift+M opens the pane. `pls,fix Demo Model.xlsx` from the same release has a "Start here" sheet that walks through every tool. The Microsoft AppSource listing (Excel > Add-ins > search "pls,fix") is in preparation.
+Reopen Excel and PowerPoint: the **pls,fix** tab is on the ribbon, Ctrl+Shift+M opens the pane. `pls,fix Demo Model.xlsx` from the same release has a "Start here" sheet that walks through every tool, and `pls,fix Demo Deck.pptx` demos the PowerPoint Slide and Where pickers. The Microsoft AppSource listing (Excel > Add-ins > search "pls,fix") is in preparation.
 
 For IT teams and developers: [docs/SELF-HOSTING.md](docs/SELF-HOSTING.md) (your own server, `docker compose up`, a manifest re-pointed at your address) and [CONTRIBUTING.md](CONTRIBUTING.md) (build from source).
 
