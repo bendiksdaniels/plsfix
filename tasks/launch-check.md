@@ -342,14 +342,14 @@ Host-only behaviours the fakes cannot settle (P3, v2.7.13):
 - [ ] An insert whose `deleteInbox` the relay refuses (500): "Inserted ...", one shape, and the Inbox no longer offers that export in this pane session.
 - [ ] Select similar refuses with "not one inside a group": confirm on a real host that nothing else (a shape on a layout, a placeholder reached another way) can be selected while sitting outside `Slide.shapes`; the guard detects the class, the sentence names the one cause.
 
-## Added by v2.8.0 (13.09): guided demos and placement
-
+## Added by the v2.8 wave (13.09): guided demos and placement
 
 - [ ] The guide band ("Try on this sheet" plus a Commands line, rows 1-7) shows on every
       visible sheet of `pls,fix Demo Model.xlsx`; the P&L block the Excel and PowerPoint
       sections above export and edit shifted down 7 rows with it - read `P&L!B4:E9` there as
-      `P&L!B11:E16` and `P&L!C4` as `P&L!C11`.
-- [ ] Open `pls,fix Demo Deck.pptx` (`npm run demo:deck` if missing) and its four PowerPoint
+      `P&L!B11:E16` and `P&L!C4` as `P&L!C11`; read the Variance column B4:B17 in the rows
+      above as B11:B24, and the four cells B6, B10, B12, B16 as B13, B17, B19, B23.
+- [ ] Open `demo/deck/pls,fix Demo Deck.pptx` (rebuild with `npm run demo:deck`) and its four PowerPoint
       tasks: each placement lands exactly where chosen (the P&L table on slide 2, Whole slide;
       the Revenue chart and the Segment pie on slide 3, Left half and Right half; a Data picture
       on slide 4, Selected shape). The empty placeholder on slide 4 is gone once the picture is
@@ -363,3 +363,7 @@ Host-only behaviours the fakes cannot settle (P3, v2.7.13):
       a shape on the slide first, or choose another spot." and Insert does nothing.
 - [ ] Update all after inserting through the new pickers: objects refresh in place exactly as
       before, position and size kept.
+- [ ] Insert (or Paste latest linked) onto a slide other than the one showing: the pane
+      switches to that slide afterwards.
+- [ ] Open a deck with more than a few slides: the Slide picker lists every one of them
+      (plus "This slide" first), not just the ones visited this session.
