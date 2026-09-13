@@ -7,7 +7,7 @@ use super::{Block, Chapter, Section, section};
 pub fn setup() -> Chapter {
     Chapter {
         title: "Uzstādīšana",
-        sections: vec![central(), manual_install(), ribbon()],
+        sections: vec![central(), manual_install(), ribbon(), demo_files()],
     }
 }
 
@@ -99,6 +99,23 @@ fn ribbon() -> Section {
             ),
             Block::Para(
                 r#"Lentes pogas un taustiņu kombinācijas strādā arī tad, kad panelis nav atvērts."#,
+            ),
+        ],
+    )
+}
+
+fn demo_files() -> Section {
+    section(
+        "Paraugdarbgrāmata un paraugprezentācija",
+        vec![
+            Block::Para(
+                r#"Katram izlaidumam GitHub lapā klāt ir paraugdarbgrāmata pls,fix Demo Model.xlsx un paraugprezentācija pls,fix Demo Deck.pptx; abas der, lai izmēģinātu pievienojumprogrammu pirms darba ar savu darbgrāmatu."#,
+            ),
+            Block::Para(
+                r#"Katras paraugdarbgrāmatas redzamās lapas augšā ir īss uzdevumu saraksts "Try on this sheet" un rinda "Commands" ar vajadzīgajām lentes pogām un taustiņu kombinācijām."#,
+            ),
+            Block::Para(
+                r#"Paraugprezentācijā ir četri uzdevumi: katrā jāievieto kāds objekts izvēlētajā slaidā un vietā, izmantojot izvēlnes "Slide" un "Where" (skatiet nodaļu "Saites uz PowerPoint", sadaļu "Slaidi un vieta")."#,
             ),
         ],
     )

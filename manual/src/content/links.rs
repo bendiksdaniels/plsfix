@@ -14,6 +14,7 @@ pub fn links() -> Chapter {
             list(),
             toggles(),
             insert(),
+            slide_and_spot(),
             update(),
             filters(),
             manage(),
@@ -152,6 +153,38 @@ fn insert() -> Section {
                 file: "ppt-inbox.png",
                 alt: r#"PowerPoint cilne "Inbox" ar tukšu sarakstu un paskaidrojumu par vienumu derīguma termiņu."#,
             },
+        ],
+    )
+}
+
+fn slide_and_spot() -> Section {
+    section(
+        "Slaidi un vieta",
+        vec![
+            Block::Para(
+                r#"Cilnes "Inbox" saraksta augšā ir divas izvēlnes: "Slide" un "Where". Tās nosaka, kurā slaidā un kurā vietā nonāk nākamais ievietotais objekts, un attiecas uz katru pogu "Insert", kā arī uz "Paste latest linked"."#,
+            ),
+            Block::Para(
+                r#"Izvēlne "Slide" piedāvā aktīvo slaidu ("This slide", noklusējums) vai kādu no prezentācijas slaidiem pēc kārtas numura."#,
+            ),
+            Block::Para(r#"Izvēlnes "Where" vērtības:"#),
+            Block::Bullets(&[
+                r#""Free space": brīvā vietā slaidā (noklusējums)."#,
+                r#""Selected shape": atlasītās figūras vietā."#,
+                r#""Left half" un "Right half": slaida kreisajā vai labajā pusē."#,
+                r#""Top left", "Top right", "Bottom left" un "Bottom right": vienā no četriem stūriem."#,
+                r#""Whole slide": pa visu slaidu."#,
+            ]),
+            Block::Para(
+                r#"Puses, ceturkšņi un "Whole slide" ir slaida satura apgabala taisnstūri ar nelielu malu visapkārt; objekts tajos tiek ievietots, saglabājot proporcijas, un centrēts."#,
+            ),
+            Block::Para(
+                r#""Selected shape" pielāgo objektu tieši atlasītās figūras vietai. Ja atlasītā figūra bija tukšs izkārtojuma vietturis, tas pēc ievietošanas pazūd; cita figūra paliek zem jaunā objekta."#,
+            ),
+            Block::Para(
+                r#"Ja izvēlēts "Selected shape", bet slaidā nekas nav atlasīts, panelis to pasaka: "Select a shape on the slide first, or choose another spot." un neko neievieto."#,
+            ),
+            Block::Para(r#"Pēc ievietošanas izvēlētajā slaidā panelis uz to arī pārslēdzas."#),
         ],
     )
 }
