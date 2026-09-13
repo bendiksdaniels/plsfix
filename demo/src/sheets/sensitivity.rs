@@ -7,23 +7,32 @@ use rust_xlsxwriter::{Worksheet, XlsxError};
 
 use crate::layout::{
     assumptions as a, assumption_col, assumptions_ref_abs, cell, cell_abs, pnl::*, pnl_ref_abs,
-    year_col, LABEL_COL, TITLE_ROW,
+    year_col, GUIDE_ROWS, LABEL_COL, TITLE_ROW,
 };
 use crate::pen::Pen;
+use crate::sheets::guide::{self, Guide};
 use crate::style::Styles;
 use crate::tally::Tally;
 
 pub const NAME: &str = "Sensitivity";
-const NOTE_ROW: u32 = 1;
-const BASE_ROW: u32 = 2;
-const HEADER_ROW: u32 = 3;
-const FIRST_DRIVER_ROW: u32 = 4;
+const NOTE_ROW: u32 = GUIDE_ROWS + 1;
+const BASE_ROW: u32 = GUIDE_ROWS + 2;
+const HEADER_ROW: u32 = GUIDE_ROWS + 3;
+const FIRST_DRIVER_ROW: u32 = GUIDE_ROWS + 4;
 const DRIVER_COUNT: u32 = 5;
 const DRIVER_COL: u16 = 0;
 const LOW_COL: u16 = 1;
 const HIGH_COL: u16 = 2;
-const SWINGS_TITLE_ROW: u32 = 10;
-const FIRST_SWING_ROW: u32 = 11;
+const SWINGS_TITLE_ROW: u32 = GUIDE_ROWS + 10;
+const FIRST_SWING_ROW: u32 = GUIDE_ROWS + 11;
+const GUIDE: Guide = Guide {
+    title: "EBITDA sensitivity, a tornado input block",
+    tasks: &[
+        "Tornado from selection reads the Driver | Low | High block.",
+        "Insert CAGR over the swing sizes.",
+    ],
+    commands: &["Insert CAGR (Ctrl+Shift+Q)"],
+};
 const SWING_VALUE_COL: u16 = 1;
 const DRIVER_WIDTH: f64 = 40.0;
 const VALUE_WIDTH: f64 = 11.0;
@@ -42,6 +51,7 @@ const SWINGS: [(&str, f64); 6] = [
 ];
 
 pub fn build(sheet: &mut Worksheet, styles: &Styles) -> Result<Tally, XlsxError> {
+    let mut tally = guide::write(sheet, styles, &GUIDE)?;
     let mut pen = Pen::new(sheet);
     pen.text(TITLE_ROW, LABEL_COL, "EBITDA 2026E sensitivity (EUR thousands)", &styles.title)?;
     pen.text(NOTE_ROW, LABEL_COL, &format!("Select {} and press Tornado: the heading and the base case come from row {}.", block_address(), BASE_ROW + 1), &styles.note)?;
@@ -65,7 +75,8 @@ pub fn build(sheet: &mut Worksheet, styles: &Styles) -> Result<Tally, XlsxError>
     let sheet = pen.sheet();
     sheet.set_column_width(DRIVER_COL, DRIVER_WIDTH)?;
     sheet.set_column_range_width(LOW_COL, HIGH_COL, VALUE_WIDTH)?;
-    Ok(pen.tally)
+    tally += pen.tally;
+    Ok(tally)
 }
 
 /// A1 address of the Driver | Low | High block, header row included.

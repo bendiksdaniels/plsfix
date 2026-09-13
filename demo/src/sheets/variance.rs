@@ -5,13 +5,21 @@
 
 use rust_xlsxwriter::{Worksheet, XlsxError};
 
-use crate::layout::{cell, range, variance::*, HEADER_ROW, LABEL_COL, TITLE_ROW, VARIANCE_SHEET};
+use crate::layout::{
+    cell, range, variance::*, GUIDE_ROWS, HEADER_ROW, LABEL_COL, TITLE_ROW, VARIANCE_SHEET,
+};
 use crate::pen::Pen;
+use crate::sheets::guide::{self, Guide};
 use crate::style::Styles;
 use crate::tally::Tally;
 
 pub const NAME: &str = VARIANCE_SHEET;
-const NOTE_ROW: u32 = 1;
+const NOTE_ROW: u32 = GUIDE_ROWS + 1;
+const GUIDE: Guide = Guide {
+    title: "a bank deposit variance to reconcile",
+    tasks: &["Find a combination that reaches the Target.", "Comps stats runs under the table."],
+    commands: &["Open pls,fix (Ctrl+Shift+M)"],
+};
 const LABEL_WIDTH: f64 = 38.0;
 const AMOUNT_WIDTH: f64 = 14.0;
 
@@ -38,6 +46,7 @@ pub const AMOUNTS: [(&str, f64); COUNT as usize] = [
 pub const TARGET: f64 = 2_230.0;
 
 pub fn build(sheet: &mut Worksheet, styles: &Styles) -> Result<Tally, XlsxError> {
+    let mut tally = guide::write(sheet, styles, &GUIDE)?;
     let mut pen = Pen::new(sheet);
     pen.text(TITLE_ROW, LABEL_COL, "DemoCo SIA: bank deposit variance", &styles.title)?;
     pen.text(
@@ -62,7 +71,8 @@ pub fn build(sheet: &mut Worksheet, styles: &Styles) -> Result<Tally, XlsxError>
     let sheet = pen.sheet();
     sheet.set_column_width(LABEL_COL, LABEL_WIDTH)?;
     sheet.set_column_width(AMOUNT_COL, AMOUNT_WIDTH)?;
-    Ok(pen.tally)
+    tally += pen.tally;
+    Ok(tally)
 }
 
 /// A1 range of the amounts column: the Find a combination input.

@@ -6,18 +6,28 @@ use rust_xlsxwriter::{Worksheet, XlsxError};
 
 use crate::layout::{
     a1_row, assumptions as a, cell, last_year_col, pnl, range, year_col, ASSUMPTIONS_SHEET,
-    FIRST_YEAR_COL, HEADER_ROW, LABEL_COL, PNL_SHEET, TITLE_ROW,
+    FIRST_YEAR_COL, GUIDE_ROWS, HEADER_ROW, LABEL_COL, PNL_SHEET, TITLE_ROW,
 };
 use crate::pen::Pen;
+use crate::sheets::guide::{self, Guide};
 use crate::sheets::pnl::planted_cells;
 use crate::sheets::{bridge, data, rounding, scratch, sensitivity, variance};
 use crate::style::Styles;
 use crate::tally::Tally;
 
 pub const NAME: &str = "Start here";
-const NOTE_ROW: u32 = 1;
-const TABLE_HEADER_ROW: u32 = 3;
-const FIRST_STEP_ROW: u32 = 4;
+const NOTE_ROW: u32 = GUIDE_ROWS + 1;
+const TABLE_HEADER_ROW: u32 = GUIDE_ROWS + 3;
+const FIRST_STEP_ROW: u32 = GUIDE_ROWS + 4;
+const GUIDE: Guide = Guide {
+    title: "orientation and the full checklist",
+    tasks: &[
+        "Open the pane (Ctrl+Shift+M).",
+        "Walk the checklist below, one row per tool.",
+        "Open the demo deck \"pls,fix Demo Deck.pptx\" for the PowerPoint tasks.",
+    ],
+    commands: &["Open pls,fix (Ctrl+Shift+M)"],
+};
 const NUMBER_COL: u16 = 0;
 const TOOL_COL: u16 = 1;
 const PLACE_COL: u16 = 2;
@@ -44,6 +54,7 @@ fn step(tool: &'static str, place: impl Into<String>, action: impl Into<String>,
 }
 
 pub fn build(sheet: &mut Worksheet, styles: &Styles) -> Result<Tally, XlsxError> {
+    let mut tally = guide::write(sheet, styles, &GUIDE)?;
     let mut pen = Pen::new(sheet);
     pen.text(TITLE_ROW, LABEL_COL, "pls,fix: play-around workbook", &styles.title)?;
     pen.text(NOTE_ROW, LABEL_COL, &format!("Ribbon tab \"pls,fix\" in Excel and in PowerPoint; the pane loads from {HOST}. DemoCo SIA is invented."), &styles.note)?;
@@ -63,7 +74,8 @@ pub fn build(sheet: &mut Worksheet, styles: &Styles) -> Result<Tally, XlsxError>
         sheet.set_column_width(i as u16, *width)?;
     }
     sheet.set_active(true);
-    Ok(pen.tally)
+    tally += pen.tally;
+    Ok(tally)
 }
 
 fn steps() -> Vec<Step> {

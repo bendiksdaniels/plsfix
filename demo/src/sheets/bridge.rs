@@ -8,24 +8,33 @@ use rust_xlsxwriter::{
 };
 
 use crate::layout::{
-    cell, last_year_col, pnl::*, pnl_ref, year_col, FIRST_YEAR_COL, HEADER_ROW, LABEL_COL,
-    PNL_SHEET, TITLE_ROW,
+    cell, last_year_col, pnl::*, pnl_ref, year_col, FIRST_YEAR_COL, GUIDE_ROWS, HEADER_ROW,
+    LABEL_COL, PNL_SHEET, TITLE_ROW,
 };
 use crate::pen::Pen;
+use crate::sheets::guide::{self, Guide};
 use crate::style::{Styles, TEAL, NAVY, EUR_K};
 use crate::tally::Tally;
 
 pub const NAME: &str = "Bridge";
-const NOTE_ROW: u32 = 1;
+const NOTE_ROW: u32 = GUIDE_ROWS + 1;
 const STEP_COL: u16 = 0;
 const VALUE_COL: u16 = 1;
-const FIRST_STEP_ROW: u32 = 3;
+const FIRST_STEP_ROW: u32 = GUIDE_ROWS + 3;
 const STEP_COUNT: u32 = 5;
-const CHECK_ROW: u32 = 9;
-const HINT_ROW: u32 = 11;
+const CHECK_ROW: u32 = GUIDE_ROWS + 9;
+const HINT_ROW: u32 = GUIDE_ROWS + 11;
 const CHART_COL: u16 = 3;
-const REVENUE_CHART_ROW: u32 = 2;
-const MARGIN_CHART_ROW: u32 = 19;
+const REVENUE_CHART_ROW: u32 = GUIDE_ROWS + 2;
+const MARGIN_CHART_ROW: u32 = GUIDE_ROWS + 19;
+const GUIDE: Guide = Guide {
+    title: "the EBITDA bridge, table and charts",
+    tasks: &[
+        "Waterfall from selection turns the two-column table into a bridge chart.",
+        "Export active chart (the Revenue chart), then in PowerPoint Slide 3, Where = Left half.",
+    ],
+    commands: &["Waterfall from selection (Ctrl+Shift+B)"],
+};
 const CHART_WIDTH: u32 = 560;
 const CHART_HEIGHT: u32 = 300;
 const BAR_GAP: u16 = 60;
@@ -34,6 +43,7 @@ const STEP_WIDTH: f64 = 24.0;
 const VALUE_WIDTH: f64 = 11.0;
 
 pub fn build(sheet: &mut Worksheet, styles: &Styles) -> Result<Tally, XlsxError> {
+    let mut tally = guide::write(sheet, styles, &GUIDE)?;
     let mut pen = Pen::new(sheet);
     pen.text(TITLE_ROW, LABEL_COL, "EBITDA bridge 2024A to 2025E (EUR thousands)", &styles.title)?;
     pen.text(NOTE_ROW, LABEL_COL, "Select the two columns below and press Waterfall; click a chart and use Chart CAGR or Export chart.", &styles.note)?;
@@ -55,7 +65,8 @@ pub fn build(sheet: &mut Worksheet, styles: &Styles) -> Result<Tally, XlsxError>
     sheet.set_column_width(VALUE_COL, VALUE_WIDTH)?;
     sheet.insert_chart(REVENUE_CHART_ROW, CHART_COL, &revenue_chart())?;
     sheet.insert_chart(MARGIN_CHART_ROW, CHART_COL, &margin_chart())?;
-    Ok(pen.tally)
+    tally += pen.tally;
+    Ok(tally)
 }
 
 /// A1 address of the bridge table, for the checklist and the hint.

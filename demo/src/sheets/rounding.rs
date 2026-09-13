@@ -10,18 +10,19 @@ use rust_xlsxwriter::{
     Worksheet, XlsxError,
 };
 
-use crate::layout::{cell, cell_abs, column, LABEL_COL, TITLE_ROW};
+use crate::layout::{cell, cell_abs, column, GUIDE_ROWS, LABEL_COL, TITLE_ROW};
 use crate::pen::Pen;
+use crate::sheets::guide::{self, Guide};
 use crate::style::Styles;
 use crate::tally::Tally;
 
 pub const NAME: &str = "Rounding";
-const NOTE_ROW: u32 = 1;
-const HEADER_ROW: u32 = 2;
-const FIRST_SEGMENT_ROW: u32 = 3;
+const NOTE_ROW: u32 = GUIDE_ROWS + 1;
+const HEADER_ROW: u32 = GUIDE_ROWS + 2;
+const FIRST_SEGMENT_ROW: u32 = GUIDE_ROWS + 3;
 const SEGMENT_COUNT: u32 = 5;
-const TOTAL_ROW: u32 = 8;
-const HINT_ROW: u32 = 10;
+const TOTAL_ROW: u32 = GUIDE_ROWS + 8;
+const HINT_ROW: u32 = GUIDE_ROWS + 10;
 const SEGMENT_COL: u16 = 0;
 const REVENUE_COL: u16 = 1;
 const POINTS_COL: u16 = 2;
@@ -33,8 +34,16 @@ const VALUE_WIDTH: f64 = 15.0;
 const LANDING_WIDTH: f64 = 26.0;
 const TYPE_IT_WIDTH: f64 = 32.0;
 const DECIMALS: &str = "0";
-const PIE_ROW: u32 = 2;
+const PIE_ROW: u32 = GUIDE_ROWS + 2;
 const PIE_COL: u16 = 7;
+const GUIDE: Guide = Guide {
+    title: "a segment split that needs consistent rounding",
+    tasks: &[
+        "PLSFIX.ROUND and PLSFIX.ROUNDSUM make the shares add to 100.",
+        "Export the segment pie, then in PowerPoint Slide 3, Where = Right half.",
+    ],
+    commands: &["Open pls,fix (Ctrl+Shift+M)"],
+};
 const PIE_WIDTH: u32 = 360;
 const PIE_HEIGHT: u32 = 260;
 /// Slice colours: the brand pair and three tints of it.
@@ -50,6 +59,7 @@ const SEGMENTS: [(&str, f64); SEGMENT_COUNT as usize] = [
 ];
 
 pub fn build(sheet: &mut Worksheet, styles: &Styles) -> Result<Tally, XlsxError> {
+    let mut tally = guide::write(sheet, styles, &GUIDE)?;
     let mut pen = Pen::new(sheet);
     pen.text(TITLE_ROW, LABEL_COL, "Consistent rounding (the think-cell TCROUND idea)", &styles.title)?;
     pen.text(NOTE_ROW, LABEL_COL, &format!("Select {} and press Consistent rounding, or type the formulas shown in column {}.", points_address(), column(TYPE_IT_COL)), &styles.note)?;
@@ -71,7 +81,8 @@ pub fn build(sheet: &mut Worksheet, styles: &Styles) -> Result<Tally, XlsxError>
     sheet.set_column_width(EXCEL_COL, VALUE_WIDTH)?;
     sheet.set_column_width(TYPE_IT_COL, TYPE_IT_WIDTH)?;
     sheet.insert_chart(PIE_ROW, PIE_COL, &segment_pie())?;
-    Ok(pen.tally)
+    tally += pen.tally;
+    Ok(tally)
 }
 
 /// A1 address of the share-points column, the Consistent rounding input.
@@ -81,6 +92,13 @@ pub fn points_address() -> String {
 
 fn points_address_abs() -> String {
     format!("{}:{}", cell_abs(FIRST_SEGMENT_ROW, POINTS_COL), cell_abs(TOTAL_ROW - 1, POINTS_COL))
+}
+
+/// A1 address (absolute) of the pie's value column: what the saved chart
+/// XML references, so a test can check it against the real layout instead
+/// of a second hardcoded copy.
+pub fn pie_values_address_abs() -> String {
+    format!("{}:{}", cell_abs(FIRST_SEGMENT_ROW, REVENUE_COL), cell_abs(TOTAL_ROW - 1, REVENUE_COL))
 }
 
 fn write_header(pen: &mut Pen, styles: &Styles) -> Result<(), XlsxError> {

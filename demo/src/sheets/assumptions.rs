@@ -4,15 +4,29 @@
 use rust_xlsxwriter::{Worksheet, XlsxError};
 
 use crate::layout::{
-    assumptions::*, last_year_col, year_col, FIRST_YEAR_COL, HEADER_ROW, LABEL_COL, TITLE_ROW,
-    UNIT_COL, YEARS,
+    assumptions::*, last_year_col, year_col, FIRST_YEAR_COL, GUIDE_ROWS, HEADER_ROW, LABEL_COL,
+    TITLE_ROW, UNIT_COL, YEARS,
 };
 use crate::pen::Pen;
+use crate::sheets::guide::{self, Guide};
 use crate::style::Styles;
 use crate::tally::Tally;
 
 pub const NAME: &str = crate::layout::ASSUMPTIONS_SHEET;
-const NOTE_ROW: u32 = 1;
+const NOTE_ROW: u32 = GUIDE_ROWS + 1;
+const GUIDE: Guide = Guide {
+    title: "DemoCo's forecast drivers, as plain inputs",
+    tasks: &[
+        "Autocolor selection: inputs turn blue, formulas stay black.",
+        "Cycle percent format on the growth row steps through its number formats.",
+        "Undo last pls,fix action takes the last one back.",
+    ],
+    commands: &[
+        "Autocolor selection (Ctrl+Shift+K)",
+        "Cycle percent format (Ctrl+Shift+5)",
+        "Undo last pls,fix action (Ctrl+Shift+Z)",
+    ],
+};
 const FORECAST_YEARS: usize = YEARS.len() - 1;
 const LABEL_WIDTH: f64 = 30.0;
 const UNIT_WIDTH: f64 = 7.0;
@@ -37,6 +51,7 @@ const DRIVERS: [Driver; 6] = [
 ];
 
 pub fn build(sheet: &mut Worksheet, styles: &Styles) -> Result<Tally, XlsxError> {
+    let mut tally = guide::write(sheet, styles, &GUIDE)?;
     let mut pen = Pen::new(sheet);
     pen.text(TITLE_ROW, LABEL_COL, "DemoCo SIA: model assumptions (EUR thousands)", &styles.title)?;
     pen.text(NOTE_ROW, LABEL_COL, "Inputs are plain numbers on purpose: run Autocolor and they turn blue.", &styles.note)?;
@@ -60,5 +75,6 @@ pub fn build(sheet: &mut Worksheet, styles: &Styles) -> Result<Tally, XlsxError>
     sheet.set_column_width(LABEL_COL, LABEL_WIDTH)?;
     sheet.set_column_width(UNIT_COL, UNIT_WIDTH)?;
     sheet.set_column_range_width(FIRST_YEAR_COL, last_year_col(), YEAR_WIDTH)?;
-    Ok(pen.tally)
+    tally += pen.tally;
+    Ok(tally)
 }

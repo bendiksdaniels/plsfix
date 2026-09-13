@@ -4,8 +4,8 @@
 
 use std::io::{Cursor, Read};
 
-use smt_demo::layout::{cell, pnl, variance as vlayout, year_col, PNL_SHEET};
-use smt_demo::sheets::{pnl::planted_cells, scratch, variance, BROKEN_NAME, SHEETS};
+use smt_demo::layout::{cell, cell_abs, last_year_col, pnl, variance as vlayout, year_col, FIRST_YEAR_COL, PNL_SHEET};
+use smt_demo::sheets::{pnl::planted_cells, rounding, scratch, variance, BROKEN_NAME, SHEETS};
 use smt_demo::tally::Tally;
 
 type Archive = zip::ZipArchive<Cursor<Vec<u8>>>;
@@ -33,6 +33,38 @@ fn cell_xml(sheet: &str, address: &str) -> String {
     let rest = &sheet[start..];
     let end = rest.find("</c>").expect("cell end");
     rest[..end].to_string()
+}
+
+/// The workbook's shared string table, in index order: `t="s"` cells
+/// reference it by position, so guide text (always a shared string) needs
+/// this to read back as more than an opaque index.
+fn shared_strings(archive: &mut Archive) -> Vec<String> {
+    let xml = entry(archive, "xl/sharedStrings.xml");
+    let mut strings = Vec::new();
+    let mut rest = xml.as_str();
+    while let Some(start) = rest.find("<t") {
+        let tag_end = rest[start..].find('>').expect("tag close") + start;
+        let text_start = tag_end + 1;
+        let text_end = rest[text_start..].find("</t>").expect("text end") + text_start;
+        strings.push(unescape_xml(&rest[text_start..text_end]));
+        rest = &rest[text_end + "</t>".len()..];
+    }
+    strings
+}
+
+/// Undoes the three entities `rust_xlsxwriter` escapes in text data (it does
+/// not escape quotes, unlike attribute values).
+fn unescape_xml(text: &str) -> String {
+    text.replace("&lt;", "<").replace("&gt;", ">").replace("&amp;", "&")
+}
+
+/// The text of a `t="s"` (shared string) cell, resolved through `strings`.
+fn cell_text(sheet: &str, address: &str, strings: &[String]) -> String {
+    let xml = cell_xml(sheet, address);
+    let start = xml.find("<v>").unwrap_or_else(|| panic!("{address}: not a string cell: {xml}")) + "<v>".len();
+    let end = xml[start..].find("</v>").expect("value end") + start;
+    let index: usize = xml[start..end].parse().expect("shared string index");
+    strings[index].clone()
 }
 
 #[test]
@@ -86,12 +118,21 @@ fn names_and_charts_are_defined() {
     }
     assert!(workbook.contains(&scratch::area_formula()[1..]), "Scratch_area formula");
     assert!(workbook.contains(&format!("name=\"{BROKEN_NAME}\">#REF!<")), "broken name");
+    // Chart ranges are computed from the layout constants, not copied by hand,
+    // so a future row shift cannot leave a stale address behind here again.
+    let revenue_range = format!("{}:{}", cell_abs(pnl::REVENUE, FIRST_YEAR_COL), cell_abs(pnl::REVENUE, last_year_col()));
     let revenue = entry(&mut archive, "xl/charts/chart1.xml");
-    assert!(revenue.contains("'P&amp;L'!$C$4:$H$4"), "revenue values: {revenue}");
+    assert!(revenue.contains(&format!("'P&amp;L'!{revenue_range}")), "revenue values: {revenue}");
+    let margin_range = format!(
+        "{}:{}",
+        cell_abs(pnl::EBITDA_MARGIN, FIRST_YEAR_COL),
+        cell_abs(pnl::EBITDA_MARGIN, last_year_col())
+    );
     let margin = entry(&mut archive, "xl/charts/chart2.xml");
-    assert!(margin.contains("'P&amp;L'!$C$11:$H$11"), "margin values: {margin}");
+    assert!(margin.contains(&format!("'P&amp;L'!{margin_range}")), "margin values: {margin}");
     let pie = entry(&mut archive, "xl/charts/chart3.xml");
-    assert!(pie.contains("<c:pieChart>") && pie.contains("Rounding!$B$4:$B$8"), "pie: {pie}");
+    let pie_range = format!("{}!{}", rounding::NAME, rounding::pie_values_address_abs());
+    assert!(pie.contains("<c:pieChart>") && pie.contains(&pie_range), "pie: {pie}");
 }
 
 // Every chart in the demo labels its points with the value and nothing else,
@@ -158,4 +199,63 @@ fn subset_sum_hits(values: &[f64], target: f64) -> (u32, u32) {
         }
     }
     (hits, size)
+}
+
+// Every visible sheet opens with the 7-row guide band (GUIDE_ROWS in
+// layout.rs); Scratch is hidden on purpose and carries no band.
+#[test]
+fn every_visible_sheet_opens_with_its_guide() {
+    let (mut archive, _) = archive();
+    let strings = shared_strings(&mut archive);
+    for (name, _) in SHEETS {
+        if name == scratch::NAME {
+            continue;
+        }
+        let sheet = sheet_xml(&mut archive, name);
+        let title = cell_text(&sheet, "A1", &strings);
+        assert!(title.starts_with("Try on this sheet"), "{name}: A1 = {title:?}");
+    }
+}
+
+/// The button names a guide's Commands line (always row 6 of the band) may
+/// cite: split on the unambiguous `"), "` between entries (no real action
+/// name contains a parenthesis or that exact sequence), then drop each
+/// entry's trailing " (key)".
+fn cited_command_names(commands_line: &str) -> Vec<String> {
+    let body = commands_line.strip_prefix("Commands: ").unwrap_or(commands_line);
+    body.split("), ")
+        .map(|entry| entry.split(" (").next().unwrap_or(entry).to_string())
+        .collect()
+}
+
+/// The exact button names `public/shortcuts.json` defines: the only names a
+/// Commands line may cite. Extracted by hand instead of a JSON dependency,
+/// since every `"name"` field in this file belongs to an action.
+fn real_action_names() -> Vec<String> {
+    let json = std::fs::read_to_string("../public/shortcuts.json").expect("shortcuts.json");
+    let needle = "\"name\": \"";
+    json.match_indices(needle)
+        .map(|(start, _)| {
+            let after = &json[start + needle.len()..];
+            let end = after.find('"').expect("closing quote");
+            after[..end].to_string()
+        })
+        .collect()
+}
+
+#[test]
+fn guide_names_only_real_commands() {
+    let (mut archive, _) = archive();
+    let strings = shared_strings(&mut archive);
+    let real_names = real_action_names();
+    for (name, _) in SHEETS {
+        if name == scratch::NAME {
+            continue;
+        }
+        let sheet = sheet_xml(&mut archive, name);
+        let commands = cell_text(&sheet, "A6", &strings);
+        for cited in cited_command_names(&commands) {
+            assert!(real_names.contains(&cited), "{name}: unknown command {cited:?} in {commands:?}");
+        }
+    }
 }

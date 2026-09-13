@@ -3,19 +3,29 @@
 
 use rust_xlsxwriter::{Note, Worksheet, XlsxError};
 
-use crate::layout::{cell, LABEL_COL, TITLE_ROW};
+use crate::layout::{cell, GUIDE_ROWS, LABEL_COL, TITLE_ROW};
 use crate::pen::Pen;
+use crate::sheets::guide::{self, Guide};
 use crate::style::Styles;
 use crate::tally::Tally;
 
 pub const NAME: &str = "Data";
-const NOTE_ROW: u32 = 1;
-const HEADER_ROW: u32 = 2;
-const FIRST_PRODUCT_ROW: u32 = 3;
+const NOTE_ROW: u32 = GUIDE_ROWS + 1;
+const HEADER_ROW: u32 = GUIDE_ROWS + 2;
+const FIRST_PRODUCT_ROW: u32 = GUIDE_ROWS + 3;
 const PRODUCT_COL: u16 = 0;
 const FIRST_MONTH_COL: u16 = 1;
-const HINT_ROW: u32 = 9;
-const FIND_ROW: u32 = 10;
+const HINT_ROW: u32 = GUIDE_ROWS + 9;
+const FIND_ROW: u32 = GUIDE_ROWS + 10;
+const GUIDE: Guide = Guide {
+    title: "a wide product-by-month grid",
+    tasks: &[
+        "Unpivot the product-by-month grid into one row per cell.",
+        "Find in workbook searches for the note's text.",
+        "Export selection as a picture, then in PowerPoint Slide 4: select the empty placeholder, Where = Selected shape.",
+    ],
+    commands: &["Find in workbook (Ctrl+Shift+Alt+F)"],
+};
 const NOTE_MONTH: usize = 2;
 const NOTE_PRODUCT: usize = 2;
 const PRODUCT_WIDTH: f64 = 16.0;
@@ -31,6 +41,7 @@ const PRODUCTS: [(&str, [f64; 6]); 5] = [
 ];
 
 pub fn build(sheet: &mut Worksheet, styles: &Styles) -> Result<Tally, XlsxError> {
+    let mut tally = guide::write(sheet, styles, &GUIDE)?;
     let mut pen = Pen::new(sheet);
     pen.text(TITLE_ROW, LABEL_COL, "Monthly sales by product (EUR thousands): a wide grid", &styles.title)?;
     pen.text(NOTE_ROW, LABEL_COL, &format!("Select {} and press Unpivot for the long product-month-value table.", grid_address()), &styles.note)?;
@@ -55,7 +66,8 @@ pub fn build(sheet: &mut Worksheet, styles: &Styles) -> Result<Tally, XlsxError>
     )?;
     sheet.set_column_width(PRODUCT_COL, PRODUCT_WIDTH)?;
     sheet.set_column_range_width(FIRST_MONTH_COL, FIRST_MONTH_COL + MONTHS.len() as u16 - 1, MONTH_WIDTH)?;
-    Ok(pen.tally)
+    tally += pen.tally;
+    Ok(tally)
 }
 
 /// A1 address of the wide grid, header row and product column included.

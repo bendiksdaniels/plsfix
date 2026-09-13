@@ -5,6 +5,7 @@ use rust_xlsxwriter::{Color, Format, FormatAlign, FormatBorder};
 
 pub const NAVY: Color = Color::RGB(0x14_21_3D);
 pub const TEAL: Color = Color::RGB(0x2E_C4_B6);
+pub const MINT_TINT: Color = Color::RGB(0xE6_F8_F6);
 pub const EUR_K: &str = "#,##0;(#,##0);\"-\"";
 pub const PERCENT: &str = "0.0%";
 pub const PERCENT_2: &str = "0.00%";
@@ -26,6 +27,8 @@ pub struct Styles {
     pub points: Format,
     pub whole: Format,
     pub plain: Format,
+    pub guide_title: Format,
+    pub guide_text: Format,
 }
 
 impl Styles {
@@ -47,6 +50,12 @@ impl Styles {
             points: Format::new().set_num_format(POINTS),
             whole: Format::new().set_num_format(WHOLE),
             plain: Format::new(),
+            guide_title: Format::new()
+                .set_bold()
+                .set_font_color(NAVY)
+                .set_background_color(MINT_TINT)
+                .set_text_wrap(),
+            guide_text: Format::new().set_text_wrap(),
         }
     }
 }

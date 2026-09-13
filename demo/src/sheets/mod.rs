@@ -4,6 +4,7 @@
 pub mod assumptions;
 pub mod bridge;
 pub mod data;
+pub mod guide;
 pub mod pnl;
 pub mod rounding;
 pub mod scratch;

@@ -8,14 +8,30 @@ use rust_xlsxwriter::{Format, Worksheet, XlsxError};
 
 use crate::layout::{
     a1_row, assumption_col, assumptions as a, cell, column, last_year_col, pnl::*, year_col,
-    FIRST_YEAR_COL, HEADER_ROW, LABEL_COL, TITLE_ROW, UNIT_COL, YEARS,
+    FIRST_YEAR_COL, GUIDE_ROWS, HEADER_ROW, LABEL_COL, TITLE_ROW, UNIT_COL, YEARS,
 };
 use crate::pen::Pen;
+use crate::sheets::guide::{self, Guide};
 use crate::style::Styles;
 use crate::tally::Tally;
 
 pub const NAME: &str = crate::layout::PNL_SHEET;
-const NOTE_ROW: u32 = 1;
+const NOTE_ROW: u32 = GUIDE_ROWS + 1;
+/// The P&L table range cited in the third task is HEADER_ROW..NET_INCOME,
+/// LABEL_COL..last_year_col(): recompute by hand if any of those move.
+const GUIDE: Guide = Guide {
+    title: "the forecast P&L, with two planted errors",
+    tasks: &[
+        "Autocolor selection and Toggle audit overlay surface the two planted errors.",
+        "Cycle percent format keeps the margin rows at a consistent decimal.",
+        "Select A10:H24 and use Links > Export as table; in PowerPoint pick Slide 2, Where = Whole slide.",
+    ],
+    commands: &[
+        "Autocolor selection (Ctrl+Shift+K)",
+        "Toggle audit overlay (Ctrl+Shift+A)",
+        "Cycle percent format (Ctrl+Shift+5)",
+    ],
+};
 const LABEL_WIDTH: f64 = 46.0;
 const UNIT_WIDTH: f64 = 7.0;
 const YEAR_WIDTH: f64 = 11.0;
@@ -80,6 +96,7 @@ pub fn planted_cells() -> Vec<String> {
 }
 
 pub fn build(sheet: &mut Worksheet, styles: &Styles) -> Result<Tally, XlsxError> {
+    let mut tally = guide::write(sheet, styles, &GUIDE)?;
     let mut pen = Pen::new(sheet);
     let planted = planted_cells();
     let note = format!(
@@ -97,7 +114,8 @@ pub fn build(sheet: &mut Worksheet, styles: &Styles) -> Result<Tally, XlsxError>
     sheet.set_column_width(UNIT_COL, UNIT_WIDTH)?;
     sheet.set_column_range_width(FIRST_YEAR_COL, last_year_col(), YEAR_WIDTH)?;
     sheet.set_freeze_panes(HEADER_ROW + 1, FIRST_YEAR_COL)?;
-    Ok(pen.tally)
+    tally += pen.tally;
+    Ok(tally)
 }
 
 fn write_header(pen: &mut Pen, styles: &Styles) -> Result<(), XlsxError> {
