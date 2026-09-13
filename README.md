@@ -197,6 +197,11 @@ Export a range or a chart from Excel and keep it fresh in a deck without re-past
   source* points the one ticked picture at another export waiting in the Inbox - the same table
   from a newer workbook, say - keeping its slide, position and size. *Break
   link* removes the tracker and leaves the picture.
+- Insert placement (v2.8): two pickers above the Inbox list choose where *Insert* and *Paste
+  latest linked* land - **Slide** (the active slide, or any slide by number) and **Where**
+  (*Free space* by default, the selected shape, a half, a quarter or the whole slide). Halves,
+  quarters and the whole slide are fitted to the slide's content area with the object's aspect
+  kept and centred, and an empty layout placeholder is removed once something is fitted into it.
 - PowerPoint, tab **Tools**: object tools for the shapes selected on the slide - align (left,
   centre, right, top, middle, bottom), distribute across or down, match size to the first
   selected object, select similar (same type and size on the slide), swap two positions - and a
