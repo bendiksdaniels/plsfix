@@ -3,6 +3,7 @@
 // draw-timeout fallback) honouring a non-default InsertTarget, and a failed
 // insert never taking a consumed placeholder down with it. Split out of
 // target.test.ts, which keeps resolveTarget/finishTarget in isolation.
+// Strict load semantics are on throughout.
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createWorkspace } from "../link/workspace";
@@ -15,10 +16,16 @@ import {
   seedTable,
   seedText,
 } from "../../test/ppt.support";
-import { uninstallFakePpt, type FakePptShape } from "../../test/fakeppt";
+import {
+  enableStrictLoadSemantics,
+  uninstallFakePpt,
+  type FakePptShape,
+} from "../../test/fakeppt";
 import { fakePng } from "../../test/fakepng";
 import { settleHungSync } from "../../test/hung-sync";
 import type { InsertTarget } from "./placement";
+
+enableStrictLoadSemantics();
 
 afterEach(() => {
   uninstallFakePpt();

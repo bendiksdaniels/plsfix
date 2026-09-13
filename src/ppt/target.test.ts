@@ -1,18 +1,25 @@
 // The Slide/Where pickers' target resolution: src/ppt/placement.ts's
-// resolveTarget and finishTarget directly, then every insert path (picture,
-// table, text, chart) end to end through links.insertFromInbox. Kept out of
-// links.audit.test.ts, already at the 400-line cap.
+// resolveTarget and finishTarget in isolation (target-insert.test.ts covers
+// every insert path end to end through links.insertFromInbox). Kept out of
+// links.audit.test.ts, already at the 400-line cap. Strict load semantics
+// are on, so every scalar resolveTarget reads off the selection or a
+// placeholder's text frame is proven loaded, not merely read off the fake.
 
 import { afterEach, describe, expect, it } from "vitest";
 import { spotBox, type Spot } from "../layout";
 import { bootPpt } from "../../test/ppt.support";
-import { uninstallFakePpt } from "../../test/fakeppt";
+import {
+  enableStrictLoadSemantics,
+  uninstallFakePpt,
+} from "../../test/fakeppt";
 import {
   finishTarget,
   resolveTarget,
   SLIDE,
   type InsertTarget,
 } from "./placement";
+
+enableStrictLoadSemantics();
 
 afterEach(() => {
   uninstallFakePpt();
