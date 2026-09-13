@@ -10,8 +10,11 @@ import {
   exportSelectionAsText,
   goToSource,
   listWorkbookLinks,
+  moveLinksToProject,
   pushLinks,
+  readProjectState,
   removeLink,
+  setActiveProject,
   touchWorkbookLinks,
   type ExportKind,
   watchWorksheetEdits,
@@ -72,6 +75,7 @@ interface Tab {
   buttons: HTMLButtonElement[];
   // The sheet's charts, for a chart export with nothing selected.
   chartPick: HTMLSelectElement;
+  projectSelect: HTMLSelectElement;
   rows: WorkbookLinkRow[];
   selected: Set<string>;
   workspace: Workspace | null;
@@ -100,6 +104,7 @@ function newTab(deps: LinksTabDeps): Tab {
   return {
     deps,
     chartPick: element(deps.root, "export-chart-pick"),
+    projectSelect: element(deps.root, "link-project"),
     list: element(deps.root, "workbook-links"),
     toggles: {
       autopush: element(deps.root, "links-autopush"),
@@ -149,6 +154,13 @@ function wireActions(tab: Tab): void {
   wire(tab, "forget-key", () => forgetKey(tab));
   wirePush(tab, "push-selected", false);
   wirePush(tab, "push-all", true);
+  wire(tab, "new-project", () => showProjectPrompt(tab));
+  wire(tab, "project-ok", () => createProject(tab));
+  wire(tab, "project-cancel", () => hideProjectPrompt(tab));
+  wire(tab, "move-to-project", () => moveSelected(tab));
+  tab.projectSelect.addEventListener("change", () => {
+    void guarded(tab, "link-project", () => chooseProject(tab));
+  });
 
   // Links are added and sources deleted without the pane hearing about it, so
   // the list is read again whenever the tab comes into view - and a key read
@@ -231,10 +243,30 @@ async function refresh(tab: Tab): Promise<void> {
   }
   const live = new Set(tab.rows.map((row) => row.entry.id));
   for (const id of tab.selected) if (!live.has(id)) tab.selected.delete(id);
+  await fillProjectSelect(tab);
   renderWorkbookLinks(tab.list, tab.rows, tab.selected, (id, on) => {
     if (on) tab.selected.add(id);
     else tab.selected.delete(id);
   });
+}
+
+async function fillProjectSelect(tab: Tab): Promise<void> {
+  const state = await readProjectState();
+  const picked = tab.projectSelect.value;
+  const hadOptions = tab.projectSelect.options.length > 0;
+  const options = [
+    new Option("All projects", "all"),
+    new Option("No project", ""),
+    ...state.names.map((name) => new Option(name, name)),
+  ];
+  tab.projectSelect.replaceChildren(...options);
+  const keep = hadOptions && options.some((option) => option.value === picked);
+  const fallback = state.active ?? "all";
+  tab.projectSelect.value = keep
+    ? picked
+    : options.some((option) => option.value === fallback)
+      ? fallback
+      : "all";
 }
 
 function renderKey(tab: Tab): void {
@@ -306,7 +338,7 @@ async function push(tab: Tab, action: string, all: boolean): Promise<void> {
   const failures: string[] = [];
   let line = "";
   await guarded(tab, action, async () => {
-    const ids = all ? "all" : [...requireSelection(tab)];
+    const ids = all ? shownPushIds(tab) : [...requireSelection(tab)];
     const summary = await pushLinks(ids, tab.deps.relay);
     failures.push(...summary.failures);
     line = summarize(summary);
@@ -359,6 +391,59 @@ async function forgetKey(tab: Tab): Promise<string> {
   tab.revealed = false;
   renderKey(tab);
   return "Link key forgotten on this computer.";
+}
+
+function shownPushIds(tab: Tab): string[] | "all" {
+  const value = tab.projectSelect.value;
+  if (value === "all") return "all";
+  return tab.rows
+    .filter((row) => (row.entry.project ?? "") === value)
+    .map((row) => row.entry.id);
+}
+
+async function chooseProject(tab: Tab): Promise<string> {
+  const value = tab.projectSelect.value;
+  await setActiveProject(value === "all" || value === "" ? undefined : value);
+  await refresh(tab);
+  return value === "all" || value === ""
+    ? "No project for new exports."
+    : `Project: ${value}`;
+}
+
+async function showProjectPrompt(tab: Tab): Promise<string> {
+  const prompt = element<HTMLElement>(tab.deps.root, "project-prompt");
+  const input = element<HTMLInputElement>(tab.deps.root, "project-name");
+  prompt.hidden = false;
+  input.focus();
+  return "Name the project.";
+}
+
+async function hideProjectPrompt(tab: Tab): Promise<string> {
+  const prompt = element<HTMLElement>(tab.deps.root, "project-prompt");
+  const input = element<HTMLInputElement>(tab.deps.root, "project-name");
+  prompt.hidden = true;
+  input.value = "";
+  return "Cancelled.";
+}
+
+async function createProject(tab: Tab): Promise<string> {
+  const input = element<HTMLInputElement>(tab.deps.root, "project-name");
+  const name = input.value;
+  if (name.trim() === "") throw new Error("Type a project name.");
+  await setActiveProject(name);
+  await hideProjectPrompt(tab);
+  await refresh(tab);
+  tab.projectSelect.value = name.trim();
+  return `Project: ${name.trim()}`;
+}
+
+async function moveSelected(tab: Tab): Promise<string> {
+  const ids = requireSelection(tab);
+  const name = tab.projectSelect.value;
+  if (name === "all") throw new Error("Pick a project first, or create one.");
+  await moveLinksToProject(ids, name === "" ? undefined : name);
+  await refresh(tab);
+  return `Moved ${String(ids.length)} to ${name === "" ? "No project" : name}.`;
 }
 
 function requireWorkspace(tab: Tab): Workspace {

@@ -15,7 +15,8 @@ export const PPT_HELP: HelpCopy = {
       "update-selected":
         "Repaints the ticked links with their latest picture. Slide and position do not move.",
       "update-slide": "Repaints every link on the slide you are on.",
-      "update-all": "Repaints every link in this deck.",
+      "update-all":
+        "Repaints every link that matches the filter. All projects means the whole deck.",
       "revert-selected":
         "Puts the ticked links back to the picture before the last update. One step only.",
       "go-to-slide": "Jumps to the slide the first ticked link sits on.",

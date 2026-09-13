@@ -184,12 +184,16 @@ Export a range or a chart from Excel and keep it fresh in a deck without re-past
   current picture; it runs only while the pane is open and is remembered per workbook.
   **Highlight linked cells** (a second tick box) tints every linked range so you can see what
   feeds the deck, and puts the original fills back when it is switched off; charts are not tinted.
+  **Projects** group the list: pick or create a project above Linked objects, new exports join it,
+  *Push all* covers the shown project, and *Move to project* reassigns ticked links. Old links
+  without a name stay under No project.
 - PowerPoint, tab **pls,fix > Links**: the **Inbox** lists exports waiting to be placed;
   *Insert* puts a picture on the selected slide with a tracker in the shape's tags, and
   *Paste latest linked* does the same for the newest export in one click. The
   **Links** list shows every tracked picture in the deck (slide, source, status), can be
-  searched and filtered by status, source workbook and slide, and
-  *Update selected / slide / all* repaints them in place: position and size are kept, only
+  searched and filtered by status, source workbook, slide and project, and the Inbox is grouped
+  by project. *Update selected / slide / all* repaints them in place (*Update all* covers the
+  filtered set): position and size are kept, only
   the height follows when the picture's aspect ratio changed. A round trip PowerPoint never
   answers ends after a minute with a sentence naming what stopped, and a chart insert or
   refresh that stops mid-draw becomes the picture with the reason under *Update all*. *Revert last update* puts the

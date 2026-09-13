@@ -24,8 +24,8 @@ PowerPoint process start time, MERP dialog) and the E1-E15 bisection.
    one variable per run). `GROUP_TIER_MAC` stays 6: a 12-column chart would have been 7 in one addGroup
    (proven in `src/ppt/charts.test.ts`); 12 as a tier is still unproven on the Mac.
    Web (rig) and Windows (Daniel's own pass, `tasks/launch-check.md`) are unchanged by the tiers.
-2. **Link folders ("projects").** Daniel: "folders for the links, so if I have multiple projects I can track
-   these links." Design to build (his go given 13.09 with "create the folders"): a `project` name on every
+2. **Link folders ("projects").** Built on `link-projects`. Daniel: "folders for the links, so if I have multiple projects I can track
+   these links." Design that shipped: a `project` name on every
    link, chosen in Excel and carried with the link, the relay stays blind.
    - Model (`src/link/model.ts`): `project?: string` on the registry entry, the sealed `InboxItem` and the
      `LinkTag` written on the PowerPoint shape (missing = "No project"; old links and old decks keep

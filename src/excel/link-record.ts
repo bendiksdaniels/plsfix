@@ -105,6 +105,7 @@ async function announce(
     label: entry.label,
     src,
     createdAt: entry.createdAt,
+    ...(entry.project ? { project: entry.project } : {}),
   };
   const blob = await seal(ws.enc, ws.id, encodeInboxItem(item));
   await relay.postInbox(ws.id, ws.auth, entry.id, blob);

@@ -4,6 +4,7 @@
 // share. Pure DOM: handed what to draw and the callback to call, nothing else.
 
 import type { WorkbookLinkRow } from "../excel";
+import { projectLabel } from "../link/project";
 import { NEVER, relativeStamp } from "../ui/time";
 
 const EMPTY_MESSAGE = "No linked objects in this workbook yet.";
@@ -21,7 +22,27 @@ export function renderWorkbookLinks(
     body.append(messageRow(EMPTY_MESSAGE));
     return;
   }
-  for (const row of rows) body.append(linkRow(row, selected, onToggle));
+  const groups = new Map<string, WorkbookLinkRow[]>();
+  for (const row of rows) {
+    const name = projectLabel(row.entry.project);
+    const group = groups.get(name) ?? [];
+    group.push(row);
+    groups.set(name, group);
+  }
+  for (const [name, group] of groups) {
+    body.append(projectHeader(name));
+    for (const row of group) body.append(linkRow(row, selected, onToggle));
+  }
+}
+
+function projectHeader(name: string): HTMLTableRowElement {
+  const tr = document.createElement("tr");
+  const cell = document.createElement("td");
+  cell.className = "wl-project";
+  cell.colSpan = ROW_COLUMNS;
+  cell.textContent = name;
+  tr.append(cell);
+  return tr;
 }
 
 // One full-width cell, used for both the empty list and a list that could not

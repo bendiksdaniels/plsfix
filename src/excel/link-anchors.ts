@@ -178,8 +178,9 @@ export function newEntry(
   kind: LinkKind,
   anchor: string,
   label: string,
+  project?: string,
 ): RegistryEntry {
-  return {
+  const entry: RegistryEntry = {
     id,
     kind,
     anchor,
@@ -189,6 +190,8 @@ export function newEntry(
     lastPushedAt: null,
     rev: 0,
   };
+  if (project !== undefined) entry.project = project;
+  return entry;
 }
 
 // Hidden, because the anchor is bookkeeping: it must not clutter the modeller's

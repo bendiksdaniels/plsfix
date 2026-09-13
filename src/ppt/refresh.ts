@@ -41,7 +41,7 @@ export function supportsInPlaceRefresh(): boolean {
 // The tag a shape carries after this revision: the link's own identity plus
 // where the payload came from. Shared with the insert in host.ts.
 export function tagFor(
-  link: { id: string; kind: LinkTag["kind"] },
+  link: { id: string; kind: LinkTag["kind"]; project?: string },
   payload: Payload,
   rev: number,
 ): LinkTag {
@@ -52,6 +52,7 @@ export function tagFor(
     rev,
     src: payload.src,
     pushedAt: payload.pushedAt,
+    ...(link.project ? { project: link.project } : {}),
   };
 }
 

@@ -321,15 +321,23 @@ const links: HelpCopy = {
     },
   },
   "links-heading": {
-    about: "Every link this workbook feeds, and what you can do to them.",
+    about:
+      "Every link this workbook feeds, grouped by project. The project list is the one new exports join.",
     buttons: {
       "push-selected":
         "Renders the ticked links again and sends them to the relay.",
-      "push-all": "Renders every link in this workbook and sends them all.",
+      "push-all":
+        "Renders every link in the shown project, or every link if All projects is selected.",
       "go-to-source":
         "Jumps to the range or chart the ticked link was exported from.",
       "remove-link":
         "Drops the link from this workbook. A picture already in a deck stays where it is.",
+      "new-project":
+        "Opens the name box. New exports join the project you create.",
+      "move-to-project":
+        "Moves the ticked links into the project shown in the list above.",
+      "project-ok": "Creates the named project and selects it for new exports.",
+      "project-cancel": "Closes the name box without creating a project.",
     },
   },
   "linkkey-heading": {

@@ -5,6 +5,7 @@
 // never leave a stale listener.
 
 import type { InboxItem, LinkKind } from "../link/model";
+import { projectLabel } from "../link/project";
 import type { LinkStatus } from "../link/status";
 import { NEVER, relativeStamp, relativeTime } from "../ui/time";
 
@@ -13,6 +14,7 @@ export interface LinkRowView {
   slide: number;
   label: string;
   source: string;
+  project?: string;
   kind: LinkKind;
   status: LinkStatus;
   // null only for a link the relay has never held a push for; 0 is a real
@@ -117,7 +119,33 @@ export function renderInbox(
     );
     return;
   }
-  list.replaceChildren(...items.map((item) => inboxRow(item, onInsert)));
+  list.replaceChildren(...groupedInbox(items, onInsert));
+}
+
+function groupedInbox(
+  items: InboxItem[],
+  onInsert: (item: InboxItem) => void,
+): HTMLElement[] {
+  const groups = new Map<string, InboxItem[]>();
+  for (const item of items) {
+    const name = projectLabel(item.project);
+    const group = groups.get(name) ?? [];
+    group.push(item);
+    groups.set(name, group);
+  }
+  const nodes: HTMLElement[] = [];
+  for (const [name, group] of groups) {
+    nodes.push(inboxHeader(name));
+    for (const item of group) nodes.push(inboxRow(item, onInsert));
+  }
+  return nodes;
+}
+
+function inboxHeader(name: string): HTMLParagraphElement {
+  const line = document.createElement("p");
+  line.className = "inbox-project";
+  line.textContent = name;
+  return line;
 }
 
 function hint(text: string): HTMLParagraphElement {

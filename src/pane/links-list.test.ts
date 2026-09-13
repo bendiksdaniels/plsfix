@@ -52,6 +52,24 @@ describe("renderWorkbookLinks", () => {
     vi.useRealTimers();
   });
 
+  it("groups rows under their project name", () => {
+    const body = tbody();
+    renderWorkbookLinks(
+      body,
+      [
+        row(ID_A, { project: "Amasty" }),
+        row(ID_B, { project: "Balcia" }),
+        row("c".repeat(32)),
+      ],
+      new Set(),
+      () => undefined,
+    );
+    const headers = Array.from(body.querySelectorAll(".wl-project")).map(
+      (cell) => cell.textContent,
+    );
+    expect(headers).toEqual(["Amasty", "Balcia", "No project"]);
+  });
+
   it("renders one row per entry with its label and anchor", () => {
     const body = tbody();
     renderWorkbookLinks(

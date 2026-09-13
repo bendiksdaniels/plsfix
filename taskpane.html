@@ -1656,6 +1656,29 @@
               <h2 id="links-heading">Linked objects</h2>
             </div>
           </div>
+          <div class="io-row">
+            <label class="key-label" for="link-project"
+              >Project
+              <select id="link-project"></select>
+            </label>
+            <button id="new-project" type="button">New project</button>
+            <button id="move-to-project" type="button">Move to project</button>
+          </div>
+          <div id="project-prompt" hidden>
+            <label class="key-label" for="project-name"
+              >Name
+              <input
+                id="project-name"
+                type="text"
+                maxlength="40"
+                autocomplete="off"
+              />
+            </label>
+            <div class="io-row">
+              <button id="project-ok" type="button">Create</button>
+              <button id="project-cancel" type="button">Cancel</button>
+            </div>
+          </div>
           <table class="wl-table">
             <tbody id="workbook-links"></tbody>
           </table>

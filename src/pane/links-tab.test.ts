@@ -41,6 +41,9 @@ vi.mock("../excel", () => ({
   pushLinks: vi.fn(),
   removeLink: vi.fn(),
   touchWorkbookLinks: vi.fn(async () => 0),
+  readProjectState: vi.fn(async () => ({ names: [], active: undefined })),
+  setActiveProject: vi.fn(async () => undefined),
+  moveLinksToProject: vi.fn(async () => undefined),
 }));
 
 const ID_A = "a".repeat(32);

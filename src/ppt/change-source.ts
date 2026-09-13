@@ -113,6 +113,7 @@ function tagFor(item: InboxItem, payload: Payload, rev: number): LinkTag {
     rev,
     src: payload.src,
     pushedAt: payload.pushedAt,
+    ...(item.project ? { project: item.project } : {}),
   };
 }
 

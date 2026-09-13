@@ -24,6 +24,7 @@ export * from "./styles";
 export * from "./model-check";
 export * from "./share";
 export * from "./links";
+export * from "./link-projects";
 export * from "./link-touch";
 export * from "./link-watch";
 export * from "./link-list-watch";

@@ -24,6 +24,7 @@ import { createToast } from "../ui/toast";
 import { formatVersion } from "../ui/version";
 import {
   filterRows,
+  linkProjects,
   linkSlides,
   linkSources,
   pruneSelection,
@@ -75,6 +76,7 @@ const linkSearch = getElement<HTMLInputElement>("link-search");
 const linkStatusFilter = getElement<HTMLSelectElement>("link-status-filter");
 const linkSourceFilter = getElement<HTMLSelectElement>("link-source-filter");
 const linkSlideFilter = getElement<HTMLSelectElement>("link-slide-filter");
+const linkProjectFilter = getElement<HTMLSelectElement>("link-project-filter");
 const objectAlignMode = getElement<HTMLSelectElement>("object-align-mode");
 const objectDistributeAxis = getElement<HTMLSelectElement>(
   "object-distribute-axis",
@@ -123,9 +125,8 @@ installFirstRun(document, "plsfix.firstRun.ppt.v1", "first-run-ppt");
 // Rendering
 // ---------------------------------------------------------------------------
 
-function renderLinks(): void {
-  syncLinkFilterOptions();
-  const filtered = filterRows(rows, {
+function currentFilter(): Parameters<typeof filterRows>[1] {
+  return {
     query: linkSearch.value,
     status: linkStatusFilter.value as Parameters<
       typeof filterRows
@@ -133,7 +134,13 @@ function renderLinks(): void {
     source: linkSourceFilter.value,
     slide:
       linkSlideFilter.value === "all" ? "all" : Number(linkSlideFilter.value),
-  });
+    project: linkProjectFilter.value,
+  };
+}
+
+function renderLinks(): void {
+  syncLinkFilterOptions();
+  const filtered = filterRows(rows, currentFilter());
   renderLinkRows(linkRowsBody, toRowViews(filtered, selected), toggleSelection);
   linksEmpty.hidden = rows.length > 0;
   linksFilteredEmpty.hidden = rows.length === 0 || filtered.length > 0;
@@ -170,6 +177,17 @@ function syncLinkFilterOptions(): void {
     linkSlides(rows),
     (value) => `Slide ${String(value)}`,
   );
+  const projectNames = linkProjects(rows);
+  const picked = linkProjectFilter.value;
+  const options = [
+    new Option("All projects", "all"),
+    new Option("No project", ""),
+    ...projectNames.map((name) => new Option(name, name)),
+  ];
+  linkProjectFilter.replaceChildren(...options);
+  linkProjectFilter.value = options.some((option) => option.value === picked)
+    ? picked
+    : "all";
 }
 
 function toggleSelection(key: string, isSelected: boolean): void {
@@ -449,7 +467,7 @@ const BUTTON_ACTIONS: Record<string, () => Promise<string>> = {
   "update-selected": () =>
     updateRows(requireSelection(selectedRows(rows, selected))),
   "update-slide": updateSlide,
-  "update-all": () => updateRows(rows),
+  "update-all": () => updateRows(filterRows(rows, currentFilter())),
   "revert-selected": revertSelected,
   "break-selected": breakSelected,
   "go-to-slide": goToSelectedSlide,
@@ -486,6 +504,7 @@ linkSearch.addEventListener("input", renderLinks);
 linkStatusFilter.addEventListener("change", renderLinks);
 linkSourceFilter.addEventListener("change", renderLinks);
 linkSlideFilter.addEventListener("change", renderLinks);
+linkProjectFilter.addEventListener("change", renderLinks);
 
 renderLinks();
 renderInboxView();

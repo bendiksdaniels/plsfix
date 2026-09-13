@@ -63,6 +63,19 @@ describe("tags", () => {
       encodeTag({ ...tag, src: { ...src, workbook: "x".repeat(3000) } }),
     ).toThrow(/2048/);
   });
+
+  it("round-trips a project and accepts a tag without one", () => {
+    const named = { ...tag, project: "Amasty" };
+    expect(decodeTag(encodeTag(named))).toEqual(named);
+    expect(decodeTag(encodeTag(tag))?.project).toBeUndefined();
+  });
+
+  it("cleans a dirty project rather than dropping the tag", () => {
+    const raw = JSON.stringify({ ...tag, project: "  Ama\nsty  " });
+    expect(decodeTag(raw)?.project).toBe("Amasty");
+    const blank = JSON.stringify({ ...tag, project: "   " });
+    expect(decodeTag(blank)?.project).toBeUndefined();
+  });
 });
 
 describe("registry", () => {
@@ -97,6 +110,33 @@ describe("registry", () => {
     // A newer schema is readable JSON we still must not overwrite.
     expect(tryDecodeRegistry('{"v":2,"links":[]}')).toBeNull();
     expect(tryDecodeRegistry('{"v":1,"links":[{"id":"x"}]}')).toBeNull();
+  });
+
+  it("keeps a project's name on an entry and the workbook's project list", () => {
+    const registry = {
+      v: 1 as const,
+      activeProject: "Amasty",
+      projects: ["Amasty", "Balcia"],
+      links: [
+        {
+          id: tag.id,
+          kind: "range" as const,
+          anchor: "PLSFIX_LINK_0123abcd",
+          label: "Revenue",
+          token: "t".repeat(43),
+          createdAt: tag.pushedAt,
+          lastPushedAt: null,
+          rev: 0,
+          project: "Amasty",
+        },
+      ],
+    };
+    expect(decodeRegistry(encodeRegistry(registry))).toEqual(registry);
+    const old = {
+      v: 1 as const,
+      links: [registry.links[0]!],
+    };
+    expect(decodeRegistry(encodeRegistry(old)).projects).toBeUndefined();
   });
 });
 

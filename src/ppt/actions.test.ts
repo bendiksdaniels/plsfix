@@ -154,6 +154,20 @@ describe("link filters", () => {
     expect(linkSources(rows)).toEqual(["Budget.xlsx", "Model_v4.xlsx"]);
     expect(linkSlides(rows)).toEqual([1, 5]);
   });
+
+  it("filters by project, treating a missing name as no project", () => {
+    const rows = [
+      row("s1", "sh1", "current", 0),
+      row("s2", "sh2", "current", 1),
+    ];
+    rows[1]!.found.tag.project = "Amasty";
+    expect(
+      filterRows(rows, { query: "", status: "all", project: "Amasty" }),
+    ).toEqual([rows[1]]);
+    expect(filterRows(rows, { query: "", status: "all", project: "" })).toEqual(
+      [rows[0]],
+    );
+  });
 });
 
 describe("updateDetails", () => {

@@ -127,7 +127,13 @@ async function exportRange(
       const id = newLinkId(randomBytes);
       const anchor = anchorName(id);
       const src = sourceOf(workbook, anchor, resolved);
-      const entry = newEntry(id, kind, anchor, sourceLabel(src, kind));
+      const entry = newEntry(
+        id,
+        kind,
+        anchor,
+        sourceLabel(src, kind),
+        registry.activeProject,
+      );
       // Anchor and render in one batch, before any network call: a selection
       // that changes during the upload cannot make the two describe different
       // objects. The render owns the anchor from here on, so a picture that

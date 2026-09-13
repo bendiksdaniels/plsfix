@@ -368,6 +368,14 @@
   color: var(--muted);
   font-size: var(--fs-body);
 }
+.wl-project {
+  padding-top: 10px;
+  color: var(--muted);
+  font-size: var(--fs-micro);
+  font-weight: 750;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
 .wl-key {
   display: block;
   overflow-wrap: anywhere;

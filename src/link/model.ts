@@ -5,6 +5,12 @@
 
 import { guardChart } from "./chart-guard";
 import type { ChartData } from "./chart-model";
+import {
+  cleanProjectList,
+  optionalProject,
+  readProject,
+  withProject,
+} from "./project";
 
 export type LinkId = string; // 32 lowercase hex chars
 export type LinkKind = "range" | "chart" | "table" | "text";
@@ -23,6 +29,7 @@ export interface LinkTag {
   rev: number;
   src: Source;
   pushedAt: string;
+  project?: string;
 }
 
 export interface RegistryEntry {
@@ -34,11 +41,14 @@ export interface RegistryEntry {
   createdAt: string;
   lastPushedAt: string | null;
   rev: number;
+  project?: string;
 }
 
 export interface Registry {
   v: 1;
   links: RegistryEntry[];
+  projects?: string[];
+  activeProject?: string;
 }
 
 export interface PicturePayload {
@@ -135,6 +145,7 @@ export interface InboxItem {
   label: string;
   src: Source;
   createdAt: string;
+  project?: string;
 }
 
 export const TAG_LINK = "PLSFIX_LINK";
@@ -191,7 +202,8 @@ function isTag(value: unknown): value is LinkTag {
     isKind(value.kind) &&
     typeof value.rev === "number" &&
     isSource(value.src) &&
-    typeof value.pushedAt === "string"
+    typeof value.pushedAt === "string" &&
+    optionalProject(value.project)
   );
 }
 
@@ -205,7 +217,8 @@ function isEntry(value: unknown): value is RegistryEntry {
     typeof value.token === "string" &&
     typeof value.createdAt === "string" &&
     (value.lastPushedAt === null || typeof value.lastPushedAt === "string") &&
-    typeof value.rev === "number"
+    typeof value.rev === "number" &&
+    optionalProject(value.project)
   );
 }
 
@@ -214,7 +227,13 @@ function isRegistry(value: unknown): value is Registry {
     isRecord(value) &&
     value.v === 1 &&
     Array.isArray(value.links) &&
-    value.links.every(isEntry)
+    value.links.every(isEntry) &&
+    isOptional(
+      value.projects,
+      (entry) =>
+        Array.isArray(entry) && entry.every((name) => typeof name === "string"),
+    ) &&
+    optionalProject(value.activeProject)
   );
 }
 
@@ -313,12 +332,13 @@ function isInboxItem(value: unknown): value is InboxItem {
     isKind(value.kind) &&
     typeof value.label === "string" &&
     isSource(value.src) &&
-    typeof value.createdAt === "string"
+    typeof value.createdAt === "string" &&
+    optionalProject(value.project)
   );
 }
 
 export function encodeTag(tag: LinkTag): string {
-  const json = JSON.stringify(tag);
+  const json = JSON.stringify(withProject(tag));
   if (json.length > TAG_VALUE_MAX) {
     throw new Error(`encodeTag: tag exceeds ${TAG_VALUE_MAX} chars`);
   }
@@ -329,14 +349,14 @@ export function decodeTag(value: string | null | undefined): LinkTag | null {
   if (value === null || value === undefined) return null;
   try {
     const parsed: unknown = JSON.parse(value);
-    return isTag(parsed) ? parsed : null;
+    return isTag(parsed) ? withProject(parsed) : null;
   } catch {
     return null;
   }
 }
 
 export function encodeRegistry(registry: Registry): string {
-  return JSON.stringify(registry);
+  return JSON.stringify(cleanRegistry(registry));
 }
 
 // Null says "this is not a registry we understand" - unparseable, or a shape a
@@ -348,10 +368,22 @@ export function tryDecodeRegistry(
   if (value === null || value === undefined) return null;
   try {
     const parsed: unknown = JSON.parse(value);
-    return isRegistry(parsed) ? parsed : null;
+    return isRegistry(parsed) ? cleanRegistry(parsed) : null;
   } catch {
     return null;
   }
+}
+
+function cleanRegistry(registry: Registry): Registry {
+  const links = registry.links.map(withProject);
+  const projects = cleanProjectList(registry.projects);
+  const activeProject = readProject(registry.activeProject);
+  return {
+    v: 1,
+    links,
+    ...(projects.length > 0 ? { projects } : {}),
+    ...(activeProject ? { activeProject } : {}),
+  };
 }
 
 export function emptyRegistry(): Registry {
@@ -382,7 +414,7 @@ export function decodePayload(bytes: Uint8Array): Payload {
 }
 
 export function encodeInboxItem(item: InboxItem): Uint8Array {
-  return new TextEncoder().encode(JSON.stringify(item));
+  return new TextEncoder().encode(JSON.stringify(withProject(item)));
 }
 
 export function decodeInboxItem(bytes: Uint8Array): InboxItem {
@@ -390,7 +422,7 @@ export function decodeInboxItem(bytes: Uint8Array): InboxItem {
   if (!isInboxItem(parsed)) {
     throw new Error("decodeInboxItem: not an inbox item");
   }
-  return parsed;
+  return withProject(parsed);
 }
 
 // A table names its range and says so: two links can point at the same cells,

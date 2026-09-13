@@ -146,7 +146,13 @@ export async function exportActiveChart(
       const id = newLinkId(randomBytes);
       const anchor = anchorName(id);
       const src = sourceOf(workbook, anchor, resolved);
-      const entry = newEntry(id, "chart", anchor, sourceLabel(src, "chart"));
+      const entry = newEntry(
+        id,
+        "chart",
+        anchor,
+        sourceLabel(src, "chart"),
+        registry.activeProject,
+      );
       // The rename commits with the batch that asks for the picture, so a render
       // that fails has to give the chart its own name back: an PLSFIX_LINK_ chart no
       // registry entry claims is one the modeller cannot export again.

@@ -15,6 +15,7 @@ export interface LinkFilter {
   status: LinkFilterStatus;
   source?: string;
   slide?: number | "all";
+  project?: string;
 }
 
 // Slide plus shape: a copied link keeps its id and token, so identity in the
@@ -34,6 +35,7 @@ export function toRowViews(
       slide: row.found.slideIndex + 1,
       label: sourceLabel(row.found.tag.src, row.found.tag.kind),
       source: row.found.tag.src.workbook,
+      project: row.found.tag.project,
       kind: row.found.tag.kind,
       status: row.status,
       pushedAt: row.pushedAt,
@@ -58,6 +60,13 @@ export function filterRows(rows: LinkRow[], filter: LinkFilter): LinkRow[] {
       return false;
     }
     if (
+      filter.project !== undefined &&
+      filter.project !== "all" &&
+      (row.found.tag.project ?? "") !== filter.project
+    ) {
+      return false;
+    }
+    if (
       filter.slide !== undefined &&
       filter.slide !== "all" &&
       row.found.slideIndex + 1 !== filter.slide
@@ -68,6 +77,7 @@ export function filterRows(rows: LinkRow[], filter: LinkFilter): LinkRow[] {
     const values = [
       sourceLabel(row.found.tag.src, row.found.tag.kind),
       row.found.tag.src.workbook,
+      row.found.tag.project ?? "",
       row.found.tag.kind,
       row.status,
       String(row.found.slideIndex + 1),
@@ -78,6 +88,16 @@ export function filterRows(rows: LinkRow[], filter: LinkFilter): LinkRow[] {
 
 export function linkSources(rows: LinkRow[]): string[] {
   return [...new Set(rows.map((row) => row.found.tag.src.workbook))].sort();
+}
+
+export function linkProjects(rows: LinkRow[]): string[] {
+  return [
+    ...new Set(
+      rows
+        .map((row) => row.found.tag.project)
+        .filter((name): name is string => name !== undefined),
+    ),
+  ].sort();
 }
 
 export function linkSlides(rows: LinkRow[]): number[] {

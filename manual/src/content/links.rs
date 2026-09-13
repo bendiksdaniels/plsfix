@@ -12,6 +12,7 @@ pub fn links() -> Chapter {
             link_key(),
             export(),
             list(),
+            projects(),
             toggles(),
             insert(),
             slide_and_spot(),
@@ -111,8 +112,36 @@ fn list() -> Section {
                         r#""Remove link""#,
                         "izņem saiti no reģistra; jau ievietotais attēls prezentācijā paliek",
                     ],
+                    &[
+                        r#""New project""#,
+                        "atver nosaukuma lauku; jaunie eksporti pievienojas šim projektam",
+                    ],
+                    &[
+                        r#""Move to project""#,
+                        "pārceļ atzīmētās saites uz izvēlēto projektu",
+                    ],
                 ],
             },
+        ],
+    )
+}
+
+fn projects() -> Section {
+    section(
+        "Projekti",
+        vec![
+            Block::Para(
+                r#"Ja vienā darbgrāmatā ir vairāki darbi, katrai saitei var piešķirt projektu. Relejs projektu neredz: nosaukums paliek Excel reģistrā, iesūtnes vienumā un PowerPoint birkā."#,
+            ),
+            Block::Steps(&[
+                r#"Vir saraksta izvēlieties projektu vai nospiediet "New project" un ierakstiet nosaukumu (līdz 40 rakstzīmēm)."#,
+                r#"Jaunie eksporti pievienojas izvēlētajam projektam. "All projects" nozīmē, ka jaunie eksporti paliek bez projekta."#,
+                r#"Saraksts grupē saites pēc projekta. "Push all" nosūta tikai redzamā projekta saites, vai visas, ja izvēlēts "All projects"."#,
+                r#"PowerPoint cilnē "Links" filtrs "All projects" rāda visu klāju; iesūtne ir grupēta pēc projekta. "Update all" atjaunina tikai filtram atbilstošās saites."#,
+            ]),
+            Block::Para(
+                r#"Vecās saites un veci klāji paliek bez projekta un turpina strādāt. Tukšs nosaukums ir "No project"."#,
+            ),
         ],
     )
 }
@@ -227,7 +256,7 @@ fn filters() -> Section {
         "Meklēšana un filtrēšana",
         vec![
             Block::Para(
-                r#"Virs saišu tabulas cilnē "Links" ir meklēšanas lauks un trīs filtri. Tie sašaurina redzamo sarakstu, bet atzīmētās rindas paliek atzīmētas arī tad, kad filtrs tās paslēpj."#,
+                r#"Virs saišu tabulas cilnē "Links" ir meklēšanas lauks un četri filtri. Tie sašaurina redzamo sarakstu, bet atzīmētās rindas paliek atzīmētas arī tad, kad filtrs tās paslēpj."#,
             ),
             Block::Table {
                 head: &["Vadīkla", "Ko tā sašaurina"],
@@ -235,6 +264,10 @@ fn filters() -> Section {
                     &[
                         "Meklēšanas lauks",
                         "meklē pēc slaida numura, objekta un tā avota darbgrāmatas nosaukuma",
+                    ],
+                    &[
+                        r#""All projects""#,
+                        "rāda visus projektus, vai tikai izvēlēto, vai saites bez projekta",
                     ],
                     &[
                         r#""Source workbook""#,
