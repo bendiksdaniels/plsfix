@@ -50,12 +50,14 @@ impl Styles {
             points: Format::new().set_num_format(POINTS),
             whole: Format::new().set_num_format(WHOLE),
             plain: Format::new(),
-            guide_title: Format::new()
-                .set_bold()
-                .set_font_color(NAVY)
-                .set_background_color(MINT_TINT)
-                .set_text_wrap(),
-            guide_text: Format::new().set_text_wrap(),
+            // No wrap: column A is as narrow as 4 characters on some sheets
+            // (Start here), so wrapped text broke into unreadable slivers.
+            // The line overflows across the empty cells to its right instead
+            // (rows 1-7 hold column A only, everywhere); set_row_format
+            // paints the tint over those cells since they carry no format
+            // of their own.
+            guide_title: Format::new().set_bold().set_font_color(NAVY).set_background_color(MINT_TINT),
+            guide_text: Format::new().set_background_color(MINT_TINT),
         }
     }
 }
