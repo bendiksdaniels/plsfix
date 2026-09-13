@@ -390,6 +390,10 @@ Run with computer use on Daniel's own Excel and PowerPoint, the demo workbook an
 - [x] v2.8.2 on the Mac: the two halves on slide 3 (as pictures then), the placeholder on slide 4
       (consumed, the picture at its box), Paste latest linked with Slide 2 + Top right, Update all:
       all green.
-- [ ] v2.8.3 on the Mac with the released pane: the Revenue chart (Slide 3, Left half) and the
-      Segment pie (Slide 3, Right half) land as shape groups; ungroup once shows the sub-groups.
+- [x] v2.8.3 on the Mac with the released pane (13.09 19:20): the Revenue chart (Slide 3, Left half)
+      and the Segment pie (Slide 3, Top right) land as shape groups, PowerPoint alive; ungroup once
+      shows the sub-groups.
+- [ ] Open, cosmetic: at a quarter-size spot the pie's value labels and legend entries wrap
+      ("1,51 / 9", "Retai / l"): the label boxes are laid out for the plan's size and then scaled
+      with the box, the font is not. Halves and the whole slide are fine.
 

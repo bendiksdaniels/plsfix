@@ -18,8 +18,8 @@
   the bisection on the Mac (E1 = drawGroup without addGroup, then without lines / labels / wedges) to
   bring native charts back there; the ghcr cleanup still waits for the 2FA sudo step in Safari
   (`$S/ghcr-clean.sh` ready; the device code must be re-issued); the rest of the v2.8 desktop section.
-  The worktree `~/.worktrees/plsfix/mac-charts-as-pictures` stays for the bisection (its uncommitted
-  vite proxy points the dev pane at the live relay); the branch is merged.
+  The bisection worktree is gone (branch merged, v2.8.3); the dev-pane-against-the-live-relay recipe
+  (vite proxy target `https://dbautomatizacijas.com/modelis`) is in tasks/lessons.md.
 - 13.09 night, the bisection on Daniel's Mac (after his GitHub login: ghcr cleanup done, 23 image
   versions -> v2.8.2/latest + v2.8.1): **v2.8.3** = native charts back on the Mac. The crash is one
   `addGroup` of a whole chart (19+ shapes); six group fine; so `groupTier` in `src/ppt/chart-draw.ts`
@@ -31,7 +31,11 @@
   flat on PC, redraw keeps one link, a refused top group takes the sub-groups down). Docs, manual (LV),
   README, FEATURES, CLAUDE map and launch-check say tiers instead of pictures. Experiments E1-E15 in
   `tasks/lessons.md`. The demo workbook on the Mac was edited during the proof (P&L!C11 = 13000, chart
-  objects renamed, extra links): `npm run demo` rebuilds it.
+  objects renamed, extra links): `npm run demo` rebuilds it. **v2.8.3 LIVE** (modelis clean, /version
+  2.8.3, release run green, 8 assets) and re-proven with the released pane on the Mac: Revenue chart
+  on Slide 3 / Left half and Segment pie on Slide 3 / Top right, both shape groups, PowerPoint alive.
+  Open: a quarter-size pie wraps its labels (launch-check, cosmetic); Daniel's idea of folders /
+  projects for links (asked 13.09, not built, needs his go).
 - v2.8.0 + v2.8.1 LIVE 13.09 (session "launch readiness"; plan
   `~/.claude-accounts/work/plans/refactored-painting-yao.md`, approved, budget 2.1-3.1M, spent ~3.6M
   incl. reviews): guided demos + slide/spot placement, four sonnet worktree slices, one opus review + fix
