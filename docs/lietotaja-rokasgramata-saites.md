@@ -24,7 +24,7 @@ Izvēles rūtiņa "Highlight linked cells" ar vieglu toni iekrāso visus saistī
 
 PowerPoint lentē atveriet cilni "pls,fix" un nospiediet "Links": atvērsies saišu panelis. Pārslēdzieties uz cilni "Inbox", kur redzami no Excel nosūtītie, vēl neievietotie attēli.
 
-Atlasiet slaidu, kurā attēls jāievieto, un pie vajadzīgā vienuma nospiediet "Insert". Attēls tiek ievietots atlasītajā slaidā un pielāgots tā izmēram.
+Atlasiet slaidu, kurā attēls jāievieto, un pie vajadzīgā vienuma nospiediet "Insert". Attēls tiek ievietots atlasītajā slaidā un pielāgots tā izmēram. Slaidu un vietu var izvēlēties arī saraksta augšā ar izvēlnēm "Slide" un "Where".
 
 ## Atjaunināšana
 
