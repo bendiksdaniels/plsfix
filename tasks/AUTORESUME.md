@@ -2,6 +2,22 @@
 
 ## 13.09: the v2.7 wave - comps and hygiene tools, follow-ups closed, stress passes, relay hardening
 
+- v2.7.14 LIVE 13.09 12:20 (2c65e47 + manual 627db2a; session "launch readiness"): the ONLY change is
+  `package.json` losing `office-js@0.1.0`, an unrelated 2014 package (googleapis, request, hawk, jszip 2,
+  two git+ssh GitHub deps) that sat in `dependencies` since the initial import; nothing imports it, the
+  types come from `@types/office-js` (tsconfig `types: ["office-js"]` resolves there). 101 packages
+  leave the lockfile, `npm audit --omit=dev` 27 findings (7 critical) -> 0; the 13 left are dev-only
+  (office-addin-debugging's toolkit). Gate + `npm run build` green before the commit. Deploy: modelis
+  clean, live `/version` 2.7.14; the suite audit ends "DEPLOY INCOMPLETE" on OTHER components
+  (struktura `samples/amasty.toml`, sejas, aktivitate-nonbank, peers-nonbank: Mac trees ahead of the
+  server, their owners' deploys), not modelis. GitHub release: the tag-push run failed at
+  `gh release create` with an HTTP 500 from api.github.com (every earlier step green, image pushed);
+  `gh run rerun --failed` ended `startup_failure` with zero jobs; `gh workflow run release.yml -f
+  tag=v2.7.14` succeeded 09:15 UTC: 7 assets, `latest/download` -> v2.7.14, released manifest
+  identical to the repo, note written on the release page. Readiness check before the ship (read-only):
+  store validator VALID, `launch-check.md` 0/136 ticked, the Cloudflare zone has NO rate-limit rule
+  and no WAF rule (Free plan, one rule available), README `check` badge = the disabled workflow,
+  Dependabot alerts off, release bodies = the compare link only.
 - State: **v2.7.13 LIVE 13.09** (987ea1c, deploy.sh modelis "OK / clean", live `/version` 2.7.13,
   healthz 200, support.html + privacy.html 200, functions.json with three `helpUrl`s; the store
   validator's support URL and 64 px icon checks pass since v2.7.5). Plan
@@ -558,7 +574,7 @@
   pass: Excel Links list does not re-render on sheet changes (status only refreshes on push);
   chart export on the web needs a UI click.
 
-## State
+## State (historic, 29.08: the dated sections above are current)
 
 v2.1.20 is deployed at dbautomatizacijas.com/modelis/ (`/version` -> 2.1.20): Excel pane with the
 new **Links** tab, PowerPoint pane (`pptpane.html`), and the end-to-end encrypted link relay

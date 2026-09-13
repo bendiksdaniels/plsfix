@@ -276,3 +276,13 @@ old loop hangs every test, the fixed helper passes. Rules:
 - pls,fix and dbautomatizacijas.com are Daniel's own: the app and the hostname. A launch or
   monetisation discussion never gets an "IP of intern work" or "the suite's hostname as the public
   face" caveat again. The business seam (hosted relay, licence key) is the only thing to discuss.
+
+## 2026-09-13: a tag run that dies at `gh release create` is re-run by dispatch, not by rerun
+
+- GitHub answered the v2.7.14 push run's `gh release create` with an HTTP 500 (every earlier step
+  green, image pushed); `gh run rerun --failed` then ended `startup_failure` with zero jobs. The
+  path that works: `gh workflow run release.yml -R bendiksdaniels/plsfix --ref main -f tag=v2.7.14`
+  (the workflow checks out the tag itself). Probe before mutating: the notes generator
+  (`POST .../releases/generate-notes`) and the tag ref proved our side was fine.
+- `gh` reads the repo from the shell's cwd: after a `cd` into another repo, `gh release view` says
+  "release not found" and `gh run list` reads the wrong repo. Always pass `-R` here.
