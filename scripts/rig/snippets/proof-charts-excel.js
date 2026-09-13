@@ -225,7 +225,7 @@ async (page, ctx, pages, shot, h) => {
   await excel.bringToFront();
   await step("change source + push all", async () => {
     await xrun(async (c) => {
-      const r = c.workbook.worksheets.getItem("P&L").getRange("C4");
+      const r = c.workbook.worksheets.getItem("P&L").getRange("C11");
       r.load("values");
       await c.sync();
       r.values = [[Number(r.values[0][0]) + 500]];
