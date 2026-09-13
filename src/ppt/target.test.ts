@@ -16,6 +16,8 @@ import {
   finishTarget,
   resolveTarget,
   SLIDE,
+  SLIDE_GAP,
+  SLIDE_MARGIN,
   type InsertTarget,
 } from "./placement";
 
@@ -65,10 +67,7 @@ describe("resolveTarget", () => {
     it("lands inside its rectangle", async () => {
       const { presentation } = await bootPpt();
       const slideId = presentation.slides[0]!.id;
-      // The same margin and gap placement.ts keeps: SLIDE_MARGIN 36,
-      // SLIDE_GAP 12 (private there, so the check reuses layout.ts's own
-      // spotBox instead of duplicating the numbers blind).
-      const rect = spotBox(spot, SLIDE, 36, 12);
+      const rect = spotBox(spot, SLIDE, SLIDE_MARGIN, SLIDE_GAP);
       const resolved = await PowerPoint.run((context) =>
         resolveTarget(context, "insert test", { slideId, where: spot }, SIZE),
       );
@@ -88,8 +87,8 @@ describe("resolveTarget", () => {
     const { presentation } = await bootPpt();
     const slide = presentation.slides[0]!;
     presentation.addShape(slide, {
-      left: 36,
-      top: 36,
+      left: SLIDE_MARGIN,
+      top: SLIDE_MARGIN,
       width: 400,
       height: 400,
     });
@@ -104,8 +103,8 @@ describe("resolveTarget", () => {
     const { presentation } = await bootPpt();
     const slide = presentation.slides[0]!;
     presentation.addShape(slide, {
-      left: 36,
-      top: 36,
+      left: SLIDE_MARGIN,
+      top: SLIDE_MARGIN,
       width: 400,
       height: 400,
     });

@@ -8,14 +8,18 @@ import { renderSlideOptions } from "./views";
 
 // Re-synced with the inbox, and once at boot: on a read the host refuses,
 // the picker keeps (or falls back to) "This slide" alone rather than options
-// that may no longer match the deck.
+// that may no longer match the deck. onFailure is the caller's usual quiet-
+// failure report (main.ts's details.addFailure) - the fallback is never
+// silent, it just never turns an otherwise-successful refresh into an error.
 export async function refreshSlideOptions(
   select: HTMLSelectElement,
+  onFailure?: (error: unknown) => void,
 ): Promise<void> {
   try {
     renderSlideOptions(select, await slideCount());
-  } catch {
+  } catch (error) {
     renderSlideOptions(select, 0);
+    onFailure?.(error);
   }
 }
 

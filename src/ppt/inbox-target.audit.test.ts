@@ -32,6 +32,7 @@ import {
   type FakePresentation,
 } from "../../test/fakeppt";
 import type * as RelayModule from "../link/relay";
+import { SLIDE_MARGIN } from "./placement";
 
 enableStrictLoadSemantics();
 
@@ -201,7 +202,7 @@ describe("the pickers drive where an insert lands", () => {
     expect(target.shapes).toHaveLength(1);
     // top-right: right of the slide's midline, in the top margin band.
     expect(target.shapes[0]!.left).toBeGreaterThanOrEqual(486);
-    expect(target.shapes[0]!.top).toBeGreaterThanOrEqual(36);
+    expect(target.shapes[0]!.top).toBeGreaterThanOrEqual(SLIDE_MARGIN);
     // The view followed an explicitly named slide.
     expect(presentation.selectedSlideIds).toEqual([target.id]);
   });
@@ -276,12 +277,18 @@ describe("the Slide picker follows the deck's slide count", () => {
     ]);
   });
 
-  it("falls back to This slide alone when the read fails", async () => {
+  it("falls back to This slide alone when the read fails, and says so quietly", async () => {
     helpers.failNextSync(new Error("PowerPoint stopped answering."));
     click("refresh-inbox");
     await settle();
 
     expect([...select("insert-slide").options]).toHaveLength(1);
+    // The inbox itself still refreshed fine, so the toast stays a success -
+    // but the slide-count failure is not swallowed: it lands in the details
+    // a "Copy details" button exposes, the same quiet-failure path
+    // refreshQuietly already uses for the Links list.
+    expect(isError()).toBe(false);
+    expect(document.querySelector(".toast-copy")).not.toBeNull();
   });
 });
 

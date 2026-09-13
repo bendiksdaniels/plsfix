@@ -66,6 +66,12 @@
   padding: 4px 10px;
   cursor: pointer;
 }
+/* The inbox's Slide/Where pickers: object-action-row's label and select
+   styling, but the select is the row's last column - there is no per-row
+   button here, only Insert. */
+.insert-target-row {
+  grid-template-columns: 66px minmax(0, 1fr);
+}
 .object-tools-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

@@ -336,7 +336,9 @@ function requireWorkspace(): Workspace {
 
 async function refreshInbox(): Promise<string> {
   const ws = requireWorkspace();
-  await refreshSlideOptions(insertSlideSelect);
+  await refreshSlideOptions(insertSlideSelect, (error) => {
+    details.addFailure(error, "The slide list was not refreshed");
+  });
   inboxItems = await listInbox(ws, relay);
   renderInboxView();
   if (inboxItems.length === 0) return "Nothing waiting from Excel.";

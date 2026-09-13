@@ -23,7 +23,7 @@ import {
 } from "../../test/fakeppt";
 import { fakePng } from "../../test/fakepng";
 import { settleHungSync } from "../../test/hung-sync";
-import type { InsertTarget } from "./placement";
+import { SLIDE_MARGIN, type InsertTarget } from "./placement";
 
 enableStrictLoadSemantics();
 
@@ -66,7 +66,7 @@ describe("insert paths honour the target", () => {
       (one) => one.id === placed.shapeId,
     )!;
     expect(table.left).toBeGreaterThanOrEqual(486 - 0.01);
-    expect(table.top).toBeGreaterThanOrEqual(36 - 0.01);
+    expect(table.top).toBeGreaterThanOrEqual(SLIDE_MARGIN - 0.01);
   });
 
   it("the text path consumes a selected empty placeholder and keeps its neighbour", async () => {

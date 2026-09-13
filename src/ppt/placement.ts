@@ -25,8 +25,8 @@ import { SHAPE_PROPERTIES } from "./shapes";
 
 // Half an inch of margin, the same one fitToSlide keeps, and a gap wide enough
 // that two objects beside each other read as two.
-const SLIDE_MARGIN = 36;
-const SLIDE_GAP = 12;
+export const SLIDE_MARGIN = 36;
+export const SLIDE_GAP = 12;
 // PowerPoint reports a layout placeholder as its own shape type; an empty one
 // is the slide's "click to add" furniture, not an object to place around.
 const PLACEHOLDER = "Placeholder";
@@ -45,7 +45,7 @@ export async function readSelectedSlideId(
   return selected.items[0]?.id ?? null;
 }
 
-export async function selectedSlideId(
+async function selectedSlideId(
   context: PowerPoint.RequestContext,
   stage: string,
 ): Promise<string> {
@@ -142,7 +142,7 @@ export async function finishTarget(
 // The box for a new object of this size on that slide. Two syncs: the slide's
 // shapes, then - only when the slide has placeholders - whether each holds
 // text. Never writes anything; the caller creates the shape at the box.
-export async function placeOnSlide(
+async function placeOnSlide(
   context: PowerPoint.RequestContext,
   slideId: string,
   size: Size,
