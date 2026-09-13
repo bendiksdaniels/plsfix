@@ -2,6 +2,26 @@
 
 ## 13.09: the v2.7 wave - comps and hygiene tools, follow-ups closed, stress passes, relay hardening
 
+- 13.09 afternoon (session "launch readiness", plan `~/.claude-accounts/work/plans/refactored-painting-yao.md`,
+  approved): the old brand's name is gone from everywhere it could still be found, and the app re-proven.
+  History: `git filter-repo --replace-text/--replace-message` with a 53-line literal map (product name ->
+  "Model Tools", provider -> Daniels Bendiks, identifiers -> today's names, a catch-all that was never
+  needed) + `--path-rename` of the old unit file; 709 commits, 80 tags, HEAD tree hash byte-identical
+  before and after; zero hits in every tree, diff and message; force-pushed main + tags; GitHub main =
+  local HEAD; old SHAs stay fetchable until GitHub's GC. The 20 Office blobs in history were unzipped
+  and checked: none carried the name. GitHub: the 18 releases v2.6.16-v2.7.14 deleted (their pane zips
+  shipped the two pages that named the bank), v2.7.15 kept with its 7 assets, all tags kept; the old
+  container image versions still wait for a token with read:packages + delete:packages. Server: unit
+  `plsfix` from `/opt/plsfix` (mv of the whole directory, relay data intact: links 8, revisions 16,
+  bytes 313318 before and after), log `/opt/plsfix/logs/build.log`, cache volume `plsfix-cargo-registry`,
+  the old unit, directory, log and gateway copy removed; the hosting gateway commit 975dad9. Proven:
+  `npm run check` (2631 vitest / 105 cargo), `npm run build`, `ux:check` 0/72, `ux:sweep` 0/147, every
+  live page 200 without the name, live manifest = repo, relay refuses unknown keys (400/404), store
+  validator valid on the live URLs, Mac installer + uninstaller from the live release into a throwaway
+  HOME (manifest 2.7.15.0), Windows installer URLs resolve. The Office-on-the-web rig stopped at the
+  Microsoft sign-in + Duo prompt (the NDUS session expired since 09.09): the one check that needs
+  Daniel's sign-in in the scratch Chrome, then `register.js` (x, p), `proof-links-excel.js`,
+  `proof-insert-one.js`, `proof-update-all.js`.
 - v2.7.15 13.09 (session "launch readiness"): the former sponsor's name is out of the project (Daniel:
   "remove [the] name from this project everywhere, all md files, all code"; plan
   `~/.claude-accounts/work/plans/refactored-painting-yao.md`). 37 files, 92 hits -> `git grep -i` of the old

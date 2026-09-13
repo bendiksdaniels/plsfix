@@ -286,3 +286,18 @@ old loop hangs every test, the fixed helper passes. Rules:
   (`POST .../releases/generate-notes`) and the tag ref proved our side was fine.
 - `gh` reads the repo from the shell's cwd: after a `cd` into another repo, `gh release view` says
   "release not found" and `gh run list` reads the wrong repo. Always pass `-R` here.
+
+## 2026-09-13: the history rewrite, and three shell traps met on the way
+
+- Rewrite recipe: a literal `old==>new` map (longest phrase first, identifiers to today's names, a
+  catch-all last), `git filter-repo --force --replace-text map --replace-message map
+  --path-rename old:new`, then the proofs BEFORE any push: HEAD tree hash unchanged, commit and tag
+  counts unchanged, `git grep -i <name> $(git rev-list --all)`, `git log -p --all | grep -ci`,
+  `git log --all --format=%B | grep -ci` all zero, the catch-all delta zero. Office files are zips:
+  grep cannot see inside; unzip every historical blob and strip the dirty ids.
+- zsh: never name a variable `path` (or `PATH` in lowercase forms): it is tied to `$PATH`, and
+  `path=$2` with an empty `$2` makes every later command "not found".
+- A `while ...; do grep -q ... && {...}; done || exit 1` fails on an EMPTY list: the loop's status
+  is the last grep's, 1 on no match. Test the list explicitly.
+- Chrome `--restore-last-session` on an expired Office session restores the sign-in page, not the
+  documents; the document URLs survive in the profile's `Sessions/` files (`strings | grep sharepoint`).
