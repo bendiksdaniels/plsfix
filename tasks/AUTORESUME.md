@@ -1,4 +1,4 @@
-# AUTORESUME - pls,fix (v2.7.13 LIVE 13.09, deployed from 987ea1c; PUBLIC on GitHub, MIT)
+# AUTORESUME - pls,fix (v2.8.4 tagged 13.09, PUBLIC on GitHub, MIT)
 
 ## NEXT SESSION (from 14.09): no more crashes, link folders, free space in PowerPoint
 
@@ -45,7 +45,7 @@ PowerPoint process start time, MERP dialog) and the E1-E15 bisection.
      project); `ux:check` and `ux:sweep` count the new controls; the manual (LV, `manual/src/content/
      links.rs`: section "Projekti"), README, FEATURES, CLAUDE map, launch-check. One patch bump per
      reviewed merge; a sonnet slice + opus review is the shape if delegated (~500-800k), else direct.
-3. **Free space in PowerPoint: overlaps.** Implemented on `ppt-free-space` (layout hole fallback, group union when the host reports a 0 box, dashed empty frames skip). Still prove on the Mac with the deck's slide 3. Seen 13.09 on the Mac: (a) with both dashed rectangles of
+3. **Free space in PowerPoint: overlaps.** **v2.8.4** (`795b26e`): dashed empty frames skip, a zero-area group occupies the union of its children, a failed grid scan fits into the largest remaining rectangle, the toast names the free quarter. Fake proof in `src/layout.test.ts` + `src/ppt/placement.occupy.test.ts`. Still prove on the Mac with the deck's slide 3. Seen 13.09 on the Mac: (a) with both dashed rectangles of
    deck slide 3 present, Free space has no free spot at any scale, so `placeInFreeSpace` falls back to
    "centred, full size, overlapping = true" and the chart straddles both halves (by design, the OVERLAP_NOTE
    says so, but Daniel reads it as "it overlaps"); (b) 19:00, a second chart inserted with Free space landed
@@ -62,7 +62,7 @@ PowerPoint process start time, MERP dialog) and the E1-E15 bisection.
    bounds (union of its children when the host reports 0), let a decorative frame (no fill, no text,
    dashed line) count as free, and tell the user in the note which spot would have been free. Prove it
    with the fake (a slide with a group and a frame) and on the Mac with the deck's slide 3.
-4. Order: 1 first (a crash found early changes everything), then 3 (small, blocks the demo story), then 2.
+4. Order: 1 first (a crash found early changes everything), then 2 (folders). Item 3 shipped v2.8.4; Mac slide-3 proof still open.
    Commit per reviewed slice, `sh scripts/release.sh patch`, `~/signet-tools-gateway/deploy.sh modelis`,
    ledger + lessons + memory (`project_plsfix.md`) at the end, `git push -u --all origin`.
 
