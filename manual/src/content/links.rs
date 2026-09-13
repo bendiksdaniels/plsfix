@@ -36,7 +36,7 @@ fn how_it_works() -> Section {
                 r#"Excel puse ieraksta avotam slēptu nosaukumu, tāpēc saite seko līdzi arī tad, kad virs apgabala tiek ievietotas rindas vai lapa tiek pārdēvēta. Attēls tiek nosūtīts uz releju, no kurienes to paņem PowerPoint puse."#,
             ),
             Block::Para(
-                r#"Saitē var būt attēls, tabula vai diagramma. Diagramma slaidā nonāk kā rediģējamu figūru grupa ar zīmola krāsām un tikai vērtību etiķetēm: stabiņu, joslu, tilta, sektoru un līniju diagrammas. Līniju diagrammā katrs punkts ir sava figūra, savienota ar līniju līdz nākamajam punktam. Šai figūru grupai nepieciešams PowerPoint 2504 vai jaunāks Windows datorā vai PowerPoint tīmeklī; Mac datorā diagramma pagaidām vienmēr nonāk kā attēls, jo figūru zīmēšana tur pārtrauc PowerPoint darbu (versija 16.107); vecākā Windows versijā, kā arī pāri 40 punktiem, 6 sērijām vai 12 sektoriem, kā arī diagrammas tipam, ko figūras neatveido, diagramma tiek ievietota kā attēls, un abi paneļi pasaka iemeslu."#,
+                r#"Saitē var būt attēls, tabula vai diagramma. Diagramma slaidā nonāk kā rediģējamu figūru grupa ar zīmola krāsām un tikai vērtību etiķetēm: stabiņu, joslu, tilta, sektoru un līniju diagrammas. Līniju diagrammā katrs punkts ir sava figūra, savienota ar līniju līdz nākamajam punktam. Šai figūru grupai nepieciešams PowerPoint 2504 vai jaunāks Windows datorā, 16.96 vai jaunāks Mac datorā (Mac datorā grupa sastāv no apakšgrupām pa sešām figūrām); vecākā versijā, kā arī pāri 40 punktiem, 6 sērijām vai 12 sektoriem, kā arī diagrammas tipam, ko figūras neatveido, diagramma tiek ievietota kā attēls, un abi paneļi pasaka iemeslu."#,
             ),
         ],
     )

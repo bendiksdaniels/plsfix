@@ -23,6 +23,20 @@ export const SHAPES_PER_SYNC = 12;
 // host that has genuinely stopped answering ever reaches it.
 export const SYNC_TIMEOUT_MS = 60_000;
 
+// PowerPoint for Mac (16.107 on macOS 26.6, 13.09.2026) dies on its own
+// repaint after ShapeCollection.addGroup takes a whole chart at once: six
+// shapes grouped in every run of the bisection, nineteen never did, whatever
+// their kind, and the same shapes grouped through the ribbon were fine. So
+// the Mac groups in tiers: sub-groups of this many members first, then those
+// into the link's own group. Windows and the web keep the flat group.
+export const GROUP_TIER_MAC = 6;
+
+export function groupTier(): number | null {
+  return Office.context?.platform === Office.PlatformType.Mac
+    ? GROUP_TIER_MAC
+    : null;
+}
+
 // What a round trip that never came back rejects with, so the caller can tell
 // a host that stopped answering from one that refused the shapes. `what`
 // names the round trip that stopped, so the sentence is true wherever this
@@ -216,6 +230,28 @@ function shapeWedges(added: Added[]): void {
   }
 }
 
+// The ids the link's group takes: the shapes themselves, or on a host that
+// groups in tiers (groupTier) the sub-groups of them, made in one sync of
+// their own and appended to the cleanup list - a shape inside a sub-group is
+// no longer an id the slide's own collection can delete, but its sub-group is.
+async function tierUp(
+  context: PowerPoint.RequestContext,
+  shapes: PowerPoint.ShapeCollection,
+  ids: string[],
+): Promise<string[]> {
+  const tier = groupTier();
+  if (tier === null || ids.length <= tier) return [...ids];
+  const subs = chunks([...ids], tier).map((part) => {
+    const sub = shapes.addGroup(part);
+    sub.load("id");
+    return sub;
+  });
+  await withSyncDeadline(context.sync());
+  const subIds = subs.map((sub) => sub.id);
+  ids.push(...subIds);
+  return subIds;
+}
+
 // The whole chart in ceil(primitives / SHAPES_PER_SYNC) + 1 round trips: each
 // chunk is added and its ids read back in one sync, and the last sync groups
 // them, names the group, tags it and runs whatever the caller queued there.
@@ -245,7 +281,8 @@ export async function drawGroup(
       ids.push(...added.map((one) => one.shape.id));
       shapeWedges(added);
     }
-    const group = shapes.addGroup(ids);
+    const members = await tierUp(context, shapes, ids);
+    const group = shapes.addGroup(members);
     group.name = spec.name;
     group.tags.add(TAG_LINK, encodeTag(spec.tag));
     group.tags.add(TAG_KEY, spec.token);

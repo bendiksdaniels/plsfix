@@ -47,14 +47,6 @@ export const CHARTS_NEED_1_8 =
   "as a picture: shape charts need PowerPoint 2504/16.96 or newer";
 export const PIES_NEED_1_10 =
   "as a picture: pie shapes need PowerPoint 2601/16.105 or newer";
-// PowerPoint for Mac dies drawing a chart's shapes: the chunk batch and the
-// group batch both come back, then the app crashes on its own repaint of the
-// slide (16.107 on macOS 26.6, twice on 13.09.2026; the picture route is
-// untouched). Its charts stay pictures until a bisection on that host names
-// the shape it cannot take.
-export const CHARTS_MAC_PICTURE = pictureNote(
-  "PowerPoint for Mac crashes on shape charts, so it keeps the picture",
-);
 // A chart the slide had to scale down to fit its height (see onSlide) can end
 // up under the smallest box the layout is drawn for: below that the bars are
 // hairlines and the labels overlap, so the picture is the better link.
@@ -74,12 +66,6 @@ const PNG_TO_POINTS = 0.75;
 // this is scaled down to it, exactly as fitToSlide scales the picture, or the
 // group hangs off the top and the bottom of the slide.
 const CONTENT_HEIGHT = SLIDE.height - (SLIDE.width - CONTENT_WIDTH);
-
-// Which hosts draw a chart as shapes at all: every desktop and the web, not
-// PowerPoint for Mac (CHARTS_MAC_PICTURE).
-export function hostDrawsCharts(): boolean {
-  return Office.context?.platform !== Office.PlatformType.Mac;
-}
 
 export function shapeBudget(): number {
   return Office.context?.platform === Office.PlatformType.OfficeOnline
@@ -151,7 +137,6 @@ export function chartPlan(payload: Payload): ChartPlan | null {
 // Null means draw it. Anything else is the sentence the pane shows beside the
 // picture it inserted instead, and every one of them names the picture first.
 export function declineReason(plan: ChartPlan): string | null {
-  if (!hostDrawsCharts()) return CHARTS_MAC_PICTURE;
   if (!hasPowerPointApi(CHART_API)) return CHARTS_NEED_1_8;
   if (plan.data.kind === "pie" && !hasPowerPointApi(PIE_API)) {
     return PIES_NEED_1_10;

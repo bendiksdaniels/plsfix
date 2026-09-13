@@ -20,6 +20,18 @@
   (`$S/ghcr-clean.sh` ready; the device code must be re-issued); the rest of the v2.8 desktop section.
   The worktree `~/.worktrees/plsfix/mac-charts-as-pictures` stays for the bisection (its uncommitted
   vite proxy points the dev pane at the live relay); the branch is merged.
+- 13.09 night, the bisection on Daniel's Mac (after his GitHub login: ghcr cleanup done, 23 image
+  versions -> v2.8.2/latest + v2.8.1): **v2.8.3** = native charts back on the Mac. The crash is one
+  `addGroup` of a whole chart (19+ shapes); six group fine; so `groupTier` in `src/ppt/chart-draw.ts`
+  groups in sub-groups of `GROUP_TIER_MAC` = 6 on PlatformType.Mac, then the sub-groups into the link's
+  group (`tierUp`, cleanup list carries the sub-group ids); the v2.8.2 picture gate (`hostDrawsCharts`,
+  `CHARTS_MAC_PICTURE`) is gone again, the decline reason still travels back from `refreshChartGroup`.
+  Proven on the Mac with the dev sideload: insert (E15) and an Update all redraw after a pushed
+  revision, both alive; tests `src/ppt/charts.test.ts` (tiers on the Mac only, 6/6/6/2 under the link,
+  flat on PC, redraw keeps one link, a refused top group takes the sub-groups down). Docs, manual (LV),
+  README, FEATURES, CLAUDE map and launch-check say tiers instead of pictures. Experiments E1-E15 in
+  `tasks/lessons.md`. The demo workbook on the Mac was edited during the proof (P&L!C11 = 13000, chart
+  objects renamed, extra links): `npm run demo` rebuilds it.
 - v2.8.0 + v2.8.1 LIVE 13.09 (session "launch readiness"; plan
   `~/.claude-accounts/work/plans/refactored-painting-yao.md`, approved, budget 2.1-3.1M, spent ~3.6M
   incl. reviews): guided demos + slide/spot placement, four sonnet worktree slices, one opus review + fix

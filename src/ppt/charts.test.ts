@@ -1,19 +1,22 @@
-// The Mac gate in charts.ts: PowerPoint for Mac never gets a shape chart, on
-// insert or on refresh, and the pane says why beside the picture it got.
+// The Mac tier in chart-draw.ts: PowerPoint for Mac takes a chart's group as
+// sub-groups of GROUP_TIER_MAC members under the link's group, every other
+// host as the one flat group, and a failed top group leaves nothing behind.
 import { afterEach, describe, expect, it } from "vitest";
 import { createWorkspace } from "../link/workspace";
 import {
   bootPpt,
   columnChart,
   memoryStore,
+  pushChart,
   seedChart,
 } from "../../test/ppt.support";
 import {
   enableStrictLoadSemantics,
   uninstallFakePpt,
+  type FakePptShape,
 } from "../../test/fakeppt";
 import { fakePng } from "../../test/fakepng";
-import { CHARTS_MAC_PICTURE, hostDrawsCharts } from "./charts";
+import { GROUP_TIER_MAC, groupTier } from "./chart-draw";
 import { DEFAULT_TARGET } from "./placement";
 
 enableStrictLoadSemantics();
@@ -22,39 +25,94 @@ afterEach(() => {
   uninstallFakePpt();
 });
 
-describe("PowerPoint for Mac keeps every chart a picture", () => {
-  it("draws on the Windows desktop and on the web, never on the Mac", async () => {
+// One title, six bars, six value labels, a baseline and six category labels.
+const COLUMN_SHAPES = 20;
+// The insert's syncs on the Mac: select the slide, place, two chunks of
+// twelve and eight, the sub-groups, then the link's own group.
+const TOP_GROUP_SYNC = 5;
+
+function leaves(shape: FakePptShape): FakePptShape[] {
+  return shape.type === "Group" ? shape.group!.shapes.flatMap(leaves) : [shape];
+}
+
+async function insertOn(platform: string) {
+  const booted = await bootPpt();
+  booted.helpers.setPlatform(platform);
+  const ws = await createWorkspace(memoryStore());
+  const item = await seedChart(columnChart(6), fakePng(800, 400));
+  const placed = await booted.links.insertFromInbox(
+    item,
+    ws,
+    booted.relay,
+    DEFAULT_TARGET,
+  );
+  return { ...booted, item, placed };
+}
+
+describe("PowerPoint for Mac groups a chart in tiers", () => {
+  it("tiers on the Mac only", async () => {
     const { helpers } = await bootPpt();
-    expect(hostDrawsCharts()).toBe(true);
+    expect(groupTier()).toBeNull();
     helpers.setPlatform("OfficeOnline");
-    expect(hostDrawsCharts()).toBe(true);
+    expect(groupTier()).toBeNull();
     helpers.setPlatform("Mac");
-    expect(hostDrawsCharts()).toBe(false);
+    expect(groupTier()).toBe(GROUP_TIER_MAC);
   });
 
-  it("inserts the picture on a Mac, with the reason beside it", async () => {
-    const { links, presentation, helpers, relay } = await bootPpt();
-    helpers.setPlatform("Mac");
-    const ws = await createWorkspace(memoryStore());
-    const item = await seedChart(columnChart(3), fakePng(400, 300));
-
-    const placed = await links.insertFromInbox(item, ws, relay, DEFAULT_TARGET);
-
-    expect(placed.note).toBe(CHARTS_MAC_PICTURE);
-    const shapes = presentation.slides[0]!.shapes;
-    expect(shapes).toHaveLength(1);
-    expect(shapes[0]!.type).not.toBe("Group");
-    expect(shapes[0]!.fillImage).toBeTruthy();
-  });
-
-  it("the same item is a shape group on the Windows desktop", async () => {
-    const { links, presentation, relay } = await bootPpt();
-    const ws = await createWorkspace(memoryStore());
-    const item = await seedChart(columnChart(3), fakePng(400, 300));
-
-    const placed = await links.insertFromInbox(item, ws, relay, DEFAULT_TARGET);
-
+  it("the Mac link is a group of sub-groups of six with every shape inside", async () => {
+    const { presentation, placed } = await insertOn("Mac");
     expect(placed.note).toBeUndefined();
-    expect(presentation.findShape(placed.shapeId).shape.type).toBe("Group");
+    const slide = presentation.slides[0]!;
+    expect(slide.shapes.map((shape) => shape.id)).toEqual([placed.shapeId]);
+    const link = slide.shapes[0]!;
+    expect(link.type).toBe("Group");
+    const subs = link.group!.shapes;
+    expect(subs.map((sub) => sub.type)).toEqual([
+      "Group",
+      "Group",
+      "Group",
+      "Group",
+    ]);
+    expect(subs.map((sub) => sub.group!.shapes.length)).toEqual([6, 6, 6, 2]);
+    expect(leaves(link)).toHaveLength(COLUMN_SHAPES);
+  });
+
+  it("the Windows desktop keeps the one flat group", async () => {
+    const { presentation, placed } = await insertOn("PC");
+    const link = presentation.findShape(placed.shapeId).shape;
+    expect(link.group!.shapes).toHaveLength(COLUMN_SHAPES);
+    expect(link.group!.shapes.some((one) => one.type === "Group")).toBe(false);
+  });
+
+  it("Update all on the Mac redraws in tiers and keeps one link", async () => {
+    const host = await import("./host");
+    const { links, presentation, relay, item, placed } = await insertOn("Mac");
+    await pushChart(item, columnChart(7), fakePng(800, 400));
+    const rows = await links.listLinks(relay);
+
+    const summary = await links.updateLinks(rows, relay, host);
+
+    expect(summary).toMatchObject({ updated: 1, failed: 0 });
+    const slide = presentation.slides[0]!;
+    expect(slide.shapes).toHaveLength(1);
+    const drawn = slide.shapes[0]!;
+    expect(drawn.id).not.toBe(placed.shapeId);
+    expect(drawn.group!.shapes.every((sub) => sub.type === "Group")).toBe(true);
+    // Seven columns: a title, seven bars, seven values, a baseline, seven labels.
+    expect(leaves(drawn)).toHaveLength(23);
+  });
+
+  it("a top group the host refuses takes its sub-groups down with it", async () => {
+    const booted = await bootPpt();
+    booted.helpers.setPlatform("Mac");
+    booted.helpers.failNextSync(new Error("the host hung"), TOP_GROUP_SYNC);
+    const ws = await createWorkspace(memoryStore());
+    const item = await seedChart(columnChart(6), fakePng(800, 400));
+
+    await expect(
+      booted.links.insertFromInbox(item, ws, booted.relay, DEFAULT_TARGET),
+    ).rejects.toThrow("the host hung");
+
+    expect(booted.presentation.slides[0]!.shapes).toHaveLength(0);
   });
 });

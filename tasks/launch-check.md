@@ -380,12 +380,16 @@ Run with computer use on Daniel's own Excel and PowerPoint, the demo workbook an
       pairing with the copied key; the P&L table lands on slide 2 with Slide = Slide 2 and
       Where = Whole slide (natural size, centred: fitInto never scales up); a Data range picture
       lands in free space on the active slide.
-- [ ] FAILED on v2.8.1, fixed in v2.8.2: the Revenue chart (Slide 3, Left half) and the Segment
-      pie (This slide, Free space) each crashed PowerPoint for Mac right after the draw batches
-      returned; the deck came back as [Autosaved] without the chart and, once, unpaired. v2.8.2
-      keeps every chart a picture on the Mac (`hostDrawsCharts`). Re-check there: a chart Insert
-      lands a picture with "as a picture: PowerPoint for Mac crashes on shape charts, so it keeps
-      the picture" beside Inserted, and Update all keeps it a picture.
-- [ ] Still open on the desktop after the crash: the two halves on slide 3, the placeholder on
-      slide 4, Paste latest linked with the pickers, Update all (the v2.8 section above).
+- [x] FAILED on v2.8.1: the Revenue chart (Slide 3, Left half) and the Segment pie (This slide,
+      Free space) each crashed PowerPoint for Mac right after the draw batches returned; the deck
+      came back as [Autosaved] without the chart and, once, unpaired. v2.8.2 kept every chart a
+      picture on the Mac for one release; the bisection on the Mac (13.09 evening) found the
+      shape: one `addGroup` of a whole chart (19 shapes) dies, six shapes group fine, the same
+      shapes grouped through the ribbon are fine. v2.8.3 groups in sub-groups of six on the Mac
+      (`groupTier`), proven there: insert, a redraw through Update all, both alive.
+- [x] v2.8.2 on the Mac: the two halves on slide 3 (as pictures then), the placeholder on slide 4
+      (consumed, the picture at its box), Paste latest linked with Slide 2 + Top right, Update all:
+      all green.
+- [ ] v2.8.3 on the Mac with the released pane: the Revenue chart (Slide 3, Left half) and the
+      Segment pie (Slide 3, Right half) land as shape groups; ungroup once shows the sub-groups.
 

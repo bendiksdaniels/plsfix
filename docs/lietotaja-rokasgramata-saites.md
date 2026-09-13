@@ -4,7 +4,7 @@ pls,fix ļauj eksportēt Excel šūnu apgabalu vai diagrammu uz PowerPoint kā s
 
 ## Pirms sākt
 
-- Nepieciešams Microsoft 365: PowerPoint 2504 vai jaunāka versija Windows datoram vai PowerPoint tīmeklī. Mac datorā diagramma pagaidām nonāk kā attēls, jo figūru zīmēšana versijā 16.107 pārtrauc PowerPoint darbu.
+- Nepieciešams Microsoft 365: PowerPoint 2504 vai jaunāka versija Windows datoram, PowerPoint 16.96 vai jaunāka versija Mac datoram (Mac datorā diagrammas grupa sastāv no apakšgrupām pa sešām figūrām).
 - Saites atslēga jāievada vienreiz katrā datorā: izveidojiet to Excel pusē un ielīmējiet PowerPoint pusē (skatiet sadaļu "Saites atslēga").
 
 ## Eksports no Excel

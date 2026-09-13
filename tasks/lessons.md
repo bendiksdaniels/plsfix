@@ -349,3 +349,28 @@ old loop hangs every test, the fixed helper passes. Rules:
 - A foreign document in front of the app you are driving means the user is at the machine: stop, revert
   what the desktop still runs (dev manifest, experiment edits), say so, and wait for the go.
 
+## 2026-09-13 night: the Mac chart crash, bisected on Daniel's Mac (computer use)
+
+- The crash is `ShapeCollection.addGroup` with a whole chart: 19-20 shapes in one group killed
+  PowerPoint for Mac 16.107 every time (E2 same context, E3 fresh context, E5 without the lines,
+  E7 rectangles-with-text instead of text boxes, E10/E11 text written after grouping, E13 text-less
+  shapes), six filled shapes grouped fine (E4), the same 20 shapes grouped through the ribbon
+  (Cmd+Alt+G) grouped fine, and sub-groups of six then one group of the sub-groups (E14a/b, E15 =
+  the shipping code) survived insert and an Update all redraw. Not the kind of shape, the count.
+- Each experiment cost one crash-relaunch cycle (~4 min): PowerPoint comes back by itself with the
+  deck as [Autosaved], the pane closed and, sometimes, the pairing key gone; the inbox item is not
+  consumed by a crashed insert, so it can be inserted again. A vite HMR reload of the dev pane
+  also drops the pairing sometimes and always returns to the Links tab.
+- "Update all" is the cheapest way to test a chart draw variant: no Excel round trip, the redraw
+  runs the same drawGroup. It only redraws once the source has a new revision: change a cell in
+  Excel and "Push selected" first.
+- A re-export of a chart that already carries a link re-pushes that link and posts nothing to
+  the inbox; rename the chart object in Excel (AppleScript `set name of chart object 1`) and export
+  again to get a fresh inbox item.
+- Terminal steals the front every few seconds while Daniel reads the session; a computer-use click
+  then fails ("Terminal is not in the allowed applications and is currently in front"). A
+  background loop of `osascript -e 'tell application "Microsoft PowerPoint" to activate'` every
+  0.7 s for the length of the batch keeps the target in front; `open_application` alone does not.
+- Do not press Delete after a click on the slide without checking what got selected: a click on
+  the chart's bars selected the deck's dashed rectangle underneath and Delete removed it.
+

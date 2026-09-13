@@ -176,7 +176,7 @@ Export a range or a chart from Excel and keep it fresh in a deck without re-past
   editable PowerPoint table instead (up to 60 rows and 20 columns, PowerPoint 2021 or Microsoft 365).
   *Export as text* sends one cell's displayed text as a text box that keeps its place, size and
   font when it refreshes (up to 500 characters). A column, bar, line, waterfall or pie
-  chart lands as a group of editable shapes with value labels (PowerPoint 2504 and newer on Windows and on the web, pie wedges 2601; PowerPoint for Mac keeps the picture for now, its shape drawing crashes 16.107), a
+  chart lands as a group of editable shapes with value labels (PowerPoint 2504/16.96 and newer; pie wedges 2601/16.105; on the Mac the group holds sub-groups of six, the shape PowerPoint for Mac can take), a
   picture elsewhere or past 40 points, 6 series or 12 slices. *Push all* re-renders every link through
   its anchor. Generate the **link key** once under Links > Link key and paste it into
   PowerPoint once. **Auto-push on edit** (a tick box under the list) re-pushes a link
