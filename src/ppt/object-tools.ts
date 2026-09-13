@@ -28,7 +28,9 @@ const OBJECT_TOOLS_API = "1.5";
 const SIMILAR_NEEDS_SLIDE =
   "Select similar needs an object on the slide, not one inside a group.";
 
-function requireObjectToolsApi(): void {
+// Exported so placement.ts's "selected shape" target reads the selection
+// behind the exact same gate and message, rather than a second copy of it.
+export function requireObjectToolsApi(): void {
   if (!hasPowerPointApi(OBJECT_TOOLS_API)) {
     throw new Error("Object tools need PowerPoint 2021 or Microsoft 365.");
   }

@@ -27,9 +27,11 @@ import { missingShapeError } from "./missing-shape";
 import { insertPictureBySelection } from "./picture";
 import { supportsInPlaceRefresh, tagFor, writeTags } from "./refresh";
 import {
-  placeOnSlide,
+  DEFAULT_TARGET,
+  finishTarget,
   readSelectedSlideId,
-  selectedSlideId,
+  resolveTarget,
+  type InsertTarget,
 } from "./placement";
 import {
   expandGroups,
@@ -154,14 +156,15 @@ export async function insertLink(
   item: InboxItem,
   payload: Payload,
   rev: number,
+  target: InsertTarget = DEFAULT_TARGET,
 ): Promise<InsertResult> {
   const stage = `insert ${item.label}`;
   const tag = tagFor(item, payload, rev);
   if (payload.kind === "table") {
-    return insertTable(stage, item, payload, tag);
+    return insertTable(stage, item, payload, tag, target);
   }
   if (payload.kind === "text") {
-    return insertText(stage, item, payload, tag);
+    return insertText(stage, item, payload, tag, target);
   }
   // A chart this host can draw lands as shapes; the rest take the picture,
   // with the reason when there is one.
@@ -169,31 +172,34 @@ export async function insertLink(
   const note =
     plan === null ? issueNote(payload) : (declineReason(plan) ?? undefined);
   if (plan !== null && note === undefined) {
-    return insertChart(stage, item, plan, tag);
+    return insertChart(stage, item, plan, tag, target);
   }
   const size = pngSize(base64ToBytes(payload.png));
   const fitted = fitToSlide(size.width, size.height);
   if (!supportsInPlaceRefresh()) {
-    const placed = await PowerPoint.run(async (context) => {
-      const slideId = await selectedSlideId(context, stage);
-      return { slideId, ...(await placeOnSlide(context, slideId, fitted)) };
-    });
-    const { slideId, box, overlapping } = placed;
+    const resolved = await PowerPoint.run((context) =>
+      resolveTarget(context, stage, target, fitted),
+    );
+    const { slideId, placement, consume } = resolved;
     const shapeId = await insertPictureBySelection(
       stage,
       slideId,
       payload.png,
-      box,
+      placement.box,
     );
     await writeTags(slideId, shapeId, tag, item.token);
-    return { slideId, shapeId, overlapping, note };
+    await finishTarget(target, slideId, consume);
+    return { slideId, shapeId, overlapping: placement.overlapping, note };
   }
-  return PowerPoint.run(async (context) => {
-    const slideId = await selectedSlideId(context, stage);
-    const { box, overlapping } = await placeOnSlide(context, slideId, fitted);
+  const placed = await PowerPoint.run(async (context) => {
+    const resolved = await resolveTarget(context, stage, target, fitted);
+    const { slideId, placement, consume } = resolved;
     const shape = context.presentation.slides
       .getItem(slideId)
-      .shapes.addGeometricShape(PowerPoint.GeometricShapeType.rectangle, box);
+      .shapes.addGeometricShape(
+        PowerPoint.GeometricShapeType.rectangle,
+        placement.box,
+      );
     shape.name = `pls,fix link ${item.label}`;
     shape.lineFormat.visible = false;
     shape.fill.setImage(payload.png);
@@ -204,8 +210,20 @@ export async function insertLink(
     // swallows it never confirms one, so there is nothing here for a
     // cleanup to delete.
     await withSyncDeadline(context.sync(), "inserting the picture");
-    return { slideId, shapeId: shape.id, overlapping, note };
+    return {
+      slideId,
+      shapeId: shape.id,
+      overlapping: placement.overlapping,
+      consume,
+    };
   });
+  await finishTarget(target, placed.slideId, placed.consume);
+  return {
+    slideId: placed.slideId,
+    shapeId: placed.shapeId,
+    overlapping: placed.overlapping,
+    note,
+  };
 }
 
 // Why Excel shipped a chart link with no chart data: the picture is certain,

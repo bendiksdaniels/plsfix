@@ -20,7 +20,13 @@ import {
 import { cleanupShapes } from "./chart-cleanup";
 import { withSyncDeadline } from "./chart-draw";
 import type { FoundLink, InsertResult } from "./host";
-import { CONTENT_WIDTH, placeOnSlide, selectedSlideId } from "./placement";
+import {
+  CONTENT_WIDTH,
+  DEFAULT_TARGET,
+  finishTarget,
+  resolveTarget,
+  type InsertTarget,
+} from "./placement";
 import { hasPowerPointApi, isGrouped, shapeAt } from "./shapes";
 
 // shapes.addTable and the Table object both arrived in PowerPointApi 1.8.
@@ -77,14 +83,20 @@ export async function insertTable(
   item: InboxItem,
   payload: TablePayload,
   tag: LinkTag,
+  target: InsertTarget = DEFAULT_TARGET,
 ): Promise<InsertResult> {
   requireTableApi();
   requireTableSize(payload);
-  return PowerPoint.run(async (context) => {
-    const slideId = await selectedSlideId(context, stage);
-    const placed = await placeOnSlide(context, slideId, tableSize(payload));
+  const placed = await PowerPoint.run(async (context) => {
+    const resolved = await resolveTarget(
+      context,
+      stage,
+      target,
+      tableSize(payload),
+    );
+    const { slideId, placement, consume } = resolved;
     const shapes = context.presentation.slides.getItem(slideId).shapes;
-    const shape = addTable(shapes, payload, placed.box, item.label);
+    const shape = addTable(shapes, payload, placement.box, item.label);
     shape.tags.add(TAG_LINK, encodeTag(tag));
     shape.tags.add(TAG_KEY, item.token);
     shape.load("id");
@@ -102,8 +114,21 @@ export async function insertTable(
       await cleanupShapes(slideId, [shape.id]);
       throw error;
     }
-    return { slideId, shapeId: shape.id, overlapping: placed.overlapping };
+    return {
+      slideId,
+      shapeId: shape.id,
+      overlapping: placement.overlapping,
+      consume,
+    };
   });
+  // Only reached once the table exists and is fully formatted: a consumed
+  // placeholder is never dropped for an insert that ended up failing.
+  await finishTarget(target, placed.slideId, placed.consume);
+  return {
+    slideId: placed.slideId,
+    shapeId: placed.shapeId,
+    overlapping: placed.overlapping,
+  };
 }
 
 // The cells the source has now, written where the table already sits. Nothing

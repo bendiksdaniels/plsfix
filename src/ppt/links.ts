@@ -31,6 +31,7 @@ import { chunk, planBatches, REPAINT_BUDGET_BYTES } from "./batching";
 import { queueOrder, rememberPasted } from "./inbox-queue";
 import { isDrawTimeout } from "./chart-draw";
 import { chartPlan, declineReason } from "./charts";
+import { DEFAULT_TARGET, type InsertTarget } from "./placement";
 import { GROUP_TYPE } from "./shapes";
 import { fetchUpdates } from "./fetch";
 import * as realHost from "./host";
@@ -407,6 +408,7 @@ export async function insertFromInbox(
   item: InboxItem,
   ws: Workspace,
   relay: RelayApi,
+  target: InsertTarget = DEFAULT_TARGET,
   host: PptHost = realHost,
 ): Promise<InsertResult> {
   const stage = `insert ${item.label}`;
@@ -422,7 +424,7 @@ export async function insertFromInbox(
     throw new Error(`${stage}: the relay returned no picture.`);
   }
   const payload = decodePayload(await open(keys.enc, item.id, result.blob));
-  const placed = await host.insertLink(item, payload, result.rev);
+  const placed = await host.insertLink(item, payload, result.rev, target);
   rememberPasted(item.id);
   // The shape is on the slide: a row the relay will not drop expires by itself
   // after 7 days, and throwing here would have the user press again and land

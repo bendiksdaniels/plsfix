@@ -31,9 +31,11 @@ import { drawGroup, isDrawTimeout, withSyncDeadline } from "./chart-draw";
 import type { FoundLink, InsertResult } from "./host";
 import {
   CONTENT_WIDTH,
-  placeOnSlide,
-  selectedSlideId,
+  DEFAULT_TARGET,
+  finishTarget,
+  resolveTarget,
   SLIDE,
+  type InsertTarget,
 } from "./placement";
 import { hasPowerPointApi, isGrouped } from "./shapes";
 
@@ -248,6 +250,7 @@ interface Placed {
   slideId: string;
   box: Box;
   overlapping: boolean;
+  consume?: string;
 }
 
 export async function insertChart(
@@ -255,24 +258,28 @@ export async function insertChart(
   item: InboxItem,
   plan: ChartPlan,
   tag: LinkTag,
+  target: InsertTarget = DEFAULT_TARGET,
 ): Promise<InsertResult> {
   let where: Placed | undefined;
+  let result: InsertResult;
   try {
-    return await PowerPoint.run((context) =>
-      drawPlaced(context, stage, item, plan, tag, (placed) => {
+    result = await PowerPoint.run((context) =>
+      drawPlaced(context, stage, item, plan, tag, target, (placed) => {
         where = placed;
       }),
     );
   } catch (error) {
     const placed = where;
     if (!isDrawTimeout(error) || placed === undefined) throw error;
-    return {
+    result = {
       slideId: placed.slideId,
       shapeId: await pictureInstead(placed, item, plan.png, tag),
       overlapping: placed.overlapping,
       note: pictureNote(CHART_HOST_SILENT),
     };
   }
+  await finishTarget(target, result.slideId, where?.consume);
+  return result;
 }
 
 // One run: the placement reads under the draw's deadline, then the group, or
@@ -284,41 +291,37 @@ async function drawPlaced(
   item: InboxItem,
   plan: ChartPlan,
   tag: LinkTag,
+  target: InsertTarget,
   remember: (placed: Placed) => void,
 ): Promise<InsertResult> {
-  const slideId = await withSyncDeadline(selectedSlideId(context, stage));
-  const placed = await withSyncDeadline(
-    placeOnSlide(context, slideId, plan.size, minPlacementScale(plan.size)),
+  const minScale = minPlacementScale(plan.size);
+  const { slideId, placement, consume } = await withSyncDeadline(
+    resolveTarget(context, stage, target, plan.size, minScale),
   );
-  remember({ slideId, ...placed });
+  const { box, overlapping } = placement;
+  remember({ slideId, box, overlapping, consume });
   const shapes = context.presentation.slides.getItem(slideId).shapes;
-  if (belowMinimum(placed.box)) {
-    const png = plan.png;
+  if (belowMinimum(box)) {
     const shapeId = await pictureSynced(
       context,
       shapes,
-      placed.box,
+      box,
       item,
-      png,
+      plan.png,
       tag,
     );
-    return {
-      slideId,
-      shapeId,
-      overlapping: placed.overlapping,
-      note: CHART_TOO_SMALL,
-    };
+    return { slideId, shapeId, overlapping, note: CHART_TOO_SMALL };
   }
   const shapeId = await drawGroup(context, shapes, {
-    primitives: primitivesAt(plan, placed.box),
-    box: placed.box,
+    primitives: primitivesAt(plan, box),
+    box,
     font: plan.data.font,
     name: `pls,fix chart ${item.label}`,
     tag,
     token: item.token,
     slideId,
   });
-  return { slideId, shapeId, overlapping: placed.overlapping };
+  return { slideId, shapeId, overlapping };
 }
 
 // The chart drawn again where it sits. The new group is built first and the

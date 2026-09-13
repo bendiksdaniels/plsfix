@@ -16,7 +16,13 @@ import {
 import { withSyncDeadline } from "./chart-draw";
 import type { FoundLink, InsertResult } from "./host";
 import { isMissingShape, missingShapeError } from "./missing-shape";
-import { CONTENT_WIDTH, placeOnSlide, selectedSlideId } from "./placement";
+import {
+  CONTENT_WIDTH,
+  DEFAULT_TARGET,
+  finishTarget,
+  resolveTarget,
+  type InsertTarget,
+} from "./placement";
 import { shapeAt } from "./shapes";
 
 // PowerPoint's default text-box font is 18 pt, and 0.55 em is about the width
@@ -42,12 +48,18 @@ export async function insertText(
   item: InboxItem,
   payload: TextPayload,
   tag: LinkTag,
+  target: InsertTarget = DEFAULT_TARGET,
 ): Promise<InsertResult> {
-  return PowerPoint.run(async (context) => {
-    const slideId = await selectedSlideId(context, stage);
-    const placed = await placeOnSlide(context, slideId, textSize(payload));
+  const placed = await PowerPoint.run(async (context) => {
+    const resolved = await resolveTarget(
+      context,
+      stage,
+      target,
+      textSize(payload),
+    );
+    const { slideId, placement, consume } = resolved;
     const shapes = context.presentation.slides.getItem(slideId).shapes;
-    const shape = shapes.addTextBox(payload.text, placed.box);
+    const shape = shapes.addTextBox(payload.text, placement.box);
     shape.name = `pls,fix text ${item.label}`;
     // The box hugs its text, on one line: the slide keeps the number where the
     // modeller put it instead of wrapping it into a paragraph.
@@ -61,8 +73,19 @@ export async function insertText(
     // swallows it never confirms one, so there is nothing here for a
     // cleanup to delete.
     await withSyncDeadline(context.sync(), "inserting the text");
-    return { slideId, shapeId: shape.id, overlapping: placed.overlapping };
+    return {
+      slideId,
+      shapeId: shape.id,
+      overlapping: placement.overlapping,
+      consume,
+    };
   });
+  await finishTarget(target, placed.slideId, placed.consume);
+  return {
+    slideId: placed.slideId,
+    shapeId: placed.shapeId,
+    overlapping: placed.overlapping,
+  };
 }
 
 // The text the source shows now, written into the box where it sits. Nothing
