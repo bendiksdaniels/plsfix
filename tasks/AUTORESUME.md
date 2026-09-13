@@ -1,5 +1,71 @@
 # AUTORESUME - pls,fix (v2.7.13 LIVE 13.09, deployed from 987ea1c; PUBLIC on GitHub, MIT)
 
+## NEXT SESSION (from 14.09): no more crashes, link folders, free space in PowerPoint
+
+Daniel, 13.09 night: "in next run we will be making sure there are no more crashes, create the folders and
+keep testing it; also we need it to be able to figure out spaces in PP because some tables and charts
+overlap." State at hand-over: **v2.8.3 LIVE** (main 97fc9b1, tag v2.8.3, modelis clean, release green,
+ghcr clean), gates green (2684 vitest, ux 0/72, sweep 0/149), no worktree, nothing running. Read
+`tasks/lessons.md` 13.09 evening + night first: the desktop recipe (computer-use grant per task, deck copy
+in the scratchpad, focus keeper loop, dev sideload against the live relay, crash detection by the
+PowerPoint process start time, MERP dialog) and the E1-E15 bisection.
+
+1. **No more crashes (test first, fix what it finds).** On Daniel's Mac (ask for the computer-use grant for
+   Excel and PowerPoint at session start; he expects it), with `pls,fix Demo Model.xlsx` rebuilt by
+   `npm run demo` and a fresh copy of `demo/deck/pls,fix Demo Deck.pptx`: every export kind through every
+   route, twice each, watching the process start time after each step:
+   charts of every kind the demo has (Bridge Revenue column, EBITDA margin line, Rounding Segment pie, a
+   Waterfall made on the Bridge sheet, a Tornado from Sensitivity) plus a big one near the desktop budget
+   (a 40-point column chart made in Excel by hand: 200 shapes is the cap, tiers of six mean 34 sub-groups),
+   the P&L table (and a 60 x 20 one), Export as text, Export selection pictures; each via Insert with
+   Free space / a half / a quarter / Whole slide / Selected shape (an empty placeholder), Paste latest
+   linked, then Update all after a pushed revision (change a cell, Push selected), Update this slide,
+   Revert last update, Change source, Break link. Any crash: bisect the way E1-E15 did (dev sideload,
+   one variable per run). Open question worth one run: is `GROUP_TIER_MAC` = 6 the safe maximum or would 12
+   (= `SHAPES_PER_SYNC`, fewer sub-groups) also survive? Keep 6 unless 12 survives three inserts in a row.
+   Web (rig) and Windows (Daniel's own pass, `tasks/launch-check.md`) are unchanged by the tiers.
+2. **Link folders ("projects").** Daniel: "folders for the links, so if I have multiple projects I can track
+   these links." Design to build (his go given 13.09 with "create the folders"): a `project` name on every
+   link, chosen in Excel and carried with the link, the relay stays blind.
+   - Model (`src/link/model.ts`): `project?: string` on the registry entry, the sealed `InboxItem` and the
+     `LinkTag` written on the PowerPoint shape (missing = "No project"; old links and old decks keep
+     working, the codecs must accept both). Cap the name (40 chars, trimmed, no control chars).
+   - Excel (`src/pane/links-tab.ts` + `links-list.ts`, `src/excel/links.ts` registry in
+     `workbook.settings`): a "Project" select above the Linked objects list with the workbook's projects and
+     "New project..." (a prompt box in the pane, not window.prompt), the selection is the project every new
+     export gets; the list groups links under their project headers; per-link "Move to project"; Push all
+     scoped to the shown project. The active project persists per workbook (settings), the list of
+     projects too.
+   - PowerPoint (`src/ppt/views.ts`, `links.ts`, `main.ts`, `pptpane.html`): an "All projects" filter beside
+     "All sources" on the Links tab (the same `data-` filter pattern), the Inbox grouped by project with a
+     header per project, Update all / Update selected honour the filter, the update summary names the
+     project. Copy stays in the pane's plain voice; no em dashes.
+   - Tests mirror the files (`links-tab.test.ts`, `links-list`, `inbox.audit.test.ts`, `pane.audit`,
+     `links.audit.test.ts` with the fake host, codec round-trip tests for a tag with and without a
+     project); `ux:check` and `ux:sweep` count the new controls; the manual (LV, `manual/src/content/
+     links.rs`: section "Projekti"), README, FEATURES, CLAUDE map, launch-check. One patch bump per
+     reviewed merge; a sonnet slice + opus review is the shape if delegated (~500-800k), else direct.
+3. **Free space in PowerPoint: overlaps.** Seen 13.09 on the Mac: (a) with both dashed rectangles of
+   deck slide 3 present, Free space has no free spot at any scale, so `placeInFreeSpace` falls back to
+   "centred, full size, overlapping = true" and the chart straddles both halves (by design, the OVERLAP_NOTE
+   says so, but Daniel reads it as "it overlaps"); (b) 19:00, a second chart inserted with Free space landed
+   EXACTLY over the first chart (same box, right half top) although the lower right quarter was empty;
+   (c) 19:06, a third chart landed inside the left dashed rectangle at full size. (b) and (c) say the
+   scan did not see the first chart's groups (and maybe not the rectangle) as occupied. `occupiedBoxes`
+   (`src/ppt/placement.ts`) loads `SHAPE_PROPERTIES` of the slide's top-level shapes and takes every
+   non-empty-placeholder shape's box: hypotheses, in order: the Mac reports a group's left/top/width/
+   height as 0 or child-relative through the JS API (read them back on the Mac: load every shape's box on
+   slide 3 in a `PowerPoint.run` from the pane and show it in a toast or the Copy-details text); a
+   sub-group's box vs the top group's; the `overlapping` fallback landing at the previous spot. Then the
+   fix, in `src/layout.ts` (pure, tests in `layout.test.ts`) + `placement.ts`: when the free scan fails,
+   prefer the largest free rectangle at a reduced scale over a full-size overlap, count a group's real
+   bounds (union of its children when the host reports 0), let a decorative frame (no fill, no text,
+   dashed line) count as free, and tell the user in the note which spot would have been free. Prove it
+   with the fake (a slide with a group and a frame) and on the Mac with the deck's slide 3.
+4. Order: 1 first (a crash found early changes everything), then 3 (small, blocks the demo story), then 2.
+   Commit per reviewed slice, `sh scripts/release.sh patch`, `~/signet-tools-gateway/deploy.sh modelis`,
+   ledger + lessons + memory (`project_plsfix.md`) at the end, `git push -u --all origin`.
+
 ## 13.09: the v2.7 wave - comps and hygiene tools, follow-ups closed, stress passes, relay hardening
 
 - 13.09 evening, the desktop pass on Daniel's Mac (computer use for Excel and PowerPoint, granted): Excel

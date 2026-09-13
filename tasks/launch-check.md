@@ -396,4 +396,8 @@ Run with computer use on Daniel's own Excel and PowerPoint, the demo workbook an
 - [ ] Open, cosmetic: at a quarter-size spot the pie's value labels and legend entries wrap
       ("1,51 / 9", "Retai / l"): the label boxes are laid out for the plan's size and then scaled
       with the box, the font is not. Halves and the whole slide are fine.
+- [ ] Open, placement: Free space on a slide with no free spot falls back to a centred full-size
+      overlap (by design, with the note), and on the Mac a second chart landed exactly over the first
+      (13.09 19:00) and a third inside a dashed frame (19:06): the scan did not count the groups as
+      occupied. Next session, item 3 of the NEXT SESSION brief in `tasks/AUTORESUME.md`.
 
