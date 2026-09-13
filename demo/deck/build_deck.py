@@ -9,6 +9,7 @@ SLIDE_GAP exactly (all in points; 72 pt = 1 in) - change one, change both.
 Python because no maintained Rust crate writes PPTX; python-pptx does.
 """
 
+from datetime import datetime, timezone
 from pathlib import Path
 
 from pptx import Presentation
@@ -16,6 +17,7 @@ from pptx.dml.color import RGBColor
 from pptx.enum.dml import MSO_LINE_DASH_STYLE
 from pptx.enum.shapes import MSO_SHAPE
 from pptx.enum.text import PP_ALIGN
+from pptx.opc.constants import RELATIONSHIP_TYPE as RT
 from pptx.oxml import parse_xml
 from pptx.oxml.ns import nsdecls
 from pptx.util import Pt
@@ -43,6 +45,13 @@ RIGHT_HALF = (CONTENT_LEFT + HALF_WIDTH + GAP, CONTENT_TOP, HALF_WIDTH, CONTENT_
 TITLE_BAND_LIMIT = CONTENT_TOP - GAP  # 24 pt
 TITLE_HEIGHT = Pt(18)
 RULE_HEIGHT = Pt(2)
+
+# Slide 4's caption band: CAPTION_HEIGHT is the one named constant, GAP is
+# the breathing room above it, so picture + GAP + caption ties out to
+# CONTENT_HEIGHT exactly instead of three independently hand-tuned numbers.
+CAPTION_HEIGHT = Pt(40)
+PICTURE_HEIGHT = CONTENT_HEIGHT - GAP - CAPTION_HEIGHT
+CAPTION_TOP = CONTENT_TOP + CONTENT_HEIGHT - CAPTION_HEIGHT
 
 # Brand colors, matching the panes (tokens.css palette).
 NAVY = RGBColor(0x14, 0x21, 0x3D)
@@ -203,12 +212,12 @@ def build_slide_4(prs: Presentation) -> None:
     """An empty picture placeholder to select and insert into."""
     slide = add_slide(prs, PICTURE_WITH_CAPTION, "Into a placeholder")
     picture = slide.placeholders[1]
-    set_box(picture, CONTENT_LEFT, CONTENT_TOP, CONTENT_WIDTH, CONTENT_HEIGHT - Pt(60))
+    set_box(picture, CONTENT_LEFT, CONTENT_TOP, CONTENT_WIDTH, PICTURE_HEIGHT)
     # Left empty: no insert_picture() call, so it stays the "click to add
     # picture" placeholder the pane's occupied-box scan treats as free space.
 
     caption = slide.placeholders[2]
-    set_box(caption, CONTENT_LEFT, CONTENT_TOP + CONTENT_HEIGHT - Pt(48), CONTENT_WIDTH, Pt(40))
+    set_box(caption, CONTENT_LEFT, CAPTION_TOP, CONTENT_WIDTH, CAPTION_HEIGHT)
     para = caption.text_frame.paragraphs[0]
     para.text = "Select the placeholder, Where = Selected shape, Insert."
     para.font.size = Pt(14)
@@ -217,13 +226,34 @@ def build_slide_4(prs: Presentation) -> None:
 
 
 def set_core_properties(prs: Presentation) -> None:
-    """Overwrite the default template's stale docProps/core.xml (its author
-    and description are python-pptx's own maintainer, not this project)."""
+    """Overwrite the default template's stale docProps/core.xml: its author,
+    description and 2013 timestamps are python-pptx's own template, not this
+    project or this build."""
     props = prs.core_properties
     props.title = "pls,fix Demo Deck"
     props.author = "pls,fix"
     props.last_modified_by = "pls,fix"
     props.comments = ""
+    now = datetime.now(timezone.utc).replace(microsecond=0)
+    props.created = now
+    props.modified = now
+
+
+def drop_template_baggage(prs: Presentation) -> None:
+    """Remove docProps/thumbnail.jpeg (a stale 4:3 preview) and
+    ppt/printerSettings/printerSettings1.bin (Windows print-driver settings),
+    both dead weight from python-pptx's template: drop the one relationship
+    each has, so OpcPackage.iter_parts()'s reachability walk excludes the
+    part - and its [Content_Types].xml entry - from save() on its own. No
+    zip surgery; proved clean by unzip -t and a reload round-trip."""
+    package = prs.part.package
+    pkg_rels = package._rels  # OpcPackage has no public alias for this
+    thumbnail_rid = next(rid for rid in pkg_rels if pkg_rels[rid].reltype == RT.THUMBNAIL)
+    package.drop_rel(thumbnail_rid)
+
+    pres_rels = prs.part.rels
+    printer_rid = next(rid for rid in pres_rels if pres_rels[rid].reltype == RT.PRINTER_SETTINGS)
+    prs.part.drop_rel(printer_rid)
 
 
 def build() -> Presentation:
@@ -233,6 +263,7 @@ def build() -> Presentation:
     build_slide_3(prs)
     build_slide_4(prs)
     set_core_properties(prs)
+    drop_template_baggage(prs)
     return prs
 
 
