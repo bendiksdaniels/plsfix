@@ -20,7 +20,7 @@ import {
 } from "../link/model";
 import { pictureNote } from "../link/chart-model";
 import { base64ToBytes, pngSize } from "../link/png";
-import { fitToSlide } from "../link/status";
+import { fitToSlide, type Box } from "../link/status";
 import { withSyncDeadline } from "./chart-draw";
 import { chartPlan, declineReason, insertChart } from "./charts";
 import { missingShapeError } from "./missing-shape";
@@ -174,6 +174,21 @@ export async function insertLink(
   if (plan !== null && note === undefined) {
     return insertChart(stage, item, plan, tag, target);
   }
+  return insertPictureLink(stage, item, payload, tag, note, target);
+}
+
+// The two ways an un-drawable chart or a plain picture lands: the selection
+// API below PowerPointApi 1.8, or an in-place rectangle with the PNG as its
+// fill (insertPictureInPlace, its own function to stay under the line cap)
+// on 1.8 and above.
+async function insertPictureLink(
+  stage: string,
+  item: InboxItem,
+  payload: PicturePayload,
+  tag: LinkTag,
+  note: string | undefined,
+  target: InsertTarget,
+): Promise<InsertResult> {
   const size = pngSize(base64ToBytes(payload.png));
   const fitted = fitToSlide(size.width, size.height);
   if (!supportsInPlaceRefresh()) {
@@ -191,6 +206,18 @@ export async function insertLink(
     await finishTarget(target, slideId, consume);
     return { slideId, shapeId, overlapping: placement.overlapping, note };
   }
+  return insertPictureInPlace(stage, item, payload, tag, note, target, fitted);
+}
+
+async function insertPictureInPlace(
+  stage: string,
+  item: InboxItem,
+  payload: PicturePayload,
+  tag: LinkTag,
+  note: string | undefined,
+  target: InsertTarget,
+  fitted: Box,
+): Promise<InsertResult> {
   const placed = await PowerPoint.run(async (context) => {
     const resolved = await resolveTarget(context, stage, target, fitted);
     const { slideId, placement, consume } = resolved;
