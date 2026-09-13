@@ -3,14 +3,18 @@
 // spot placeInFreeSpace finds - or, since the inbox grew a Slide/Where picker,
 // a named spot (spotBox + fitInto) or the first selected shape's box. Owns the
 // slide geometry constants and the empty-placeholder rule. Invariant: an
-// empty layout placeholder never counts as occupied and every other shape
-// does, so a second insert cannot land on the first, and resolveTarget's
-// "select a slide/shape first" errors are the only ones its callers see for
-// those cases - never a raw office.js string.
+// empty layout placeholder and a dashed empty frame never count as occupied;
+// a group whose own box has no area occupies the union of its children, so a
+// second insert cannot land on the first. resolveTarget's "select a
+// slide/shape first" errors are the only ones its callers see for those
+// cases - never a raw office.js string.
 
 import {
   fitInto,
+  hasArea,
+  isDecorativeFrame,
   placeInFreeSpace,
+  reportedBox,
   spotBox,
   type Box,
   type Placement,
@@ -20,7 +24,12 @@ import {
 import { SLIDE_16_9 } from "../link/status";
 import { withSyncDeadline } from "./chart-draw";
 import { requireObjectToolsApi } from "./object-tools";
-import { SHAPE_PROPERTIES } from "./shapes";
+import {
+  GROUP_API,
+  GROUP_TYPE,
+  hasPowerPointApi,
+  SHAPE_PROPERTIES,
+} from "./shapes";
 
 // Half an inch of margin, the same one fitToSlide keeps, and a gap wide enough
 // that two objects beside each other read as two.
@@ -169,9 +178,65 @@ async function occupiedBoxes(
   shapes.load(SHAPE_PROPERTIES);
   await withSyncDeadline(context.sync(), "reading the slide's shapes");
   const empty = await emptyPlaceholders(context, shapes.items);
-  return shapes.items
-    .filter((shape) => !empty.has(shape.id))
-    .map((shape) => boxOf(shape));
+  await loadFrameLooks(context, shapes.items);
+  const boxes: Box[] = [];
+  for (const shape of shapes.items) {
+    if (empty.has(shape.id) || isFrame(shape)) continue;
+    const box = await boundsOf(context, shape);
+    if (hasArea(box)) boxes.push(box);
+  }
+  return boxes;
+}
+
+const FRAME_TYPE = "GeometricShape";
+
+async function loadFrameLooks(
+  context: PowerPoint.RequestContext,
+  shapes: PowerPoint.Shape[],
+): Promise<void> {
+  const frames = shapes.filter((shape) => shape.type === FRAME_TYPE);
+  if (frames.length === 0) return;
+  for (const shape of frames) {
+    shape.fill.load("type");
+    shape.lineFormat.load("visible,dashStyle");
+    shape.textFrame.load("hasText");
+  }
+  await withSyncDeadline(context.sync(), "reading the outlines");
+}
+
+function isFrame(shape: PowerPoint.Shape): boolean {
+  if (shape.type !== FRAME_TYPE) return false;
+  return isDecorativeFrame({
+    fillType: String(shape.fill.type),
+    hasText: Boolean(shape.textFrame.hasText),
+    dashStyle:
+      shape.lineFormat.dashStyle == null
+        ? null
+        : String(shape.lineFormat.dashStyle),
+    lineVisible: Boolean(shape.lineFormat.visible),
+  });
+}
+
+async function boundsOf(
+  context: PowerPoint.RequestContext,
+  shape: PowerPoint.Shape,
+): Promise<Box> {
+  const own = boxOf(shape);
+  if (
+    hasArea(own) ||
+    shape.type !== GROUP_TYPE ||
+    !hasPowerPointApi(GROUP_API)
+  ) {
+    return own;
+  }
+  const inner = shape.group.shapes;
+  inner.load(SHAPE_PROPERTIES);
+  await withSyncDeadline(context.sync(), "reading a group's shapes");
+  const children: Box[] = [];
+  for (const child of inner.items) {
+    children.push(await boundsOf(context, child));
+  }
+  return reportedBox(own, children);
 }
 
 // hasText is asked of placeholders alone: a picture or a table has no text

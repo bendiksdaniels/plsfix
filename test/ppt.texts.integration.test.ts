@@ -94,11 +94,16 @@ describe("insert a text link", () => {
   it("costs no more syncs than a picture insert", async () => {
     const ws = await createWorkspace(memoryStore());
     const picture = await seedLink(fakePng(800, 400));
+    helpers.selectSlide(presentation.slides[0]!.id);
     const before = helpers.syncCount();
     await links.insertFromInbox(picture, ws, relay);
     const pictureSyncs = helpers.syncCount() - before;
 
+    // Same empty-slide occupancy work: a picture already on the slide is a
+    // GeometricShape, so a second insert on that slide pays one extra
+    // outline-read the first insert did not.
     const item = await seedText(TEXT);
+    helpers.selectSlide(presentation.slides[1]!.id);
     const start = helpers.syncCount();
     await links.insertFromInbox(item, ws, relay);
     expect(helpers.syncCount() - start).toBeLessThanOrEqual(pictureSyncs);

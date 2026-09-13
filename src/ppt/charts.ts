@@ -10,7 +10,7 @@ import {
   MIN_SIZE,
   type Primitive,
 } from "../chart-shapes";
-import type { Box, Size } from "../layout";
+import type { Box, Size, Spot } from "../layout";
 import {
   CHART_HOST_SILENT,
   pictureNote,
@@ -190,6 +190,7 @@ interface Placed {
   slideId: string;
   box: Box;
   overlapping: boolean;
+  freeSpot?: Spot;
   consume?: string;
 }
 
@@ -215,6 +216,7 @@ export async function insertChart(
       slideId: placed.slideId,
       shapeId: await pictureInstead(placed, item, plan.png, tag),
       overlapping: placed.overlapping,
+      freeSpot: placed.freeSpot,
       note: pictureNote(CHART_HOST_SILENT),
     };
   }
@@ -238,8 +240,8 @@ async function drawPlaced(
   const { slideId, placement, consume } = await withSyncDeadline(
     resolveTarget(context, stage, target, plan.size, minScale),
   );
-  const { box, overlapping } = placement;
-  remember({ slideId, box, overlapping, consume });
+  const { box, overlapping, freeSpot } = placement;
+  remember({ slideId, box, overlapping, freeSpot, consume });
   const shapes = context.presentation.slides.getItem(slideId).shapes;
   if (belowMinimum(box)) {
     const shapeId = await pictureSynced(
@@ -250,7 +252,7 @@ async function drawPlaced(
       plan.png,
       tag,
     );
-    return { slideId, shapeId, overlapping, note: CHART_TOO_SMALL };
+    return { slideId, shapeId, overlapping, freeSpot, note: CHART_TOO_SMALL };
   }
   const shapeId = await drawGroup(context, shapes, {
     primitives: primitivesAt(plan, box),
@@ -261,7 +263,7 @@ async function drawPlaced(
     token: item.token,
     slideId,
   });
-  return { slideId, shapeId, overlapping };
+  return { slideId, shapeId, overlapping, freeSpot };
 }
 
 // The chart drawn again where it sits. The new group is built first and the

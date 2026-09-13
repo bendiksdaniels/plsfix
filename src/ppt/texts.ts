@@ -77,6 +77,7 @@ export async function insertText(
       slideId,
       shapeId: shape.id,
       overlapping: placement.overlapping,
+      freeSpot: placement.freeSpot,
       consume,
     };
   });
@@ -85,6 +86,7 @@ export async function insertText(
     slideId: placed.slideId,
     shapeId: placed.shapeId,
     overlapping: placed.overlapping,
+    freeSpot: placed.freeSpot,
   };
 }
 

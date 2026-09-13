@@ -45,7 +45,7 @@ PowerPoint process start time, MERP dialog) and the E1-E15 bisection.
      project); `ux:check` and `ux:sweep` count the new controls; the manual (LV, `manual/src/content/
      links.rs`: section "Projekti"), README, FEATURES, CLAUDE map, launch-check. One patch bump per
      reviewed merge; a sonnet slice + opus review is the shape if delegated (~500-800k), else direct.
-3. **Free space in PowerPoint: overlaps.** Seen 13.09 on the Mac: (a) with both dashed rectangles of
+3. **Free space in PowerPoint: overlaps.** Implemented on `ppt-free-space` (layout hole fallback, group union when the host reports a 0 box, dashed empty frames skip). Still prove on the Mac with the deck's slide 3. Seen 13.09 on the Mac: (a) with both dashed rectangles of
    deck slide 3 present, Free space has no free spot at any scale, so `placeInFreeSpace` falls back to
    "centred, full size, overlapping = true" and the chart straddles both halves (by design, the OVERLAP_NOTE
    says so, but Daniel reads it as "it overlaps"); (b) 19:00, a second chart inserted with Free space landed

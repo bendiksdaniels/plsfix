@@ -118,6 +118,7 @@ export async function insertTable(
       slideId,
       shapeId: shape.id,
       overlapping: placement.overlapping,
+      freeSpot: placement.freeSpot,
       consume,
     };
   });
@@ -128,6 +129,7 @@ export async function insertTable(
     slideId: placed.slideId,
     shapeId: placed.shapeId,
     overlapping: placed.overlapping,
+    freeSpot: placed.freeSpot,
   };
 }
 

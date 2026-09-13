@@ -21,6 +21,7 @@ import {
 import { pictureNote } from "../link/chart-model";
 import { base64ToBytes, pngSize } from "../link/png";
 import { fitToSlide, type Box } from "../link/status";
+import type { Spot } from "../layout";
 import { withSyncDeadline } from "./chart-draw";
 import { chartPlan, declineReason, insertChart } from "./charts";
 import { missingShapeError } from "./missing-shape";
@@ -144,6 +145,8 @@ export interface InsertResult {
   // True when the slide had no room left and the object sits over what is
   // already there: the pane says so with OVERLAP_NOTE.
   overlapping: boolean;
+  // Named spot that still had a hole, when overlapping. overlapNote uses it.
+  freeSpot?: Spot;
   // Why a chart arrived as a picture; the pane says it after the overlap note.
   note?: string;
 }
@@ -151,6 +154,21 @@ export interface InsertResult {
 // What the pane shows when an insert had to cover something.
 export const OVERLAP_NOTE =
   "Placed over other objects: no free space on this slide";
+
+const SPOT_LABEL: Record<Spot, string> = {
+  "left-half": "the left half",
+  "right-half": "the right half",
+  "top-left": "the top left",
+  "top-right": "the top right",
+  "bottom-left": "the bottom left",
+  "bottom-right": "the bottom right",
+  whole: "the slide",
+};
+
+export function overlapNote(spot?: Spot): string {
+  if (spot === undefined || spot === "whole") return OVERLAP_NOTE;
+  return `Placed over other objects: ${SPOT_LABEL[spot]} was free at a smaller size`;
+}
 
 export async function insertLink(
   item: InboxItem,
@@ -204,7 +222,13 @@ async function insertPictureLink(
     );
     await writeTags(slideId, shapeId, tag, item.token);
     await finishTarget(target, slideId, consume);
-    return { slideId, shapeId, overlapping: placement.overlapping, note };
+    return {
+      slideId,
+      shapeId,
+      overlapping: placement.overlapping,
+      freeSpot: placement.freeSpot,
+      note,
+    };
   }
   return insertPictureInPlace(stage, item, payload, tag, note, target, fitted);
 }
@@ -241,6 +265,7 @@ async function insertPictureInPlace(
       slideId,
       shapeId: shape.id,
       overlapping: placement.overlapping,
+      freeSpot: placement.freeSpot,
       consume,
     };
   });
@@ -249,6 +274,7 @@ async function insertPictureInPlace(
     slideId: placed.slideId,
     shapeId: placed.shapeId,
     overlapping: placed.overlapping,
+    freeSpot: placed.freeSpot,
     note,
   };
 }

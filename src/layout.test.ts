@@ -4,8 +4,11 @@ import { SLIDE_16_9 } from "./link/status";
 import {
   dropBelow,
   fitInto,
+  hasArea,
+  isDecorativeFrame,
   overlaps,
   placeInFreeSpace,
+  reportedBox,
   spotBox,
   type Spot,
 } from "./layout";
@@ -64,18 +67,95 @@ describe("placeInFreeSpace", () => {
   });
 
   // scanGrid's own early return: the object is too big for the canvas even
-  // at minScale, before a single grid cell is even tried - not the "every
-  // cell is blocked" path the test above covers.
-  it("centres and flags an object too big for the canvas at any scale", () => {
+  // at minScale. The hole fallback then fits it into the remaining content
+  // rather than hanging a full-size box off the slide.
+  it("fits a too-big object into the remaining content instead of overlapping", () => {
     const huge = { width: 3000, height: 3000 };
     const speck = { left: 0, top: 0, width: 1, height: 1 };
     const placement = placeInFreeSpace(huge, [speck], slide, 36, 12);
-    expect(placement.overlapping).toBe(true);
-    expect(placement.scale).toBe(1);
-    expect(placement.box).toMatchObject({
-      left: (960 - 3000) / 2,
-      top: (540 - 3000) / 2,
-    });
+    expect(placement.overlapping).toBe(false);
+    expect(placement.scale).toBeLessThan(1);
+    expect(placement.box.width).toBeLessThanOrEqual(888);
+    expect(placement.box.height).toBeLessThanOrEqual(468);
+  });
+
+  // minScale 1 forbids the 0.1 grid shrink: the strip between these walls is
+  // narrower than the object, so today the fallback is a full-size overlap.
+  // Fitting the object into that strip at a reduced scale is the better answer.
+  it("fits into the largest remaining rectangle rather than overlapping full size", () => {
+    const left = { left: 0, top: 0, width: 41, height: 540 };
+    const right = { left: 280, top: 0, width: 680, height: 540 };
+    const placement = placeInFreeSpace(size, [left, right], slide, 36, 12, 1);
+    expect(placement.overlapping).toBe(false);
+    expect(placement.scale).toBeLessThan(1);
+    expect(overlaps(placement.box, left, 12)).toBe(false);
+    expect(overlaps(placement.box, right, 12)).toBe(false);
+  });
+
+  it("shrinks into a small remaining hole rather than covering the slide", () => {
+    const hole = { left: 700, top: 400, width: 80, height: 60 };
+    const blocked = [
+      { left: 0, top: 0, width: 960, height: 400 },
+      { left: 0, top: 400, width: 700, height: 140 },
+      { left: 780, top: 400, width: 180, height: 140 },
+      { left: 700, top: 460, width: 80, height: 80 },
+    ];
+    expect(overlaps(hole, blocked[0]!)).toBe(false);
+    const placement = placeInFreeSpace(size, blocked, slide, 36, 12, 1);
+    expect(placement.overlapping).toBe(false);
+    expect(placement.scale).toBeLessThan(1);
+    expect(placement.box.left).toBeGreaterThanOrEqual(hole.left);
+    expect(placement.box.top).toBeGreaterThanOrEqual(hole.top);
+    expect(placement.freeSpot).toBe("bottom-right");
+  });
+});
+
+describe("reportedBox", () => {
+  const children = [
+    { left: 400, top: 40, width: 200, height: 120 },
+    { left: 400, top: 160, width: 200, height: 120 },
+  ];
+
+  it("keeps a box that has area", () => {
+    const own = { left: 10, top: 10, width: 50, height: 50 };
+    expect(reportedBox(own, children)).toEqual(own);
+  });
+
+  it("unions the children when the host reports a zero box", () => {
+    expect(
+      reportedBox({ left: 0, top: 0, width: 0, height: 0 }, children),
+    ).toEqual({ left: 400, top: 40, width: 200, height: 240 });
+  });
+
+  it("treats a zero-area box as empty", () => {
+    expect(hasArea({ left: 0, top: 0, width: 0, height: 0 })).toBe(false);
+    expect(hasArea({ left: 10, top: 10, width: 1, height: 1 })).toBe(true);
+  });
+});
+
+describe("isDecorativeFrame", () => {
+  it("is a dashed, empty, unfilled rectangle", () => {
+    expect(
+      isDecorativeFrame({
+        fillType: "NoFill",
+        hasText: false,
+        dashStyle: "Dash",
+        lineVisible: true,
+      }),
+    ).toBe(true);
+  });
+
+  it("is not a caption, a filled shape, or a solid outline", () => {
+    const frame = {
+      fillType: "NoFill",
+      hasText: false,
+      dashStyle: "Dash",
+      lineVisible: true,
+    };
+    expect(isDecorativeFrame({ ...frame, hasText: true })).toBe(false);
+    expect(isDecorativeFrame({ ...frame, fillType: "Solid" })).toBe(false);
+    expect(isDecorativeFrame({ ...frame, dashStyle: "Solid" })).toBe(false);
+    expect(isDecorativeFrame({ ...frame, lineVisible: false })).toBe(false);
   });
 });
 
