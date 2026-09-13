@@ -83,7 +83,7 @@ describe("resolveTarget", () => {
     });
   });
 
-  it("flags overlapping when a spot already holds something", async () => {
+  it("never flags a chosen spot as overlapping, even over other shapes", async () => {
     const { presentation } = await bootPpt();
     const slide = presentation.slides[0]!;
     presentation.addShape(slide, {
@@ -96,7 +96,7 @@ describe("resolveTarget", () => {
     const resolved = await PowerPoint.run((context) =>
       resolveTarget(context, "insert test", target, SIZE),
     );
-    expect(resolved.placement.overlapping).toBe(true);
+    expect(resolved.placement.overlapping).toBe(false);
   });
 
   it("does not flag a spot nothing else occupies", async () => {

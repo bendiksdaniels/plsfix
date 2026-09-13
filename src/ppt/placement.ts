@@ -10,7 +10,6 @@
 
 import {
   fitInto,
-  overlaps,
   placeInFreeSpace,
   spotBox,
   type Box,
@@ -87,7 +86,7 @@ const NO_SHAPE_SELECTED =
 // the picker named one, the selected slide otherwise (selectedSlideId's own
 // "select a slide first" error, unchanged); then "free" is the old
 // placeInFreeSpace search, a Spot fits the size into spotBox and flags
-// overlapping against what the slide already holds, and "selected-shape"
+// never flagged as overlapping (the user chose that box), and "selected-shape"
 // reads PowerPoint's current selection. minScale only ever reaches "free":
 // a chart passes the scale it would rather shrink to than overlap.
 export async function resolveTarget(
@@ -105,7 +104,7 @@ export async function resolveTarget(
   if (target.where === "selected-shape") {
     return { slideId, ...(await selectedShapeTarget(context, slideId, size)) };
   }
-  const spot = await spotTarget(context, slideId, target.where, size);
+  const spot = spotTarget(target.where, size);
   return { slideId, ...spot };
 }
 
@@ -209,24 +208,12 @@ function scaleOf(size: Size, box: Box): number {
   return size.width > 0 ? box.width / size.width : 1;
 }
 
-// A named spot: fitInto keeps the box's shape, and overlapping is the truth
-// about whatever the slide already holds there - a spot is a box, not a
-// guarantee, so the pane still says so when it lands on something.
-async function spotTarget(
-  context: PowerPoint.RequestContext,
-  slideId: string,
-  spot: Spot,
-  size: Size,
-): Promise<{ placement: Placement }> {
+// A named spot: fitInto keeps the box's shape. The user chose this box, so
+// landing on something there is not the free-space failure OVERLAP_NOTE
+// describes: overlapping stays false, as it does for a selected shape.
+function spotTarget(spot: Spot, size: Size): { placement: Placement } {
   const box = fitInto(size, spotBox(spot, SLIDE, SLIDE_MARGIN, SLIDE_GAP));
-  const occupied = await occupiedBoxes(context, slideId);
-  return {
-    placement: {
-      box,
-      scale: scaleOf(size, box),
-      overlapping: occupied.some((other) => overlaps(box, other, SLIDE_GAP)),
-    },
-  };
+  return { placement: { box, scale: scaleOf(size, box), overlapping: false } };
 }
 
 // PowerPoint's current selection, gated the same way the Tools tab's object
