@@ -11,13 +11,15 @@
   `src/ppt/charts.ts` keeps every chart a picture on PlatformType.Mac, on insert and on Update all (the
   decline reason now travels back from `refreshChartGroup`), the fake host defaults to "PC", tests in
   `src/ppt/charts.test.ts`; the pairing copy says where the key really lives (Excel: Links > Link key,
-  PowerPoint: Settings); FEATURES, CLAUDE map, manual (LV) and launch-check updated. OPEN: desktop
-  re-check of the Mac picture route before release (the Mac was Daniel's live desktop at 16:54, paused);
+  PowerPoint: Settings); FEATURES, CLAUDE map, manual (LV) and launch-check updated. **v2.8.2 LIVE 13.09**
+  (9217b28 + 67096d1 manual label; modelis clean, /version 2.8.2, release run green with 8 assets),
+  shipped before the Mac re-check because v2.8.1 crashed every Mac chart insert. OPEN: the desktop
+  re-check of the Mac picture route (the Mac was Daniel's live desktop at 16:54, automation paused);
   the bisection on the Mac (E1 = drawGroup without addGroup, then without lines / labels / wedges) to
   bring native charts back there; the ghcr cleanup still waits for the 2FA sudo step in Safari
   (`$S/ghcr-clean.sh` ready; the device code must be re-issued); the rest of the v2.8 desktop section.
-  Merge: `git merge --ff-only mac-charts-as-pictures` on main after the desktop re-check, then
-  `sh scripts/release.sh patch` + `deploy.sh modelis`.
+  The worktree `~/.worktrees/plsfix/mac-charts-as-pictures` stays for the bisection (its uncommitted
+  vite proxy points the dev pane at the live relay); the branch is merged.
 - v2.8.0 + v2.8.1 LIVE 13.09 (session "launch readiness"; plan
   `~/.claude-accounts/work/plans/refactored-painting-yao.md`, approved, budget 2.1-3.1M, spent ~3.6M
   incl. reviews): guided demos + slide/spot placement, four sonnet worktree slices, one opus review + fix
