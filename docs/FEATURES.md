@@ -145,8 +145,8 @@ survive row/column moves (Macabacus mechanism).
 | Export range/chart as image to PPT | both | Range.getImage/Chart.getImage base64 -> PPT shape | shipped v2.0; column, bar, waterfall and pie charts land as native shape groups (picture fallback) v2.4 | P1 (M2) |
 | Link registry + refresh one object | both | Stable link IDs, update in place preserving position/size | shipped v2.0 | P1 (M2) |
 | Link Manager pane (by slide / by source, batch update, filters) | both | Central link control | shipped v2.0 | P1 (M3) |
-| Slide picker for inserts | - | Choose the target slide before an Insert or Paste latest linked, instead of always the active slide | shipped v2.8.0 | P1 (M3) |
-| Spot placement (halves, quarters, whole slide, selected shape) | - | Choose where on the slide the object lands, fitted and centred | shipped v2.8.0 | P1 (M3) |
+| Slide picker for inserts | - | Choose the target slide before an Insert or Paste latest linked, instead of always the active slide | shipped v2.8 | P1 (M3) |
+| Spot placement (halves, quarters, whole slide, selected shape) | - | Choose where on the slide the object lands, fitted and centred | shipped v2.8 | P1 (M3) |
 | Change source / versioning (Model_v4 detection) | both | Repoint links, newest-file prompts | shipped v2.1 | P2 (M3) |
 | Export text (cell -> text box) | both | Live text links | shipped v2.5 (one cell, whole-box; runs inside a sentence deferred) | P2 (M3) |
 | Native PPT table export | US | Editable table, format survives refresh | Partial (PPT table API at 1.8; format drift risk) | P3 |
