@@ -165,7 +165,7 @@ describe("resolveTarget", () => {
       expect(slide.shapes.map((one) => one.id)).toContain(placeholder.id);
     });
 
-    it("keeps a non-empty selected shape and reports the overlap", async () => {
+    it("keeps a non-empty selected shape and never reports an overlap", async () => {
       const { presentation, helpers } = await bootPpt();
       const slide = presentation.slides[0]!;
       const picture = presentation.addShape(slide, {
@@ -184,7 +184,35 @@ describe("resolveTarget", () => {
         resolveTarget(context, "insert test", target, SIZE),
       );
       expect(resolved.consume).toBeUndefined();
-      expect(resolved.placement.overlapping).toBe(true);
+      // The user asked for this shape's box; overlapping it is not the
+      // free-space failure OVERLAP_NOTE describes.
+      expect(resolved.placement.overlapping).toBe(false);
+    });
+
+    // The shape a user has selected lives wherever they are looking, which
+    // need not be the slide the picker named: PowerPoint shape ids restart
+    // per slide, so trusting the selection without checking its slide can
+    // fit into the wrong slide's geometry and, worse, hand finishTarget a
+    // consume id that names an unrelated shape on the target slide.
+    it("refuses a selection that is not on the target slide", async () => {
+      const { presentation, helpers } = await bootPpt();
+      const [first, , third] = presentation.slides;
+      const onFirst = presentation.addShape(first!, {
+        type: "Placeholder",
+        hasText: false,
+      });
+      helpers.selectShapes([onFirst.id]);
+      const target: InsertTarget = {
+        slideId: third!.id,
+        where: "selected-shape",
+      };
+      await expect(
+        PowerPoint.run((context) =>
+          resolveTarget(context, "insert test", target, SIZE),
+        ),
+      ).rejects.toThrow(
+        "Select a shape on the slide first, or choose another spot.",
+      );
     });
   });
 });
@@ -207,6 +235,27 @@ describe("finishTarget", () => {
     const remaining = third!.shapes.map((one) => one.id);
     expect(remaining).not.toContain(placeholder.id);
     expect(remaining).toContain(kept.id);
+  });
+
+  // A consume id resolveTarget read a moment ago can be gone by the time
+  // finishTarget runs (deleted meanwhile, or - the bug this guards against -
+  // a slide-scoped id that never named a shape on THIS slide at all): the
+  // cleanup must be a no-op, never a raw ItemNotFound after the insert has
+  // already landed.
+  it("does not throw when the shape to consume is already gone", async () => {
+    const { presentation } = await bootPpt();
+    const slide = presentation.slides[0]!;
+    const real = presentation.addShape(slide, { type: "TextBox", text: "x" });
+
+    await expect(
+      finishTarget(
+        { slideId: null, where: "selected-shape" },
+        slide.id,
+        "shape-does-not-exist",
+      ),
+    ).resolves.toBeUndefined();
+
+    expect(slide.shapes.map((one) => one.id)).toEqual([real.id]);
   });
 
   it("leaves 'This slide' alone and spends no round trip with nothing to do", async () => {

@@ -103,7 +103,7 @@ export async function resolveTarget(
     return { slideId, placement };
   }
   if (target.where === "selected-shape") {
-    return { slideId, ...(await selectedShapeTarget(context, size)) };
+    return { slideId, ...(await selectedShapeTarget(context, slideId, size)) };
   }
   const spot = await spotTarget(context, slideId, target.where, size);
   return { slideId, ...spot };
@@ -113,7 +113,11 @@ export async function resolveTarget(
 // resolveTarget flagged for consumption, and - only when the picker named an
 // explicit slide, "This slide" leaves the view exactly where it was - brings
 // that slide on screen the way picture.ts's selection insert already does.
-// One more round trip, and only when either has something to do.
+// One or two more round trips, and none at all when neither has anything
+// to do. The delete goes through getItemOrNullObject: a consume id gone by
+// now (already deleted, or - the bug this guards against - a slide-scoped id
+// that never named a shape on this slide) is a no-op, never a raw
+// ItemNotFound surfacing after the insert has already landed.
 export async function finishTarget(
   target: InsertTarget,
   slideId: string,
@@ -121,11 +125,13 @@ export async function finishTarget(
 ): Promise<void> {
   if (consume === undefined && target.slideId === null) return;
   await PowerPoint.run(async (context) => {
-    if (consume !== undefined) {
-      context.presentation.slides
-        .getItem(slideId)
-        .shapes.getItem(consume)
-        .delete();
+    const shapes = context.presentation.slides.getItem(slideId).shapes;
+    const maybeConsumed =
+      consume === undefined ? null : shapes.getItemOrNullObject(consume);
+    if (maybeConsumed) {
+      maybeConsumed.load("isNullObject");
+      await withSyncDeadline(context.sync(), "finding the placeholder");
+      if (!maybeConsumed.isNullObject) maybeConsumed.delete();
     }
     if (target.slideId !== null)
       context.presentation.setSelectedSlides([slideId]);
@@ -225,12 +231,18 @@ async function spotTarget(
 
 // PowerPoint's current selection, gated the same way the Tools tab's object
 // tools already are: this picker sits beside those same actions and needs no
-// API they do not already require. The first selected shape is the anchor;
-// an empty layout placeholder is consumed, so the new object replaces it
-// instead of sitting over it - anything else stays, and the new object is
-// deliberately placed over it.
+// API they do not already require. The first selected shape is the anchor -
+// but only when it is actually on the target slide: PowerPoint shape ids are
+// unique per slide, not across the deck, so a selection left over from
+// another slide must be refused here rather than trusted into that slide's
+// geometry (and, worse, handed to finishTarget as a consume id that could
+// name an unrelated shape there). An empty layout placeholder is consumed,
+// so the new object replaces it instead of sitting over it - anything else
+// stays, and the new object is deliberately placed over it, which is the
+// user's own choice, not the "no free space" OVERLAP_NOTE describes.
 async function selectedShapeTarget(
   context: PowerPoint.RequestContext,
+  slideId: string,
   size: Size,
 ): Promise<{ placement: Placement; consume?: string }> {
   requireObjectToolsApi();
@@ -239,17 +251,20 @@ async function selectedShapeTarget(
   await withSyncDeadline(context.sync(), "reading the selection");
   const shape = selected.items[0];
   if (!shape) throw new Error(NO_SHAPE_SELECTED);
-  const empty = await emptyPlaceholders(context, [shape]);
-  const consume = empty.has(shape.id) ? shape.id : undefined;
+  // Both queued before the one sync below: the parent slide's id (is this
+  // selection even on the target slide) and, only for a placeholder, whether
+  // it still holds text - the two facts needed to answer, in one round trip.
+  const parentSlide = shape.getParentSlide();
+  parentSlide.load("id");
+  const isPlaceholder = shape.type === PLACEHOLDER;
+  if (isPlaceholder) shape.textFrame.load("hasText");
+  await withSyncDeadline(context.sync(), "reading the selected shape's slide");
+  if (parentSlide.id !== slideId) throw new Error(NO_SHAPE_SELECTED);
+  const consume =
+    isPlaceholder && !shape.textFrame.hasText ? shape.id : undefined;
   const box = fitInto(size, boxOf(shape));
   return {
-    placement: {
-      box,
-      scale: scaleOf(size, box),
-      // Consumed, the placeholder cannot still be under the new object;
-      // kept, the new object lands on it by the user's own choice.
-      overlapping: consume === undefined,
-    },
+    placement: { box, scale: scaleOf(size, box), overlapping: false },
     consume,
   };
 }
