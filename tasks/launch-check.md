@@ -12,8 +12,8 @@ demo:build` if missing) and a blank deck.
 ## Excel
 
 - [ ] Ribbon: the pls,fix tab shows five groups, every button with its own icon.
-- [ ] Tools > Find a combination: on the Variance sheet select B4:B17, type 2230 as Target,
-      Find cells. Expect exactly four cells selected (B6, B10, B12, B16) and the line
+- [ ] Tools > Find a combination: on the Variance sheet select B11:B24, type 2230 as Target,
+      Find cells. Expect exactly four cells selected (B13, B17, B19, B23) and the line
       "4 cells selected · Sum 2 230 · Variance 0".
 - [ ] Tools > Format: Save 1 on a formatted cell, Use 1 on another block; close and reopen the
       workbook, the three slot labels are still there (they travel with the file).
