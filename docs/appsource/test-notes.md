@@ -17,7 +17,7 @@ Windows, Mac and the web with a Microsoft 365 subscription.
 
 1. Ribbon tab **pls,fix** > **Open pls,fix** (or Ctrl+Shift+M): the pane opens on the Tools
    tab; the status pill reads "Excel connected".
-2. Sheet **P&L**: select B4:E9, click **Autocolor selection**: hardcoded numbers turn blue,
+2. Sheet **P&L**: select B11:E16, click **Autocolor selection**: hardcoded numbers turn blue,
    formulas black. Click **Toggle audit overlay** (Ctrl+Shift+A): consistent formula rows are
    striped and the two planted errors turn soft red; click again to restore the fills.
 3. With any cell selected, press Ctrl+Shift+1 three times: the number format cycles
@@ -29,11 +29,11 @@ Windows, Mac and the web with a Microsoft 365 subscription.
 
 ## Excel: custom functions (required test)
 
-1. Sheet **Rounding** holds five numbers in B4:B8 whose exact total is in B9.
-2. In C4 enter `=PLSFIX.ROUND($B$4:$B$8, 1, 0)`, then fill down to C8 (the second argument is
+1. Sheet **Rounding** holds five numbers in B11:B15 whose exact total is in B16.
+2. In C11 enter `=PLSFIX.ROUND($B$11:$B$15, 1, 0)`, then fill down to C15 (the second argument is
    the position in the range, 1 to 5; the third is the decimals).
-3. In C9 enter `=PLSFIX.ROUNDSUM(B4:B8, 0)`.
-4. Expected: C4:C8 are whole numbers that add up exactly to C9, and C9 equals B9 rounded to
+3. In C16 enter `=PLSFIX.ROUNDSUM(B11:B15, 0)`.
+4. Expected: C11:C15 are whole numbers that add up exactly to C16, and C16 equals B16 rounded to
    a whole number, even where plain ROUND of each cell would not add up. The **Consistent
    rounding** button in the Model tools list writes the same formulas beside the selection.
 

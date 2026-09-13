@@ -35,7 +35,7 @@ Excel->PowerPoint links), TypeScript/Vite/Vitest, plus a Rust axum host (`server
   third-party material (the UpSlide training dumps were purged from every commit); never commit
   a key, a tenant name, a login or a competitor's document. Every `v*` tag runs
   `.github/workflows/release.yml`: a GitHub Release with `manifest.prod.xml`, the built pane
-  and the demo workbook, plus the image `ghcr.io/bendiksdaniels/plsfix:<tag>`. Support URL in
+  the demo workbook and the demo deck, plus the image `ghcr.io/bendiksdaniels/plsfix:<tag>`. Support URL in
   the manifest = the GitHub repo. Guides: `docs/INSTALL.md` (one-line installers per platform, manual sideload, admin deployment),
   `docs/SELF-HOSTING.md` (compose + `/manifest.xml`), `CONTRIBUTING.md`, `SECURITY.md`.
 
