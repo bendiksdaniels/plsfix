@@ -40,11 +40,11 @@ Windows, Mac and the web with a Microsoft 365 subscription.
 ## Excel -> PowerPoint links (5 minutes)
 
 1. Excel, tab **Links** > Settings > **Generate link key**, then **Copy key**.
-2. Select P&L!B4:E9, click **Export as table**: a green toast confirms the export.
+2. Select P&L!B11:E16, click **Export as table**: a green toast confirms the export.
 3. PowerPoint: open a blank deck, ribbon tab **pls,fix** > **Links**; tab **Settings**, paste
    the key, **Save**. Tab **Inbox** lists the export; click **Insert**: an editable table lands
    on the slide.
-4. Excel: change P&L!C4 to 1000, click **Push all** in the Links tab. PowerPoint: tab
+4. Excel: change P&L!C11 to 1000, click **Push all** in the Links tab. PowerPoint: tab
    **Links** > **Update all**: the table repaints in place with the new number. **Break link**
    removes the tracker and leaves the table.
 
