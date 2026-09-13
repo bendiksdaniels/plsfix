@@ -37,6 +37,13 @@ HALF_WIDTH = (CONTENT_WIDTH - GAP) // 2  # exact: divides evenly, never a float
 LEFT_HALF = (CONTENT_LEFT, CONTENT_TOP, HALF_WIDTH, CONTENT_HEIGHT)
 RIGHT_HALF = (CONTENT_LEFT + HALF_WIDTH + GAP, CONTENT_TOP, HALF_WIDTH, CONTENT_HEIGHT)
 
+# The pane's free-space scan (src/ppt/placement.ts occupiedBoxes, src/layout.ts
+# placeInFreeSpace) blocks anything whose top is less than a shape's bottom + GAP,
+# so the title (text + rule) must end by here for CONTENT_TOP to read as free.
+TITLE_BAND_LIMIT = CONTENT_TOP - GAP  # 24 pt
+TITLE_HEIGHT = Pt(18)
+RULE_HEIGHT = Pt(2)
+
 # Brand colors, matching the panes (tokens.css palette).
 NAVY = RGBColor(0x14, 0x21, 0x3D)
 MINT = RGBColor(0x2E, 0xC4, 0xB6)
@@ -60,18 +67,23 @@ def set_box(shape, left, top, width, height) -> None:
 
 
 def add_title(slide, text: str) -> None:
-    """Put the title in the margin band above the content area and rule it
-    off in mint, so every slide's content starts at exactly CONTENT_TOP with
-    nothing above it overlapping."""
+    """Put the title in the margin band (0..TITLE_BAND_LIMIT) above the
+    content area and rule it off in mint, so the pane's free-space scan
+    reads CONTENT_TOP as free rather than blocked by the title's own gap
+    buffer. Centered on every slide: a layout's own alignment (Picture with
+    Caption defaults to left) is not trusted."""
     title = slide.shapes.title
     title.text = text
-    set_box(title, CONTENT_LEFT, Pt(6), CONTENT_WIDTH, Pt(24))
-    font = title.text_frame.paragraphs[0].font
-    font.size = Pt(20)
+    set_box(title, CONTENT_LEFT, Pt(0), CONTENT_WIDTH, TITLE_HEIGHT)
+    paragraph = title.text_frame.paragraphs[0]
+    paragraph.alignment = PP_ALIGN.CENTER
+    font = paragraph.font
+    font.size = Pt(16)
     font.bold = True
     font.color.rgb = NAVY
 
-    rule = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, CONTENT_LEFT, Pt(32), CONTENT_WIDTH, Pt(2))
+    rule_top = TITLE_BAND_LIMIT - RULE_HEIGHT
+    rule = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, CONTENT_LEFT, rule_top, CONTENT_WIDTH, RULE_HEIGHT)
     rule.fill.solid()
     rule.fill.fore_color.rgb = MINT
     rule.line.fill.background()
