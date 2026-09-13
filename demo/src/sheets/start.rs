@@ -28,6 +28,7 @@ const GUIDE: Guide = Guide {
     ],
     commands: &["Open pls,fix (Ctrl+Shift+M)"],
 };
+const _: () = assert!(GUIDE.tasks.len() <= guide::MAX_TASKS, "a fifth task would land on the Commands row");
 const NUMBER_COL: u16 = 0;
 const TOOL_COL: u16 = 1;
 const PLACE_COL: u16 = 2;

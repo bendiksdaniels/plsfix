@@ -33,6 +33,7 @@ const GUIDE: Guide = Guide {
     ],
     commands: &["Insert CAGR (Ctrl+Shift+Q)"],
 };
+const _: () = assert!(GUIDE.tasks.len() <= guide::MAX_TASKS, "a fifth task would land on the Commands row");
 const SWING_VALUE_COL: u16 = 1;
 const DRIVER_WIDTH: f64 = 40.0;
 const VALUE_WIDTH: f64 = 11.0;

@@ -30,11 +30,12 @@ const MARGIN_CHART_ROW: u32 = GUIDE_ROWS + 19;
 const GUIDE: Guide = Guide {
     title: "the EBITDA bridge, table and charts",
     tasks: &[
-        "Waterfall from selection turns the two-column table into a bridge chart.",
+        "Press Waterfall from selection on the two-column table.",
         "Export active chart (the Revenue chart), then in PowerPoint Slide 3, Where = Left half.",
     ],
     commands: &["Waterfall from selection (Ctrl+Shift+B)"],
 };
+const _: () = assert!(GUIDE.tasks.len() <= guide::MAX_TASKS, "a fifth task would land on the Commands row");
 const CHART_WIDTH: u32 = 560;
 const CHART_HEIGHT: u32 = 300;
 const BAR_GAP: u16 = 60;

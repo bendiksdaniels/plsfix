@@ -17,9 +17,10 @@ pub const NAME: &str = VARIANCE_SHEET;
 const NOTE_ROW: u32 = GUIDE_ROWS + 1;
 const GUIDE: Guide = Guide {
     title: "a bank deposit variance to reconcile",
-    tasks: &["Find a combination that reaches the Target.", "Comps stats runs under the table."],
+    tasks: &["Find a combination that reaches the Target.", "Press Comps stats under the table."],
     commands: &["Open pls,fix (Ctrl+Shift+M)"],
 };
+const _: () = assert!(GUIDE.tasks.len() <= guide::MAX_TASKS, "a fifth task would land on the Commands row");
 const LABEL_WIDTH: f64 = 38.0;
 const AMOUNT_WIDTH: f64 = 14.0;
 

@@ -17,9 +17,9 @@ const NOTE_ROW: u32 = GUIDE_ROWS + 1;
 const GUIDE: Guide = Guide {
     title: "DemoCo's forecast drivers, as plain inputs",
     tasks: &[
-        "Autocolor selection: inputs turn blue, formulas stay black.",
+        "Press Autocolor selection: inputs turn blue, formulas stay black.",
         "Cycle percent format on the growth row steps through its number formats.",
-        "Undo last pls,fix action takes the last one back.",
+        "Take the last change back with Undo last pls,fix action.",
     ],
     commands: &[
         "Autocolor selection (Ctrl+Shift+K)",
@@ -27,6 +27,7 @@ const GUIDE: Guide = Guide {
         "Undo last pls,fix action (Ctrl+Shift+Z)",
     ],
 };
+const _: () = assert!(GUIDE.tasks.len() <= guide::MAX_TASKS, "a fifth task would land on the Commands row");
 const FORECAST_YEARS: usize = YEARS.len() - 1;
 const LABEL_WIDTH: f64 = 30.0;
 const UNIT_WIDTH: f64 = 7.0;

@@ -26,6 +26,7 @@ const GUIDE: Guide = Guide {
     ],
     commands: &["Find in workbook (Ctrl+Shift+Alt+F)"],
 };
+const _: () = assert!(GUIDE.tasks.len() <= guide::MAX_TASKS, "a fifth task would land on the Commands row");
 const NOTE_MONTH: usize = 2;
 const NOTE_PRODUCT: usize = 2;
 const PRODUCT_WIDTH: f64 = 16.0;

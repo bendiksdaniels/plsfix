@@ -40,10 +40,11 @@ const GUIDE: Guide = Guide {
     title: "a segment split that needs consistent rounding",
     tasks: &[
         "PLSFIX.ROUND and PLSFIX.ROUNDSUM make the shares add to 100.",
-        "Export the segment pie, then in PowerPoint Slide 3, Where = Right half.",
+        "Press Export active chart on the segment pie, then in PowerPoint Slide 3, Where = Right half.",
     ],
     commands: &["Open pls,fix (Ctrl+Shift+M)"],
 };
+const _: () = assert!(GUIDE.tasks.len() <= guide::MAX_TASKS, "a fifth task would land on the Commands row");
 const PIE_WIDTH: u32 = 360;
 const PIE_HEIGHT: u32 = 260;
 /// Slice colours: the brand pair and three tints of it.
