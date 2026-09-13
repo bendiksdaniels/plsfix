@@ -57,6 +57,7 @@ import {
   swapSelected,
 } from "./object-tools";
 import { createPaneDetails } from "./pane-details";
+import { readInsertTarget, refreshSlideOptions } from "./target";
 import { renderInbox, renderLinkRows } from "./views";
 
 const APP_VERSION = formatVersion(__APP_VERSION__);
@@ -78,6 +79,8 @@ const objectAlignMode = getElement<HTMLSelectElement>("object-align-mode");
 const objectDistributeAxis = getElement<HTMLSelectElement>(
   "object-distribute-axis",
 );
+const insertSlideSelect = getElement<HTMLSelectElement>("insert-slide");
+const insertWhereSelect = getElement<HTMLSelectElement>("insert-where");
 const inboxList = getElement("inbox-list");
 const inboxUnpaired = getElement("inbox-unpaired");
 const workspaceState = getElement("workspace-state");
@@ -333,6 +336,7 @@ function requireWorkspace(): Workspace {
 
 async function refreshInbox(): Promise<string> {
   const ws = requireWorkspace();
+  await refreshSlideOptions(insertSlideSelect);
   inboxItems = await listInbox(ws, relay);
   renderInboxView();
   if (inboxItems.length === 0) return "Nothing waiting from Excel.";
@@ -341,7 +345,8 @@ async function refreshInbox(): Promise<string> {
 
 async function insertItem(item: InboxItem): Promise<string> {
   const ws = requireWorkspace();
-  const placed = await insertFromInbox(item, ws, relay);
+  const target = await readInsertTarget(insertSlideSelect, insertWhereSelect);
+  const placed = await insertFromInbox(item, ws, relay, target);
   // The relay copy is gone, so the item leaves the list without a second call.
   inboxItems = inboxItems.filter((waiting) => waiting.id !== item.id);
   renderInboxView();
@@ -524,6 +529,9 @@ Office.onReady(async ({ host }) => {
 
   await bootStep(loadPairing, "load-key");
   await bootStep(reloadLinks, "refresh-links");
+  // Read once here too: refreshInbox only runs paired, and the Slide picker
+  // is there whether or not a key has been pasted yet.
+  await bootStep(() => refreshSlideOptions(insertSlideSelect), "refresh-slide");
   // Unpaired is not a boot failure: the Inbox says so itself, and the Links
   // list works without a key.
   if (workspace !== null) await bootStep(refreshInbox, "refresh-inbox");

@@ -168,6 +168,27 @@ function inboxMeta(item: InboxItem): string {
   return age === NEVER ? text : `${text} · ${age}`;
 }
 
+// The inbox's Slide picker: "This slide" (value "", the default meaning "the
+// active one") plus one option per slide in the deck, by position - the
+// picker only ever learns a count, never the slides' own ids (target.ts
+// resolves the chosen position back to one when an insert actually runs).
+// The current pick survives a re-render when it is still in range, and falls
+// back to "This slide" the moment the deck holds fewer slides than that.
+export function renderSlideOptions(
+  select: HTMLSelectElement,
+  count: number,
+): void {
+  const picked = select.value;
+  const options = [new Option("This slide", "")];
+  for (let index = 1; index <= count; index += 1) {
+    options.push(new Option(`Slide ${String(index)}`, String(index)));
+  }
+  select.replaceChildren(...options);
+  select.value = options.some((option) => option.value === picked)
+    ? picked
+    : "";
+}
+
 // The "Change source" chooser: every waiting export, best match first (the
 // order is candidatesFor's, not this renderer's). The workbook and the age are
 // what tell two exports of the same table apart, so both are on the line.

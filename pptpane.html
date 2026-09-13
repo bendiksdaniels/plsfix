@@ -306,6 +306,26 @@
               ↻
             </button>
           </div>
+          <div class="object-action-row">
+            <label for="insert-slide">Slide</label>
+            <select id="insert-slide">
+              <option value="">This slide</option>
+            </select>
+          </div>
+          <div class="object-action-row">
+            <label for="insert-where">Where</label>
+            <select id="insert-where">
+              <option value="free">Free space</option>
+              <option value="selected-shape">Selected shape</option>
+              <option value="left-half">Left half</option>
+              <option value="right-half">Right half</option>
+              <option value="top-left">Top left</option>
+              <option value="top-right">Top right</option>
+              <option value="bottom-left">Bottom left</option>
+              <option value="bottom-right">Bottom right</option>
+              <option value="whole">Whole slide</option>
+            </select>
+          </div>
           <button id="paste-latest-linked" class="paste-latest" type="button">
             Paste latest linked
           </button>
@@ -314,8 +334,8 @@
             Not paired: paste the link key from Excel &gt; Links &gt; Settings.
           </p>
           <p class="hint">
-            Paste latest linked inserts the newest Excel export on the slide you
-            are on. Items expire 7 days after they are pushed.
+            Pick the slide and the spot first, or leave This slide and Free
+            space. Items expire 7 days after they are pushed.
           </p>
         </section>
       </div>

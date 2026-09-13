@@ -5,6 +5,7 @@ import {
   renderCandidates,
   renderInbox,
   renderLinkRows,
+  renderSlideOptions,
   statusLabel,
 } from "./views";
 
@@ -134,5 +135,35 @@ describe("renderCandidates", () => {
 describe("labels", () => {
   it("names statuses", () => {
     expect(statusLabel("wrongKey")).toBe("Wrong link key");
+  });
+});
+
+describe("renderSlideOptions", () => {
+  it("lists This slide plus one option per slide, in order", () => {
+    const select = document.createElement("select");
+
+    renderSlideOptions(select, 3);
+
+    const options = [...select.options];
+    expect(options.map((option) => option.value)).toEqual(["", "1", "2", "3"]);
+    expect(options.map((option) => option.textContent)).toEqual([
+      "This slide",
+      "Slide 1",
+      "Slide 2",
+      "Slide 3",
+    ]);
+    expect(select.value).toBe("");
+  });
+
+  it("keeps the picked slide across a re-render, and falls back once it is gone", () => {
+    const select = document.createElement("select");
+    renderSlideOptions(select, 3);
+    select.value = "2";
+
+    renderSlideOptions(select, 3);
+    expect(select.value).toBe("2");
+
+    renderSlideOptions(select, 1);
+    expect(select.value).toBe("");
   });
 });

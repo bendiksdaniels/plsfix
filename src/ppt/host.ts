@@ -272,3 +272,26 @@ export async function goToSlide(slideId: string): Promise<void> {
     await withSyncDeadline(context.sync(), "going to the slide");
   });
 }
+
+// How many slides the deck holds right now: what the inbox's Slide picker
+// renders as "Slide 1".."Slide N" (target.ts).
+export async function slideCount(): Promise<number> {
+  return PowerPoint.run(async (context) => {
+    const slides = context.presentation.slides;
+    slides.load("items/id");
+    await withSyncDeadline(context.sync(), "reading the slides");
+    return slides.items.length;
+  });
+}
+
+// The id of the slide at that position (0-based), so the picker's "Slide N"
+// option - which only ever names a position, never an id - resolves to a
+// real slide right before an insert reads it.
+export async function slideIdAt(index: number): Promise<string> {
+  return PowerPoint.run(async (context) => {
+    const slide = context.presentation.slides.getItemAt(index);
+    slide.load("id");
+    await withSyncDeadline(context.sync(), "reading the slide");
+    return slide.id;
+  });
+}
