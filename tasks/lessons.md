@@ -270,3 +270,9 @@ old loop hangs every test, the fixed helper passes. Rules:
 - The CI `check` workflow flaked three times on a fake-clock settle loop (hung-sync tests); the
   last copy is on `settleHungSync` since v2.7.1; the workflow is disabled on Daniel's word and
   re-enabling it is his call.
+
+## 2026-09-13: ownership is settled, never raise it
+
+- pls,fix and dbautomatizacijas.com are Daniel's own: the app and the hostname. A launch or
+  monetisation discussion never gets an "IP of intern work" or "the suite's hostname as the public
+  face" caveat again. The business seam (hosted relay, licence key) is the only thing to discuss.
