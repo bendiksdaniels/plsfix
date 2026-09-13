@@ -18,6 +18,7 @@ demo/out/
 
 # PowerPoint demo deck generator (the .pptx it writes is committed)
 demo/deck/.venv/
+demo/deck/__pycache__/
 
 # user manual generator (manual/out holds the committed .docx)
 manual/target/

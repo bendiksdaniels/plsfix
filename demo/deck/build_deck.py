@@ -16,6 +16,8 @@ from pptx.dml.color import RGBColor
 from pptx.enum.dml import MSO_LINE_DASH_STYLE
 from pptx.enum.shapes import MSO_SHAPE
 from pptx.enum.text import PP_ALIGN
+from pptx.oxml import parse_xml
+from pptx.oxml.ns import nsdecls
 from pptx.util import Pt
 
 # Slide geometry in points: src/link/status.ts SLIDE_16_9, src/ppt/placement.ts
@@ -86,6 +88,32 @@ def set_notes(slide, text: str) -> None:
     slide.notes_slide.notes_text_frame.text = text
 
 
+def set_number_bullet(paragraph) -> None:
+    """Real auto-numbering (1., 2., ...) instead of the master's inherited
+    bullet char, reached via the paragraph's own oxml element - python-pptx
+    has no public API for bullet formatting."""
+    pPr = paragraph._p.get_or_add_pPr()
+    pPr.remove_all("a:buNone", "a:buAutoNum", "a:buChar")
+    pPr.insert_element_before(
+        parse_xml(f'<a:buFont {nsdecls("a")} typeface="+mj-lt"/>'),
+        "a:buNone", "a:buAutoNum", "a:buChar", "a:buBlip", "a:tabLst", "a:defRPr", "a:extLst",
+    )
+    pPr.insert_element_before(
+        parse_xml(f'<a:buAutoNum {nsdecls("a")} type="arabicPeriod"/>'),
+        "a:buNone", "a:buChar", "a:buBlip", "a:tabLst", "a:defRPr", "a:extLst",
+    )
+
+
+def set_no_bullet(paragraph) -> None:
+    """Suppress the master's inherited bullet on a plain paragraph."""
+    pPr = paragraph._p.get_or_add_pPr()
+    pPr.remove_all("a:buNone", "a:buAutoNum", "a:buChar")
+    pPr.insert_element_before(
+        parse_xml(f'<a:buNone {nsdecls("a")}/>'),
+        "a:buAutoNum", "a:buChar", "a:buBlip", "a:tabLst", "a:defRPr", "a:extLst",
+    )
+
+
 def build_slide_1(prs: Presentation) -> None:
     """The four PowerPoint tasks as a numbered list, plus how to run them."""
     slide = add_slide(prs, TITLE_AND_CONTENT, "pls,fix demo deck")
@@ -101,15 +129,18 @@ def build_slide_1(prs: Presentation) -> None:
         "Picture from the Data sheet → Slide 4: select the empty "
         "placeholder, Where = Selected shape",
     ]
-    tf.paragraphs[0].text = f"1. {tasks[0]}"
+    tf.paragraphs[0].text = tasks[0]
     tf.paragraphs[0].font.size = Pt(18)
-    for n, task in enumerate(tasks[1:], start=2):
+    set_number_bullet(tf.paragraphs[0])
+    for task in tasks[1:]:
         para = tf.add_paragraph()
-        para.text = f"{n}. {task}"
+        para.text = task
         para.font.size = Pt(18)
+        set_number_bullet(para)
 
     commands = tf.add_paragraph()
     commands.space_before = Pt(20)
+    set_no_bullet(commands)
     label = commands.add_run()
     label.text, label.font.bold, label.font.size = "Commands: ", True, Pt(14)
     rest = commands.add_run()
