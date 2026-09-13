@@ -231,9 +231,11 @@ function shapeWedges(added: Added[]): void {
 }
 
 // The ids the link's group takes: the shapes themselves, or on a host that
-// groups in tiers (groupTier) the sub-groups of them, made in one sync of
-// their own and appended to the cleanup list - a shape inside a sub-group is
-// no longer an id the slide's own collection can delete, but its sub-group is.
+// groups in tiers (groupTier) the sub-groups of them, made in one sync per
+// level and appended to the cleanup list - a shape inside a sub-group is no
+// longer an id the slide's own collection can delete, but its sub-group is.
+// Levels repeat until at most `tier` members remain, so a 40-point chart
+// never asks addGroup for 19+ ids (the count that killed Mac 16.107).
 async function tierUp(
   context: PowerPoint.RequestContext,
   shapes: PowerPoint.ShapeCollection,
@@ -241,15 +243,18 @@ async function tierUp(
 ): Promise<string[]> {
   const tier = groupTier();
   if (tier === null || ids.length <= tier) return [...ids];
-  const subs = chunks([...ids], tier).map((part) => {
-    const sub = shapes.addGroup(part);
-    sub.load("id");
-    return sub;
-  });
-  await withSyncDeadline(context.sync());
-  const subIds = subs.map((sub) => sub.id);
-  ids.push(...subIds);
-  return subIds;
+  let members = [...ids];
+  while (members.length > tier) {
+    const subs = chunks(members, tier).map((part) => {
+      const sub = shapes.addGroup(part);
+      sub.load("id");
+      return sub;
+    });
+    await withSyncDeadline(context.sync());
+    members = subs.map((sub) => sub.id);
+    ids.push(...members);
+  }
+  return members;
 }
 
 // The whole chart in ceil(primitives / SHAPES_PER_SYNC) + 1 round trips: each

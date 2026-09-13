@@ -35,6 +35,11 @@ function leaves(shape: FakePptShape): FakePptShape[] {
   return shape.type === "Group" ? shape.group!.shapes.flatMap(leaves) : [shape];
 }
 
+function fanout(shape: FakePptShape): number {
+  if (shape.type !== "Group" || shape.group === null) return 0;
+  return Math.max(shape.group.shapes.length, ...shape.group.shapes.map(fanout));
+}
+
 async function insertOn(platform: string) {
   const booted = await bootPpt();
   booted.helpers.setPlatform(platform);
@@ -75,6 +80,26 @@ describe("PowerPoint for Mac groups a chart in tiers", () => {
     ]);
     expect(subs.map((sub) => sub.group!.shapes.length)).toEqual([6, 6, 6, 2]);
     expect(leaves(link)).toHaveLength(COLUMN_SHAPES);
+  });
+
+  // Twelve columns are 38 shapes: one addGroup of seven sub-groups of six,
+  // which is still under the 19 that killed 16.107, but a 40-point chart is
+  // 21 sub-groups and that is not. Recurse until no group has more than six.
+  it("never addGroups more than six members, even on a wide chart", async () => {
+    const booted = await bootPpt();
+    booted.helpers.setPlatform("Mac");
+    const ws = await createWorkspace(memoryStore());
+    const item = await seedChart(columnChart(12), fakePng(800, 400));
+    const placed = await booted.links.insertFromInbox(
+      item,
+      ws,
+      booted.relay,
+      DEFAULT_TARGET,
+    );
+    expect(placed.note).toBeUndefined();
+    const link = booted.presentation.findShape(placed.shapeId).shape;
+    expect(fanout(link)).toBeLessThanOrEqual(GROUP_TIER_MAC);
+    expect(leaves(link).length).toBeGreaterThan(COLUMN_SHAPES);
   });
 
   it("the Windows desktop keeps the one flat group", async () => {

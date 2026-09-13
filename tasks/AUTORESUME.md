@@ -16,13 +16,13 @@ PowerPoint process start time, MERP dialog) and the E1-E15 bisection.
    route, twice each, watching the process start time after each step:
    charts of every kind the demo has (Bridge Revenue column, EBITDA margin line, Rounding Segment pie, a
    Waterfall made on the Bridge sheet, a Tornado from Sensitivity) plus a big one near the desktop budget
-   (a 40-point column chart made in Excel by hand: 200 shapes is the cap, tiers of six mean 34 sub-groups),
+   (a 40-point column chart made in Excel by hand: 200 shapes is the cap; `tierUp` now groups those sub-groups again so no addGroup takes more than six),
    the P&L table (and a 60 x 20 one), Export as text, Export selection pictures; each via Insert with
    Free space / a half / a quarter / Whole slide / Selected shape (an empty placeholder), Paste latest
    linked, then Update all after a pushed revision (change a cell, Push selected), Update this slide,
    Revert last update, Change source, Break link. Any crash: bisect the way E1-E15 did (dev sideload,
-   one variable per run). Open question worth one run: is `GROUP_TIER_MAC` = 6 the safe maximum or would 12
-   (= `SHAPES_PER_SYNC`, fewer sub-groups) also survive? Keep 6 unless 12 survives three inserts in a row.
+   one variable per run). `GROUP_TIER_MAC` stays 6: a 12-column chart would have been 7 in one addGroup
+   (proven in `src/ppt/charts.test.ts`); 12 as a tier is still unproven on the Mac.
    Web (rig) and Windows (Daniel's own pass, `tasks/launch-check.md`) are unchanged by the tiers.
 2. **Link folders ("projects").** Daniel: "folders for the links, so if I have multiple projects I can track
    these links." Design to build (his go given 13.09 with "create the folders"): a `project` name on every
