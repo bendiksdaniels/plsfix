@@ -49,9 +49,6 @@
     "test:demo": "cargo test --manifest-path demo/Cargo.toml",
     "manual": "cargo run --quiet --manifest-path manual/Cargo.toml"
   },
-  "dependencies": {
-    "office-js": "0.1.0"
-  },
   "devDependencies": {
     "@types/custom-functions-runtime": "1.6.13",
     "@types/office-js": "1.0.606",
