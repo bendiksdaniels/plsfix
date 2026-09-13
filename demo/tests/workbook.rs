@@ -5,7 +5,10 @@
 use std::io::{Cursor, Read};
 
 use smt_demo::layout::{cell, cell_abs, last_year_col, pnl, variance as vlayout, year_col, FIRST_YEAR_COL, PNL_SHEET};
-use smt_demo::sheets::{pnl::planted_cells, rounding, scratch, variance, BROKEN_NAME, SHEETS};
+use smt_demo::sheets::{
+    pnl::{planted_cells, table_range},
+    rounding, scratch, variance, BROKEN_NAME, SHEETS,
+};
 use smt_demo::tally::Tally;
 
 type Archive = zip::ZipArchive<Cursor<Vec<u8>>>;
@@ -201,8 +204,17 @@ fn subset_sum_hits(values: &[f64], target: f64) -> (u32, u32) {
     (hits, size)
 }
 
+/// True when `address` has no `<c r="address" ...>` element at all: an
+/// empty cell, never written.
+fn cell_is_absent(sheet: &str, address: &str) -> bool {
+    !sheet.contains(&format!("<c r=\"{address}\""))
+}
+
 // Every visible sheet opens with the 7-row guide band (GUIDE_ROWS in
-// layout.rs); Scratch is hidden on purpose and carries no band.
+// layout.rs): title at A1, the Commands line always at A6 (bands never
+// exceed four tasks, so A5 is spare here), a blank spacer at A7, then the
+// sheet's own first row of real content at A8. Scratch is hidden on
+// purpose and carries no band.
 #[test]
 fn every_visible_sheet_opens_with_its_guide() {
     let (mut archive, _) = archive();
@@ -214,26 +226,38 @@ fn every_visible_sheet_opens_with_its_guide() {
         let sheet = sheet_xml(&mut archive, name);
         let title = cell_text(&sheet, "A1", &strings);
         assert!(title.starts_with("Try on this sheet"), "{name}: A1 = {title:?}");
+        let commands = cell_text(&sheet, "A6", &strings);
+        assert!(commands.starts_with("Commands:"), "{name}: A6 = {commands:?}");
+        assert!(cell_is_absent(&sheet, "A5"), "{name}: A5 should be spare (no sheet uses four tasks yet)");
+        assert!(cell_is_absent(&sheet, "A7"), "{name}: A7 should be the band's blank spacer row");
+        let own_title = cell_text(&sheet, "A8", &strings);
+        assert!(
+            !own_title.is_empty() && !own_title.starts_with("Try on this sheet"),
+            "{name}: A8 should be the sheet's own title, was {own_title:?}"
+        );
     }
 }
 
-/// The button names a guide's Commands line (always row 6 of the band) may
-/// cite: split on the unambiguous `"), "` between entries (no real action
-/// name contains a parenthesis or that exact sequence), then drop each
-/// entry's trailing " (key)".
-fn cited_command_names(commands_line: &str) -> Vec<String> {
+/// Each `(name, key)` a Commands line cites, split on the unambiguous
+/// `"), "` between entries (no real action name or key contains a
+/// parenthesis or that exact sequence) and then on the first `" ("` inside
+/// each entry, so a comma inside a name (e.g. "pls,fix") is never mistaken
+/// for the entry separator.
+fn cited_commands(commands_line: &str) -> Vec<(String, String)> {
     let body = commands_line.strip_prefix("Commands: ").unwrap_or(commands_line);
     body.split("), ")
-        .map(|entry| entry.split(" (").next().unwrap_or(entry).to_string())
+        .map(|entry| {
+            let entry = entry.trim_end_matches(')');
+            let (name, key) = entry.split_once(" (").unwrap_or_else(|| panic!("malformed command entry {entry:?}"));
+            (name.to_string(), key.to_string())
+        })
         .collect()
 }
 
-/// The exact button names `public/shortcuts.json` defines: the only names a
-/// Commands line may cite. Extracted by hand instead of a JSON dependency,
-/// since every `"name"` field in this file belongs to an action.
-fn real_action_names() -> Vec<String> {
-    let json = std::fs::read_to_string("../public/shortcuts.json").expect("shortcuts.json");
-    let needle = "\"name\": \"";
+/// Every quoted value following `needle` (e.g. `"\"id\": \""`), in file
+/// order: one flat field of every object in an array, read without a JSON
+/// dependency.
+fn extract_quoted(json: &str, needle: &str) -> Vec<String> {
     json.match_indices(needle)
         .map(|(start, _)| {
             let after = &json[start + needle.len()..];
@@ -243,19 +267,62 @@ fn real_action_names() -> Vec<String> {
         .collect()
 }
 
+/// `(name, key)` for every real action: `public/shortcuts.json`'s
+/// `actions[].id -> name` joined with `shortcuts[].action -> key.default`.
+/// The only names and keys a Commands line may ever cite; extracted by
+/// hand instead of a JSON dependency, since both arrays are simple flat
+/// objects in a fixed field order.
+fn real_action_keys() -> Vec<(String, String)> {
+    let json = std::fs::read_to_string("../public/shortcuts.json").expect("shortcuts.json");
+    let ids = extract_quoted(&json, "\"id\": \"");
+    let names = extract_quoted(&json, "\"name\": \"");
+    let shortcut_ids = extract_quoted(&json, "\"action\": \"");
+    let keys = extract_quoted(&json, "\"default\": \"");
+    assert_eq!(ids.len(), names.len(), "actions[]: id/name count mismatch");
+    assert_eq!(shortcut_ids.len(), keys.len(), "shortcuts[]: action/key count mismatch");
+    ids.into_iter()
+        .zip(names)
+        .map(|(id, name)| {
+            let position = shortcut_ids.iter().position(|action_id| *action_id == id);
+            let key = position.unwrap_or_else(|| panic!("{id}: no shortcuts[] entry"));
+            (name, keys[key].clone())
+        })
+        .collect()
+}
+
 #[test]
 fn guide_names_only_real_commands() {
     let (mut archive, _) = archive();
     let strings = shared_strings(&mut archive);
-    let real_names = real_action_names();
+    let real = real_action_keys();
     for (name, _) in SHEETS {
         if name == scratch::NAME {
             continue;
         }
         let sheet = sheet_xml(&mut archive, name);
         let commands = cell_text(&sheet, "A6", &strings);
-        for cited in cited_command_names(&commands) {
-            assert!(real_names.contains(&cited), "{name}: unknown command {cited:?} in {commands:?}");
+        for (cited_name, cited_key) in cited_commands(&commands) {
+            let real_key = real
+                .iter()
+                .find(|(real_name, _)| *real_name == cited_name)
+                .unwrap_or_else(|| panic!("{name}: unknown command {cited_name:?} in {commands:?}"));
+            assert_eq!(
+                cited_key, real_key.1,
+                "{name}: {cited_name} cites key {cited_key:?}, shortcuts.json says {:?}",
+                real_key.1
+            );
         }
     }
+}
+
+// The P&L guide's third task must name the real, currently-computed export
+// range, not a literal that could go stale on the next row shift.
+#[test]
+fn pnl_guide_names_the_real_export_range() {
+    let (mut archive, _) = archive();
+    let strings = shared_strings(&mut archive);
+    let sheet = sheet_xml(&mut archive, PNL_SHEET);
+    let task3 = cell_text(&sheet, "A4", &strings);
+    let expected = table_range();
+    assert!(task3.contains(&expected), "P&L task 3 = {task3:?}, expected the range {expected}");
 }
