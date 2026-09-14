@@ -250,7 +250,9 @@ PowerPoint process start time, MERP dialog) and the E1-E15 bisection.
     section per slice, `docs/FEATURES.md` rows marked shipped v2.7.
 - Security review 13.09: 1 Critical (one IP could fill the 1 GiB relay in under a minute), 5 Important,
   8 Minor; secrets grep clean. Closed by S1 (C1, I1-I3); I4 release.yml SHA pins done by the launch
-  session; OPEN: I5 rollback detection (a design slice). M1 closed: `MODELIS_PUBLIC_URL` is XML-escaped
+  session; I5 closed: a payload whose `pushedAt` is older than the shape tag is
+  refused (`assertFresh` in `src/link/status.ts`, called from `src/ppt/fetch.ts`;
+  Revert asks for a named older rev and never calls it). M1 closed: `MODELIS_PUBLIC_URL` is XML-escaped
   in `server/src/manifest.rs` (ampersand, angle brackets, quotes).
 - Rulings that changed the briefs (details in the ledger): band tint from `settings.primary`; a 4th
   football column is ignored; N2 squashed; the ux gates' default ports 3131/3132 are shared across

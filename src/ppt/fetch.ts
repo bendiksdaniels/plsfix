@@ -20,6 +20,7 @@
 
 import { deriveLinkKeys, open, type LinkKeys } from "../link/crypto";
 import { decodePayload } from "../link/model";
+import { assertFresh } from "../link/status";
 import {
   isRelayError,
   MAX_FETCH_ITEMS,
@@ -148,7 +149,12 @@ async function openInto(
       await open(group.keys.enc, group.id, item.blob),
     );
     for (const row of group.rows) {
-      outcome.batch.push({ found: row.found, payload, rev: item.rev });
+      try {
+        assertFresh(row.found.tag.pushedAt, payload.pushedAt);
+        outcome.batch.push({ found: row.found, payload, rev: item.rev });
+      } catch (error) {
+        outcome.failures.push({ found: row.found, error });
+      }
     }
   } catch (error) {
     for (const row of group.rows)
@@ -234,6 +240,7 @@ async function fetchRow(
       return;
     }
     const payload = decodePayload(await open(keys.enc, id, result.blob));
+    assertFresh(row.found.tag.pushedAt, payload.pushedAt);
     outcome.batch.push({ found: row.found, payload, rev: result.rev });
   } catch (error) {
     outcome.failures.push({ found: row.found, error });

@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
   aspectChanged,
+  assertFresh,
   deriveStatus,
   fitToSlide,
   sourceChanged,
+  StaleRelayError,
 } from "./status";
 
 describe("deriveStatus", () => {
@@ -29,6 +31,23 @@ describe("deriveStatus", () => {
       "updateAvailable",
     );
     expect(deriveStatus(1, { id: "a", rev: 1, pushedAt: 1 })).toBe("current");
+  });
+});
+
+describe("assertFresh", () => {
+  it("accepts a payload as new as the tag, or newer", () => {
+    expect(() =>
+      assertFresh("2026-09-12T00:00:00.000Z", "2026-09-12T00:00:00.000Z"),
+    ).not.toThrow();
+    expect(() =>
+      assertFresh("2026-09-12T00:00:00.000Z", "2026-09-13T00:00:00.000Z"),
+    ).not.toThrow();
+  });
+
+  it("refuses a payload older than the tag already holds", () => {
+    expect(() =>
+      assertFresh("2026-09-13T00:00:00.000Z", "2026-09-01T00:00:00.000Z"),
+    ).toThrow(StaleRelayError);
   });
 });
 

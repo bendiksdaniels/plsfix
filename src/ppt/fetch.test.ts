@@ -20,6 +20,7 @@ import {
   type FetchQuery,
   type FetchResult,
 } from "../link/relay";
+import { StaleRelayError } from "../link/status";
 import { fetchUpdates } from "./fetch";
 import type { FoundLink } from "./host";
 import type { LinkRow } from "./links";
@@ -32,8 +33,8 @@ const SRC: Source = {
 };
 const NOW = "2026-09-12T00:00:00.000Z";
 
-function textPayload(text: string): TextPayload {
-  return { v: 1, kind: "text", text, src: SRC, pushedAt: NOW, hash: "h" };
+function textPayload(text: string, pushedAt = NOW): TextPayload {
+  return { v: 1, kind: "text", text, src: SRC, pushedAt, hash: "h" };
 }
 
 function picturePayload(pngChars: number): PicturePayload {
@@ -141,6 +142,25 @@ describe("when the relay cannot answer a whole batch", () => {
     expect(outcome.batch).toHaveLength(1);
     expect(outcome.batch[0]!.payload).toEqual(textPayload("fallback text"));
     expect(outcome.batch[0]!.rev).toBe(1);
+  });
+
+  it("refuses a payload older than the picture the deck already holds", async () => {
+    const relay = new FakeRelay();
+    const token = newToken();
+    const id = "link-stale";
+    await seedLink(
+      relay,
+      id,
+      token,
+      textPayload("last week", "2026-09-01T00:00:00.000Z"),
+    );
+    const held = row(id, token, 0);
+    held.found.tag.pushedAt = "2026-09-12T00:00:00.000Z";
+    const outcome = await fetchUpdates([held], relay);
+
+    expect(outcome.batch).toEqual([]);
+    expect(outcome.failures).toHaveLength(1);
+    expect(outcome.failures[0]!.error).toBeInstanceOf(StaleRelayError);
   });
 
   it("fails every row outright when the relay cannot be reached, without trying a GET", async () => {

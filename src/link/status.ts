@@ -28,6 +28,21 @@ export function deriveStatus(
   return "current";
 }
 
+// A compromised relay can serve last week's authentic ciphertext under a
+// newer rev. The tag already holds the picture we painted; a payload whose
+// own clock is older than that is a rollback, not an update. Revert asks
+// for a named older rev on purpose and never calls this.
+export class StaleRelayError extends Error {
+  constructor() {
+    super("The relay sent an older picture than this deck already holds.");
+    this.name = "StaleRelayError";
+  }
+}
+
+export function assertFresh(held: string, incoming: string): void {
+  if (incoming < held) throw new StaleRelayError();
+}
+
 export function sourceChanged(before: Source, after: Source): boolean {
   return before.workbook.toLowerCase() !== after.workbook.toLowerCase();
 }
