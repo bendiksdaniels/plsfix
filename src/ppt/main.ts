@@ -29,6 +29,7 @@ import {
   linkSources,
   pruneSelection,
   requireSelection,
+  scopedSummary,
   selectedRows,
   slideRows,
   toRowViews,
@@ -294,7 +295,7 @@ async function updateRows(subset: LinkRow[]): Promise<string> {
   const summary = await updateLinks(subset, relay);
   details.set(updateDetails(summary));
   await refreshQuietly();
-  return summarize(summary);
+  return scopedSummary(summarize(summary), currentFilter().project);
 }
 
 // "Update this slide" reads PowerPoint's own selection, not a tick: the pane

@@ -2,7 +2,8 @@
 //! `manifest.prod.xml` verbatim, or the same file re-pointed at
 //! `MODELIS_PUBLIC_URL` with an add-in id of its own, so a self-hosted copy
 //! never collides with the hosted add-in on one machine.
-//! Invariant: a rewrite touches the base URL, the AppDomain and the Id, nothing else.
+//! Invariant: a rewrite touches the base URL, the AppDomain and the Id, nothing else,
+//! and every interpolated URL is XML-escaped.
 
 use std::{env, fs, io, path::PathBuf};
 
@@ -60,12 +61,22 @@ pub fn rewrite(xml: &str, public_url: &str) -> String {
     if base == HOSTED_BASE {
         return xml.to_string();
     }
-    let origin = origin_of(&base);
-    let repointed = xml.replace(HOSTED_BASE, &base).replace(
+    let origin = xml_text(&origin_of(&base));
+    let escaped_base = xml_text(&base);
+    let repointed = xml.replace(HOSTED_BASE, &escaped_base).replace(
         &format!("<AppDomain>{HOSTED_ORIGIN}</AppDomain>"),
         &format!("<AppDomain>{origin}</AppDomain>"),
     );
     replace_id(&repointed, &addin_id(&base))
+}
+
+fn xml_text(value: &str) -> String {
+    value
+        .replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
+        .replace('"', "&quot;")
+        .replace('\'', "&apos;")
 }
 
 /// A stable id per host: the same URL always gets the same add-in, another

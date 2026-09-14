@@ -250,8 +250,8 @@ PowerPoint process start time, MERP dialog) and the E1-E15 bisection.
     section per slice, `docs/FEATURES.md` rows marked shipped v2.7.
 - Security review 13.09: 1 Critical (one IP could fill the 1 GiB relay in under a minute), 5 Important,
   8 Minor; secrets grep clean. Closed by S1 (C1, I1-I3); I4 release.yml SHA pins done by the launch
-  session; OPEN: I5 rollback detection (a design slice), M1 the manifest rewrite's unescaped
-  `MODELIS_PUBLIC_URL` (`server/src/manifest.rs`, the launch session's file).
+  session; OPEN: I5 rollback detection (a design slice). M1 closed: `MODELIS_PUBLIC_URL` is XML-escaped
+  in `server/src/manifest.rs` (ampersand, angle brackets, quotes).
 - Rulings that changed the briefs (details in the ledger): band tint from `settings.primary`; a 4th
   football column is ignored; N2 squashed; the ux gates' default ports 3131/3132 are shared across
   worktrees, so every run passes its own `--port`; 100 writes/min kept (about 50 links per Update all,

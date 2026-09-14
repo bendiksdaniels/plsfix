@@ -7,6 +7,7 @@ import {
   pruneSelection,
   requireSelection,
   rowKey,
+  scopedSummary,
   selectedRows,
   slideRows,
   toRowViews,
@@ -166,6 +167,20 @@ describe("link filters", () => {
     ).toEqual([rows[1]]);
     expect(filterRows(rows, { query: "", status: "all", project: "" })).toEqual(
       [rows[0]],
+    );
+  });
+});
+
+describe("scopedSummary", () => {
+  it("leaves All projects unnamed", () => {
+    expect(scopedSummary("3 updated", "all")).toBe("3 updated");
+    expect(scopedSummary("3 updated")).toBe("3 updated");
+  });
+
+  it("names the shown project, and No project when the filter is empty", () => {
+    expect(scopedSummary("3 updated", "Amasty")).toBe("3 updated (Amasty)");
+    expect(scopedSummary("No links found", "")).toBe(
+      "No links found (No project)",
     );
   });
 });

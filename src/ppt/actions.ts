@@ -4,6 +4,7 @@
 // without a host.
 
 import { sourceLabel } from "../link/model";
+import { projectLabel } from "../link/project";
 import type { FoundLink } from "./host";
 import type { LinkRow, UpdateSummary } from "./links";
 import type { LinkRowView } from "./views";
@@ -139,6 +140,12 @@ export function requireSelection(
 // The toast says how many did what; the details say which ones and why - a
 // failure line per link, then every workbook a link now points at instead,
 // then every chart the deck holds as a picture and the reason.
+export function scopedSummary(text: string, project?: string): string {
+  if (project === undefined || project === "all") return text;
+  const name = projectLabel(project === "" ? undefined : project);
+  return `${text} (${name})`;
+}
+
 export function updateDetails(summary: UpdateSummary): string | undefined {
   const lines = [
     ...summary.failures,

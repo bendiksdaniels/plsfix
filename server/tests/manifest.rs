@@ -127,6 +127,15 @@ fn the_hosted_url_changes_nothing() {
 }
 
 #[test]
+fn xml_metacharacters_in_the_public_url_are_escaped() {
+    let out = rewrite(SAMPLE, r#"https://x.com/<script>"onclick="&'"#);
+    assert!(!out.contains("<script>"), "{out}");
+    assert!(!out.contains(r#""onclick=""#), "{out}");
+    assert!(out.contains("&lt;script&gt;"), "{out}");
+    assert!(out.contains("&amp;"), "{out}");
+}
+
+#[test]
 fn a_port_stays_in_the_origin() {
     let out = rewrite(SAMPLE, "http://localhost:8804");
     assert!(
