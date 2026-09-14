@@ -235,7 +235,9 @@ function shapeWedges(added: Added[]): void {
 // level and appended to the cleanup list - a shape inside a sub-group is no
 // longer an id the slide's own collection can delete, but its sub-group is.
 // Levels repeat until at most `tier` members remain, so a 40-point chart
-// never asks addGroup for 19+ ids (the count that killed Mac 16.107).
+// never asks addGroup for 19+ ids (the count that killed Mac 16.107). A
+// remainder of one is left ungrouped: addGroup of one is InvalidArgument,
+// and on Mac 16.107 (14.09) that sync left the sub-groups untagged.
 async function tierUp(
   context: PowerPoint.RequestContext,
   shapes: PowerPoint.ShapeCollection,
@@ -245,14 +247,22 @@ async function tierUp(
   if (tier === null || ids.length <= tier) return [...ids];
   let members = [...ids];
   while (members.length > tier) {
-    const subs = chunks(members, tier).map((part) => {
+    const next: string[] = [];
+    const subs: PowerPoint.Shape[] = [];
+    for (const part of chunks(members, tier)) {
+      if (part.length < 2) {
+        next.push(...part);
+        continue;
+      }
       const sub = shapes.addGroup(part);
       sub.load("id");
-      return sub;
-    });
+      subs.push(sub);
+    }
     await withSyncDeadline(context.sync());
-    members = subs.map((sub) => sub.id);
-    ids.push(...members);
+    const grouped = subs.map((sub) => sub.id);
+    next.push(...grouped);
+    ids.push(...grouped);
+    members = next;
   }
   return members;
 }

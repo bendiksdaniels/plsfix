@@ -88,6 +88,14 @@ async function groupedLink(): Promise<{
   return { item, picture, group };
 }
 
+// One more level of nesting on the first slide. PowerPoint refuses a group of
+// one shape, so each level takes a caption in beside the group it wraps.
+function wrapOnFirstSlide(shape: FakePptShape): FakePptShape {
+  const slide = presentation.slides[0]!;
+  const caption = presentation.addShape(slide, { left: 5, top: 5, width: 60 });
+  return presentation.groupShapes([shape.id, caption.id], slide.id);
+}
+
 beforeEach(async () => {
   vi.resetModules();
   uninstallFakePpt();
@@ -172,8 +180,7 @@ describe("links inside a group", () => {
 
   it("walks a group inside a group", async () => {
     const { item, picture, group } = await groupedLink();
-    const slide = presentation.slides[0]!;
-    const outer = presentation.groupShapes([group.id], slide.id);
+    const outer = wrapOnFirstSlide(group);
     await publish(item.id, item.token, fakePng(800, 400));
     const rows = await links.listLinks(relay);
     expect(rows[0]!.found.groupPath).toEqual([outer.id, group.id]);
@@ -186,14 +193,13 @@ describe("links inside a group", () => {
   it("finds a picture three groups deep and ignores one four deep", async () => {
     const near = await groupedLink();
     const far = await groupedLink();
-    const slide = presentation.slides[0]!;
     let nearGroup = near.group;
     let farGroup = far.group;
     for (let level = 0; level < 2; level += 1) {
-      nearGroup = presentation.groupShapes([nearGroup.id], slide.id);
-      farGroup = presentation.groupShapes([farGroup.id], slide.id);
+      nearGroup = wrapOnFirstSlide(nearGroup);
+      farGroup = wrapOnFirstSlide(farGroup);
     }
-    farGroup = presentation.groupShapes([farGroup.id], slide.id);
+    farGroup = wrapOnFirstSlide(farGroup);
     const rows = await links.listLinks(relay);
     expect(rows.map((row) => row.found.shapeId)).toEqual([near.picture.id]);
     expect(rows[0]!.found.groupPath).toHaveLength(3);

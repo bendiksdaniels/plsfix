@@ -220,7 +220,7 @@ export class FakePresentation {
   // What Ctrl+G does: the shapes leave the slide - or the group they were in -
   // and live inside a new group shape sized to hold them.
   groupShapes(shapeIds: string[], slideId: string): FakePptShape {
-    if (shapeIds.length === 0) throw invalidArgument("a group needs a shape");
+    if (shapeIds.length < 2) throw invalidArgument("a group needs two shapes");
     const slide = this.findSlideOrThrow(slideId);
     const sites = shapeIds.map((id) => this.findShape(id));
     const box = bounds(sites.map((site) => site.shape));

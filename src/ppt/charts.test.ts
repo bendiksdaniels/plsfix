@@ -85,6 +85,30 @@ describe("PowerPoint for Mac groups a chart in tiers", () => {
   // Twelve columns are 38 shapes: one addGroup of seven sub-groups of six,
   // which is still under the 19 that killed 16.107, but a 40-point chart is
   // 21 sub-groups and that is not. Recurse until no group has more than six.
+  // A 6-point line with a title is 25 primitives: four sub-groups of six and
+  // one leftover. PowerPoint refuses addGroup of one (Mac 16.107, 14.09: the
+  // four groups landed, the leftover vanished, no tagged top group).
+  it("a remainder-one Mac chart still lands as one tagged group", async () => {
+    const booted = await bootPpt();
+    booted.helpers.setPlatform("Mac");
+    const ws = await createWorkspace(memoryStore());
+    const item = await seedChart(
+      { ...columnChart(6), kind: "line" },
+      fakePng(800, 400),
+    );
+    const placed = await booted.links.insertFromInbox(
+      item,
+      ws,
+      booted.relay,
+      DEFAULT_TARGET,
+    );
+    expect(placed.note).toBeUndefined();
+    const link = booted.presentation.findShape(placed.shapeId).shape;
+    expect(link.type).toBe("Group");
+    expect(fanout(link)).toBeLessThanOrEqual(GROUP_TIER_MAC);
+    expect(leaves(link).length % GROUP_TIER_MAC).toBe(1);
+  });
+
   it("never addGroups more than six members, even on a wide chart", async () => {
     const booted = await bootPpt();
     booted.helpers.setPlatform("Mac");

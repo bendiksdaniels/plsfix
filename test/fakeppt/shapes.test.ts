@@ -62,6 +62,17 @@ describe("fake PowerPoint shapes", () => {
     });
   });
 
+  it("refuses a one-shape group", async () => {
+    installFakePpt({ slides: 1 });
+    await PowerPoint.run(async (c) => {
+      const shapes = c.presentation.slides.getItemAt(0).shapes;
+      const one = shapes.addGeometricShape("Rectangle", box(0, 0, 10, 10));
+      one.load("id");
+      await c.sync();
+      expect(() => shapes.addGroup([one.id])).toThrow(/InvalidArgument/);
+    });
+  });
+
   it("refuses a negative width or height, on add and on a later write", async () => {
     installFakePpt({ slides: 1 });
     await PowerPoint.run(async (c) => {

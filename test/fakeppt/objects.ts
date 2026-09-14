@@ -181,7 +181,7 @@ class ShapeCollectionProxy extends Handle {
   }
 
   // addGroup: the members leave the slide's top level for the new group, whose
-  // box is the one they occupy together. An empty list is refused.
+  // box is the one they occupy together. Fewer than two ids is refused.
   addGroup(shapeIds: string[]): ShapeProxy {
     const group = this.deck.groupShapes(shapeIds, this.slide().id);
     return new ShapeProxy(this.deck, group.id);
