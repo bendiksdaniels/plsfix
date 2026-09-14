@@ -67,6 +67,12 @@ export interface FakePptHelpers {
   // future sync can be armed to fail. Whichever sync it lands on takes back
   // off the deck everything added since the sync before it.
   failNextSync(error?: Error, afterSyncs?: number): void;
+  // Makes a future context.sync() reject the way a real refusal does: the
+  // host applied the batch's adds and then refused, so they stay on the deck
+  // with ids no load answered (Mac 16.107, 14.09: four sub-groups landed and
+  // the sync rejected on the fifth addGroup). Same ordinal rule as
+  // failNextSync; every add of that batch is kept, the loads are lost.
+  refuseNextSync(error?: Error, afterSyncs?: number): void;
   // G audit: makes a future context.sync() never settle - neither applying
   // its batch nor rejecting it - the way PowerPoint for the web swallowed a
   // chart draw's second chunk (tasks/lessons.md, 2026-09-08). Same ordinal

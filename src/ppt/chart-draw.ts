@@ -78,9 +78,13 @@ export async function withSyncDeadline<T>(
 // The teardown runs on the host that has just stopped answering, so it gets
 // the same deadline and no more: a cleanup that hangs too would hold the
 // pane's busy flag open exactly as the draw did.
-async function cleanupWithin(slideId: string, ids: string[]): Promise<void> {
+async function cleanupWithin(
+  slideId: string,
+  ids: string[],
+  namePrefix: string,
+): Promise<void> {
   try {
-    await withSyncDeadline(cleanupShapes(slideId, ids));
+    await withSyncDeadline(cleanupShapes(slideId, ids, namePrefix));
   } catch {
     // Best effort, the same swallow cleanupShapes makes of its own errors.
   }
@@ -230,6 +234,13 @@ function shapeWedges(added: Added[]): void {
   }
 }
 
+// What every shape of a chart is named with before its own part: the
+// primitives, and on the Mac the tiers, all in the batch that adds them, so
+// a cleanup can find by name what a refused batch left with no id.
+export function chartPrefix(name: string): string {
+  return `${name}: `;
+}
+
 // The ids the link's group takes: the shapes themselves, or on a host that
 // groups in tiers (groupTier) the sub-groups of them, made in one sync per
 // level and appended to the cleanup list - a shape inside a sub-group is no
@@ -242,6 +253,7 @@ async function tierUp(
   context: PowerPoint.RequestContext,
   shapes: PowerPoint.ShapeCollection,
   ids: string[],
+  name: string,
 ): Promise<string[]> {
   const tier = groupTier();
   if (tier === null || ids.length <= tier) return [...ids];
@@ -255,6 +267,7 @@ async function tierUp(
         continue;
       }
       const sub = shapes.addGroup(part);
+      sub.name = `${chartPrefix(name)}tier`;
       sub.load("id");
       subs.push(sub);
     }
@@ -271,13 +284,14 @@ async function tierUp(
 // chunk is added and its ids read back in one sync, and the last sync groups
 // them, names the group, tags it and runs whatever the caller queued there.
 //
-// A sync that rejects after the first one has already put shapes on the
-// host: PowerPoint.run does not roll those back, so this tracks every id a
-// prior sync confirmed and, on any later rejection, deletes them itself
-// (chart-cleanup.ts) before rethrowing the rejection unchanged. A rejection
-// on the very first sync has nothing recorded yet, so nothing is cleaned.
-// A round trip the host swallows without answering reaches the same path
-// through its deadline, as a ChartDrawTimeout the caller falls back on.
+// A sync that rejects has already put shapes on the host: PowerPoint.run
+// does not roll those back, and a refused batch keeps the adds queued before
+// the call it refused (Mac 16.107, 14.09). So this tracks every id a prior
+// sync confirmed and, on any rejection, deletes them itself (chart-cleanup.ts)
+// and then sweeps the slide for the rest by the chart's name, before
+// rethrowing the rejection unchanged. A round trip the host swallows without
+// answering reaches the same path through its deadline, as a ChartDrawTimeout
+// the caller falls back on.
 export async function drawGroup(
   context: PowerPoint.RequestContext,
   shapes: PowerPoint.ShapeCollection,
@@ -288,7 +302,7 @@ export async function drawGroup(
     for (const chunk of chunks(spec.primitives, SHAPES_PER_SYNC)) {
       const added = chunk.map((primitive): Added => {
         const shape = addPrimitive(shapes, primitive, spec);
-        shape.name = `${spec.name}: ${primitive.name}`;
+        shape.name = `${chartPrefix(spec.name)}${primitive.name}`;
         shape.load("id");
         return { shape, primitive };
       });
@@ -296,7 +310,7 @@ export async function drawGroup(
       ids.push(...added.map((one) => one.shape.id));
       shapeWedges(added);
     }
-    const members = await tierUp(context, shapes, ids);
+    const members = await tierUp(context, shapes, ids, spec.name);
     const group = shapes.addGroup(members);
     group.name = spec.name;
     group.tags.add(TAG_LINK, encodeTag(spec.tag));
@@ -306,7 +320,7 @@ export async function drawGroup(
     await withSyncDeadline(context.sync());
     return group.id;
   } catch (err) {
-    if (ids.length > 0) await cleanupWithin(spec.slideId, ids);
+    await cleanupWithin(spec.slideId, ids, chartPrefix(spec.name));
     throw err;
   }
 }

@@ -30,6 +30,11 @@ const COLUMN_SHAPES = 20;
 // The insert's syncs on the Mac: select the slide, place, two chunks of
 // twelve and eight, the sub-groups, then the link's own group.
 const TOP_GROUP_SYNC = 5;
+// The same insert's second chunk of primitives, on any host.
+const SECOND_CHUNK_SYNC = 3;
+// A 25-primitive line chart: select, place, chunks of twelve, twelve and
+// one, then the sub-groups.
+const LINE_TIER_SYNC = 5;
 
 function leaves(shape: FakePptShape): FakePptShape[] {
   return shape.type === "Group" ? shape.group!.shapes.flatMap(leaves) : [shape];
@@ -163,5 +168,68 @@ describe("PowerPoint for Mac groups a chart in tiers", () => {
     ).rejects.toThrow("the host hung");
 
     expect(booted.presentation.slides[0]!.shapes).toHaveLength(0);
+  });
+
+  // Mac 16.107, 14.09: the four sub-groups queued before the refused addGroup
+  // were on the slide when the sync rejected, with ids no load had answered
+  // and the primitives inside them out of the slide's own reach. The cleanup
+  // finds them by the chart's name instead.
+  it("a tier sync the host refuses after applying it leaves nothing behind", async () => {
+    const booted = await bootPpt();
+    booted.helpers.setPlatform("Mac");
+    booted.helpers.refuseNextSync(
+      new Error("the host refused"),
+      LINE_TIER_SYNC,
+    );
+    const ws = await createWorkspace(memoryStore());
+    const item = await seedChart(
+      { ...columnChart(6), kind: "line" },
+      fakePng(800, 400),
+    );
+
+    await expect(
+      booted.links.insertFromInbox(item, ws, booted.relay, DEFAULT_TARGET),
+    ).rejects.toThrow("the host refused");
+
+    expect(booted.presentation.slides[0]!.shapes).toHaveLength(0);
+  });
+
+  it("a chunk the host refuses after applying it leaves nothing behind", async () => {
+    const booted = await bootPpt();
+    booted.helpers.refuseNextSync(
+      new Error("the host refused"),
+      SECOND_CHUNK_SYNC,
+    );
+    const ws = await createWorkspace(memoryStore());
+    const item = await seedChart(columnChart(6), fakePng(800, 400));
+
+    await expect(
+      booted.links.insertFromInbox(item, ws, booted.relay, DEFAULT_TARGET),
+    ).rejects.toThrow("the host refused");
+
+    expect(booted.presentation.slides[0]!.shapes).toHaveLength(0);
+  });
+
+  // An older link from the same source shares the chart's name without the
+  // separator, so the sweep must leave it where it is.
+  it("the sweep spares a finished link from the same source", async () => {
+    const first = await insertOn("Mac");
+    const kept = first.presentation.findShape(first.placed.shapeId).shape;
+    first.helpers.refuseNextSync(
+      new Error("the host refused"),
+      SECOND_CHUNK_SYNC,
+    );
+    const ws = await createWorkspace(memoryStore());
+    const again = await seedChart(columnChart(6), fakePng(800, 400));
+    // The whole slide, so the second chart draws over the first instead of
+    // shrinking into a picture beside it.
+    const whole = { ...DEFAULT_TARGET, where: "whole" as const };
+
+    await expect(
+      first.links.insertFromInbox(again, ws, first.relay, whole),
+    ).rejects.toThrow("the host refused");
+
+    expect(first.presentation.slides[0]!.shapes).toEqual([kept]);
+    expect(kept.name.startsWith("pls,fix chart ")).toBe(true);
   });
 });

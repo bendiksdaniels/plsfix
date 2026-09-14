@@ -22,10 +22,15 @@ interface SelectionOptions {
 
 // One armed context.sync() failure: which sync ordinal (1-based, across the
 // whole host) it fires on and what it rejects with. Several can be queued at
-// once, for a caller that needs more than one future sync to fail.
+// once, for a caller that needs more than one future sync to fail. `applied`
+// is the real host's refusal (Mac 16.107, 14.09: the sub-groups queued before
+// the refused addGroup were on the slide when the sync rejected): the batch's
+// adds stay on the deck, only the loads are lost. Without it the batch never
+// reached the host at all and its adds come back off.
 interface ArmedSyncFailure {
   at: number;
   error: Error;
+  applied: boolean;
 }
 
 // What Office.actions.associate hands the ribbon: the handler completes the
@@ -110,7 +115,12 @@ class FakeContext extends Loadable {
     );
     if (index !== -1) {
       const [failure] = this.runtime.syncFailures.splice(index, 1);
-      this.runtime.presentation.rollbackPending();
+      if (failure!.applied) {
+        this.runtime.presentation.confirmPending();
+        this.runtime.presentation.markSynced();
+      } else {
+        this.runtime.presentation.rollbackPending();
+      }
       this.runtime.strict?.drop();
       return Promise.reject(failure!.error);
     }
@@ -330,6 +340,14 @@ function makeHelpers(runtime: FakeRuntime): FakePptHelpers {
       runtime.syncFailures.push({
         at: runtime.syncs + afterSyncs + 1,
         error: error ?? syncFailure(),
+        applied: false,
+      });
+    },
+    refuseNextSync(error, afterSyncs = 0) {
+      runtime.syncFailures.push({
+        at: runtime.syncs + afterSyncs + 1,
+        error: error ?? syncFailure(),
+        applied: true,
       });
     },
     insertedViaSelection: () =>

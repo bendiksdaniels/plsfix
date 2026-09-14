@@ -73,6 +73,23 @@ describe("fake PowerPoint shapes", () => {
     });
   });
 
+  // A refusal is the host applying the batch and then saying no (Mac 16.107,
+  // 14.09); a failure is the batch never arriving. The deck keeps the adds of
+  // the first and takes back the adds of the second.
+  it("keeps the adds of a refused sync and takes back a failed one's", async () => {
+    const { presentation, helpers } = installFakePpt({ slides: 1 });
+    await PowerPoint.run(async (c) => {
+      const shapes = c.presentation.slides.getItemAt(0).shapes;
+      shapes.addGeometricShape("Rectangle", box(0, 0, 10, 10));
+      helpers.refuseNextSync(new Error("refused"));
+      await expect(c.sync()).rejects.toThrow("refused");
+      shapes.addGeometricShape("Rectangle", box(20, 0, 10, 10));
+      helpers.failNextSync(new Error("failed"));
+      await expect(c.sync()).rejects.toThrow("failed");
+    });
+    expect(presentation.slides[0]!.shapes).toHaveLength(1);
+  });
+
   it("refuses a negative width or height, on add and on a later write", async () => {
     installFakePpt({ slides: 1 });
     await PowerPoint.run(async (c) => {
