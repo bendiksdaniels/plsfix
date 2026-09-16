@@ -1,11 +1,14 @@
-// Unit tests for settableProperties: the pure sanitiser undoLastAction runs a
-// captured cell through before it reaches setCellProperties. Fixtures shape
-// their input the way Excel for Mac's getCellProperties actually answers
-// (null fill pattern, empty patternColor, @odata.type on every nested
-// object), proven on Excel for Mac 16.107 (16.09).
+// Unit tests for undo.ts's non-Office.js surface: settableProperties, the pure
+// sanitiser undoLastAction runs a captured cell through before it reaches
+// setCellProperties, and the pending-entry bookkeeping (commitUndo/discardUndo)
+// that keeps a write the host refuses from spending a real Undo slot.
+// Fixtures for settableProperties shape their input the way Excel for Mac's
+// getCellProperties actually answers (null fill pattern, empty patternColor,
+// @odata.type on every nested object), proven on Excel for Mac 16.107 (16.09).
 
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { settableProperties } from "./undo";
+import type * as UndoModule from "./undo";
 
 // A fully-populated capture (as requestFormats asks for it) with an unfilled
 // cell's fill, so a test only has to override the one branch it cares about.
@@ -222,5 +225,73 @@ describe("settableProperties: the rest of the format", () => {
 
   it("returns an empty settable object for a cell with no captured format", () => {
     expect(settableProperties({} as Excel.CellProperties)).toEqual({});
+  });
+});
+
+// A minimal Office.js double: every property a capture reads is already on
+// the object (no deferred load/sync semantics to fake), which is all
+// captureUndoAreas's own bookkeeping needs - the shape of what it reads is
+// covered elsewhere (the integration suites over test/fakehost.ts).
+function fakeContext(): Excel.RequestContext {
+  return {
+    sync: () => Promise.resolve(),
+  } as unknown as Excel.RequestContext;
+}
+
+function fakeRange(address: string): Excel.Range {
+  return {
+    load: () => undefined,
+    address,
+    rowCount: 1,
+    columnCount: 1,
+    formulas: [["1"]],
+    numberFormat: [["General"]],
+    worksheet: { load: () => undefined, id: address },
+    getCellProperties: () => ({ value: [[{}]] }),
+  } as unknown as Excel.Range;
+}
+
+describe("captureUndoAreas: the pending entry a refused write must not keep", () => {
+  // A fresh module instance per test: undoStack and pendingUndo are private
+  // module state, the same way every stress rig resets ../src/excel.
+  let undo: typeof UndoModule;
+
+  beforeEach(async () => {
+    vi.resetModules();
+    undo = await import("./undo");
+  });
+
+  it("commit keeps the entry", async () => {
+    await undo.captureUndoAreas(fakeContext(), [fakeRange("Model!A1")]);
+    undo.commitUndo();
+
+    // Committed, so no longer pending: a later discard must leave it alone.
+    undo.discardUndo();
+    expect(undo.undoTarget()).toBe("Model!A1");
+  });
+
+  it("discard removes only the pending top entry and leaves older ones", async () => {
+    await undo.captureUndoAreas(fakeContext(), [fakeRange("Model!A1")]);
+    undo.commitUndo();
+    await undo.captureUndoAreas(fakeContext(), [fakeRange("Model!B1")]);
+
+    undo.discardUndo();
+    expect(undo.undoTarget()).toBe("Model!A1");
+  });
+
+  it("a new capture drops a stale pending entry", async () => {
+    await undo.captureUndoAreas(fakeContext(), [fakeRange("Model!A1")]);
+    // A1 is never committed or discarded: still pending when B1 is captured.
+    await undo.captureUndoAreas(fakeContext(), [fakeRange("Model!B1")]);
+
+    // B1 is also still pending. Discarding it should leave nothing - proving
+    // A1 was already dropped, not sitting underneath it.
+    undo.discardUndo();
+    expect(undo.undoTarget()).toBeNull();
+  });
+
+  it("discard with nothing pending is a no-op", () => {
+    expect(() => undo.discardUndo()).not.toThrow();
+    expect(undo.undoTarget()).toBeNull();
   });
 });

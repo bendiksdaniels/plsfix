@@ -245,13 +245,11 @@ describe("a host that says no", () => {
     expect(helpers.cell("Model!A2").indentLevel).toBe(0);
   });
 
-  // REPORTED (P2): a ctrl-clicked selection on a partly unlocked sheet is
-  // several write statements in one batch. The unlocked areas land, the locked
-  // one is refused, and the pane still says "nothing was changed". Fix in
-  // src/excel/protection.ts (not a P2 file): protectedNote must not promise an
-  // untouched sheet when the batch held more than one range, or syncWrite must
-  // hand the caller the areas it wrote.
-  it.skip("does not promise an untouched sheet when it painted one area", async () => {
+  // A ctrl-clicked selection on a partly unlocked sheet is several write
+  // statements in one batch: the unlocked areas land, the locked one is
+  // refused. protectedNote now words a batch of more than one area as partly
+  // protected instead of promising an untouched sheet.
+  it("does not promise an untouched sheet when it painted one area", async () => {
     helpers.seed("Model!A1", [["Revenue"]]);
     helpers.seed("Model!C1", [["Cost"]]);
     helpers.selectAreas(["Model!A1", "Model!C1"]);
@@ -335,12 +333,11 @@ describe("pressed twice", () => {
     expect(helpers.cell("Model!C1").indentLevel).toBe(2);
   });
 
-  // REPORTED (P2): the capture runs before the write, so a write the host
-  // refuses still pushes an entry - and the ring is five deep, so the refusal
-  // evicts a real one. Fix in src/excel/undo.ts (not a P2 file): a
-  // dropLastUndo() the writing flows call when syncWrite throws, or a handle
-  // captureUndoAreas hands back that rolls the entry off again.
-  it.skip("spends no undo slot on a write the sheet refused", async () => {
+  // The capture runs before the write, so a write the host refuses must not
+  // spend a real slot - the ring is five deep, and the refusal would evict one
+  // that landed. src/excel/undo.ts holds the entry pending until syncWrite
+  // commits or discards it.
+  it("spends no undo slot on a write the sheet refused", async () => {
     helpers.seed("Model!A1", [["a"], ["b"], ["c"], ["d"], ["e"], ["f"]]);
     for (const row of [1, 2, 3, 4, 5]) {
       helpers.select(`Model!A${String(row)}`);

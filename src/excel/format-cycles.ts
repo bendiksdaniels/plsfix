@@ -8,7 +8,7 @@
 // in the pure src/cycles.ts, and the presets in selection.ts.
 
 import { activeArea, cappedAreas, selectedAreas } from "./areas";
-import { syncWrite } from "./protection";
+import { protectedNote, syncWrite } from "./protection";
 import { captureUndoAreas } from "./undo";
 import {
   BORDER_EDGE_NAMES,
@@ -105,7 +105,7 @@ export async function applyNumberCycle(
     for (const area of areas) {
       area.numberFormat = makeFormatGrid(area.rowCount, area.columnCount, next);
     }
-    await syncWrite(context, "Format cycling");
+    await syncWrite(context, "Format cycling", protectedNote, areas.length);
   });
 }
 
@@ -137,7 +137,7 @@ export async function applyRowStyleCycle(kind: RowStyleKind): Promise<void> {
     await captureUndoAreas(context, areas);
 
     if (next) for (const area of areas) paintRowStyle(area, next);
-    await syncWrite(context, "Row styles");
+    await syncWrite(context, "Row styles", protectedNote, areas.length);
   });
 }
 
@@ -169,7 +169,7 @@ export async function applyFillCycle(): Promise<void> {
       else area.format.fill.color = next;
     }
 
-    await syncWrite(context, "Fill cycling");
+    await syncWrite(context, "Fill cycling", protectedNote, areas.length);
   });
 }
 
@@ -187,7 +187,12 @@ export async function applyFontColorCycle(): Promise<void> {
     await captureUndoAreas(context, areas);
 
     for (const area of areas) area.format.font.color = next;
-    await syncWrite(context, "Font colour cycling");
+    await syncWrite(
+      context,
+      "Font colour cycling",
+      protectedNote,
+      areas.length,
+    );
   });
 }
 
@@ -286,7 +291,7 @@ async function applyHygieneCycle<T>(cycle: HygieneCycle<T>): Promise<void> {
     await captureUndoAreas(context, areas);
 
     for (const area of areas) cycle.write(area.format, next);
-    await syncWrite(context, cycle.stage);
+    await syncWrite(context, cycle.stage, protectedNote, areas.length);
   });
 }
 
@@ -346,6 +351,6 @@ export async function applyBorderCycle(): Promise<void> {
     await captureUndoAreas(context, areas);
 
     if (next) for (const edges of handles) writeEdges(edges, next);
-    await syncWrite(context, "Border cycling");
+    await syncWrite(context, "Border cycling", protectedNote, areas.length);
   });
 }

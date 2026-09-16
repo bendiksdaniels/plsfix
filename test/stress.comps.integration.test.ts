@@ -280,7 +280,7 @@ describe("Comps stats pressed twice", () => {
 });
 
 describe("Comps stats: found here, fixed elsewhere", () => {
-  it.skip("spends no Undo slot when the host refuses the write itself", async () => {
+  it("spends no Undo slot when the host refuses the write itself", async () => {
     // Fails today at the last line with "Model!A6:C11": the write comes back
     // InvalidOperation, but captureUndo has already pushed the block onto the
     // five-deep stack, dropping the modeller's oldest entry - and that new
@@ -320,16 +320,13 @@ describe("Comps stats: found here, fixed elsewhere", () => {
     expect(rig.helpers.formula("Model!B6")).toBe("=MIN(B2:B4)");
   });
 
-  it.skip("stages a host error a read sync drops", async () => {
-    // Fails today with "The sync failed.": describeError hands error.message
-    // to the toast unchanged, so a dropped read batch reaches the modeller
-    // with no tool name and no way out. Every read sync in src/excel is bare
-    // by design - only write syncs go through syncWrite/paintSync - so this is
-    // a pane-wide policy, not a comps one. Fix in src/ui/report.ts (not this
-    // slice): prefix the running action's label when the message carries no
-    // stage of its own. If the wording moves to the guard in
-    // src/pane/shared.ts instead, this tripwire moves with it - the suites
-    // mock that module away, and describeError is the only pure half.
+  it("stages a host error a read sync drops", async () => {
+    // "The sync failed." is a bare host string. Every read sync in src/excel
+    // is bare by design - only write syncs stage their own refusal, through
+    // syncWrite/paintSync - so this is a pane-wide policy, not a comps one:
+    // describeError (src/ui/report.ts) now prefixes the running action's
+    // label, the one pure half of the pair these suites can reach - they mock
+    // src/pane/shared.ts's guard away.
     seedComps(rig);
     rig.helpers.failNextSync();
     const error = await caught(() => rig.dispatch("comps-stats"));
