@@ -192,9 +192,10 @@ Export a range or a chart from Excel and keep it fresh in a deck without re-past
 - PowerPoint, tab **pls,fix > Links**: the **Inbox** lists exports waiting to be placed;
   *Insert* puts a picture on the selected slide with a tracker in the shape's tags, and
   *Paste latest linked* does the same for the newest export in one click. The
-  **Links** list shows every tracked picture in the deck (slide, source, status), can be
-  searched and filtered by status, source workbook, slide and project, and the Inbox is grouped
-  by project. *Update selected / slide / all* repaints them in place (*Update all* covers the
+  **Links** list shows every tracked object in the deck in a folder per project, each row
+  with its slide, the workbook it comes from and its status; it can be searched and filtered
+  by status, source workbook, slide and project, and the Inbox is grouped the same way.
+  *Update selected / slide / all* repaints them in place (*Update all* covers the
   filtered set): position and size are kept, only
   the height follows when the picture's aspect ratio changed. A round trip PowerPoint never
   answers ends after a minute with a sentence naming what stopped, and a chart insert or

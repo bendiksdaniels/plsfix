@@ -137,7 +137,7 @@ fn projects() -> Section {
                 r#"Vir saraksta izvēlieties projektu vai nospiediet "New project" un ierakstiet nosaukumu (līdz 40 rakstzīmēm)."#,
                 r#"Jaunie eksporti pievienojas izvēlētajam projektam. "All projects" nozīmē, ka jaunie eksporti paliek bez projekta."#,
                 r#"Saraksts grupē saites pēc projekta. "Push all" nosūta tikai redzamā projekta saites, vai visas, ja izvēlēts "All projects"."#,
-                r#"PowerPoint cilnē "Links" filtrs "All projects" rāda visu klāju; iesūtne ir grupēta pēc projekta. "Update all" atjaunina tikai filtram atbilstošās saites."#,
+                r#"PowerPoint cilnē "Links" saraksts "Linked objects" ir sakārtots mapēs pēc projekta, un zem katra objekta ir norādīta darbgrāmata, no kuras tas nāk; filtrs "All projects" rāda visu klāju, un iesūtne ir grupēta tāpat. "Update all" atjaunina tikai filtram atbilstošās saites."#,
             ]),
             Block::Para(
                 r#"Vecās saites un veci klāji paliek bez projekta un turpina strādāt. Tukšs nosaukums ir "No project"."#,

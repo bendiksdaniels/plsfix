@@ -99,6 +99,17 @@ export function pptLinkRows(nowSeconds) {
       pushedAt: null,
       selected: false,
     },
+    {
+      key: "k4",
+      slide: 21,
+      label: "Net debt bridge",
+      source: "Model.xlsx",
+      project: "Balcia",
+      kind: "range",
+      status: "wrongKey",
+      pushedAt: nowSeconds - 200000,
+      selected: false,
+    },
   ];
 }
 
