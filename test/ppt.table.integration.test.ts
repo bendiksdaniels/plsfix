@@ -85,7 +85,7 @@ describe("insert a table link", () => {
     const item = await insertTable();
     const inserted = shape();
     expect(inserted.type).toBe("Table");
-    expect(inserted.name).toBe(`pls,fix table ${item.label}`);
+    expect(inserted.name).toBe(`pls,fix ${item.label}`);
     // The columns' own widths, and a row's worth of height per row, at the
     // first free spot on an empty slide.
     expect(box(inserted)).toEqual({

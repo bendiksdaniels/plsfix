@@ -3,16 +3,20 @@
 // grid, the style settings and the writes an add-in makes on either - text,
 // font, fill, alignment and the header band. Invariant: every object
 // addresses its cell by (row, column) and resolves the shape again on each
-// access, so a table deleted under it is seen as gone.
+// access, so a table deleted under it is seen as gone. A fresh table starts
+// with no style at all, and its styleSettings refuse every load until one is
+// written, matching the Mac host (see NO_STYLE below).
 
 import type { FakePresentation, FakePptShape } from "./model";
 import { Loadable } from "./strict";
 
-// PowerPoint's own default for a table added through shapes.addTable: Medium
-// Style 2 Accent 1, header row highlighted, rows banded, nothing else. A
-// literal, not an import from src/ppt/table-style.ts: this fixture answers
-// for what the HOST hands back, whatever pls,fix later does with it.
-const DEFAULT_TABLE_STYLE = "MediumStyle2Accent1";
+// What a table shapes.addTable hands back starts with on PowerPoint for Mac
+// (16.107): no style at all, not PowerPoint's own ribbon default - the saved
+// XML shows an empty <a:tblPr/>. Every flag defaults false to match: OOXML
+// leaves every tblPr boolean attribute false when it is absent. A literal,
+// not an import from src/ppt/table-style.ts: this fixture answers for what
+// the HOST hands back, whatever pls,fix later does with it.
+const NO_STYLE = "";
 
 // `color` and `cleared` are the state PowerPoint keeps; `type` is derived,
 // never stored twice, the same way format.ts's ShapeFillProxy derives a
@@ -70,11 +74,11 @@ export interface FakeTable {
   uniformCellProperties: TableUniformCellProperties | null;
 }
 
-function defaultStyleSettings(): FakeTableStyleSettings {
+function unstyledSettings(): FakeTableStyleSettings {
   return {
-    style: DEFAULT_TABLE_STYLE,
-    isFirstRowHighlighted: true,
-    areRowsBanded: true,
+    style: NO_STYLE,
+    isFirstRowHighlighted: false,
+    areRowsBanded: false,
     isFirstColumnHighlighted: false,
     isLastRowHighlighted: false,
     isLastColumnHighlighted: false,
@@ -106,17 +110,19 @@ export function newFakeTable(
     rowCount,
     columnCount,
     cells,
-    styleSettings: defaultStyleSettings(),
+    styleSettings: unstyledSettings(),
     uniformCellProperties,
   };
 }
 
 // A test's one-shot override of the style a table about to be added will
-// start with, keyed by the shape id addTable is about to assign - ids are
-// sequential per deck, so a fresh presentation's first table is always
-// "shape-1". Consumed the moment that shape is created; no production caller
-// ever reaches this, since pls,fix only ever reads a style PowerPoint already
-// handed back.
+// start with, in place of the Mac's own no-style default - the only way to
+// make a just-inserted or just-rebuilt table arrive already styled, the way
+// a host other than the Mac might hand one back. Keyed by the shape id
+// addTable is about to assign - ids are sequential per deck, so a fresh
+// presentation's first table is always "shape-1". Consumed the moment that
+// shape is created; no production caller ever reaches this, since
+// queueTableStyle (src/ppt/table-style.ts) never reads a style back.
 const pendingStyles = new WeakMap<FakePresentation, Map<string, string>>();
 
 export function setPendingTableStyle(
@@ -186,6 +192,18 @@ export class TableProxy extends TableBound {
 }
 
 class TableStyleSettingsProxy extends TableBound {
+  // The Mac (16.107, PowerPointApi 1.8-1.10) refuses every load() on an
+  // unstyled table's styleSettings, style included, with GeneralException,
+  // until a style is written - which is why queueTableStyle
+  // (src/ppt/table-style.ts) never reads one back, only writes. Once a
+  // style is written, loads answer normally again.
+  override load(): this {
+    if (!this.table().styleSettings.style) {
+      throw fail("styleSettings has no style set yet", "GeneralException");
+    }
+    return this;
+  }
+
   get style(): string {
     return this.table().styleSettings.style;
   }

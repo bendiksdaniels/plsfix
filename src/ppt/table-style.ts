@@ -1,77 +1,46 @@
-// PowerPoint.Table.styleSettings (PowerPointApi 1.9): the header band, the
-// defensive fix-up for a table PowerPoint handed over with no style, and
+// PowerPoint.Table.styleSettings (PowerPointApi 1.9): the header band and
 // which of a repaint's cells are still pls,fix's own to clear. Owns every
-// styleSettings read and write. Invariant: a host below 1.9 never has
-// styleSettings addressed at all, not even to leave it alone.
+// styleSettings write. Invariant: a host below 1.9 never has styleSettings
+// addressed at all, not even to leave it alone; nothing here ever reads it
+// back (see queueTableStyle for why).
 
 import { TAG_PAINT, type TablePayload } from "../link/model";
 import { decodePaintMap, paintKey } from "../link/paint-map";
-import { withSyncDeadline } from "./chart-draw";
 import { hasPowerPointApi } from "./shapes";
 
 export const TABLE_STYLE_API = "1.9";
-const READING_STYLE = "reading the table style";
 
 export function hasTableStyle(): boolean {
   return hasPowerPointApi(TABLE_STYLE_API);
 }
 
-// Both of PowerPoint's "no style" presets: a table left in either reads with
-// a header band and no banding to set it off from.
-function isNoStyle(style: string): boolean {
-  const noStyle: string[] = [
-    PowerPoint.TableStyle.noStyleNoGrid,
-    PowerPoint.TableStyle.noStyleTableGrid,
-  ];
-  return noStyle.includes(style);
-}
-
-// A table with no style at all gets PowerPoint's own default for one added
-// through the ribbon, Medium Style 2 Accent 1; any other style, including one
-// the user picked, is left exactly as it is.
-export function queueDefaultStyle(
-  settings: PowerPoint.TableStyleSettings,
+// A table shapes.addTable hands back on PowerPoint for Mac (16.107,
+// PowerPointApi 1.8, 1.9 and 1.10 all isSetSupported) starts with NO style at
+// all - the saved XML shows an empty <a:tblPr/> - and on such a table every
+// styleSettings.load(...) is refused with GeneralException, style alone
+// included, until a style has been written. Reading is therefore never an
+// option: this writes PowerPoint's own ribbon default (Medium Style 2
+// Accent 1) blind, then the header flag from the payload, then every other
+// flag to a plain, unbanded body. Queued, not read back: the caller's next
+// sync carries all seven, the same way every other cell and format write on
+// a table link travels to the next sync. The look this produces is
+// deterministic - the header band comes from the style, the body is plain,
+// and the payload's own cell fills sit on top - whatever style, if any, the
+// table started with. Skipped whole, at no round trip, on a host below
+// TABLE_STYLE_API.
+export function queueTableStyle(
+  table: PowerPoint.Table,
+  header: boolean,
 ): void {
-  if (isNoStyle(settings.style)) {
-    settings.style = PowerPoint.TableStyle.mediumStyle2Accent1;
-  }
-}
-
-// Queued, not written: the caller's next sync carries it, the same way every
-// other cell and format write on a table link does. A repaint calls this
-// blind, with no read first; insert and rebuild call it after readTableStyle.
-export function queueHeaderRow(table: PowerPoint.Table, header: boolean): void {
   if (!hasTableStyle()) return;
-  table.styleSettings.isFirstRowHighlighted = header;
-}
-
-// The one extra round trip insert and rebuild spend on a just-created table's
-// own style, before either queues a fix-up on it.
-export async function readTableStyle(
-  context: PowerPoint.RequestContext,
-  table: PowerPoint.Table,
-  what: string,
-): Promise<PowerPoint.TableStyleSettings> {
   const settings = table.styleSettings;
-  settings.load("style");
-  await withSyncDeadline(context.sync(), what);
-  return settings;
-}
-
-// The style a just-created table starts with, on the API that carries one: a
-// fix-up for a host that hands back no style at all, and the header band the
-// payload's own row 0 asked for. Skipped whole - at no extra round trip - on
-// a host below TABLE_STYLE_API, since hasTableStyle is checked before
-// readTableStyle ever runs.
-export async function styleNewTable(
-  context: PowerPoint.RequestContext,
-  table: PowerPoint.Table,
-  payload: TablePayload,
-): Promise<void> {
-  if (!hasTableStyle()) return;
-  const settings = await readTableStyle(context, table, READING_STYLE);
-  queueDefaultStyle(settings);
-  queueHeaderRow(table, payload.h === true);
+  settings.style = PowerPoint.TableStyle.mediumStyle2Accent1;
+  settings.isFirstRowHighlighted = header;
+  settings.areRowsBanded = false;
+  settings.areColumnsBanded = false;
+  settings.isFirstColumnHighlighted = false;
+  settings.isLastRowHighlighted = false;
+  settings.isLastColumnHighlighted = false;
 }
 
 // TAG_PAINT absent or undecodable reads as null: a deck painted before this

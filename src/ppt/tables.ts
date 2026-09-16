@@ -37,12 +37,7 @@ import {
   writeCellsInChunks,
 } from "./table-cells";
 import { uniformSize } from "./table-font";
-import {
-  fillsToClear,
-  queueHeaderRow,
-  readPaintTag,
-  styleNewTable,
-} from "./table-style";
+import { fillsToClear, queueTableStyle, readPaintTag } from "./table-style";
 
 export { CELLS_PER_SYNC };
 
@@ -146,7 +141,7 @@ async function formatNewTable(
 ): Promise<void> {
   try {
     const table = shape.getTable();
-    await styleNewTable(context, table, payload);
+    queueTableStyle(table, payload.h === true);
     await writeCellsInChunks(context, table, payload, {
       withText: false,
       clear: NO_CLEARS,
@@ -203,7 +198,7 @@ async function repaintInPlace(
   payload: TablePayload,
   tag: LinkTag,
 ): Promise<void> {
-  queueHeaderRow(table, payload.h === true);
+  queueTableStyle(table, payload.h === true);
   const clear = fillsToClear(readPaintTag(shape), payload);
   await writeCellsInChunks(context, table, payload, {
     withText: true,
@@ -231,7 +226,7 @@ async function rebuildTable(
   const built = recreate(context, shape, found, payload, stage);
   await withSyncDeadline(context.sync(), "rebuilding the table");
   const table = built.getTable();
-  await styleNewTable(context, table, payload);
+  queueTableStyle(table, payload.h === true);
   await writeCellsInChunks(context, table, payload, {
     withText: false,
     clear: NO_CLEARS,
@@ -297,7 +292,7 @@ function addTable(
       ? {}
       : { uniformCellProperties: { font: { size } } }),
   });
-  shape.name = `pls,fix table ${label}`;
+  shape.name = `pls,fix ${label}`;
   return shape;
 }
 
