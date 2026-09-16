@@ -260,10 +260,11 @@ describe("the football field pressed twice", () => {
     expect(rig.helpers.value("Model!D1")).toBe("Method");
     // The block is written once over: no second block further right.
     expect(rig.helpers.value("Model!G1")).toBe("");
-    // Two charts, though: both runs found the block empty and both added one.
-    // Pinned here as the state of play; the skipped test at the end of this
-    // file names where that is fixed.
-    expect(rig.workbook.charts).toHaveLength(2);
+    // One chart: the second press queues behind the first in
+    // src/excel/chart-blocks.ts's serialised() and meets the block the first
+    // press already wrote, so it is refused before a second chart is added.
+    // The test at the end of this file names the refusal itself.
+    expect(rig.workbook.charts).toHaveLength(1);
   });
 
   it("puts the block back on Undo after two presses", async () => {
@@ -276,16 +277,17 @@ describe("the football field pressed twice", () => {
 });
 
 describe("the football field: found here, fixed elsewhere", () => {
-  it.skip("adds one chart, not two, when two presses run at once", async () => {
-    // Fails today with 2: both runs find the block empty and both add a
-    // chart, so the sheet ends with two identical stacked bars on top of each
-    // other. Not reachable from the pane - the shared guard disables every
-    // [data-action] button while an action runs and this tool has no ribbon
-    // command or shortcut - so it is a hazard for the day it gets one. Fix in
-    // src/pane/shared.ts (not this slice): the guard should queue or drop a
-    // second run, the way src/excel/link-lock.ts exclusive() serialises the
-    // link flows. Taking this .skip off also flips the toHaveLength(2) in
-    // "answers both presses with a sentence and one helper block" above.
+  it("adds one chart, not two, when two presses run at once", async () => {
+    // Used to fail with 2: both runs found the block empty and both added a
+    // chart, so the sheet ended with two identical stacked bars on top of
+    // each other. Not reachable from the pane today - the shared guard
+    // disables every [data-action] button while an action runs and this tool
+    // has no ribbon command or shortcut - but a hazard for the day it gets
+    // one. Fixed at the flow level: src/excel/chart-blocks.ts's serialised()
+    // runs insertFootballField and insertTornado one at a time, the same
+    // shape as src/excel/link-lock.ts's exclusive() for the link flows, so
+    // the second press meets writeHelperBlock's "block is not empty" refusal
+    // instead of an empty block.
     seedMethods(rig);
     await Promise.all([run(), run()]);
 

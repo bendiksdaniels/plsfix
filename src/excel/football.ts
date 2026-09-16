@@ -14,6 +14,7 @@ import {
   CHART_BLOCK_COLUMNS,
   readTriples,
   requireRoomBeside,
+  serialised,
   type TripleRules,
   valueFormat,
   writeHelperBlock,
@@ -91,47 +92,54 @@ function notes(swaps: number, columnCount: number, placed: boolean): string {
  * Label, low and high in three columns. The helper block lands immediately
  * right of the selection, and pls,fix Undo captures whatever stood there first.
  */
-export async function insertFootballField(): Promise<string> {
-  return Excel.run(async (context) => {
-    // The cap answers before the values are asked for: a clicked column header
-    // is a million cells, and the row cap only runs after the read.
-    const range = await withinCap(
-      context,
-      await selectedSingleRange(context, STAGE),
-      STAGE,
-    );
-    const sheet = range.worksheet;
-    range.load("columnCount,rowIndex,columnIndex,values,numberFormat");
-    await context.sync();
+async function runFootballField(
+  context: Excel.RequestContext,
+): Promise<string> {
+  // The cap answers before the values are asked for: a clicked column header
+  // is a million cells, and the row cap only runs after the read.
+  const range = await withinCap(
+    context,
+    await selectedSingleRange(context, STAGE),
+    STAGE,
+  );
+  const sheet = range.worksheet;
+  range.load("columnCount,rowIndex,columnIndex,values,numberFormat");
+  await context.sync();
 
-    if (range.columnCount < CHART_BLOCK_COLUMNS) throw new Error(SHAPE_ERROR);
-    requireRoomBeside(range, STAGE);
+  if (range.columnCount < CHART_BLOCK_COLUMNS) throw new Error(SHAPE_ERROR);
+  requireRoomBeside(range, STAGE);
 
-    const rows = readTriples(range.values as CellValue[][], FOOTBALL_RULES);
-    const field = footballField(rows);
-    const format = valueFormat(range.numberFormat as string[][], rows.length);
-    const block = await writeHelperBlock(context, sheet, range, {
-      stage: STAGE,
-      headers: FOOTBALL_HEADERS,
-      rows: field.labels.map((label, index) => [
-        label,
-        field.low[index] ?? 0,
-        field.range[index] ?? 0,
-      ]),
-      format,
-    });
-
-    const chart = sheet.charts.add(
-      Excel.ChartType.barStacked,
-      block,
-      Excel.ChartSeriesBy.columns,
-    );
-    styleFootball(chart, format);
-    await context.sync();
-    const placed = await placeChartBeside(context, sheet, chart, block);
-    await context.sync();
-
-    const tail = notes(field.swaps, range.columnCount, placed);
-    return `${STAGE} added: ${String(rows.length)} ranges${tail}`;
+  const rows = readTriples(range.values as CellValue[][], FOOTBALL_RULES);
+  const field = footballField(rows);
+  const format = valueFormat(range.numberFormat as string[][], rows.length);
+  const block = await writeHelperBlock(context, sheet, range, {
+    stage: STAGE,
+    headers: FOOTBALL_HEADERS,
+    rows: field.labels.map((label, index) => [
+      label,
+      field.low[index] ?? 0,
+      field.range[index] ?? 0,
+    ]),
+    format,
   });
+
+  const chart = sheet.charts.add(
+    Excel.ChartType.barStacked,
+    block,
+    Excel.ChartSeriesBy.columns,
+  );
+  styleFootball(chart, format);
+  await context.sync();
+  const placed = await placeChartBeside(context, sheet, chart, block);
+  await context.sync();
+
+  const tail = notes(field.swaps, range.columnCount, placed);
+  return `${STAGE} added: ${String(rows.length)} ranges${tail}`;
+}
+
+// Serialised with the tornado: a second press must meet this press's helper
+// block, not an empty one, so it hits the "not empty" refusal instead of
+// drawing a second chart on top of the first.
+export async function insertFootballField(): Promise<string> {
+  return serialised(() => Excel.run(runFootballField));
 }
