@@ -95,3 +95,26 @@ export async function selectArea(area: {
     await context.sync();
   });
 }
+
+/**
+ * Every area on the FIRST area's sheet, selected together as one multi-area
+ * selection, that sheet activated. A precedent or dependent on another sheet
+ * is left for the panel's chips exactly as it is today: jumping there too
+ * would leave the modeller looking at a cell on a sheet they did not ask for.
+ */
+export async function selectAreas(areas: TraceArea[]): Promise<void> {
+  const first = areas[0];
+  if (!first) return;
+  const onFirstSheet = areas.filter((area) => area.sheet === first.sheet);
+
+  await Excel.run(async (context) => {
+    const sheet = first.sheet
+      ? context.workbook.worksheets.getItem(first.sheet)
+      : context.workbook.worksheets.getActiveWorksheet();
+    sheet.activate();
+    sheet
+      .getRanges(onFirstSheet.map((area) => area.address).join(","))
+      .select();
+    await context.sync();
+  });
+}

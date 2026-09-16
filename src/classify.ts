@@ -79,13 +79,30 @@ function hasWorkbookReference(body: string): boolean {
   return false;
 }
 
+// A complete numeric literal: digits, optionally with a decimal part. Never
+// matches only part of a longer run, so "10", "12" and "100" stay whole.
+const NUMBER_TOKEN = /\d+(?:\.\d+)?/g;
+
+// 0 and 1 are identities, not assumptions: x*1, x/1, x-1 (one period back),
+// x+1, x*0 and a comparison against 0 read the same whether the constant is
+// there or not, the way 2, 12, 0.21 or 100 never would. A leading sign is not
+// part of the number - NUMBER_TOKEN never captures it - so "-1" and "+1"
+// strip the same as "1".
+const IDENTITY_CONSTANTS = new Set([0, 1]);
+
+function stripIdentityConstants(body: string): string {
+  return body.replace(NUMBER_TOKEN, (token) =>
+    IDENTITY_CONSTANTS.has(Number(token)) ? "" : token,
+  );
+}
+
 // A constant in a comparison counts as a hardcode: the threshold is an
 // assumption that belongs in its own cell. Exported because the model check
 // asks the same question of formulas the color key has already answered
 // "crossSheet" or "external" for, and one rule must have one home.
 export function hasHardcodedNumber(formula: string): boolean {
-  const body = stripStringLiterals(formula);
-  return DIGIT.test(body.replace(WORD_TOKEN, ""));
+  const body = stripStringLiterals(formula).replace(WORD_TOKEN, "");
+  return DIGIT.test(stripIdentityConstants(body));
 }
 
 export function classifyCell(formula: CellValue, value: CellValue): CellClass {

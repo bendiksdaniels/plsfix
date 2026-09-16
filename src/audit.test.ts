@@ -9,10 +9,13 @@ describe("cells with nothing to compare", () => {
   });
 
   it("leaves a standalone formula unmarked", () => {
+    // The 3 that used to sit left of the formula is null here instead: a
+    // number beside a formula is now "typed" (see the describe block below),
+    // and this fixture's job is the formula's own "none", not that one.
     expect(
       auditGrid([
         [null, 12, null],
-        [3, "=SUM(R[-1]C:R[-1]C)", "Total"],
+        [null, "=SUM(R[-1]C:R[-1]C)", "Total"],
         [null, null, null],
       ]),
     ).toEqual([
@@ -106,6 +109,65 @@ describe("deviations", () => {
 
   it("marks two adjacent mismatched formulas lone", () => {
     expect(auditGrid([["=RC[-1]", "=RC[-2]"]])).toEqual([["lone", "lone"]]);
+  });
+});
+
+describe("typed numbers inside a formula row", () => {
+  it("marks a hardcode typed between two equal formulas, and clears their lone flags", () => {
+    const cell = "=RC[-1]*1.05";
+    expect(auditGrid([[cell, 0.21, cell]])).toEqual([
+      ["horizontal", "typed", "horizontal"],
+    ]);
+  });
+
+  it("marks a typed number at the row end with one formula neighbour", () => {
+    const cell = "=RC[-1]*1.05";
+    expect(auditGrid([[42, cell, cell]])).toEqual([
+      ["typed", "horizontal", "horizontal"],
+    ]);
+  });
+
+  it("leaves a number beside text none", () => {
+    expect(auditGrid([[5, "Label"]])).toEqual([["none", "none"]]);
+  });
+
+  it("leaves a number none when its two neighbours are different formulas", () => {
+    const left = "=RC[-1]*1.05";
+    const right = "=RC[-1]*1.5";
+    expect(auditGrid([[left, 7, right]])).toEqual([["lone", "none", "lone"]]);
+  });
+
+  it("stops the formula beside a typed number from reading as lone", () => {
+    // G19-style row: the same formula either side of a hardcode, plus an
+    // unrelated formula above the last column so the old rule (immediate
+    // across neighbours only) would have called it "lone" rather than "none".
+    const rowFormula = "=RC[-1]*1.05";
+    const otherFormula = "=RC[-1]+9";
+    const grid = [
+      [null, null, null, otherFormula],
+      [rowFormula, rowFormula, 0.21, rowFormula],
+      [null, null, null, null],
+    ];
+    expect(auditGrid(grid)[1]).toEqual([
+      "horizontal",
+      "horizontal",
+      "typed",
+      "horizontal",
+    ]);
+  });
+
+  it("leaves a whole numeric row none between formula rows", () => {
+    const cell = "=R[-1]C*1.05";
+    const grid = [
+      [cell, cell, cell],
+      [1, 2, 3],
+      [cell, cell, cell],
+    ];
+    expect(auditGrid(grid)).toEqual([
+      ["horizontal", "horizontal", "horizontal"],
+      ["none", "none", "none"],
+      ["horizontal", "horizontal", "horizontal"],
+    ]);
   });
 });
 

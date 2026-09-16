@@ -5,7 +5,8 @@
 
 import { type CellValue, isFormula } from "./model";
 
-export type AuditMark = "none" | "horizontal" | "vertical" | "both" | "lone";
+export type AuditMark =
+  "none" | "horizontal" | "vertical" | "both" | "lone" | "typed";
 
 /** A rectangle in grid coordinates, shaped for Range.getRangeByIndexes. */
 export interface GridRegion {
@@ -24,16 +25,82 @@ function formulaAt(
   return isFormula(cell) ? cell : null;
 }
 
+// The raw cell at a position, or undefined past this row's own length. That is
+// the one thing formulaAt cannot say: it collapses "no such cell" and "a blank
+// cell sits there" into the same null, and a typed number's across neighbours
+// must tell those apart.
+function valueAt(
+  grid: CellValue[][],
+  row: number,
+  column: number,
+): CellValue | undefined {
+  const line = grid[row];
+  if (!line || column < 0 || column >= line.length) return undefined;
+  return line[column] ?? null;
+}
+
+// The nearest formula across from a cell, stepping over numeric constants -
+// an input sitting mid-row does not end the run - but stopping dead at a
+// blank or text cell, which is where a modeller's fill really stopped, or at
+// the grid edge.
+function nearestFormulaAcross(
+  grid: CellValue[][],
+  row: number,
+  column: number,
+  step: -1 | 1,
+): string | null {
+  let index = column + step;
+  for (;;) {
+    const value = valueAt(grid, row, index);
+    if (value === undefined) return null;
+    if (typeof value === "number") {
+      index += step;
+      continue;
+    }
+    return isFormula(value) ? value : null;
+  }
+}
+
+// A typed number reads as a hardcode inside a formula row: both across
+// neighbours that exist must be formulas, at least one must exist, and where
+// both exist they must be the very same R1C1 formula - the row the modeller
+// meant to fill straight across. Down is never asked here: an input row
+// sitting between two formula rows is an ordinary model shape, not a
+// deviation, and lighting it up would be noise.
+function isTypedNumber(
+  grid: CellValue[][],
+  row: number,
+  column: number,
+): boolean {
+  const left = valueAt(grid, row, column - 1);
+  const right = valueAt(grid, row, column + 1);
+  const leftFormula = left !== undefined && isFormula(left) ? left : null;
+  const rightFormula = right !== undefined && isFormula(right) ? right : null;
+
+  if (left !== undefined && leftFormula === null) return false;
+  if (right !== undefined && rightFormula === null) return false;
+  if (left === undefined && right === undefined) return false;
+  if (left !== undefined && right !== undefined) {
+    return leftFormula === rightFormula;
+  }
+  return true;
+}
+
 // R1C1 makes a copied formula read identically in every cell it was filled into,
 // so equality with a neighbour is the consistency test (UpSlide Formula Audit).
 export function auditGrid(formulasR1C1: CellValue[][]): AuditMark[][] {
   return formulasR1C1.map((row, rowIndex) =>
     row.map((cell, columnIndex): AuditMark => {
+      if (typeof cell === "number") {
+        return isTypedNumber(formulasR1C1, rowIndex, columnIndex)
+          ? "typed"
+          : "none";
+      }
       if (!isFormula(cell)) return "none";
 
       const across = [
-        formulaAt(formulasR1C1, rowIndex, columnIndex - 1),
-        formulaAt(formulasR1C1, rowIndex, columnIndex + 1),
+        nearestFormulaAcross(formulasR1C1, rowIndex, columnIndex, -1),
+        nearestFormulaAcross(formulasR1C1, rowIndex, columnIndex, 1),
       ];
       const down = [
         formulaAt(formulasR1C1, rowIndex - 1, columnIndex),

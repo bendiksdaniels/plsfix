@@ -637,8 +637,14 @@ describe("audit overlay", () => {
       patternColor: "#E8B4B4",
     });
     expect(helpers.fill("Model!A3").pattern).toBe("Solid");
-    // A plain value is not a deviation, so it is left alone.
-    expect(helpers.fill("Model!C2").pattern).toBe("None");
+    // A plain value beside a formula reads as a typed hardcode, not a
+    // deviation: the same solid tint the stripes carry as their pattern
+    // colour, not the lone fill's red.
+    expect(helpers.fill("Model!C2")).toEqual({
+      color: patternColor,
+      pattern: "Solid",
+      patternColor,
+    });
   });
 
   it("restores the modeller's own striped fill byte for byte", async () => {
@@ -1122,6 +1128,39 @@ describe("fast fill", () => {
 
     expect(helpers.formula("Model!A4")).toBe("=A1*2");
     expect(helpers.formula("Model!A5")).toBe("");
+  });
+
+  it("carries the source cell's number format when it fills right", async () => {
+    helpers.seed("Model!B1", [["Q1", "Q2", "Q3", "Q4"]]);
+    helpers.seed("Model!B2", [[{ formula: "=A2*2", value: 8 }]]);
+    helpers.setNumberFormat("Model!B2", "#,##0.0");
+    helpers.select("Model!B2");
+
+    await smt.fastFillAuto("right");
+
+    expect(helpers.numberFormat("Model!C2")).toBe("#,##0.0");
+    expect(helpers.numberFormat("Model!E2")).toBe("#,##0.0");
+    // The header row the fill sized itself against is untouched.
+    expect(helpers.numberFormat("Model!C1")).toBe("General");
+  });
+
+  it("carries the source cell's number format when it fills down", async () => {
+    helpers.seed("Model!A2", [
+      ["Rent"],
+      ["Wages"],
+      ["Fuel"],
+      ["Other"],
+      ["Tax"],
+    ]);
+    helpers.seed("Model!B2", [[{ formula: "=B1*2", value: 4 }]]);
+    helpers.setNumberFormat("Model!B2", "0.00%");
+    helpers.select("Model!B2");
+
+    await smt.fastFillAuto("down");
+
+    expect(helpers.numberFormat("Model!B6")).toBe("0.00%");
+    // The label column beside it is untouched.
+    expect(helpers.numberFormat("Model!A4")).toBe("General");
   });
 
   it("refuses when there is no neighbour data to size the fill", async () => {
@@ -1987,6 +2026,47 @@ describe("smart track", () => {
       sheetId: helpers.sheet("Model").id,
       rect: { row: 3, col: 3, rowCount: 1, colCount: 1 },
     });
+  });
+
+  it("selects every precedent on the first area's sheet at once", async () => {
+    await smt.selectAreas([
+      { sheet: "Model", address: "A1", cellCount: 1 },
+      { sheet: "Model", address: "C3", cellCount: 1 },
+    ]);
+
+    expect(workbook.activeSheetId).toBe(helpers.sheet("Model").id);
+    expect(workbook.selectionAreas).toEqual([
+      {
+        sheetId: helpers.sheet("Model").id,
+        rect: { row: 0, col: 0, rowCount: 1, colCount: 1 },
+      },
+      {
+        sheetId: helpers.sheet("Model").id,
+        rect: { row: 2, col: 2, rowCount: 1, colCount: 1 },
+      },
+    ]);
+  });
+
+  it("leaves a cross-sheet precedent out of the jump, for the chips to list", async () => {
+    await smt.selectAreas([
+      { sheet: "Model", address: "A1", cellCount: 1 },
+      { sheet: "Data", address: "B2", cellCount: 1 },
+    ]);
+
+    // Only the first area's sheet was selected; Data!B2 was left alone.
+    expect(workbook.activeSheetId).toBe(helpers.sheet("Model").id);
+    expect(workbook.selectionAreas).toEqual([
+      {
+        sheetId: helpers.sheet("Model").id,
+        rect: { row: 0, col: 0, rowCount: 1, colCount: 1 },
+      },
+    ]);
+  });
+
+  it("does nothing when there is nothing to select", async () => {
+    const before = workbook.activeSheetId;
+    await smt.selectAreas([]);
+    expect(workbook.activeSheetId).toBe(before);
   });
 });
 

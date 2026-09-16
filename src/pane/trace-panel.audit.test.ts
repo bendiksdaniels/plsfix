@@ -17,6 +17,7 @@ vi.mock("../excel", async () => {
     parseAddress: shared.parseAddress,
     lastAuditNote: vi.fn(() => null),
     selectArea: vi.fn(async () => undefined),
+    selectAreas: vi.fn(async () => undefined),
     toggleAuditOverlay: vi.fn(async () => true),
     traceActiveCell: vi.fn(async () => ({ origin: "Model!B2", areas: [] })),
     // Read by ./shared after every guarded action.
@@ -178,7 +179,26 @@ describe("the trace panel", () => {
     vi.mocked(excel.traceActiveCell).mockResolvedValueOnce(traced([first]));
 
     await panel.startTrace("precedents", true);
-    expect(excel.selectArea).toHaveBeenCalledWith(first);
+    expect(excel.selectAreas).toHaveBeenCalledWith([first]);
+  });
+
+  it("jumps to every same-sheet area at once, cross-sheet ones left for the chips", async () => {
+    const { excel, panel } = await load();
+    const areas = [
+      area("Model", "A1"),
+      area("Model", "C3"),
+      area("Data", "B2"),
+    ];
+    vi.mocked(excel.traceActiveCell).mockResolvedValueOnce(traced(areas));
+
+    await panel.startTrace("precedents", true);
+    expect(excel.selectAreas).toHaveBeenCalledWith(areas);
+    // Every area still lists as a chip regardless of which ones got selected.
+    expect(chips().map((chip) => chip.textContent)).toEqual([
+      "Model!A1",
+      "Model!C3",
+      "Data!B2",
+    ]);
   });
 
   it("leaves the selection alone when the pane is open", async () => {
@@ -189,6 +209,7 @@ describe("the trace panel", () => {
 
     await panel.startTrace("precedents", false);
     expect(excel.selectArea).not.toHaveBeenCalled();
+    expect(excel.selectAreas).not.toHaveBeenCalled();
   });
 
   it("keeps no stale chips from the trace before", async () => {

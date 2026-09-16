@@ -7,6 +7,7 @@ import {
   lastAuditNote,
   parseAddress,
   selectArea,
+  selectAreas,
   toggleAuditOverlay,
   traceActiveCell,
   tracePrecedentsOfSelection,
@@ -115,8 +116,9 @@ async function showTrace(
   renderTrace();
 
   // A shortcut can fire with the pane closed, so the keystroke jumps instead.
-  const first = result.areas[0];
-  if (jump && first) await selectArea(first);
+  // The jump selects every area on the first one's sheet at once; an area on
+  // another sheet stays a chip, same as it always has.
+  if (jump && result.areas.length > 0) await selectAreas(result.areas);
 
   return traceMessage(direction, result.areas.length);
 }

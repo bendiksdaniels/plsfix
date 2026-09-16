@@ -161,6 +161,29 @@ describe("the audit overlay over a block with no formulas", () => {
     expect(await smt.toggleAuditOverlay()).toBe(false);
     expect(helpers.cellMap("Model")).toEqual(before);
   });
+
+  // A hardcode sitting between two equal formulas gets its own solid tint
+  // instead of a stripe, and its neighbours read as matching the row rather
+  // than "lone" once the audit skips over it.
+  it("tints a typed number solid and clears it on the second press", async () => {
+    const growth = { formula: "=B1*1.05", r1c1: "=RC[1]*1.05", value: 1.05 };
+    helpers.seed("Model!A1", [[growth, 0.21, { ...growth, value: 1.1025 }]]);
+    const before = helpers.cellMap("Model");
+    helpers.select("Model!A1:C1");
+
+    expect(await smt.toggleAuditOverlay()).toBe(true);
+    expect(helpers.fill("Model!A1").pattern).toBe("LightHorizontal");
+    expect(helpers.fill("Model!C1").pattern).toBe("LightHorizontal");
+    expect(helpers.fill("Model!B1").pattern).toBe("Solid");
+    // Same tint the stripes carry as their pattern colour, just filled solid.
+    expect(helpers.fill("Model!B1").color).toBe(
+      helpers.fill("Model!A1").patternColor,
+    );
+
+    expect(await smt.toggleAuditOverlay()).toBe(false);
+    expect(helpers.fill("Model!B1").pattern).toBe("None");
+    expect(helpers.cellMap("Model")).toEqual(before);
+  });
 });
 
 // ---------------------------------------------------------------------------

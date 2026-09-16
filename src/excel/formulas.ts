@@ -17,7 +17,7 @@ import { syncWrite } from "./protection";
 import { parseAddress } from "./shared";
 import { captureUndo, captureUndoAreas } from "./undo";
 import { seriesSpan } from "../chartmath";
-import { type CellValue, scaleCells } from "../model";
+import { type CellValue, makeFormatGrid, scaleCells } from "../model";
 import {
   absoluteRef,
   buildCagrFormula,
@@ -137,7 +137,7 @@ export async function fastFillAuto(direction: "right" | "down"): Promise<void> {
     const selection = await selectedSingleRange(context, FILL);
     const cell = context.workbook.getActiveCell();
     const sheet = cell.worksheet;
-    cell.load("rowIndex,columnIndex,formulas");
+    cell.load("rowIndex,columnIndex,formulas,numberFormat");
     selection.load("rowIndex,columnIndex,rowCount,columnCount");
     await context.sync();
 
@@ -145,6 +145,8 @@ export async function fastFillAuto(direction: "right" | "down"): Promise<void> {
     if (typeof formula !== "string" || !formula.startsWith("=")) {
       throw new Error("The active cell must contain a formula.");
     }
+    const sourceFormat = (cell.numberFormat as CellValue[][])[0]?.[0];
+    const format = typeof sourceFormat === "string" ? sourceFormat : "General";
 
     const down = direction === "down";
     const extent = await fillExtent(context, sheet, cell, selection, down);
@@ -155,7 +157,14 @@ export async function fastFillAuto(direction: "right" | "down"): Promise<void> {
       : cell.getResizedRange(0, extent - 1);
     await captureUndo(context, destination);
 
+    // RangeCopyType.formulas carries only the formula text, so the source's
+    // number format is written separately in the same batch: a fill must not
+    // leave the filled cells reading raw decimals under the source's own
+    // rounded, percent or currency format.
     destination.copyFrom(cell, Excel.RangeCopyType.formulas);
+    destination.numberFormat = down
+      ? makeFormatGrid(extent, 1, format)
+      : makeFormatGrid(1, extent, format);
     await syncWrite(context, FILL);
   });
 }

@@ -60,6 +60,11 @@ function overlayKey(mark: AuditMark, patternColor: string): string | null {
       return [Excel.FillPattern.crissCross, BASE_WHITE, patternColor].join("|");
     case "lone":
       return [Excel.FillPattern.solid, LONE_FILL, LONE_FILL].join("|");
+    // A typed number reads as one obvious tinted cell rather than a stripe:
+    // there is no second formula to weave a pattern against, only the tint
+    // that says "this looks like it belongs to the formulas around it".
+    case "typed":
+      return [Excel.FillPattern.solid, patternColor, patternColor].join("|");
     case "none":
       return null;
   }

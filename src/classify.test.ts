@@ -58,9 +58,34 @@ describe("partial inputs", () => {
   });
 
   // Macabacus counts a comparison against a constant as a hardcode too: the
-  // threshold is an assumption that belongs in a cell.
+  // threshold is an assumption that belongs in a cell. The threshold is 100,
+  // not 0, so it stays a hardcode even once 0 and 1 are read as identities
+  // (see "identity constants" below): a comparison against 0 is not itself a
+  // typed assumption.
   it("counts constants in comparisons", () => {
-    expect(classifyCell('=IF(A1>0,"over 100",B1)', "over 100")).toBe("partial");
+    expect(classifyCell('=IF(A1>100,"over 100",B1)', "over 100")).toBe(
+      "partial",
+    );
+  });
+});
+
+describe("identity constants", () => {
+  // 0 and 1 read the same with or without the constant: x-1 counts a period
+  // back, x*(1+rate) is a growth formula, x*0 clears a term, x>0 is a sign
+  // check. None of these are a typed assumption the way *2, /12, *100 or a
+  // real rate like 0.21 are.
+  it("does not flag identity constants (0 and 1)", () => {
+    expect(classifyCell("=A1-1", 4)).toBe("formula");
+    expect(classifyCell("=A1*(1+B1)", 4)).toBe("formula");
+    expect(classifyCell("=A1*0", 0)).toBe("formula");
+    expect(classifyCell("=A1>0", true)).toBe("formula");
+  });
+
+  it("still flags a real hardcode beside an identity constant", () => {
+    expect(classifyCell("=A1*1.05", 4)).toBe("partial");
+    expect(classifyCell("=A1/12", 4)).toBe("partial");
+    expect(classifyCell("=A1*100", 4)).toBe("partial");
+    expect(classifyCell("=A1*10", 4)).toBe("partial");
   });
 });
 

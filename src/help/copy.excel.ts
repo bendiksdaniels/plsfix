@@ -148,7 +148,7 @@ const tools: HelpCopy = {
       "Two ways to check formulas: an overlay, and a walk along the chain.",
     buttons: {
       "audit-toggle":
-        "Stripes cells whose formula matches their neighbours and reddens the ones that break the pattern.",
+        "Stripes cells whose formula matches their neighbours, reddens the ones that break the pattern, and tints a typed number in a formula row.",
       "trace-precedents":
         "Lists the cells the active cell reads from. Click an address to jump there and keep tracing.",
       "trace-dependents":
