@@ -1,12 +1,12 @@
 # AUTORESUME - pls,fix (v2.8.17 tagged 16.09, PUBLIC on GitHub, MIT)
 
-## NEXT SESSION (from 16.09 evening): the matrix twice, Windows, the web rig
+## NEXT SESSION (from 16.09 night): the matrix twice, Windows, the web rig, the folders on his Mac
 
-State at hand-over: **v2.8.17 LIVE 16.09** (main 176b97d+ = origin, live `/version` 2.8.17, release runs
-green for v2.8.10 to v2.8.17, manual docx v2.8.017, memory `project_plsfix.md` current), gates green
-(2784 vitest, cargo green, ux 0/72, sweep 0/151), no worktree, no branch, no dev server, both wef folders
-hold the prod manifest. Excel and PowerPoint on his Mac are open on `demo/out/pls,fix Demo Model.xlsx` and
-the scratch deck copy (session scratchpad, gone with the session). Read `tasks/lessons.md` 16.09 first.
+State at hand-over: **v2.8.19 LIVE 16.09** (main 4acb030+ = origin, live `/version` 2.8.19, release runs
+green for v2.8.10 to v2.8.19, manual docx v2.8.019, memory `project_plsfix.md` current), gates green
+(2824 vitest, cargo green, ux 0/72, sweep 0/151), no worktree, no branch, no dev server, both wef folders
+hold the prod manifest. v2.8.18 is a version-only tag (the 16.09 night section says why). Read
+`tasks/lessons.md` 16.09 first, both entries.
 
 1. **Crash matrix, twice per route** (the 14.09 brief, still not run as a matrix): today's 12 inserts, Update
    all, Revert and two pane reloads never crashed PowerPoint 16.107, but no route was run twice and Update
@@ -22,6 +22,34 @@ the scratch deck copy (session scratchpad, gone with the session). Read `tasks/l
    repaint only redraws on a new revision, and its source chart is gone from the rebuilt workbook).
 5. Daniel's gates unchanged: Windows pass, M365 centralized upload (the manifest changed at v2.7.5, not
    since), Cloudflare rate-limit rule on `/modelis/api/*`, the `check` workflow re-enable.
+6. **The folders on his Mac**: v2.8.19's deck list (a folder per project, the workbook under every object) is
+   proven in the ux gate and the jsdom suites only; the sideloaded pane reloads it from the live server
+   (pane reload, or Home > Add-ins > pls,fix once per launch). His computer-use grant or his own look.
+
+## 16.09 night: folders in the deck's Linked objects list (v2.8.19; v2.8.18 is a version-only tag)
+
+- Daniel: "create a folder for linking objects so the IB department could know from which excel each link
+  comes and what project does it belong." Projects (= folders, v2.8.6) existed, but the deck's Linked
+  objects table was flat, showed the project only in a filter and hid its Source column below 620 px (Office
+  gives a pane 320-500). Plan `~/.claude-accounts/work/plans/parsed-frolicking-knuth.md`, approved.
+- Shipped (one sonnet worktree agent, 301k, Fable review; gates: check 2824 vitest, ux 0/72, sweep 0/151):
+  `groupByProject` in `src/link/project.ts` (named projects in locale order, No project last), used by the
+  Excel list, the Inbox and the deck list; `renderLinkRows` in `src/ppt/views.ts` writes a `link-folder`
+  header row per project ("Amasty · 3", no checkbox, no `data-key`) and a `link-meta` line "workbook · kind"
+  under every object; the Source `<th>` and the 620 px block are gone (five columns); the audits and the
+  stress support select `#link-rows tr[data-key]`; the ux fixture rows carry `kind` + `project` (three
+  folders in the screenshots); help copy, README, FEATURES, the manual's Projekti section (LV), a
+  launch-check row.
+- Review rulings: the fourth ux fixture row (k4, the only Wrong link key badge) restored as a Balcia row;
+  the sweep's taskpane 404 was `public/functions.js` missing in the fresh worktree (`npm run functions:js`,
+  now in the Map); the help sentence trimmed to 139 chars for `HELP_MAX_CHARS`.
+- Release slip: the chained merge + release command used `git merge -F -` (reads no stdin); the merge
+  failed behind a `tail` pipe and `release.sh patch` still bumped, tagged and auto-pushed v2.8.18 =
+  v2.8.17 + bump. Left in place (no history rewrite on the public repo; its release note says so); the
+  branch was then merged properly, v2.8.19 released, manual v2.8.019, `deploy.sh modelis` -> modelis OK +
+  clean, live `/version` 2.8.19, both release runs green. Lesson in `tasks/lessons.md`.
+- The deploy audit's exit 1 came from other components (the tulkojums HOLD and nonbank-review engine
+  copies behind the Mac), not modelis.
 
 ## 16.09: "most of the features feel sloppy" - the desktop sweep and its seven slices (v2.8.10 to v2.8.14, more to come)
 

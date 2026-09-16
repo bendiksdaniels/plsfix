@@ -428,3 +428,15 @@ old loop hangs every test, the fixed helper passes. Rules:
   change to its source or re-insert it; an item whose source chart is gone from the workbook can only be
   re-inserted from the inbox.
 
+
+## 2026-09-16 night: a release chain must gate on the merge's own exit code
+
+`git merge --no-ff <branch> -F -` does not read the message from stdin ("could not read file '-'");
+piped into `tail`, the failure was invisible and the chain went on to `sh scripts/release.sh patch`, which
+bumped, tagged and auto-pushed v2.8.18 with nothing merged. Rules: write the merge message to a file
+(`-F path`) or pass `-m`; check `$?` of the merge itself before the release step, never a pipeline's
+(`set -o pipefail` or no pipe at all); `release.sh` refuses a dirty tree, not an unmerged branch. A
+version-only tag stays (no history rewrite on the public repo): the next patch carries the feature and
+the hollow release's note says so.
+Also: a fresh worktree has no `public/functions.js` (gitignored build output `taskpane.html` loads since
+v2.8.17), so run `npm run functions:js` before `npm run ux:sweep`, or the sweep reports a taskpane 404.
