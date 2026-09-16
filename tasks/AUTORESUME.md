@@ -2,11 +2,11 @@
 
 ## NEXT SESSION (from 16.09 night): the matrix twice, Windows, the web rig, the folders on his Mac
 
-State at hand-over: **v2.8.19 LIVE 16.09** (main 4acb030+ = origin, live `/version` 2.8.19, release runs
-green for v2.8.10 to v2.8.19, manual docx v2.8.019, memory `project_plsfix.md` current), gates green
-(2824 vitest, cargo green, ux 0/72, sweep 0/151), no worktree, no branch, no dev server, both wef folders
-hold the prod manifest. v2.8.18 is a version-only tag (the 16.09 night section says why). Read
-`tasks/lessons.md` 16.09 first, both entries.
+State at hand-over: **v2.8.20 LIVE 16.09** (main e09184b = origin, live `/version` 2.8.20, release runs
+green for v2.8.10 to v2.8.19 and running for v2.8.20 at hand-over, manual docx v2.8.020, memory
+`project_plsfix.md` current), gates green (2863 vitest, ZERO skipped, cargo green, ux 0/72, sweep 0/151),
+no worktree, no branch, no dev server, both wef folders hold the prod manifest. v2.8.18 is a version-only
+tag (the 16.09 night section says why). Read `tasks/lessons.md` 16.09 first, all three entries.
 
 1. **Crash matrix, twice per route** (the 14.09 brief, still not run as a matrix): today's 12 inserts, Update
    all, Revert and two pane reloads never crashed PowerPoint 16.107, but no route was run twice and Update
@@ -25,6 +25,35 @@ hold the prod manifest. v2.8.18 is a version-only tag (the 16.09 night section s
 6. **The folders on his Mac**: v2.8.19's deck list (a folder per project, the workbook under every object) is
    proven in the ux gate and the jsdom suites only; the sideloaded pane reloads it from the live server
    (pane reload, or Home > Add-ins > pls,fix once per launch). His computer-use grant or his own look.
+
+## 16.09 late night: the fix wave, every pinned defect green (v2.8.20)
+
+- Daniel: "Are all features working now?" then "just look at the code", then "Make the fixes now send more
+  agents" (budget go: 3 sonnet agents, ~1.3-1.6M). The code audit (coverage 97 % lines, no TODO, no stub,
+  every control routed) found 13 skipped stress tests pinning defects, one unpinned race read off
+  `src/excel/link-projects.ts` (registry writes outside the link lock), and FEATURES.md drift.
+- Shipped as three worktree slices, each reviewed by Fable and merged with `--no-ff`, one release:
+  - A links-workbook (335k): `setActiveProject` / `moveLinksToProject` under `exclusive("project")` +
+    `src/excel/link-projects.test.ts`; `moveSheet` answers `visibleRank` (the tab among VISIBLE sheets, the
+    apostrophe test's "sheet 2" was the same bug); `serialised()` in `chart-blocks.ts` runs the football
+    field and the tornado one press at a time.
+  - B sync-stages (464k + a controller fix round): a capture is PENDING in `undo.ts` until
+    `syncWrite`/`paintSync` commit it, discarded on a refusal; `describeError` prefixes the running action
+    on a bare office.js error; `protectedNote(stage, areas)` words a partly protected multi-area batch
+    by Office.js batch order. Review finding: the first cut prefixed on wording and rewrote 23 pane
+    sentences in 11 files ("PLSFIX_UNDO: There is no pls,fix action to undo yet."); Fable narrowed the
+    rule to errors carrying a `code`, restored the 11 files, reworded the note (lesson in
+    `tasks/lessons.md`).
+  - C hidden-rows (369k): fake `worksheet.autoFilter` + `helpers.applyFilter`; pinstripes band every
+    second VISIBLE row under a filter that covers the selection, a hand-hidden row still counts; the six
+    hidden/filtered stress tests un-skipped (comps stats and the football field passed as written).
+- Close: `npm run check` on main 2863 passed / 0 skipped; Map, lessons, the unused `planned()` cast
+  removed; FEATURES.md rows for table links (v2.3.0), the highlight (v2.1.16) and the filters;
+  v2.8.20 released, manual v2.8.020, `deploy.sh modelis` -> modelis OK + clean, live `/version` 2.8.20
+  (the audit's exit 1 = the three nonbank engine copies + the tulkojums HOLD, not modelis).
+- Still open, deliberately: `clean.ts` has a two-range write with the same partly-protected wording gap
+  (B's report); the Inbox manual refresh, the small pie and the stale chart labels need a screen or a
+  design call; nothing from this wave has been seen in real Excel or PowerPoint.
 
 ## 16.09 night: folders in the deck's Linked objects list (v2.8.19; v2.8.18 is a version-only tag)
 
