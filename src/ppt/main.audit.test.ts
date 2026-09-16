@@ -226,14 +226,10 @@ describe("the Links tab", () => {
 
   it("asks for a tick before update selected, go to slide and break", async () => {
     await insertOne();
-    for (const [id, sentence] of [
-      ["update-selected", "Update selected: Tick a link in the list first."],
-      ["go-to-slide", "Go to slide: Tick a link in the list first."],
-      ["break-selected", "Break selected: Tick a link in the list first."],
-    ] as [string, string][]) {
+    for (const id of ["update-selected", "go-to-slide", "break-selected"]) {
       click(id);
       await settle();
-      expect(toastText()).toBe(sentence);
+      expect(toastText()).toBe("Tick a link in the list first.");
     }
   });
 
@@ -246,12 +242,12 @@ describe("the Links tab", () => {
     helpers.selectSlide(presentation.slides[1]!.id);
     click("update-slide");
     await settle();
-    expect(toastText()).toBe("Update slide: No links on this slide");
+    expect(toastText()).toBe("No links on this slide");
 
     helpers.clearSelection();
     click("update-slide");
     await settle();
-    expect(toastText()).toBe("Update slide: Select a slide first.");
+    expect(toastText()).toBe("Select a slide first.");
 
     helpers.selectSlide(presentation.slides[0]!.id);
     click("update-slide");

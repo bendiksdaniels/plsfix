@@ -228,23 +228,17 @@ describe("a deck with no link key", () => {
   });
 
   it("refuses only the actions that need the key, in one sentence", async () => {
-    for (const [id, sentence] of [
-      ["refresh-inbox", "Refresh inbox: Paste the link key in Settings"],
-      // Not "Paste latest linked: ...": the message already opens with
-      // "Paste", the action label's own first word, so describeError leaves
-      // it alone - the same rule that spares "Pinstripes need...".
-      ["paste-latest-linked", "Paste the link key in Settings"],
-    ] as [string, string][]) {
+    for (const id of ["refresh-inbox", "paste-latest-linked"]) {
       click(id);
       await settle();
-      expect(toastText()).toBe(sentence);
+      expect(toastText()).toBe("Paste the link key in Settings");
       expect(button(id).disabled).toBe(false);
     }
 
     tickRow(0);
     click("change-source");
     await settle();
-    expect(toastText()).toBe("Change source: Paste the link key in Settings");
+    expect(toastText()).toBe("Paste the link key in Settings");
     expect(document.getElementById("change-source-chooser")?.hidden).toBe(true);
   });
 });
@@ -307,9 +301,7 @@ describe("the relay unreachable", () => {
     click("refresh-links");
     await settle();
 
-    expect(toastText()).toBe(
-      "Refresh links: The add-in could not complete that action.",
-    );
+    expect(toastText()).toBe("The add-in could not complete that action.");
     expect(button("refresh-links").disabled).toBe(false);
     expect(button("break-selected").disabled).toBe(false);
   });
@@ -367,7 +359,7 @@ describe("the boot itself", () => {
     );
     click("refresh-links");
     await settle();
-    expect(toastText()).toBe("Refresh links: PowerPoint is not connected.");
+    expect(toastText()).toBe("PowerPoint is not connected.");
   });
 
   it("turns a stray window error into a toast", async () => {
@@ -394,7 +386,7 @@ describe("the boot itself", () => {
     click("save-key");
     await settle();
 
-    expect(toastText()).toBe("Save key: this webview has storage turned off");
+    expect(toastText()).toBe("this webview has storage turned off");
     // Not reworded as a bad key, and not swallowed: the paste is still there
     // to try again with.
     expect(field.value).toBe(workspace.exportKey);

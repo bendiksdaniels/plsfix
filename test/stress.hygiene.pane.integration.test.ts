@@ -195,9 +195,7 @@ describe("the pane with no workbook behind it", () => {
       await boot();
       shared.setExcelReady(false);
 
-      // Prefixed with the pressed action's own label (src/ui/report.ts): the
-      // exact wording of that rule is report.test.ts's job, not this one's.
-      expect(await press(action)).toContain("Excel is not connected.");
+      expect(await press(action)).toBe("Excel is not connected.");
       expect(buttonsDisabled()).toBe(false);
     }
   });

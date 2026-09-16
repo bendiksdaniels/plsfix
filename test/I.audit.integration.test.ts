@@ -167,7 +167,7 @@ describe("independence: no usable Excel host", () => {
       await boot(opts);
       expect(() => click("undo")).not.toThrow();
       await settle();
-      expect(toastText()).toBe("Undo: Excel is not connected.");
+      expect(toastText()).toBe("Excel is not connected.");
       expect(document.getElementById("toast")?.className).toContain("error");
     },
   );
@@ -204,7 +204,7 @@ describe("a fully connected Excel host", () => {
 
     click("undo");
     await settle();
-    expect(toastText()).toBe("Undo: There is no pls,fix action to undo yet.");
+    expect(toastText()).toBe("There is no pls,fix action to undo yet.");
   });
 
   // Both delete confirms are wired directly in main.ts (not through
@@ -334,9 +334,7 @@ describe("ribbon commands (H's finding: registered too late)", () => {
     await drain();
 
     expect(completed).toBe(true);
-    expect(toastText()).toBe(
-      "PLSFIX_UNDO: There is no pls,fix action to undo yet.",
-    );
+    expect(toastText()).toBe("There is no pls,fix action to undo yet.");
   });
 });
 

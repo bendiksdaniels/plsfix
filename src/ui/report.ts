@@ -3,8 +3,9 @@
 // bug report. Host-agnostic - it names its host and version through
 // ReportContext rather than assuming Excel, so the PowerPoint pane can reuse it.
 // A read sync in src/excel is a bare host string by design (only a write
-// stages its own refusal, through syncWrite/paintSync), so a message that
-// carries no stage of its own is prefixed with the running action's label.
+// stages its own refusal, through syncWrite/paintSync), so a HOST error - one
+// carrying an office.js `code` - whose message names no stage is prefixed with
+// the running action's label. The pane's own sentences are left alone.
 
 export interface ReportContext {
   host: string;
@@ -39,13 +40,22 @@ function withActionLabel(message: string, action: string): string {
   return hasOwnStage(message, label) ? message : `${label}: ${message}`;
 }
 
+// Office.js errors carry a string `code` (GeneralException, AccessDenied...);
+// an Error the pane threw itself never does.
+function isHostError(error: unknown): boolean {
+  return typeof readProp(error, "code") === "string";
+}
+
 export function describeError(
   error: unknown,
   ctx: ReportContext,
   action?: string,
 ): { message: string; details: string } {
   const raw = error instanceof Error ? error.message : FALLBACK_MESSAGE;
-  const message = action === undefined ? raw : withActionLabel(raw, action);
+  const message =
+    action !== undefined && isHostError(error)
+      ? withActionLabel(raw, action)
+      : raw;
 
   const lines = [String(error)];
   if (action !== undefined) lines.push(`action: ${action}`);

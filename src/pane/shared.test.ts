@@ -168,7 +168,7 @@ describe("guard", () => {
         throw new Error("Excel refused");
       }, "undo"),
     ).resolves.toBeUndefined();
-    expect(toastText()).toBe("Undo: Excel refused");
+    expect(toastText()).toBe("Excel refused");
     expect(toastClass()).toContain("error");
   });
 
@@ -194,7 +194,7 @@ describe("guard", () => {
     await guard(async () => {
       throw new Error("cap exceeded");
     }, "cycle-fill");
-    expect(toastText()).toBe("Cycle fill: cap exceeded");
+    expect(toastText()).toBe("cap exceeded");
 
     await guard(async () => "Selection updated");
     expect(toastText()).toBe("Selection updated");

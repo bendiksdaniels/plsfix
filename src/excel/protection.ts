@@ -39,7 +39,7 @@ export async function sheetProtected(
  */
 export function protectedNote(stage: string, areas = 1): string {
   return areas > 1
-    ? `${stage}: this sheet is partly protected, the locked cells were skipped and the others were changed`
+    ? `${stage}: this sheet is partly protected, the areas before the locked one were changed, the rest were not`
     : `${stage}: this sheet is protected, nothing was changed`;
 }
 

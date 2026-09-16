@@ -271,7 +271,7 @@ describe("the promise chain when a command fails", () => {
     await settle();
 
     expect(toast.show).toHaveBeenCalledWith(
-      "PLSFIX_AUTOCOLOR: boom",
+      "boom",
       "error",
       expect.stringContaining("PLSFIX_AUTOCOLOR"),
     );

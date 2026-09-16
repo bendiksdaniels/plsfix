@@ -53,12 +53,12 @@ describe("a host the pane rejected", () => {
 
     click("refresh-links");
     await settle();
-    expect(toastText()).toBe("Refresh links: PowerPoint is not connected.");
+    expect(toastText()).toBe("PowerPoint is not connected.");
     expect(document.getElementById("toast")?.className).toContain("error");
 
     click("update-all");
     await settle();
-    expect(toastText()).toBe("Update all: PowerPoint is not connected.");
+    expect(toastText()).toBe("PowerPoint is not connected.");
   });
 
   it("refuses the Enter key on the link key field too", async () => {
@@ -70,7 +70,7 @@ describe("a host the pane rejected", () => {
     );
     await settle();
 
-    expect(toastText()).toBe("Save key: PowerPoint is not connected.");
+    expect(toastText()).toBe("PowerPoint is not connected.");
     expect(field.value).toBe("not a key");
   });
 });
@@ -93,7 +93,7 @@ describe("a host the pane accepted", () => {
     click("revert-selected");
     await settle();
 
-    expect(toastText()).toBe("Revert selected: Tick the rows to revert.");
+    expect(toastText()).toBe("Tick the rows to revert.");
   });
 
   // "Change source" acts on exactly one ticked row, so it is dead until there
