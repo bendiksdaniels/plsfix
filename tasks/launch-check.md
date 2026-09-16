@@ -401,3 +401,16 @@ Run with computer use on Daniel's own Excel and PowerPoint, the demo workbook an
       (13.09 19:00) and a third inside a dashed frame (19:06): the scan did not count the groups as
       occupied. Next session, item 3 of the NEXT SESSION brief in `tasks/AUTORESUME.md`.
 
+## Added 16.09: the table header
+
+Against a real Excel and PowerPoint: the fakes prove the logic, not the deck.
+
+- [ ] Export a table whose first row is entirely bold: the inserted table shows PowerPoint's
+      own header row (a shaded band across row 1), not a plain grid.
+- [ ] Update all on that table: the header band and the deck's own table style are still
+      there afterwards, exactly as before the update.
+- [ ] Clear a cell's fill in Excel and Update all: the matching cell in the deck loses its
+      colour too, and every other cell's format is untouched.
+- [ ] Export a range whose first row is not entirely bold: the inserted table shows no
+      header band.
+

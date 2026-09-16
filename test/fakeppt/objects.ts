@@ -22,7 +22,7 @@ import {
 } from "./model";
 import { requireNonNegative, validatedShapeInit } from "./size-guard";
 import { FakeClientResult, Loadable } from "./strict";
-import { newFakeTable, TableProxy } from "./tables";
+import { applyPendingTableStyle, newFakeTable, TableProxy } from "./tables";
 
 // The side PowerPoint gives a line whose width or height was left at zero.
 const LINE_DEFAULT_SIDE = 72;
@@ -208,6 +208,7 @@ class ShapeCollectionProxy extends Handle {
     shape.table.columnWidths = (columns ?? []).map(
       (column) => column.columnWidth ?? null,
     );
+    applyPendingTableStyle(this.deck, shape);
     return new ShapeProxy(this.deck, shape.id);
   }
 

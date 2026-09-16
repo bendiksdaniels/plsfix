@@ -15,7 +15,12 @@ export type {
   FakeSlide,
   ShapeSite,
 } from "./model";
-export type { FakeTable, FakeTableCell } from "./tables";
+export type {
+  FakeTable,
+  FakeTableCell,
+  FakeTableCellFill,
+  FakeTableStyleSettings,
+} from "./tables";
 export { FakePresentation } from "./model";
 // The current selection, in order: what getSelectedShapes() hands back.
 export { selectedShapeIds } from "./objects";
@@ -50,6 +55,13 @@ export interface FakePptHelpers {
   // mirroring selectSlide.
   selectShapes(shapeIds: string[]): void;
   setSupported(check: (set: string, version: string) => boolean): void;
+  // Registers a style the NEXT shapes.addTable on this shape id starts with,
+  // in place of PowerPoint's own default (Medium Style 2 Accent 1) - the only
+  // way to make a just-inserted or just-rebuilt table arrive with no style,
+  // or with one already chosen. Ids are sequential per deck (`shape-1`,
+  // `shape-2`, ...), so a fresh presentation's first table is always
+  // "shape-1".
+  setTableStyle(shapeId: string, style: string): void;
   // Office.context.platform, "Mac" until a test asks for another host: the web
   // is the one that draws fewer shapes before it gives up.
   setPlatform(platform: string): void;

@@ -11,6 +11,7 @@ import {
   selectShapesForTest,
 } from "./selection";
 import { Loadable, StrictLoads } from "./strict";
+import { setPendingTableStyle } from "./tables";
 
 interface SelectionOptions {
   coercionType?: string;
@@ -291,6 +292,11 @@ function powerPointGlobal(runtime: FakeRuntime): Record<string, unknown> {
       line: "Line",
       table: "Table",
     },
+    TableStyle: {
+      noStyleNoGrid: "NoStyleNoGrid",
+      noStyleTableGrid: "NoStyleTableGrid",
+      mediumStyle2Accent1: "MediumStyle2Accent1",
+    },
   };
 }
 
@@ -326,6 +332,8 @@ function makeHelpers(runtime: FakeRuntime): FakePptHelpers {
     setSupported(check) {
       runtime.supported = check;
     },
+    setTableStyle: (shapeId, style) =>
+      setPendingTableStyle(runtime.presentation, shapeId, style),
     setPlatform(platform) {
       runtime.platform = platform;
     },

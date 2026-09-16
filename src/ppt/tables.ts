@@ -12,11 +12,13 @@ import {
   TABLE_TOO_BIG,
   TAG_KEY,
   TAG_LINK,
+  TAG_PAINT,
   type InboxItem,
   type LinkTag,
   type TableCell,
   type TablePayload,
 } from "../link/model";
+import { encodePaintMap, paintKey } from "../link/paint-map";
 import { cleanupShapes } from "./chart-cleanup";
 import { withSyncDeadline } from "./chart-draw";
 import type { FoundLink, InsertResult } from "./host";
@@ -28,6 +30,12 @@ import {
   type InsertTarget,
 } from "./placement";
 import { hasPowerPointApi, isGrouped, shapeAt } from "./shapes";
+import {
+  fillsToClear,
+  queueHeaderRow,
+  readPaintTag,
+  styleNewTable,
+} from "./table-style";
 
 // shapes.addTable and the Table object both arrived in PowerPointApi 1.8.
 const TABLE_API = "1.8";
@@ -104,16 +112,7 @@ export async function insertTable(
     // swallows it never confirms one, so there is nothing here for a
     // cleanup to delete.
     await withSyncDeadline(context.sync(), "inserting the table");
-    // The formats come once the table exists, a few cells per round trip; a
-    // round trip that fails or stops answering takes the half-formatted
-    // table down again, so nothing is left behind and the item stays waiting.
-    try {
-      const table = shape.getTable();
-      await writeCellsInChunks(context, table, payload, false, FORMATTING);
-    } catch (error) {
-      await cleanupShapes(slideId, [shape.id]);
-      throw error;
-    }
+    await formatNewTable(context, slideId, shape, payload);
     return {
       slideId,
       shapeId: shape.id,
@@ -133,6 +132,36 @@ export async function insertTable(
   };
 }
 
+// The formats come once the table exists, a few cells per round trip; a
+// round trip that fails or stops answering takes the half-formatted table
+// down again, so nothing is left behind and the item stays waiting.
+async function formatNewTable(
+  context: PowerPoint.RequestContext,
+  slideId: string,
+  shape: PowerPoint.Shape,
+  payload: TablePayload,
+): Promise<void> {
+  try {
+    const table = shape.getTable();
+    await styleNewTable(context, table, payload);
+    await writeCellsInChunks(context, table, payload, {
+      withText: false,
+      clear: NO_CLEARS,
+      what: FORMATTING,
+      beforeLast: () =>
+        shape.tags.add(TAG_PAINT, encodePaintMap(payload.cells)),
+    });
+  } catch (error) {
+    await cleanupShapes(slideId, [shape.id]);
+    throw error;
+  }
+}
+
+// What a shape's tags cost to read: every key and value in one round trip,
+// the same load host.ts's scan uses, so TAG_PAINT rides the size check below
+// rather than spending a sync of its own.
+const TAG_PROPERTIES = "items/key,items/value";
+
 // The cells the source has now, written where the table already sits. Nothing
 // here moves the shape: the size only decides whether it can be rewritten at
 // all, and a table whose grid changed is built again at the same corner.
@@ -148,32 +177,65 @@ export async function refreshTable(
     const shape = shapeAt(context, found);
     const table = shape.getTable();
     table.load("rowCount,columnCount");
+    shape.tags.load(TAG_PROPERTIES);
     await withSyncDeadline(context.sync(), "reading the table");
     if (table.rowCount === payload.rows && table.columnCount === payload.cols) {
-      // The tag travels with the last chunk: a repaint the host stops midway
-      // keeps the old revision, so the row stays "Update available" and the
-      // next update writes every cell again.
-      await writeCellsInChunks(context, table, payload, true, REPAINTING, () =>
-        shape.tags.add(TAG_LINK, encodeTag(tag)),
-      );
+      await repaintInPlace(context, shape, table, payload, tag);
       return;
     }
-    const built = recreate(context, shape, found, payload, stage);
-    await withSyncDeadline(context.sync(), "rebuilding the table");
-    // The same rule as the repaint above: the new revision is written only
-    // once every cell of it is, so a format round trip the host swallows
-    // leaves a row that still says "Update available" rather than a half
-    // formatted table the pane calls current and no later press finishes.
-    await writeCellsInChunks(
-      context,
-      built.getTable(),
-      payload,
-      false,
-      FORMATTING,
-      () => {
-        built.tags.add(TAG_LINK, encodeTag(tag));
-      },
-    );
+    await rebuildTable(context, shape, found, payload, tag, stage);
+  });
+}
+
+// The header flag is queued blind, with no read first: a repaint costs one
+// round trip whether or not the source carries a header row. The tag and the
+// paint map travel with the last chunk, same as the link tag always has, so a
+// repaint the host stops midway keeps the old revision and the next update
+// writes - and clears - every cell again.
+async function repaintInPlace(
+  context: PowerPoint.RequestContext,
+  shape: PowerPoint.Shape,
+  table: PowerPoint.Table,
+  payload: TablePayload,
+  tag: LinkTag,
+): Promise<void> {
+  queueHeaderRow(table, payload.h === true);
+  const clear = fillsToClear(readPaintTag(shape), payload);
+  await writeCellsInChunks(context, table, payload, {
+    withText: true,
+    clear,
+    what: REPAINTING,
+    beforeLast: () => {
+      shape.tags.add(TAG_LINK, encodeTag(tag));
+      shape.tags.add(TAG_PAINT, encodePaintMap(payload.cells));
+    },
+  });
+}
+
+// The same rule as the repaint above: the new revision is written only once
+// every cell of it is, so a format round trip the host swallows leaves a row
+// that still says "Update available" rather than a half formatted table the
+// pane calls current and no later press finishes.
+async function rebuildTable(
+  context: PowerPoint.RequestContext,
+  shape: PowerPoint.Shape,
+  found: FoundLink,
+  payload: TablePayload,
+  tag: LinkTag,
+  stage: string,
+): Promise<void> {
+  const built = recreate(context, shape, found, payload, stage);
+  await withSyncDeadline(context.sync(), "rebuilding the table");
+  const table = built.getTable();
+  await styleNewTable(context, table, payload);
+  await writeCellsInChunks(context, table, payload, {
+    withText: false,
+    clear: NO_CLEARS,
+    what: FORMATTING,
+    beforeLast: () => {
+      built.tags.add(TAG_LINK, encodeTag(tag));
+      built.tags.add(TAG_PAINT, encodePaintMap(payload.cells));
+    },
   });
 }
 
@@ -246,6 +308,9 @@ export function columnWidths(payload: TablePayload, width: number): number[] {
 
 const FORMATTING = "formatting the table";
 const REPAINTING = "repainting the table";
+// Insert and rebuild only ever add a fill; nothing painted before exists yet
+// for either to undo.
+const NO_CLEARS: ReadonlySet<string> = new Set();
 
 type CellAt = [row: number, column: number, cell: TableCell];
 
@@ -267,18 +332,24 @@ function cellChunks(payload: TablePayload, withText: boolean): CellAt[][] {
   return chunks;
 }
 
-// The cells one repaint or format pass writes, CELLS_PER_SYNC per round trip,
-// so no batch is big enough to reach the deadline and one the host swallows
-// loses a chunk rather than the whole table. `beforeLast` is queued into the
-// final round trip, for a tag that may not land before every cell has.
+// CELLS_PER_SYNC cells per round trip, so no batch is big enough to reach the
+// deadline and one the host swallows loses a chunk rather than the whole
+// table; `clear` names the cells (paintKey) allowed to lose their fill, and
+// `beforeLast` queues a tag write for the table's final round trip.
+interface WriteOptions {
+  withText: boolean;
+  clear: ReadonlySet<string>;
+  what: string;
+  beforeLast?: () => void;
+}
+
 async function writeCellsInChunks(
   context: PowerPoint.RequestContext,
   table: PowerPoint.Table,
   payload: TablePayload,
-  withText: boolean,
-  what: string,
-  beforeLast?: () => void,
+  options: WriteOptions,
 ): Promise<void> {
+  const { withText, clear, what, beforeLast } = options;
   const chunks = cellChunks(payload, withText);
   if (chunks.length === 0) {
     if (!beforeLast) return;
@@ -288,7 +359,12 @@ async function writeCellsInChunks(
   }
   for (const [index, chunk] of chunks.entries()) {
     for (const [row, column, cell] of chunk) {
-      writeCell(table.getCellOrNullObject(row, column), cell, withText);
+      writeCell(
+        table.getCellOrNullObject(row, column),
+        cell,
+        withText,
+        clear.has(paintKey(row, column)),
+      );
     }
     if (index === chunks.length - 1) beforeLast?.();
     await withSyncDeadline(context.sync(), what);
@@ -305,6 +381,7 @@ function writeCell(
   target: PowerPoint.TableCell,
   cell: TableCell,
   withText: boolean,
+  clear: boolean,
 ): void {
   if (withText) target.text = cell.t;
   // A repaint has to undo what the last one wrote; an insert only ever adds.
@@ -314,7 +391,7 @@ function writeCell(
     target.horizontalAlignment = ALIGNMENT[cell.a ?? "l"];
   }
   if (cell.f !== undefined) target.fill.setSolidColor(cell.f);
-  else if (withText) target.fill.clear();
+  else if (clear) target.fill.clear();
   // Colour and size have no "back to the table style" to write, so a cell that
   // stops naming them keeps what it had until the table is built again.
   if (cell.c !== undefined) target.font.color = cell.c;

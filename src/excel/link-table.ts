@@ -1,9 +1,10 @@
 // Reading a range as a table: one getCellProperties for the formats, the text
 // Excel shows and every column's width, mapped to the cell grid PowerPoint
 // rebuilds - and a plain grid of text and widths for a host that refuses the
-// formats. Owns the Excel-to-TableCell mapping and what counts as a default
-// worth leaving out. Invariant: a cell wearing Excel's own defaults carries
-// nothing but its text, so the deck's table style shows through.
+// formats. Owns the Excel-to-TableCell mapping, what counts as a default
+// worth leaving out, and whether row 0 reads as a header. Invariant: a cell
+// wearing Excel's own defaults carries nothing but its text, so the deck's
+// table style shows through.
 
 import { overTableCap, TABLE_TOO_BIG, type TableCell } from "../link/model";
 import { bothRefused } from "./link-anchors";
@@ -147,4 +148,13 @@ function toCell(
   if (alignment !== undefined) cell.a = alignment;
   else if (numeric) cell.a = "r";
   return cell;
+}
+
+// A table's first row reads as a header when every one of its non-empty
+// cells came out bold: a bold label over plain numbers is not a header, and
+// a single-row export has no body for a header to sit above.
+export function headerRow(cells: TableCell[][]): boolean {
+  if (cells.length < 2) return false;
+  const labelled = (cells[0] ?? []).filter((cell) => cell.t.trim() !== "");
+  return labelled.length > 0 && labelled.every((cell) => cell.b === true);
 }

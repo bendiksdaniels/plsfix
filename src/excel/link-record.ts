@@ -17,6 +17,7 @@ import { base64ToBytes, pngSize } from "../link/png";
 import type { RelayApi } from "../link/relay";
 import type { Workspace } from "../link/workspace";
 import { staged, writeRegistry } from "./link-anchors";
+import { headerRow } from "./link-table";
 import type { Render } from "./link-render";
 
 export interface NewLink {
@@ -60,6 +61,9 @@ async function payloadOf(src: Source, render: Render): Promise<Payload> {
       src,
       pushedAt,
       hash: await sha256Hex(JSON.stringify(cells)),
+      // The plain fallback's cells never carry `b`, so a source Excel
+      // refused the formats for never reads as a header either.
+      ...(headerRow(cells) ? { h: true as const } : {}),
     };
   }
   if (render.kind === "text") {

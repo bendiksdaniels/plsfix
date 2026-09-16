@@ -140,14 +140,26 @@ const KINDS: Record<string, Descriptor> = {
   // a repaint fits, everything else is written.
   table: {
     scalars: ["rowCount", "columnCount"],
+    children: { styleSettings: "tableStyleSettings" },
     returns: { getCellOrNullObject: "tableCell" },
+  },
+  tableStyleSettings: {
+    scalars: [
+      "style",
+      "isFirstRowHighlighted",
+      "areRowsBanded",
+      "isFirstColumnHighlighted",
+      "isLastRowHighlighted",
+      "isLastColumnHighlighted",
+      "areColumnsBanded",
+    ],
   },
   tableCell: {
     scalars: ["text", "horizontalAlignment"],
     children: { font: "tableCellFont", fill: "tableCellFill" },
   },
   tableCellFont: { scalars: ["bold", "italic", "color", "size"] },
-  tableCellFill: {},
+  tableCellFill: { scalars: ["type"] },
   tags: { items: "tag", returns: { getItemOrNullObject: "tag" } },
   tag: { scalars: ["key", "value", "isNullObject"] },
   clientResult: { result: true },

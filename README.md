@@ -174,6 +174,8 @@ Export a range or a chart from Excel and keep it fresh in a deck without re-past
   source with a hidden defined name (`PLSFIX_LINK_<id>`, so rows can be inserted above it) or the
   chart's name, and sends the picture to the relay. *Export as table* sends the same range as an
   editable PowerPoint table instead (up to 60 rows and 20 columns, PowerPoint 2021 or Microsoft 365).
+  A table whose first row is all bold keeps PowerPoint's header row; *Update all* leaves the deck's
+  table style alone and clears only the fills it painted before.
   *Export as text* sends one cell's displayed text as a text box that keeps its place, size and
   font when it refreshes (up to 500 characters). A column, bar, line, waterfall or pie
   chart lands as a group of editable shapes with value labels (PowerPoint 2504/16.96 and newer; pie wedges 2601/16.105; on the Mac the group holds sub-groups of six, the shape PowerPoint for Mac can take), a

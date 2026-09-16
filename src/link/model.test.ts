@@ -217,6 +217,16 @@ describe("table payload", () => {
   it("weighs a table by the JSON of its cells", () => {
     expect(payloadBytes(table)).toBe(JSON.stringify(table.cells).length);
   });
+
+  it("accepts h absent or true, refuses h false", () => {
+    const withHeader = { ...table, h: true as const };
+    expect(decodePayload(encodePayload(withHeader))).toEqual(withHeader);
+    expect(() =>
+      decodePayload(
+        new TextEncoder().encode(JSON.stringify({ ...table, h: false })),
+      ),
+    ).toThrow(/payload/);
+  });
 });
 
 describe("text payload", () => {

@@ -74,6 +74,7 @@ function tablePayload(
   cells: TableCell[][],
   widths: number[],
   hash: string,
+  h?: true,
 ): TablePayload {
   return {
     v: 1,
@@ -85,18 +86,21 @@ function tablePayload(
     src,
     pushedAt: new Date().toISOString(),
     hash,
+    ...(h ? { h: true as const } : {}),
   };
 }
 
 // A table export waiting in the inbox, sealed the way Excel would have sealed
-// it: the label is the one sourceLabel gives a table link.
+// it: the label is the one sourceLabel gives a table link. `h` mirrors what
+// headerRow would have set: absent unless a caller asks for a header row.
 export async function seedTable(
   cells: TableCell[][],
   widths: number[],
+  h?: true,
 ): Promise<InboxItem> {
   const id = newId();
   const token = newToken();
-  const payload = tablePayload(cells, widths, "0".repeat(64));
+  const payload = tablePayload(cells, widths, "0".repeat(64), h);
   await publish(id, token, payload);
   return {
     id,
@@ -112,11 +116,12 @@ export async function pushTable(
   item: InboxItem,
   cells: TableCell[][],
   widths: number[],
+  h?: true,
 ): Promise<void> {
   await publish(
     item.id,
     item.token,
-    tablePayload(cells, widths, "1".repeat(64)),
+    tablePayload(cells, widths, "1".repeat(64), h),
   );
 }
 

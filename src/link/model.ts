@@ -95,6 +95,9 @@ export interface TablePayload {
   src: Source;
   pushedAt: string;
   hash: string;
+  // Row 0 is a header: every one of its non-empty cells came out of Excel
+  // bold. Absent (never `false`) means the source has no header row.
+  h?: true;
 }
 
 // One cell's displayed text, nothing else: the slide decides the font. The
@@ -150,6 +153,9 @@ export interface InboxItem {
 
 export const TAG_LINK = "PLSFIX_LINK";
 export const TAG_KEY = "PLSFIX_KEY";
+// Which cells a table link's own repaint filled, so the next one clears only
+// what it painted rather than every cell the table style might be showing.
+export const TAG_PAINT = "PLSFIX_PAINT";
 export const REGISTRY_SETTING = "PLSFIX_LINKS";
 export const ANCHOR_PREFIX = "PLSFIX_LINK_";
 export const TAG_VALUE_MAX = 2048;
@@ -302,7 +308,8 @@ function isTablePayload(value: unknown): value is TablePayload {
     value.widths.every((width) => typeof width === "number") &&
     isSource(value.src) &&
     typeof value.pushedAt === "string" &&
-    typeof value.hash === "string"
+    typeof value.hash === "string" &&
+    isOptional(value.h, (entry) => entry === true)
   );
 }
 
