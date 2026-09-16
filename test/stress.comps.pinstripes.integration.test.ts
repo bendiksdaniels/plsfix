@@ -231,16 +231,13 @@ describe("Pinstripes pressed twice", () => {
 });
 
 describe("Pinstripes: found here, fixed elsewhere", () => {
-  it.skip("stages a host error a read refuses", async () => {
-    // Fails today with "The cell formats failed.": describeError hands
-    // error.message to the toast unchanged, so a refused read reaches the
-    // modeller with no tool name on it - the same for "The sync failed." two
-    // tests up. Every read sync in src/excel is bare by design; only write
-    // syncs go through syncWrite/paintSync. Fix in src/ui/report.ts (not this
-    // slice): prefix the running action's label when the message carries no
-    // stage. If the wording lands in the guard in src/pane/shared.ts instead,
-    // this tripwire moves there with it - these suites mock that module away,
-    // and describeError is the only pure half of the pair.
+  it("stages a host error a read refuses", async () => {
+    // "The cell formats failed." is a bare host string - the same gap as "The
+    // sync failed." two tests up. Every read sync in src/excel is bare by
+    // design; only write syncs stage their own refusal, through
+    // syncWrite/paintSync. describeError (src/ui/report.ts) now prefixes the
+    // running action's label instead, the one pure half of the pair these
+    // suites can reach - they mock src/pane/shared.ts's guard away.
     seedGrid(rig);
     rig.helpers.failNextCellProperties();
     const error = await caught(() => rig.dispatch("pinstripes-rows"));

@@ -187,7 +187,7 @@ describe("the Inbox and the pairing key", () => {
     click("paste-latest-linked");
     await settle();
     expect(toastText()).toBe(
-      "Nothing waiting from Excel. Export an object there first.",
+      "Paste latest linked: Nothing waiting from Excel. Export an object there first.",
     );
 
     await seed(fakePng(100, 50));
@@ -251,7 +251,7 @@ describe("the Inbox and the pairing key", () => {
 
     click("save-key");
     await settle();
-    expect(toastText()).toBe("Paste the link key from Excel first.");
+    expect(toastText()).toBe("Save key: Paste the link key from Excel first.");
 
     // Anything that is not the key itself, a pasted "Link key: ..." label
     // included, gets the same sentence rather than a codec error.
@@ -263,7 +263,7 @@ describe("the Inbox and the pairing key", () => {
       click("save-key");
       await settle();
       expect(toastText()).toBe(
-        "That is not a link key. Copy it again from Excel.",
+        "Save key: That is not a link key. Copy it again from Excel.",
       );
     }
 

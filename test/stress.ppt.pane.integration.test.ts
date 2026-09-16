@@ -185,10 +185,10 @@ describe("a button pressed at the wrong moment", () => {
     await settle();
 
     for (const [id, sentence] of [
-      ["update-selected", "Tick a link in the list first."],
-      ["revert-selected", "Tick the rows to revert."],
-      ["break-selected", "Tick a link in the list first."],
-      ["go-to-slide", "Tick a link in the list first."],
+      ["update-selected", "Update selected: Tick a link in the list first."],
+      ["revert-selected", "Revert selected: Tick the rows to revert."],
+      ["break-selected", "Break selected: Tick a link in the list first."],
+      ["go-to-slide", "Go to slide: Tick a link in the list first."],
     ] as [string, string][]) {
       click(id);
       await settle();
@@ -207,7 +207,7 @@ describe("a button pressed at the wrong moment", () => {
     click("update-slide");
     await settle();
 
-    expect(toastText()).toBe("No links on this slide");
+    expect(toastText()).toBe("Update slide: No links on this slide");
     expect(button("update-slide").disabled).toBe(false);
   });
 

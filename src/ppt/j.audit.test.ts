@@ -211,11 +211,11 @@ describe("an insert the host never answers", () => {
 
     // The deadline is armed only once the item is open, which on a slow machine
     // takes real time: drive the clock until the sentence lands (test/hung-sync.ts).
-    await settleUntil(() => toastText().startsWith("PowerPoint stopped"));
+    await settleUntil(() => toastText().includes("PowerPoint stopped"));
     await settleFake();
 
     expect(toastText()).toBe(
-      "PowerPoint stopped answering while inserting the picture",
+      "Insert link: PowerPoint stopped answering while inserting the picture",
     );
     expect(isError()).toBe(true);
     // The rejection reached the guard's finally, which clears busy: the pane

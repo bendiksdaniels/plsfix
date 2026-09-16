@@ -8,6 +8,7 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { settableProperties } from "./undo";
+import type * as UndoModule from "./undo";
 
 // A fully-populated capture (as requestFormats asks for it) with an unfilled
 // cell's fill, so a test only has to override the one branch it cares about.
@@ -253,7 +254,7 @@ function fakeRange(address: string): Excel.Range {
 describe("captureUndoAreas: the pending entry a refused write must not keep", () => {
   // A fresh module instance per test: undoStack and pendingUndo are private
   // module state, the same way every stress rig resets ../src/excel.
-  let undo: typeof import("./undo");
+  let undo: typeof UndoModule;
 
   beforeEach(async () => {
     vi.resetModules();
