@@ -414,3 +414,32 @@ Against a real Excel and PowerPoint: the fakes prove the logic, not the deck.
 - [ ] Export a range whose first row is not entirely bold: the inserted table shows no
       header band.
 
+
+## Desktop pass on the Mac (16.09, v2.8.9 to v2.8.13; Excel and PowerPoint 16.107, macOS 26.6)
+
+Driven from the terminal (screencapture + CGEvent clicks, no computer-use grant needed) on the demo
+workbook and a scratch copy of the demo deck; every row below was seen on screen.
+
+- [x] Excel v2.8.12: Autocolor leaves labels alone and colours the growth row black (identity constants);
+      the audit overlay tints the typed G19 solid and no longer stripes H19; Fill formula right keeps the
+      source's number format; ribbon Precedents on D17 selects D14 and D16 together; ribbon CAGR writes
+      10.0 % beside the CAGR sheet's first row; the Header preset bands the P&L header row.
+- [x] Links: Export as table / active chart / selection / as text all push; New project + Move to project
+      work; the PowerPoint Inbox groups the exports under the project; Push all then Update all repaints
+      every link (7 updated); Revert last update repaints the older revision; Break link works.
+- [x] PowerPoint v2.8.9: the Revenue column chart (left half), the Segment pie (right half), the EBITDA
+      margin line chart (free space) and the 40-point Big40 chart (slide 1, free space) all land as shape
+      groups; a text link and a placeholder picture land on slide 4; PowerPoint alive after every insert and
+      after Update all (process start time unchanged).
+- [x] FAILED, fixed in v2.8.13: a freshly inserted table came double height (rows sized for 18 pt); numbers
+      read "12,400" where Excel shows "12 400"; an export made with the overlay on shipped its tint.
+- [ ] Table header band on the Mac: an API-created table has no style and refuses every styleSettings
+      load until a style is written blind; the fix (blind MediumStyle2Accent1 + first row) ships next.
+- [ ] Chart labels wrap ("1 / 519", "Retai / l", digit stacks on the 40-point chart); Free space on a busy
+      slide gives a sliver above the frames (slide 3) or a full-size overlap over text (slide 1): slice
+      chart-place.
+- [ ] pls,fix Undo after x1000 restores the cells but toasts a raw InvalidArgument: the Mac's unfilled
+      cell snapshot (`pattern: null`, `patternColor: ""`) is refused by setCellProperties: slice undo-fill.
+- [ ] Custom functions: every =PLSFIX.* returned #VALUE! because taskpane.html never loaded functions.js
+      on the shared runtime; the demo's stored PLSFIX.CAGR cells show #NAME? (Excel stores
+      `_xldudf_PLSFIX_CAGR`): slice custom-functions.
