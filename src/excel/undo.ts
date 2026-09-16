@@ -55,6 +55,111 @@ function requestFormats(
   });
 }
 
+// Excel for Mac (16.107, proven 16.09) reports an unfilled cell's pattern as
+// null and its patternColor as "" rather than the tidy "None" shape a fresh
+// clear would carry (lessons.md 2026-08-27: never exact-match state Excel
+// gives back), and refuses both verbatim on setCellProperties. Rebuilt as a
+// plain "None" fill, or the captured pattern with only the colours it
+// actually carries.
+function settableFill(
+  fill: Excel.CellPropertiesFill | undefined,
+): Excel.CellPropertiesFill | undefined {
+  if (!fill) return undefined;
+  const pattern = fill.pattern as string | null | undefined;
+  if (pattern === null || pattern === undefined || pattern === "None") {
+    return { pattern: "None" };
+  }
+  const settable: Excel.CellPropertiesFill = { pattern: fill.pattern };
+  if (fill.color) settable.color = fill.color;
+  if (fill.patternColor) settable.patternColor = fill.patternColor;
+  return settable;
+}
+
+const FONT_KEYS = [
+  "bold",
+  "color",
+  "italic",
+  "name",
+  "size",
+  "underline",
+] as const;
+
+// Copied key by key rather than spread: an @odata.type annotation on the
+// captured object (harmless on Mac, per the diagnosis) never rides along, and
+// a captured false or 0 restores instead of being mistaken for "unset".
+function settableFont(
+  font: Excel.CellPropertiesFont | undefined,
+): Excel.CellPropertiesFont | undefined {
+  if (!font) return undefined;
+  const settable: Excel.CellPropertiesFont = {};
+  for (const key of FONT_KEYS) {
+    const value = font[key];
+    if (value === undefined || value === null) continue;
+    (settable as Record<string, unknown>)[key] = value;
+  }
+  return settable;
+}
+
+// Each edge only with the fields Excel actually gave a value for: an empty
+// style, weight or colour is the same Mac quirk as an unfilled fill's
+// patternColor, so it is dropped rather than sent back verbatim.
+function settableBorder(
+  border: Excel.CellBorder | undefined,
+): Excel.CellBorder | undefined {
+  if (!border) return undefined;
+  const settable: Excel.CellBorder = {};
+  if (border.color) settable.color = border.color;
+  if (border.style) settable.style = border.style;
+  if (border.weight) settable.weight = border.weight;
+  return settable;
+}
+
+// Whichever edges the capture carries (top/bottom/left/right/horizontal/
+// vertical/diagonalDown/diagonalUp) - requestFormats asks for every edge, but
+// the sanitiser makes no assumption about which ones a caller populated.
+function settableBorders(
+  borders: Excel.CellBorderCollection | undefined,
+): Excel.CellBorderCollection | undefined {
+  if (!borders) return undefined;
+  const settable: Excel.CellBorderCollection = {};
+  for (const [edge, border] of Object.entries(borders)) {
+    const clean = settableBorder(border as Excel.CellBorder | undefined);
+    if (clean) (settable as Record<string, unknown>)[edge] = clean;
+  }
+  return settable;
+}
+
+// The full settable surface a captured cell can carry back through
+// setCellProperties, rebuilt field by field so nothing Excel refused on write
+// - a null fill pattern, an empty patternColor, an @odata.type annotation -
+// ever reaches it again. Font, borders and alignment pass through as
+// captured (proven on the Mac): only the empty/null fields are dropped.
+export function settableProperties(
+  cell: Excel.CellProperties,
+): Excel.SettableCellProperties {
+  const format = cell.format;
+  if (!format) return {};
+
+  const settable: Excel.CellPropertiesFormat = {};
+  const fill = settableFill(format.fill);
+  if (fill) settable.fill = fill;
+  const font = settableFont(format.font);
+  if (font) settable.font = font;
+  const borders = settableBorders(format.borders);
+  if (borders) settable.borders = borders;
+  if (format.horizontalAlignment !== undefined) {
+    settable.horizontalAlignment = format.horizontalAlignment;
+  }
+  if (format.verticalAlignment !== undefined) {
+    settable.verticalAlignment = format.verticalAlignment;
+  }
+  if (format.wrapText !== undefined) settable.wrapText = format.wrapText;
+  if (format.indentLevel !== undefined) {
+    settable.indentLevel = format.indentLevel;
+  }
+  return { format: settable };
+}
+
 // Office.js writes never reach Excel's own undo stack, so every mutating action
 // stores what it is about to overwrite here first (user gap #5: undo trust).
 export async function captureUndo(
@@ -151,7 +256,7 @@ export async function undoLastAction(): Promise<string> {
       range.formulas = block.formulas;
       range.numberFormat = block.numberFormat;
       range.setCellProperties(
-        block.formats as Excel.SettableCellProperties[][],
+        block.formats.map((row) => row.map(settableProperties)),
       );
     });
     // A sheet protected since the action ran refuses the restore: it comes

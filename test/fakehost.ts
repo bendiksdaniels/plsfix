@@ -256,8 +256,22 @@ function clone<T>(value: T): T {
   return value === undefined ? value : (JSON.parse(JSON.stringify(value)) as T);
 }
 
+// A "None" pattern fill never renders, so a leftover colour or pattern colour
+// under it is not part of what a caller comparing cell state observes - Excel
+// itself leaves them untouched when a write sets only the pattern back to
+// None (proven on the Mac, undo.ts's settableFill), the same way a cleared
+// cell's stale colour is never distinguishable from one that was never set.
+// isDefaultCell and cellMap both read cell state through this.
+function normalizedFill(cell: FakeCell): FakeCell {
+  if (cell.fill.pattern !== "None") return cell;
+  return {
+    ...cell,
+    fill: { ...cell.fill, color: "#FFFFFF", patternColor: "#FFFFFF" },
+  };
+}
+
 function isDefaultCell(cell: FakeCell): boolean {
-  return JSON.stringify(cell) === DEFAULT_CELL_JSON;
+  return JSON.stringify(normalizedFill(cell)) === DEFAULT_CELL_JSON;
 }
 
 export class FakeSheet {
@@ -1532,6 +1546,22 @@ function queueFailure(queue: Error[], ctx: FakeContext): void {
   if (failure) ctx.queueError(failure);
 }
 
+// Excel for Mac (16.107, proven 16.09) refuses a fill whose pattern is null
+// or whose patternColor/color is an empty string - exactly the shape its own
+// getCellProperties hands back for an unfilled cell (see below).
+function hasRefusedFill(grid: (Record<string, unknown> | null)[][]): boolean {
+  return grid.some((row) =>
+    row.some((props) => {
+      const fill = (props?.format as Record<string, unknown> | undefined)
+        ?.fill as Record<string, unknown> | undefined;
+      return (
+        fill !== undefined &&
+        (fill.pattern === null || fill.patternColor === "" || fill.color === "")
+      );
+    }),
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Range
 // ---------------------------------------------------------------------------
@@ -2036,7 +2066,19 @@ class RangeProxy {
     const value = this.map((cell) => {
       const format: Record<string, unknown> = {};
       if (wanted.fill) {
-        format.fill = pick(cell.fill, wanted.fill as Record<string, unknown>);
+        // Excel for Mac (16.107, proven 16.09) answers an unfilled cell's
+        // pattern as null and its patternColor as "" rather than the tidy
+        // internal "None" shape (lessons.md 2026-08-27: never exact-match
+        // state Excel gives back) - getCellProperties mirrors that quirk so a
+        // captured block cannot be fed back into setCellProperties
+        // unsanitised. Color is left as the model holds it (a genuinely
+        // untouched cell already defaults to white); only pattern and
+        // patternColor carry the quirk.
+        const fillSource =
+          cell.fill.pattern === FillPattern.none
+            ? { ...cell.fill, pattern: null, patternColor: "" }
+            : cell.fill;
+        format.fill = pick(fillSource, wanted.fill as Record<string, unknown>);
       }
       if (wanted.font) {
         format.font = pick(cell.font, wanted.font as Record<string, unknown>);
@@ -2067,7 +2109,23 @@ class RangeProxy {
   }
 
   // Partial update: a property the caller left out keeps its current value.
+  // A refused fill (hasRefusedFill) is queued like any other refusal (see
+  // refuseProtected): the writes queued beside this call (formulas,
+  // numberFormat) have already landed by the time the next sync reports it,
+  // so a caller that feeds a captured block straight back in sees its values
+  // restored AND the InvalidArgument refusal, at errorLocation
+  // Range.setCellProperties on the real host.
   setCellProperties(grid: (Record<string, unknown> | null)[][]): void {
+    if (hasRefusedFill(grid)) {
+      this.ctx.queueError(
+        hostError(
+          ErrorCodes.invalidArgument,
+          "The argument is invalid or missing or has an incorrect format.",
+        ),
+      );
+      return;
+    }
+
     this.each((cell, r, c) => {
       const props = grid[r]?.[c];
       if (!props) return;
@@ -4229,9 +4287,11 @@ export function installFakeHost(options: FakeHostOptions = {}): {
     cellMap(sheetName) {
       const sheet = helpers.sheet(sheetName);
       const out: Record<string, FakeCell> = {};
-      // Untouched and reverted-to-default cells are the same observable state.
+      // Untouched and reverted-to-default cells are the same observable
+      // state, and so is a materialised cell whose only difference from its
+      // neighbour is a None-pattern fill's invisible colour.
       for (const [key, cell] of sheet.cells) {
-        if (!isDefaultCell(cell)) out[key] = clone(cell);
+        if (!isDefaultCell(cell)) out[key] = normalizedFill(clone(cell));
       }
       return out;
     },

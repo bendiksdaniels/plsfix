@@ -1011,6 +1011,46 @@ describe("pls,fix undo", () => {
       "Undone: Model!A5. Nothing more to undo.",
     );
   });
+
+  // Excel for Mac (16.107) answers an unfilled cell's fill with a null
+  // pattern and an empty patternColor; feeding that straight back into
+  // setCellProperties was refused with a raw InvalidArgument error, leaving
+  // the entry stuck on the stack even though the values had already
+  // restored. seedModel's selection is exactly this mix: most of A1:C3 was
+  // never filled, and B2 carries a real striped pattern with its own colours.
+  it("restores a block over unfilled cells after a fill-painting action, no error", async () => {
+    expect(helpers.fill("Model!A1").pattern).toBe("None");
+    const originalB2 = helpers.fill("Model!B2");
+    expect(originalB2).toEqual({
+      color: "#EEDDCC",
+      pattern: "LightUp",
+      patternColor: "#0057B8",
+    });
+
+    // The title preset clears every cell's fill and paints it solid navy,
+    // overwriting both the unfilled cells and B2's own pattern.
+    await smt.applyPreset("title");
+    expect(helpers.fill("Model!A1").pattern).not.toBe("None");
+    expect(helpers.fill("Model!B2").pattern).not.toBe("LightUp");
+
+    // The restore does not throw, and the entry is consumed (not left
+    // retryable the way a genuinely failed restore stays).
+    await expect(smt.undoLastAction()).resolves.toBe(
+      "Undone: Model!A1:C3. Nothing more to undo.",
+    );
+    expect(smt.undoTarget()).toBeNull();
+
+    // The originally unfilled cell is unfilled again. Its pattern is the
+    // observable fact; a fill that never renders carries no colour promise
+    // (Excel itself leaves a stale colour under a None pattern untouched
+    // when only the pattern is written back, so settableFill sends "None"
+    // alone rather than a colour nobody can see).
+    expect(helpers.fill("Model!A1").pattern).toBe("None");
+    // The originally filled cell's colour is back...
+    expect(helpers.fill("Model!B2").color).toBe(originalB2.color);
+    // ...and so is its pattern colour, not just the fill colour.
+    expect(helpers.fill("Model!B2")).toEqual(originalB2);
+  });
 });
 
 // ---------------------------------------------------------------------------
