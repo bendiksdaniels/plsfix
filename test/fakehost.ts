@@ -280,6 +280,9 @@ export class FakeSheet {
   columnWidths = new Map<number, number>();
   // Row indexes the user has hidden; a hidden row keeps its height.
   hiddenRows = new Set<number>();
+  // The rectangle Format > AutoFilter covers, local to this sheet; null when
+  // no filter is applied. helpers.applyFilter is the one writer.
+  autoFilterRange: Rect | null = null;
   showGridlines = true;
   // The merged blocks of the sheet. Only the top-left cell of one holds a
   // value, and Excel refuses a value write that covers part of a block.
@@ -825,6 +828,7 @@ const SHAPES: Record<string, Shape> = {
       charts: "charts",
       shapes: "shapes",
       protection: "sheetProtection",
+      autoFilter: "autoFilter",
     },
     returns: {
       getRange: "range",
@@ -835,6 +839,12 @@ const SHAPES: Record<string, Shape> = {
   },
   sheetProtection: { scalars: ["protected"] },
   workbookProtection: { scalars: ["protected"] },
+  // Excel.AutoFilter, ExcelApi 1.9: whether the sheet's filter is on and
+  // filtering something, and the range it covers when it is.
+  autoFilter: {
+    scalars: ["enabled", "isDataFiltered"],
+    returns: { getRange: "range" },
+  },
   charts: {
     scalars: ["items"],
     items: "chart",
@@ -3332,6 +3342,40 @@ class WorksheetProxy {
     };
   }
 
+  // Excel.AutoFilter, read-only here: enabled and isDataFiltered move together
+  // in this fake, both true only once helpers.applyFilter has run. getRange()
+  // never throws the way office.js's own does with no filter applied - it
+  // answers isNullObject true instead, the shape every other getXOrNullObject
+  // method in this file answers with.
+  get autoFilter(): {
+    enabled: boolean;
+    isDataFiltered: boolean;
+    getRange: () => RangeProxy & { isNullObject: boolean };
+    load: () => void;
+  } {
+    const { sheet, runtime, ctx } = this;
+    return {
+      get enabled(): boolean {
+        return sheet.autoFilterRange !== null;
+      },
+      get isDataFiltered(): boolean {
+        return sheet.autoFilterRange !== null;
+      },
+      getRange(): RangeProxy & { isNullObject: boolean } {
+        const rect = sheet.autoFilterRange;
+        const proxy = new RangeProxy(
+          runtime,
+          ctx,
+          sheet,
+          rect ?? { row: 0, col: 0, rowCount: 1, colCount: 1 },
+        ) as RangeProxy & { isNullObject: boolean };
+        proxy.isNullObject = rect === null;
+        return proxy;
+      },
+      load: () => undefined,
+    };
+  }
+
   getRange(address: string): RangeProxy {
     return new RangeProxy(this.runtime, this.ctx, this.sheet, parseA1(address));
   }
@@ -3956,6 +4000,9 @@ export interface FakeHelpers {
   // the way a user's own row hide does: the heights stay, Range.rowHidden
   // answers true.
   hideRows(address: string): void;
+  // An AutoFilter over `range` ("Model!A1:C5"), enabled and filtering: hides
+  // the rows `hidden` names ("Model!3:3") the same way hideRows does.
+  applyFilter(range: string, hidden: string): void;
   setPrecedents(address: string, config: TraceConfig): void;
   setDependents(address: string, config: TraceConfig): void;
   addChart(sheetName: string, chart?: FakeChartSeed): FakeChart;
@@ -4304,6 +4351,11 @@ export function installFakeHost(options: FakeHostOptions = {}): {
       for (let row = 0; row < rect.rowCount; row += 1) {
         sheet.hiddenRows.add(rect.row + row);
       }
+    },
+    applyFilter(range, hidden) {
+      const { sheet, rect } = resolve(workbook, range);
+      sheet.autoFilterRange = rect;
+      helpers.hideRows(hidden);
     },
     setPrecedents(address, config) {
       workbook.precedents.set(address, config);

@@ -2403,3 +2403,126 @@ describe("separators", () => {
     expect(await smt.readSeparators()).toBeNull();
   });
 });
+
+// ---------------------------------------------------------------------------
+
+describe("AutoFilter", () => {
+  interface AutoFilterRangeProbe {
+    load: (properties?: string) => void;
+    address: string;
+    isNullObject: boolean;
+  }
+
+  interface AutoFilterProbe {
+    load: (properties?: string) => void;
+    enabled: boolean;
+    isDataFiltered: boolean;
+    getRange: () => AutoFilterRangeProbe;
+  }
+
+  interface SheetProbe {
+    autoFilter: AutoFilterProbe;
+    getRange: (address: string) => {
+      load: (properties?: string) => void;
+      rowHidden: boolean | null;
+    };
+  }
+
+  async function inRun(
+    body: (context: Excel.RequestContext, sheet: SheetProbe) => Promise<void>,
+  ): Promise<void> {
+    const host = globalThis as unknown as {
+      Excel: { run: (cb: (context: never) => unknown) => Promise<unknown> };
+    };
+    await host.Excel.run(async (context: never) => {
+      const workbook = (
+        context as unknown as {
+          workbook: { worksheets: { getItem: (name: string) => SheetProbe } };
+        }
+      ).workbook;
+      await body(
+        context as Excel.RequestContext,
+        workbook.worksheets.getItem("Model"),
+      );
+    });
+  }
+
+  async function throws(run: () => void): Promise<string> {
+    try {
+      run();
+    } catch (error) {
+      return (error as Error).message;
+    }
+    return "nothing was thrown";
+  }
+
+  it("reads disabled and unfiltered on a sheet with no filter", async () => {
+    await inRun(async (context, sheet) => {
+      sheet.autoFilter.load("enabled,isDataFiltered");
+      await context.sync();
+      expect(sheet.autoFilter.enabled).toBe(false);
+      expect(sheet.autoFilter.isDataFiltered).toBe(false);
+    });
+  });
+
+  it("reads enabled and filtered once helpers.applyFilter has run", async () => {
+    helpers.applyFilter("Model!A1:C5", "Model!2:2");
+    await inRun(async (context, sheet) => {
+      sheet.autoFilter.load("enabled,isDataFiltered");
+      await context.sync();
+      expect(sheet.autoFilter.enabled).toBe(true);
+      expect(sheet.autoFilter.isDataFiltered).toBe(true);
+    });
+  });
+
+  it("hides the named rows the same way hideRows does", async () => {
+    helpers.applyFilter("Model!A1:C5", "Model!2:2");
+    await inRun(async (context, sheet) => {
+      const row = sheet.getRange("A2");
+      row.load("rowHidden");
+      await context.sync();
+      expect(row.rowHidden).toBe(true);
+    });
+  });
+
+  it("answers the filtered range's own address once applied", async () => {
+    helpers.applyFilter("Model!A1:C5", "Model!2:2");
+    await inRun(async (context, sheet) => {
+      sheet.autoFilter.load("enabled,isDataFiltered");
+      await context.sync();
+      const range = sheet.autoFilter.getRange();
+      range.load("address,isNullObject");
+      await context.sync();
+      expect(range.address).toBe("Model!A1:C5");
+      expect(range.isNullObject).toBe(false);
+    });
+  });
+
+  it("answers a null object from getRange when no filter is applied", async () => {
+    await inRun(async (context, sheet) => {
+      sheet.autoFilter.load("enabled,isDataFiltered");
+      await context.sync();
+      const range = sheet.autoFilter.getRange();
+      range.load("isNullObject");
+      await context.sync();
+      expect(range.isNullObject).toBe(true);
+    });
+  });
+
+  it("refuses a scalar read with no load behind it", async () => {
+    await inRun(async (_context, sheet) => {
+      expect(await throws(() => sheet.autoFilter.enabled)).toContain(
+        "is not available",
+      );
+    });
+  });
+
+  it("refuses a load that has not been synced yet", async () => {
+    await inRun(async (_context, sheet) => {
+      sheet.autoFilter.load("enabled");
+      expect(await throws(() => sheet.autoFilter.enabled)).toContain(
+        "is not available",
+      );
+    });
+  });
+});
