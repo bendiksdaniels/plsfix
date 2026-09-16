@@ -374,3 +374,19 @@ old loop hangs every test, the fixed helper passes. Rules:
 - Do not press Delete after a click on the slide without checking what got selected: a click on
   the chart's bars selected the deck's dashed rectangle underneath and Delete removed it.
 
+## 2026-09-14: the Mac chart tiers, second round (computer use, stopped by Daniel; written up 16.09)
+
+- `ShapeCollection.addGroup` of ONE shape is InvalidArgument on PowerPoint for Mac 16.107: a 25-shape chart
+  tiered 6/6/6/6/1 died on the last chunk. A remainder of one stays ungrouped and rides into the next level
+  (`tierUp`, v2.8.9); the fake refuses fewer than two ids the same way.
+- A refused batch is not a rolled-back batch: the adds queued BEFORE the refused call stay on the slide and
+  their ids never reach the pane, so an id-based cleanup cannot see them (four orphan sub-groups, no top
+  group, no link, no toast). Name every primitive and sub-group after its chart in the batch that adds it and
+  sweep the slide's top level by that prefix after the id pass (`sweepByName`). `helpers.refuseNextSync`
+  reproduces the shape in the fake: it applies, then rejects.
+- "Does not work" with no toast and no crash = a refused sync whose cleanup could not find what it left
+  behind: look at the slide for untagged shapes named for the chart before suspecting the relay.
+- A session that ships five patches and writes no ledger costs the next one an hour of archaeology. The
+  commit bodies (`git log --format='%b'`) are the first stop, the transcript under
+  `~/.claude/projects/<cwd>/` the fallback; the ledger line is written with the patch, not at the end.
+

@@ -1,71 +1,82 @@
-# AUTORESUME - pls,fix (v2.8.4 tagged 13.09, PUBLIC on GitHub, MIT)
+# AUTORESUME - pls,fix (v2.8.9 tagged 14.09, PUBLIC on GitHub, MIT)
 
-## NEXT SESSION (from 14.09): no more crashes, link folders, free space in PowerPoint
+## NEXT SESSION (from 16.09): the table header, the Mac matrix, the docs debt
 
-Daniel, 13.09 night: "in next run we will be making sure there are no more crashes, create the folders and
-keep testing it; also we need it to be able to figure out spaces in PP because some tables and charts
-overlap." State at hand-over: **v2.8.3 LIVE** (main 97fc9b1, tag v2.8.3, modelis clean, release green,
-ghcr clean), gates green (2684 vitest, ux 0/72, sweep 0/149), no worktree, nothing running. Read
-`tasks/lessons.md` 13.09 evening + night first: the desktop recipe (computer-use grant per task, deck copy
-in the scratchpad, focus keeper loop, dev sideload against the live relay, crash detection by the
-PowerPoint process start time, MERP dialog) and the E1-E15 bisection.
+State at hand-over (16.09 morning, session "resume work on this"): **v2.8.9 LIVE** (main c376efe = origin,
+tag v2.8.9, live `/version` 2.8.9, relay 35 links / 47 revisions / inbox 7), gates green (2718 vitest, cargo
+green), no worktree, no branch, no dev server, both wef folders hold the v2.8.8 prod manifest. The plan of
+the 16.09 session is `~/.claude-accounts/work/plans/jiggly-tickling-raccoon.md` (approved 16.09). Read
+`tasks/lessons.md` 13.09 evening + night and 14.09 first: the desktop recipe (computer-use grant per task,
+deck copy in the scratchpad, focus keeper loop, dev sideload against the live relay, crash detection by the
+PowerPoint process start time, MERP dialog), the E1-E15 bisection and the refused-batch stray sweep.
 
-1. **No more crashes (test first, fix what it finds).** On Daniel's Mac (ask for the computer-use grant for
-   Excel and PowerPoint at session start; he expects it), with `pls,fix Demo Model.xlsx` rebuilt by
-   `npm run demo` and a fresh copy of `demo/deck/pls,fix Demo Deck.pptx`: every export kind through every
-   route, twice each, watching the process start time after each step:
-   charts of every kind the demo has (Bridge Revenue column, EBITDA margin line, Rounding Segment pie, a
-   Waterfall made on the Bridge sheet, a Tornado from Sensitivity) plus a big one near the desktop budget
-   (a 40-point column chart made in Excel by hand: 200 shapes is the cap; `tierUp` now groups those sub-groups again so no addGroup takes more than six),
-   the P&L table (and a 60 x 20 one), Export as text, Export selection pictures; each via Insert with
-   Free space / a half / a quarter / Whole slide / Selected shape (an empty placeholder), Paste latest
-   linked, then Update all after a pushed revision (change a cell, Push selected), Update this slide,
-   Revert last update, Change source, Break link. Any crash: bisect the way E1-E15 did (dev sideload,
-   one variable per run). `GROUP_TIER_MAC` stays 6: a 12-column chart would have been 7 in one addGroup
-   (proven in `src/ppt/charts.test.ts`); 12 as a tier is still unproven on the Mac.
-   Web (rig) and Windows (Daniel's own pass, `tasks/launch-check.md`) are unchanged by the tiers.
-2. **Link folders ("projects").** Built on `link-projects`. Daniel: "folders for the links, so if I have multiple projects I can track
-   these links." Design that shipped: a `project` name on every
-   link, chosen in Excel and carried with the link, the relay stays blind.
-   - Model (`src/link/model.ts`): `project?: string` on the registry entry, the sealed `InboxItem` and the
-     `LinkTag` written on the PowerPoint shape (missing = "No project"; old links and old decks keep
-     working, the codecs must accept both). Cap the name (40 chars, trimmed, no control chars).
-   - Excel (`src/pane/links-tab.ts` + `links-list.ts`, `src/excel/links.ts` registry in
-     `workbook.settings`): a "Project" select above the Linked objects list with the workbook's projects and
-     "New project..." (a prompt box in the pane, not window.prompt), the selection is the project every new
-     export gets; the list groups links under their project headers; per-link "Move to project"; Push all
-     scoped to the shown project. The active project persists per workbook (settings), the list of
-     projects too.
-   - PowerPoint (`src/ppt/views.ts`, `links.ts`, `main.ts`, `pptpane.html`): an "All projects" filter beside
-     "All sources" on the Links tab (the same `data-` filter pattern), the Inbox grouped by project with a
-     header per project, Update all / Update selected honour the filter, the update summary names the
-     project. Copy stays in the pane's plain voice; no em dashes.
-   - Tests mirror the files (`links-tab.test.ts`, `links-list`, `inbox.audit.test.ts`, `pane.audit`,
-     `links.audit.test.ts` with the fake host, codec round-trip tests for a tag with and without a
-     project); `ux:check` and `ux:sweep` count the new controls; the manual (LV, `manual/src/content/
-     links.rs`: section "Projekti"), README, FEATURES, CLAUDE map, launch-check. One patch bump per
-     reviewed merge; a sonnet slice + opus review is the shape if delegated (~500-800k), else direct.
-3. **Free space in PowerPoint: overlaps.** **v2.8.4** (`795b26e`): dashed empty frames skip, a zero-area group occupies the union of its children, a failed grid scan fits into the largest remaining rectangle, the toast names the free quarter. Fake proof in `src/layout.test.ts` + `src/ppt/placement.occupy.test.ts`. Still prove on the Mac with the deck's slide 3. Seen 13.09 on the Mac: (a) with both dashed rectangles of
-   deck slide 3 present, Free space has no free spot at any scale, so `placeInFreeSpace` falls back to
-   "centred, full size, overlapping = true" and the chart straddles both halves (by design, the OVERLAP_NOTE
-   says so, but Daniel reads it as "it overlaps"); (b) 19:00, a second chart inserted with Free space landed
-   EXACTLY over the first chart (same box, right half top) although the lower right quarter was empty;
-   (c) 19:06, a third chart landed inside the left dashed rectangle at full size. (b) and (c) say the
-   scan did not see the first chart's groups (and maybe not the rectangle) as occupied. `occupiedBoxes`
-   (`src/ppt/placement.ts`) loads `SHAPE_PROPERTIES` of the slide's top-level shapes and takes every
-   non-empty-placeholder shape's box: hypotheses, in order: the Mac reports a group's left/top/width/
-   height as 0 or child-relative through the JS API (read them back on the Mac: load every shape's box on
-   slide 3 in a `PowerPoint.run` from the pane and show it in a toast or the Copy-details text); a
-   sub-group's box vs the top group's; the `overlapping` fallback landing at the previous spot. Then the
-   fix, in `src/layout.ts` (pure, tests in `layout.test.ts`) + `placement.ts`: when the free scan fails,
-   prefer the largest free rectangle at a reduced scale over a full-size overlap, count a group's real
-   bounds (union of its children when the host reports 0), let a decorative frame (no fill, no text,
-   dashed line) count as free, and tell the user in the note which spot would have been free. Prove it
-   with the fake (a slide with a group and a frame) and on the Mac with the deck's slide 3.
-4. Order: 1 first (a crash found early changes everything), then 2 (folders). Item 3 shipped v2.8.4; Mac slide-3 proof still open.
-   Commit per reviewed slice, `sh scripts/release.sh patch`, `~/signet-tools-gateway/deploy.sh modelis`,
-   ledger + lessons + memory (`project_plsfix.md`) at the end, `git push -u --all origin`.
+1. **The table's top row** (Daniel, 14.09: "formatting: it does not highlight the top row"). Reading, to be
+   confirmed on screen: the P&L table exported with its header row lands in PowerPoint without a highlighted
+   header. Facts: an insert writes formats for formatted cells only (`withText=false` in
+   `src/ppt/tables.ts`), so whatever style the API gave the table stays; an in-place repaint (`withText=true`)
+   runs `fill.clear()` on every cell without an Excel fill and wipes the style's header band and body tint; a
+   rebuild does not clear; the pane never sets `Table.styleSettings` (PowerPointApi 1.9). Design (plan): a
+   payload flag `h` from Excel (rows >= 2 and every non-empty cell of row 0 bold, `src/excel/link-table.ts`),
+   `styleSettings.isFirstRowHighlighted = h` on insert, rebuild and repaint (a NoStyle table gets
+   MediumStyle2Accent1), a second tag `PLSFIX_PAINT` (`src/link/paint-map.ts`) recording the cells pls,fix
+   filled so a repaint clears only those that lost their fill, the fake's `styleSettings`, tests, copy.
+2. **Desktop pass on Daniel's Mac** (computer use; the grant is his): `npm run demo` + a fresh copy of
+   `demo/deck/pls,fix Demo Deck.pptx` in the scratchpad. (a) The header: export the P&L range WITH its header,
+   insert, Push a change, Update all, band present both times; also the Excel "Header" preset and the
+   "Row title" cycle on the demo's top row (the other reading of his sentence). (b) The crash matrix, twice
+   each, process start time after each step: charts of every kind the demo has (Bridge Revenue column, EBITDA
+   margin line, Rounding Segment pie, a Waterfall made on the Bridge sheet, a Tornado from Sensitivity) plus a
+   40-point column chart made in Excel by hand (200 shapes is the desktop cap; `tierUp` groups sub-groups
+   again so no addGroup takes more than six and a remainder of one stays ungrouped), the P&L table (and a
+   60 x 20 one), Export as text, Export selection pictures; each via Insert with Free space / a half / a
+   quarter / Whole slide / Selected shape (an empty placeholder), Paste latest linked, then Update all after a
+   pushed revision (change a cell, Push selected), Update this slide, Revert last update, Change source, Break
+   link. Any crash: bisect the way E1-E15 did (dev sideload, one variable per run). `GROUP_TIER_MAC` stays 6.
+   (c) Free space on the deck's slide 3 (v2.8.4 logic, `src/layout.ts` + `src/ppt/placement.ts`): three chart
+   inserts with Free space land in three different free spots, no full-size overlap while a quarter is free
+   (13.09 the second chart landed exactly over the first and a third inside a dashed frame). (d) Projects
+   (v2.8.6/7): pick a project in Excel, export, the PowerPoint "All projects" filter shows it, Update all names
+   the project in its toast. Web (rig) and Windows (Daniel's own pass, `tasks/launch-check.md`) are unchanged.
+3. **Docs debt of v2.8.5-v2.8.9**: the manual docx is stamped v2.8.003 while `manual/src/content/links.rs`
+   already has "Projekti" (`npm run manual` at the final version, commit "Manual regenerated at vX.Y.ZZZ");
+   `docs/FEATURES.md` and `tasks/launch-check.md` have no rows for projects, the tiers or the header; the CLAUDE
+   Map; memory `project_plsfix.md` (still says v2.8.3); this file's 16.09 section; `git push -u --all origin`.
+4. Order: 1 (code first, no desktop needed), then 2 (the grant), then 3. Commit per reviewed slice,
+   `sh scripts/release.sh patch`, `~/signet-tools-gateway/deploy.sh modelis` -> "SERVER IN SYNC".
 
+## 14.09: v2.8.5 to v2.8.9 - tiers at every level, projects, a stale-payload refusal, strays swept by name
+
+- Written up 16.09 from the commit bodies and the transcript: the 14.09 session shipped five patches and wrote
+  no ledger, lessons or memory. Daniel, 14.09 10:49: "some features still work unclearly, for example
+  formatting: it does not highlight the top row, and moving things to PP still crashes or just does not
+  work." He stopped the desktop automation at 14:38 with PowerPoint on the scratch copy `plsfix-matrix.pptx`
+  (a copy, his deck untouched), no insert made; the crash matrix had not started.
+- Shipped, one patch each, every one deployed (live `/version` 2.8.9, release runs green):
+  - v2.8.5 (af8af6a, 13.09 20:47): `tierUp` in `src/ppt/chart-draw.ts` groups the tier sub-groups again until
+    at most six remain: a 12-column chart had become seven sub-groups in one addGroup, a 40-point one would
+    have been 21, past the 19 that killed PowerPoint 16.107 on 13.09.
+  - v2.8.6 (535b2b7, 13.09 22:21): link projects (item 2 of the 14.09 brief; `src/link/project.ts`): a project
+    name on the registry entry, the inbox item and the shape tag; Excel picks or creates it above Linked
+    objects, new exports join it, Push all and Update all honour the shown project, "Move to project"; old
+    links stay under "No project"; the relay never sees the name. README says so; FEATURES and launch-check
+    do not yet; the manual source has "Projekti" but the docx was not regenerated.
+  - v2.8.7 (89b2993, 14.09 08:50): `MODELIS_PUBLIC_URL` XML-escaped in `server/src/manifest.rs` (security
+    review M1); Update all's toast names the shown project or "No project".
+  - v2.8.8 (74079a0, 14.09 10:17): a relay payload whose `pushedAt` is older than the shape tag's is refused
+    on Update all (`assertFresh` in `src/link/status.ts`, called from `src/ppt/fetch.ts`; Revert asks for a
+    named older rev and is exempt): security review I5.
+  - v2.8.9 (e856652 + 40d4aa2, 14.09 14:05-14:11): the root cause of "moving to PP does not work" on the Mac.
+    The Bridge EBITDA margin line chart (25 shapes) tiers as 6/6/6/6/1 and PowerPoint refuses `addGroup` of ONE
+    shape (InvalidArgument); the refused batch had already landed the four sub-groups, their ids never came
+    back, so the id-based cleanup left four orphan untagged groups, no top group, no link, no toast. Fix:
+    `tierUp` carries a remainder of one into the next level ungrouped; every primitive and tier sub-group is
+    named after its chart in the batch that adds it, and `chart-cleanup.ts` sweeps the slide top level by that
+    prefix after the id pass; the fake gained `helpers.refuseNextSync` (a sync that applies its adds, then
+    rejects, the way the Mac does). Gate at the time: 2718 vitest, all cargo suites, both manifests valid.
+- Open after 14.09: the crash matrix (not started), the slide-3 free-space proof, the projects proof on the
+  Mac, and the top row (the session's reading: `Table.styleSettings.isFirstRowHighlighted`, PowerPointApi 1.9,
+  is never set and an Update all clears every unfilled cell's fill, which wipes any header band; to confirm on
+  screen). Taken up by the 16.09 session (NEXT SESSION above).
 ## 13.09: the v2.7 wave - comps and hygiene tools, follow-ups closed, stress passes, relay hardening
 
 - 13.09 evening, the desktop pass on Daniel's Mac (computer use for Excel and PowerPoint, granted): Excel
