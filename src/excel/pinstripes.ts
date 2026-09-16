@@ -8,9 +8,16 @@
 // stripes and the linked-cell highlight each hand back what they covered, and
 // a band on top of one would be given back as the modeller's own formatting.
 
-import { applyFillKey, selectedSingleRange, withinCap } from "./internal";
+import { intersects } from "../link/geometry";
+import {
+  applyFillKey,
+  hostSupports,
+  selectedSingleRange,
+  withinCap,
+} from "./internal";
 import { fillGrid, requestFills, requireNoOverlayOwner } from "./fill-store";
 import { paintSync, protectedNote, sheetProtected } from "./protection";
+import { parseAddress } from "./shared";
 import { captureUndo } from "./undo";
 import { getActiveSettings, tint } from "../settings";
 
@@ -63,6 +70,79 @@ function lineRange(
   return axis === "rows" ? range.getRow(line) : range.getColumn(line);
 }
 
+// True when the sheet's filter is switched on, has criteria applied, and its
+// range shares at least one cell with the selection: a filter elsewhere on
+// the sheet, or one with nothing currently filtered, leaves banding alone.
+async function filterActive(
+  context: Excel.RequestContext,
+  range: Excel.Range,
+  autoFilter: Excel.AutoFilter,
+): Promise<boolean> {
+  if (!autoFilter.enabled || !autoFilter.isDataFiltered) return false;
+  const filterRange = autoFilter.getRange();
+  filterRange.load("address");
+  await context.sync();
+  return intersects(
+    parseAddress(range.address).address,
+    parseAddress(filterRange.address).address,
+  );
+}
+
+// Zero-based row indexes, local to the selection, that are hidden right now -
+// by the filter this was asked about, or by hand underneath it: one lineRange
+// load per row, since a single row's own rowHidden is never the null Excel
+// answers for a mixed multi-row band.
+async function hiddenSelectionRows(
+  context: Excel.RequestContext,
+  range: Excel.Range,
+  count: number,
+): Promise<Set<number>> {
+  const rows = Array.from({ length: count }, (_unused, line) =>
+    lineRange(range, "rows", line),
+  );
+  rows.forEach((row) => row.load("rowHidden"));
+  await context.sync();
+  const hidden = new Set<number>();
+  rows.forEach((row, line) => {
+    if (row.rowHidden) hidden.add(line);
+  });
+  return hidden;
+}
+
+// Zero-based indexes of the lines a band covers when a filter hides some of
+// the selection: the same every-second rule as bandLines, over the lines the
+// filter left showing, so the bands fall where Excel's own banded-table style
+// would put them.
+function bandVisibleLines(hidden: Set<number>, count: number): number[] {
+  const visible: number[] = [];
+  for (let line = 0; line < count; line += 1) {
+    if (!hidden.has(line)) visible.push(line);
+  }
+  return bandLines(visible.length).map((index) => visible[index]!);
+}
+
+// Zero-based row indexes a filter is hiding within the selection, or null to
+// band by position: the axis, the host version and an active, intersecting
+// filter all have to agree first. Shares the sync requestFills already
+// queued for the fills themselves.
+async function filterHiddenRows(
+  context: Excel.RequestContext,
+  range: Excel.Range,
+  axis: PinstripeAxis,
+  count: number,
+): Promise<Set<number> | null> {
+  // A host below ExcelApi 1.9 has no autoFilter to ask, and a column band
+  // never needs one: a filter cannot hide a column.
+  const autoFilter =
+    axis === "rows" && hostSupports("1.9") ? range.worksheet.autoFilter : null;
+  autoFilter?.load("enabled,isDataFiltered");
+  await context.sync();
+  if (!autoFilter || !(await filterActive(context, range, autoFilter))) {
+    return null;
+  }
+  return hiddenSelectionRows(context, range, count);
+}
+
 function done(axis: PinstripeAxis, lines: number, banded: boolean): string {
   const noun = axis === "rows" ? "row" : "column";
   const plural = lines === 1 ? noun : `${noun}s`;
@@ -87,7 +167,11 @@ export async function applyPinstripes(axis: PinstripeAxis): Promise<string> {
       await selectedSingleRange(context, STAGE),
       STAGE,
     );
-    range.load("rowCount,columnCount");
+    // The address only matters for a row band checking itself against a
+    // filter; a column band never needs it, since a filter never hides one.
+    range.load(
+      axis === "rows" ? "rowCount,columnCount,address" : "rowCount,columnCount",
+    );
     await context.sync();
 
     const count = axis === "rows" ? range.rowCount : range.columnCount;
@@ -103,10 +187,10 @@ export async function applyPinstripes(axis: PinstripeAxis): Promise<string> {
     }
 
     const properties = requestFills(range);
-    await context.sync();
+    const hidden = await filterHiddenRows(context, range, axis, count);
 
     const key = bandKey();
-    const lines = bandLines(count);
+    const lines = hidden ? bandVisibleLines(hidden, count) : bandLines(count);
     const banded = alreadyBanded(fillGrid(properties), lines, axis, key);
     await captureUndo(context, range);
 

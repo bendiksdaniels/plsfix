@@ -11,7 +11,6 @@ import {
   caught,
   expectSentence,
   PAST_CAP,
-  planned,
   REPORT_CONTEXT,
   type Rig,
   seedGrid,
@@ -249,11 +248,9 @@ describe("Pinstripes: found here, fixed elsewhere", () => {
     expectSentence(STAGE, message);
   });
 
-  it.skip("bands a hidden row the same as a visible one", async () => {
-    // Throws today on the missing helper. Needs test/fakehost.ts (another
-    // slice): rowHidden/columnHidden on FakeSheet plus helpers.hideRows.
+  it("bands a hidden row the same as a visible one", async () => {
     seedGrid(rig);
-    planned(rig.helpers).hideRows("Model!2:2");
+    rig.helpers.hideRows("Model!2:2");
 
     // Excel paints the hidden row too, and unhiding must show the band.
     expect(await rows()).toBe("Pinstripes: 2 rows banded");
@@ -261,15 +258,12 @@ describe("Pinstripes: found here, fixed elsewhere", () => {
     expect(rig.helpers.fill("Model!A4").color).toBe(BAND);
   });
 
-  it.skip("bands every second row the filter left showing", async () => {
-    // Throws today on the missing helper, and then fails on the fills: we
-    // band by position, so a filtered grid shows two bands touching. Needs
-    // test/fakehost.ts (another slice) for worksheet.autoFilter AND a
-    // decision - Excel's own banded-table style follows the filter. This body
-    // encodes the follow-the-filter answer; if the decision goes the other
-    // way, change the assertion, not the tool.
+  it("bands every second row the filter left showing", async () => {
+    // Excel's own banded-table style follows a filter: this body encodes the
+    // follow-the-filter answer; if the decision goes the other way, change
+    // the assertion, not the tool.
     seedGrid(rig);
-    planned(rig.helpers).applyFilter("Model!A1:C5", "Model!2:2");
+    rig.helpers.applyFilter("Model!A1:C5", "Model!2:2");
 
     // Rows 1, 3, 4 and 5 are showing: the second and fourth of those band.
     expect(await rows()).toBe("Pinstripes: 2 rows banded");

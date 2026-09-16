@@ -10,7 +10,6 @@ import {
   boot,
   expectSentence,
   PAST_CAP,
-  planned,
   type Rig,
   seedMethods,
   sentence,
@@ -294,11 +293,9 @@ describe("the football field: found here, fixed elsewhere", () => {
     expect(rig.workbook.charts).toHaveLength(1);
   });
 
-  it.skip("draws its block over hidden rows the same as visible ones", async () => {
-    // Throws today on the missing helper. Needs test/fakehost.ts (another
-    // slice): rowHidden/columnHidden on FakeSheet plus helpers.hideRows.
+  it("draws its block over hidden rows the same as visible ones", async () => {
     seedMethods(rig);
-    planned(rig.helpers).hideRows("Model!3:3");
+    rig.helpers.hideRows("Model!3:3");
 
     expect(await run()).toBe("Football field added: 3 ranges");
     // The hidden method still gets its bar: the block is the selection, not
@@ -308,11 +305,9 @@ describe("the football field: found here, fixed elsewhere", () => {
     expect(rig.helpers.value("Model!F3")).toBe(20);
   });
 
-  it.skip("draws its block from a filtered range", async () => {
-    // Throws today on the missing helper. Needs test/fakehost.ts (another
-    // slice): worksheet.autoFilter with an applied range.
+  it("draws its block from a filtered range", async () => {
     seedMethods(rig);
-    planned(rig.helpers).applyFilter("Model!A1:C4", "Model!3:3");
+    rig.helpers.applyFilter("Model!A1:C4", "Model!3:3");
 
     expect(await run()).toBe("Football field added: 3 ranges");
     expect(rig.helpers.value("Model!D3")).toBe("Trading comps");
