@@ -80,25 +80,6 @@ export async function caught(run: () => Promise<unknown>): Promise<unknown> {
 /** What src/pane/shared.ts hands describeError in the Excel pane. */
 export const REPORT_CONTEXT = { host: "Excel", version: "v0.0.000" };
 
-/**
- * The fake-host surface the hidden-row and filtered-range scenarios need and
- * that test/fakehost.ts (another slice) does not have yet. The skipped tests
- * call through this cast on purpose: taking their `.skip` off before the fake
- * grows these helpers fails loudly on a missing function rather than passing
- * on an empty body.
- */
-export interface PlannedHelpers {
-  /** "Model!3:3" - the rows Excel would hide. */
-  hideRows(address: string): void;
-  /** "Model!B:B" - the columns Excel would hide. */
-  hideColumns(address: string): void;
-  /** An AutoFilter over `range`, hiding the rows `hidden` names. */
-  applyFilter(range: string, hidden: string): void;
-}
-
-export function planned(helpers: FakeHelpers): PlannedHelpers {
-  return helpers as unknown as PlannedHelpers;
-}
 
 /**
  * Every line these tools answer with - a result or a refusal - opens with the

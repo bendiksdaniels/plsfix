@@ -440,3 +440,16 @@ version-only tag stays (no history rewrite on the public repo): the next patch c
 the hollow release's note says so.
 Also: a fresh worktree has no `public/functions.js` (gitignored build output `taskpane.html` loads since
 v2.8.17), so run `npm run functions:js` before `npm run ux:sweep`, or the sweep reports a taskpane 404.
+
+## 2026-09-16 night: a rule for host strings keys on the error's shape, not the wording
+
+The brief for "prefix a bare host string with the running action" said: prefix when the message has no
+stage of its own. The implementer followed it and 23 pane sentences across 11 files changed ("PLSFIX_UNDO:
+There is no pls,fix action to undo yet."). The pane's own sentences and office.js's strings cannot be told
+apart by wording; they can by shape: an office.js error carries a string `code`, a `new Error(...)` the
+pane throws never does. Rules: a fix aimed at host output keys on `code` (or `debugInfo`), never on
+punctuation; a review that sees "N pre-existing assertions updated" outside the brief treats every one
+as a user-visible wording change and asks whether the product should read differently, before the
+tests are trusted. Also: a fix wave of three same-shape agents cost 335k + 464k + 369k; the one that
+touched a shared helper (describeError) was the expensive one, the fix round after review was the
+controller's (12 files, mechanical) and cheaper than a resume.
