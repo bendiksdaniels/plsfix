@@ -5,7 +5,7 @@
 // never leave a stale listener.
 
 import type { InboxItem, LinkKind } from "../link/model";
-import { projectLabel } from "../link/project";
+import { groupByProject } from "../link/project";
 import type { LinkStatus } from "../link/status";
 import { NEVER, relativeStamp, relativeTime } from "../ui/time";
 
@@ -126,15 +126,8 @@ function groupedInbox(
   items: InboxItem[],
   onInsert: (item: InboxItem) => void,
 ): HTMLElement[] {
-  const groups = new Map<string, InboxItem[]>();
-  for (const item of items) {
-    const name = projectLabel(item.project);
-    const group = groups.get(name) ?? [];
-    group.push(item);
-    groups.set(name, group);
-  }
   const nodes: HTMLElement[] = [];
-  for (const [name, group] of groups) {
+  for (const [name, group] of groupByProject(items, (item) => item.project)) {
     nodes.push(inboxHeader(name));
     for (const item of group) nodes.push(inboxRow(item, onInsert));
   }
