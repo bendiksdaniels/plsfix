@@ -11,7 +11,7 @@ use crate::layout::{
 use crate::pen::Pen;
 use crate::sheets::guide::{self, Guide};
 use crate::sheets::pnl::planted_cells;
-use crate::sheets::{bridge, data, rounding, scratch, sensitivity, variance};
+use crate::sheets::{bridge, cagr, data, rounding, scratch, sensitivity, variance};
 use crate::style::Styles;
 use crate::tally::Tally;
 
@@ -108,6 +108,7 @@ fn chart_steps() -> Vec<Step> {
         step("CAGR label / Brand-format chart", bridge::NAME, "Click the Revenue chart, press CAGR label, then Brand-format chart", "A CAGR label on the chart; brand formatting applied (the pie on Rounding is there to export too)"),
         step("Tornado from selection", sensitivity::NAME, format!("Select {} and press Tornado from selection", sensitivity::block_address()), format!("A ranked sensitivity chart around the base case in {}", sensitivity::base_address())),
         step("Consistent rounding / =PLSFIX.ROUND", rounding::NAME, format!("Select {} and press Consistent rounding, or type the formulas shown in the last column", rounding::points_address()), "PLSFIX.ROUND formulas beside the selection whose parts add up to the rounded total (the Excel ROUND column sums to 101)"),
+        step("CAGR sheet", cagr::NAME, format!("Select {} and press Insert CAGR, then compare with columns I and J", cagr::first_row_range()), format!("Ribbon CAGR, =PLSFIX.CAGR and the hand formula agree on {}; {} are refused", cagr::agree_rows_words(), cagr::refused_rows_words())),
         step("Unpivot selection", data::NAME, format!("Select {} and press Unpivot selection", data::grid_address()), "A new sheet with one Row / Column / Value line per cell of the grid"),
     ]
 }

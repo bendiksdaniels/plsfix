@@ -1,11 +1,17 @@
 // Classifies a cell by its formula and value into the pane's colour key:
-// blank, input, formula, crossSheet or external, plus "partial" for a formula
-// that also hardcodes a number. Pure, no Office.js. Invariant: a "[" reads as
-// another workbook only where a sheet name and "!" actually follow it.
+// blank, input, text, formula, crossSheet or external, plus "partial" for a
+// formula that also hardcodes a number. Pure, no Office.js. Invariant: a "["
+// reads as another workbook only where a sheet name and "!" actually follow it.
 import { type CellValue, isFormula } from "./model";
 
 export type CellClass =
-  "blank" | "input" | "formula" | "crossSheet" | "external" | "partial";
+  | "blank"
+  | "input"
+  | "text"
+  | "formula"
+  | "crossSheet"
+  | "external"
+  | "partial";
 
 // Cell references ($B$12), function names (LOG10) and range operators all read as
 // word tokens; whatever digits survive their removal were typed by the modeller.
@@ -107,7 +113,13 @@ export function hasHardcodedNumber(formula: string): boolean {
 
 export function classifyCell(formula: CellValue, value: CellValue): CellClass {
   if (!isFormula(formula)) {
-    return value === null || value === "" ? "blank" : "input";
+    if (value === null || value === "") return "blank";
+    // A modeller's own label or unit, never an assumption: Macabacus and FAST
+    // both leave text uncoloured and reserve blue for a typed number. A
+    // whitespace-only string trims to "" but is not literally "", so it falls
+    // through to "input" unchanged from before this case existed.
+    if (typeof value === "string" && value.trim() !== "") return "text";
+    return "input";
   }
 
   const body = stripStringLiterals(formula);

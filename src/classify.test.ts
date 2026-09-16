@@ -7,15 +7,38 @@ describe("constants and empty cells", () => {
     expect(classifyCell("", "")).toBe("blank");
   });
 
-  it("calls typed content an input", () => {
+  it("calls typed numbers, booleans and 0 an input", () => {
     expect(classifyCell(25, 25)).toBe("input");
-    expect(classifyCell("Revenue", "Revenue")).toBe("input");
     expect(classifyCell(true, true)).toBe("input");
     expect(classifyCell(0, 0)).toBe("input");
   });
 
   it("keeps a formula that returns nothing a formula", () => {
     expect(classifyCell("=A1", "")).toBe("formula");
+  });
+});
+
+describe("text labels", () => {
+  // Macabacus and FAST both colour a numeric constant blue and leave text
+  // alone: a row label or a unit ("Revenue", "EUR thousands") is not an
+  // assumption the way a typed number is.
+  it("calls a typed string a text label, not an input", () => {
+    expect(classifyCell("Revenue", "Revenue")).toBe("text");
+    expect(classifyCell("Cost of goods sold", "Cost of goods sold")).toBe(
+      "text",
+    );
+    expect(classifyCell("EUR thousands", "EUR thousands")).toBe("text");
+  });
+
+  it("still calls a string text once surrounding whitespace is trimmed", () => {
+    expect(classifyCell("  Revenue  ", "  Revenue  ")).toBe("text");
+  });
+
+  // A single space is not "" by strict equality, so today's rule already
+  // read it as an input rather than blank; trimming it empty keeps it out of
+  // "text" too, so it falls through to that same unchanged behaviour.
+  it("keeps a whitespace-only string an input, same as before", () => {
+    expect(classifyCell(" ", " ")).toBe("input");
   });
 });
 

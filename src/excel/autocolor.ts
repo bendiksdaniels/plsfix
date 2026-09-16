@@ -27,6 +27,7 @@ function classFont(kind: CellClass, theme: WorkbookTheme): string | null {
     case "partial":
       return theme.partialFont;
     case "blank":
+    case "text":
       return null;
   }
 }

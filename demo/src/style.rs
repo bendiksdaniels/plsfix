@@ -11,6 +11,7 @@ pub const PERCENT: &str = "0.0%";
 pub const PERCENT_2: &str = "0.00%";
 pub const POINTS: &str = "0.00";
 pub const WHOLE: &str = "0";
+pub const NUMBER_1DP: &str = "#,##0.0";
 const TITLE_SIZE: f64 = 14.0;
 
 pub struct Styles {
@@ -26,6 +27,7 @@ pub struct Styles {
     pub pct2: Format,
     pub points: Format,
     pub whole: Format,
+    pub number_1dp: Format,
     pub plain: Format,
     pub guide_title: Format,
     pub guide_text: Format,
@@ -49,6 +51,7 @@ impl Styles {
             pct2: Format::new().set_num_format(PERCENT_2),
             points: Format::new().set_num_format(POINTS),
             whole: Format::new().set_num_format(WHOLE),
+            number_1dp: Format::new().set_num_format(NUMBER_1DP),
             plain: Format::new(),
             // No wrap: column A is as narrow as 4 characters on some sheets
             // (Start here), so wrapped text broke into unreadable slivers.

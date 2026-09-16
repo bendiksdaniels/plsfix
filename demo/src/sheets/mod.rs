@@ -3,6 +3,7 @@
 
 pub mod assumptions;
 pub mod bridge;
+pub mod cagr;
 pub mod data;
 pub mod guide;
 pub mod pnl;
@@ -20,7 +21,7 @@ use crate::tally::Tally;
 
 pub type Builder = fn(&mut Worksheet, &Styles) -> Result<Tally, XlsxError>;
 
-pub const SHEETS: [(&str, Builder); 9] = [
+pub const SHEETS: [(&str, Builder); 10] = [
     (start::NAME, start::build as Builder),
     (assumptions::NAME, assumptions::build as Builder),
     (pnl::NAME, pnl::build as Builder),
@@ -28,6 +29,7 @@ pub const SHEETS: [(&str, Builder); 9] = [
     (sensitivity::NAME, sensitivity::build as Builder),
     (rounding::NAME, rounding::build as Builder),
     (variance::NAME, variance::build as Builder),
+    (cagr::NAME, cagr::build as Builder),
     (data::NAME, data::build as Builder),
     (scratch::NAME, scratch::build as Builder),
 ];

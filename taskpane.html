@@ -1656,11 +1656,11 @@
               <h2 id="links-heading">Linked objects</h2>
             </div>
           </div>
+          <label class="key-label" for="link-project"
+            >Project
+            <select id="link-project"></select>
+          </label>
           <div class="io-row">
-            <label class="key-label" for="link-project"
-              >Project
-              <select id="link-project"></select>
-            </label>
             <button id="new-project" type="button">New project</button>
             <button id="move-to-project" type="button">Move to project</button>
           </div>
@@ -1680,6 +1680,11 @@
             </div>
           </div>
           <table class="wl-table">
+            <colgroup>
+              <col class="wl-col-pick" />
+              <col />
+              <col class="wl-col-pushed" />
+            </colgroup>
             <tbody id="workbook-links"></tbody>
           </table>
           <div class="io-row">

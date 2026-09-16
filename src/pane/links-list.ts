@@ -1,15 +1,46 @@
 // The Links tab's table: one row per registry entry - a tick, the object
-// (label, anchor and a "Source missing" badge) and how stale the picture in a
-// deck is - plus the full-width message row the empty and the unreadable state
-// share. Pure DOM: handed what to draw and the callback to call, nothing else.
+// (label, kind and where it points, plus a "Source missing" badge) and how
+// stale the picture in a deck is - plus the full-width message row the empty
+// and the unreadable state share. The internal anchor id rides along as the
+// row's title (hover) only, never in the visible text. Pure DOM: handed what
+// to draw and the callback to call, nothing else.
 
 import type { WorkbookLinkRow } from "../excel";
+import type { LinkKind, RegistryEntry } from "../link/model";
 import { projectLabel } from "../link/project";
 import { NEVER, relativeStamp } from "../ui/time";
 
 const EMPTY_MESSAGE = "No linked objects in this workbook yet.";
 const MISSING_BADGE = "Source missing";
 const ROW_COLUMNS = 3;
+
+// What each kind reads as on the row's second line.
+const KIND_WORD: Record<LinkKind, string> = {
+  range: "Picture",
+  chart: "Chart",
+  table: "Table",
+  text: "Text",
+};
+
+// sourceLabel() (src/link/model.ts) appends this after a table's or a text
+// link's sheet!ref address; the kind word already says it, so it is stripped
+// back off rather than said twice ("Table · P&L!A10:H24", not "... table").
+const KIND_SUFFIX: Partial<Record<LinkKind, string>> = {
+  table: " table",
+  text: " text",
+};
+
+// "Table · P&L!A10:H24": the kind in words plus where the link points, built
+// from the two fields a registry entry actually keeps once a link is made -
+// no raw sheet/ref survives past export, only the formatted label.
+function whereItPoints(entry: RegistryEntry): string {
+  const suffix = KIND_SUFFIX[entry.kind];
+  const location =
+    suffix !== undefined && entry.label.endsWith(suffix)
+      ? entry.label.slice(0, entry.label.length - suffix.length)
+      : entry.label;
+  return `${KIND_WORD[entry.kind]} · ${location}`;
+}
 
 export function renderWorkbookLinks(
   body: HTMLTableSectionElement,
@@ -65,6 +96,9 @@ function linkRow(
   const { entry } = row;
   const tr = document.createElement("tr");
   tr.dataset.linkId = entry.id;
+  // The internal hidden name (PLSFIX_LINK_...) means nothing to a modeller:
+  // it rides along as a hover title instead of a line of its own.
+  tr.title = entry.anchor;
 
   const pick = document.createElement("td");
   pick.className = "wl-pick";
@@ -91,9 +125,9 @@ function objectCell(row: WorkbookLinkRow): HTMLTableCellElement {
 
   const label = document.createElement("strong");
   label.textContent = row.entry.label;
-  const anchor = document.createElement("small");
-  anchor.textContent = row.entry.anchor;
-  cell.append(label, anchor);
+  const where = document.createElement("small");
+  where.textContent = whereItPoints(row.entry);
+  cell.append(label, where);
 
   if (row.source === "missing") {
     const badge = document.createElement("span");

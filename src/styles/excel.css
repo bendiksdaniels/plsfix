@@ -320,6 +320,17 @@
 .wl-table tr:last-child td {
   border-bottom: 0;
 }
+/* table-layout: fixed reads column widths off the first row's cells, and the
+   first row is often a project header spanning all three - with no per-column
+   width to read there, the tick column rendered a third of the row instead of
+   its own 24px. Explicit <col> widths (taskpane.html) settle it regardless of
+   which row happens to be first. */
+.wl-col-pick {
+  width: 24px;
+}
+.wl-col-pushed {
+  width: 116px;
+}
 .wl-pick {
   width: 24px;
   padding-left: 0;

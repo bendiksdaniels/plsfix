@@ -70,7 +70,7 @@ describe("renderWorkbookLinks", () => {
     expect(headers).toEqual(["Amasty", "Balcia", "No project"]);
   });
 
-  it("renders one row per entry with its label and anchor", () => {
+  it("renders one row per entry with its label and kind", () => {
     const body = tbody();
     renderWorkbookLinks(
       body,
@@ -82,8 +82,40 @@ describe("renderWorkbookLinks", () => {
     const rows = body.querySelectorAll("tr[data-link-id]");
     expect(rows).toHaveLength(2);
     expect(rows[0]?.textContent).toContain("Model!B4:F12");
-    expect(rows[0]?.textContent).toContain("PLSFIX_LINK_aaaaaaaa");
-    expect(rows[1]?.textContent).toContain("Chart 1");
+    expect(rows[0]?.textContent).toContain("Picture · Model!B4:F12");
+    expect(rows[1]?.textContent).toContain("Chart · Chart 1");
+  });
+
+  it("moves the internal anchor id to the row's title, out of the visible text", () => {
+    const body = tbody();
+    renderWorkbookLinks(body, [row(ID_A)], new Set(), () => undefined);
+
+    const tr = body.querySelector("tr[data-link-id]");
+    expect(tr?.getAttribute("title")).toBe(`PLSFIX_LINK_${ID_A.slice(0, 8)}`);
+    expect(tr?.textContent).not.toContain("PLSFIX_LINK");
+  });
+
+  it("shows the kind and where it points on the second line, per kind", () => {
+    const body = tbody();
+    const ID_C = "c".repeat(32);
+    const ID_D = "d".repeat(32);
+    renderWorkbookLinks(
+      body,
+      [
+        row(ID_A, { kind: "table", label: "P&L!A10:H24 table" }),
+        row(ID_B, { kind: "text", label: "P&L!A8 text" }),
+        row(ID_C, { kind: "chart", label: "Bridge: Revenue chart" }),
+        row(ID_D, { kind: "range", label: "Data!A10:G15" }),
+      ],
+      new Set(),
+      () => undefined,
+    );
+
+    const rows = body.querySelectorAll("tr[data-link-id]");
+    expect(rows[0]?.textContent).toContain("Table · P&L!A10:H24");
+    expect(rows[1]?.textContent).toContain("Text · P&L!A8");
+    expect(rows[2]?.textContent).toContain("Chart · Bridge: Revenue chart");
+    expect(rows[3]?.textContent).toContain("Picture · Data!A10:G15");
   });
 
   it("spells the push time in minutes, hours and days", () => {

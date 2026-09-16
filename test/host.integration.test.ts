@@ -558,6 +558,17 @@ describe("autocolor", () => {
     expect(helpers.font("Model!B3").color).toBe("#000000");
   });
 
+  it("leaves a text label's own colour alone but still colours a number", async () => {
+    helpers.seed("Model!A1", [["Revenue", 1234]]);
+    // A navy title font, exactly what a header preset would have left behind.
+    helpers.setFont("Model!A1", { color: theme.titleText });
+    helpers.select("Model!A1:B1");
+    await smt.autocolorSelection();
+
+    expect(helpers.font("Model!A1").color).toBe(theme.titleText);
+    expect(helpers.font("Model!B1").color).toBe(theme.inputFont);
+  });
+
   it("refuses an oversized autocolor", async () => {
     helpers.select("Model!A1:A5001");
     expect(await rejects(() => smt.autocolorSelection())).toBe(
