@@ -80,7 +80,6 @@ export async function caught(run: () => Promise<unknown>): Promise<unknown> {
 /** What src/pane/shared.ts hands describeError in the Excel pane. */
 export const REPORT_CONTEXT = { host: "Excel", version: "v0.0.000" };
 
-
 /**
  * Every line these tools answer with - a result or a refusal - opens with the
  * tool's own name, so office.js's own string ("The worksheet 'Model' is
