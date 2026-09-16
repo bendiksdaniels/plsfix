@@ -182,6 +182,24 @@ function movedTo(direction: SheetMove, from: number, last: number): number {
   return last;
 }
 
+// The tab strip only counts sheets a modeller can see, hidden and very hidden
+// ones included out. `items` is every sheet in its position BEFORE the move,
+// `from`/`to` the all-sheets indices `active.position` and `movedTo` answer:
+// removing `from` and reinserting at `to` gives the order the move lands in,
+// and the 0-based rank among the VISIBLE sheets ahead of it there is what
+// moveThisSheet's `position + 1` must print.
+function visibleRank(
+  items: Pick<Excel.Worksheet, "visibility">[],
+  from: number,
+  to: number,
+): number {
+  const rest = items.filter((_item, index) => index !== from);
+  const at = Math.min(to, rest.length);
+  return rest
+    .slice(0, at)
+    .filter((item) => item.visibility === Excel.SheetVisibility.visible).length;
+}
+
 async function requireSheetList(
   context: Excel.RequestContext,
   stage: string,
@@ -287,12 +305,15 @@ export async function moveSheet(direction: SheetMove): Promise<{
     await requireSheetList(context, "Move sheet");
     const sheets = context.workbook.worksheets;
     const active = sheets.getActiveWorksheet();
-    sheets.load("items/name");
+    sheets.load("items/name,items/visibility");
     active.load("name,position");
     await context.sync();
 
+    const items = sheets.items.map((item) => ({
+      visibility: item.visibility,
+    }));
     const from = active.position;
-    const to = movedTo(direction, from, sheets.items.length - 1);
+    const to = movedTo(direction, from, items.length - 1);
     if (to === from) {
       const edge = direction === "up" ? "first" : "last";
       throw new Error(`${active.name} is already the ${edge} sheet.`);
@@ -300,7 +321,7 @@ export async function moveSheet(direction: SheetMove): Promise<{
 
     active.position = to;
     await syncWrite(context, "Move sheet", structureNote);
-    return { name: active.name, position: to };
+    return { name: active.name, position: visibleRank(items, from, to) };
   });
 }
 

@@ -173,7 +173,7 @@ describe("the tools on a workbook that leaves them nowhere to go", () => {
   // tab it shows. Fix in src/excel/workbook.ts (not a P2 file): moveSheet
   // already loads the sheet list, so it can answer the position among the
   // VISIBLE sheets, which is the strip the modeller is counting.
-  it.skip("counts the tabs a modeller can see", async () => {
+  it("counts the tabs a modeller can see", async () => {
     helpers.sheet("Model").visibility = "Hidden";
     workbook.activeSheetId = helpers.sheet("Data").id;
 
@@ -202,7 +202,9 @@ describe("a sheet name a parser could trip over", () => {
     expect(await tab.showOnlyThisSheet()).toBe(
       "Only Bob's Model is visible now: 1 sheet hidden",
     );
-    expect(await tab.moveThisSheet("end")).toBe("Bob's Model is now sheet 2");
+    // Only Bob's Model is visible at this point (Data is hidden above), so it
+    // is the sole tab a modeller can see, whatever the moment before the move.
+    expect(await tab.moveThisSheet("end")).toBe("Bob's Model is now sheet 1");
     expect(await tab.unhideAllSheets()).toBe("1 sheet shown");
   });
 
