@@ -42,12 +42,33 @@ export function statusLabel(status: LinkStatus): string {
   return STATUS_LABELS[status];
 }
 
+// The table's column count: select, slide, object, status, updated. A folder
+// header spans all five.
+const LINK_TABLE_COLUMNS = 5;
+
 export function renderLinkRows(
   table: HTMLTableSectionElement,
   rows: LinkRowView[],
   onToggle: (key: string, selected: boolean) => void,
 ): void {
-  table.replaceChildren(...rows.map((row) => linkRow(row, onToggle)));
+  const lines: HTMLTableRowElement[] = [];
+  for (const [name, group] of groupByProject(rows, (row) => row.project)) {
+    lines.push(folderHeader(name, group.length));
+    for (const row of group) lines.push(linkRow(row, onToggle));
+  }
+  table.replaceChildren(...lines);
+}
+
+// No checkbox, no data-key: a folder header is not a link row, just the
+// project name and how many of the rows shown belong to it.
+function folderHeader(name: string, count: number): HTMLTableRowElement {
+  const line = document.createElement("tr");
+  line.className = "link-folder";
+  const cell = document.createElement("td");
+  cell.colSpan = LINK_TABLE_COLUMNS;
+  cell.textContent = `${name} · ${count}`;
+  line.append(cell);
+  return line;
 }
 
 function linkRow(
@@ -59,12 +80,26 @@ function linkRow(
   line.append(
     selectCell(row, onToggle),
     textCell("link-slide", String(row.slide)),
-    textCell("link-label", row.label),
-    textCell("link-source", sourceMeta(row.source, row.kind)),
+    labelCell(row),
     statusCell(row.status),
     textCell("link-updated", relativeTime(row.pushedAt)),
   );
   return line;
+}
+
+// The object name plus, on its own line, the workbook it comes from and its
+// kind (sourceMeta - the Inbox uses the same helper): the deck list's only
+// place for the source now that the Source column is gone.
+function labelCell(row: LinkRowView): HTMLTableCellElement {
+  const cell = document.createElement("td");
+  cell.className = "link-label";
+  const meta = sourceMeta(row.source, row.kind);
+  const metaLine = document.createElement("span");
+  metaLine.className = "link-meta";
+  metaLine.textContent = meta;
+  cell.append(document.createTextNode(row.label), metaLine);
+  cell.title = `${row.label} · ${meta}`;
+  return cell;
 }
 
 function selectCell(

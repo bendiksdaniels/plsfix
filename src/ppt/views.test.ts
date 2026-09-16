@@ -7,6 +7,7 @@ import {
   renderLinkRows,
   renderSlideOptions,
   statusLabel,
+  type LinkRowView,
 } from "./views";
 
 function waiting(workbook: string, label = "Model!B4:F12"): InboxItem {
@@ -23,6 +24,25 @@ function waiting(workbook: string, label = "Model!B4:F12"): InboxItem {
     },
     createdAt: new Date().toISOString(),
   };
+}
+
+function linkRow(
+  overrides: Partial<LinkRowView> & { key: string },
+): LinkRowView {
+  return {
+    slide: 1,
+    label: "Model!A1",
+    source: "Model.xlsx",
+    kind: "range",
+    status: "current",
+    pushedAt: null,
+    selected: false,
+    ...overrides,
+  };
+}
+
+function rowKind(tr: Element): "folder" | "row" {
+  return tr.classList.contains("link-folder") ? "folder" : "row";
 }
 
 describe("renderLinkRows", () => {
@@ -46,11 +66,11 @@ describe("renderLinkRows", () => {
       ],
       onToggle,
     );
-    expect(body.querySelectorAll("tr")).toHaveLength(1);
+    expect(body.querySelectorAll("tr[data-key]")).toHaveLength(1);
     expect(body.textContent).toContain("Update available");
-    // The kind rides in the meta column: a table link and a picture of the
-    // same cells carry the same label.
-    expect(body.querySelector(".link-source")!.textContent).toBe(
+    // The kind rides in the meta line under the label: a table link and a
+    // picture of the same cells carry the same text.
+    expect(body.querySelector(".link-meta")!.textContent).toBe(
       "Model_v4.xlsx · range",
     );
     const badge = body.querySelector(".link-status .badge") as HTMLElement;
@@ -58,6 +78,53 @@ describe("renderLinkRows", () => {
     (body.querySelector("input[type=checkbox]") as HTMLInputElement).click();
     expect(onToggle).toHaveBeenCalledWith("s1/sh1", true);
   });
+
+  it("groups rows into one folder header per project, named projects before No project", () => {
+    document.body.innerHTML = "<table><tbody id='rows'></tbody></table>";
+    const body = document.getElementById("rows") as HTMLTableSectionElement;
+    renderLinkRows(
+      body,
+      [
+        linkRow({ key: "a1", project: "Amasty" }),
+        linkRow({ key: "b1", project: "Balcia" }),
+        linkRow({ key: "n1" }),
+        linkRow({ key: "a2", project: "Amasty" }),
+      ],
+      () => undefined,
+    );
+
+    const trs = [...body.querySelectorAll("tr")];
+    expect(trs.map(rowKind)).toEqual([
+      "folder",
+      "row",
+      "row",
+      "folder",
+      "row",
+      "folder",
+      "row",
+    ]);
+    expect(
+      [...body.querySelectorAll(".link-folder td")].map(
+        (cell) => cell.textContent,
+      ),
+    ).toEqual(["Amasty · 2", "Balcia · 1", "No project · 1"]);
+    expect(body.querySelectorAll("tr[data-key]")).toHaveLength(4);
+  });
+
+  it("gives a folder header row no checkbox and no data-key", () => {
+    document.body.innerHTML = "<table><tbody id='rows'></tbody></table>";
+    const body = document.getElementById("rows") as HTMLTableSectionElement;
+    renderLinkRows(
+      body,
+      [linkRow({ key: "a1", project: "Amasty" })],
+      () => undefined,
+    );
+
+    const header = body.querySelector(".link-folder") as HTMLTableRowElement;
+    expect(header.querySelector("input")).toBeNull();
+    expect(header.dataset.key).toBeUndefined();
+  });
+
   it("clears stale rows on re-render", () => {
     document.body.innerHTML = "<table><tbody id='rows'></tbody></table>";
     const body = document.getElementById("rows") as HTMLTableSectionElement;
