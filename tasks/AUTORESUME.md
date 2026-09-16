@@ -44,6 +44,61 @@ PowerPoint process start time, MERP dialog), the E1-E15 bisection and the refuse
 4. Order: 1 (code first, no desktop needed), then 2 (the grant), then 3. Commit per reviewed slice,
    `sh scripts/release.sh patch`, `~/signet-tools-gateway/deploy.sh modelis` -> "SERVER IN SYNC".
 
+## 16.09: "most of the features feel sloppy" - the desktop sweep and its seven slices (v2.8.10 to v2.8.14, more to come)
+
+- Session "resume work on this" (plan `~/.claude-accounts/work/plans/jiggly-tickling-raccoon.md`, approved). Daniel
+  at 12:00: "Ask for computer use because still most of the features feel sloppy"; at 12:30 the computer-use
+  bridge lost its Screen Recording permission mid-run and he could not restart his terminals to re-grant it, so
+  the rest of the pass ran WITHOUT the grant: `screencapture` (the Terminal already has Screen Recording) plus a
+  40-line Swift CGEvent tool for clicks, scrolls and keys (scratchpad `desk/ui.sh` + `click.swift`; recipe in
+  `tasks/lessons.md` 16.09). Excel and PowerPoint 16.107, the demo workbook rebuilt by the demo crate, a scratch
+  copy of the demo deck; PowerPoint never crashed (process start time unchanged through 12 inserts, Update all,
+  Revert, and two pane reloads).
+- Shipped and live, one slice per patch, each a sonnet worktree agent reviewed by Fable, gates green on the rebased
+  branch, `deploy.sh modelis` clean after each:
+  - v2.8.10 excel-tools: the audit overlay marks a typed number in a formula row (`typed`, solid tint) and compares
+    formulas with the nearest formula across, so H19 is no longer striped beside G19; Fill formula right/down
+    carries the source's number format; ribbon Precedents/Dependents select every same-sheet area at once;
+    Autocolor no longer paints growth formulas purple (0 and 1 are identity constants).
+  - v2.8.11 table-header: `TablePayload.h` (first row all bold), `Table.styleSettings.isFirstRowHighlighted`,
+    the `PLSFIX_PAINT` tag so a repaint clears only the fills pls,fix painted (`src/link/paint-map.ts`,
+    `src/ppt/table-style.ts`). On the Mac the band still did not show: see v2.8.15 below.
+  - v2.8.12 excel-polish: Autocolor leaves text labels alone (`text` class); the Links list's second line says
+    "Table · P&L!A10:H24" instead of the internal id, a `<colgroup>` fixes the fat tick column, the Project select
+    sits on its own row; the demo gains a `CAGR` sheet (Daniel: "Create a sheet where I could test the CAGR?").
+  - v2.8.13 table-export: a table is created with `uniformCellProperties.font.size` = the payload's modal size
+    (rows were double height until the first Update all); "12,400" is rewritten to Excel's own separators
+    ("12 400", `localizeNumberText`); an export made with the audit overlay on ships the model's fill, not the
+    tint (`originalFillColor`).
+  - v2.8.14 chart-place: chart labels are single-line (`wordWrap` false, AutoSizeNone) with a wider estimate
+    (`LABEL_PAD` 15, `CHAR_WIDTH` 0.6); a dense column chart drops its value labels and keeps every k-th category
+    label; Free space never shrinks below the caller's floor (a chart `minPlacementScale`, a picture half, a
+    text link its natural size) and the overlap note names the largest free spot; a placeholder's occupied box
+    is cut to the lines its text holds (`text-extent.ts`), so a chart lands below a short list.
+- Diagnosed on the Mac with dev sideloads (the recipe: worktree vite on :3000 with the `/api` proxy pointed at the
+  live relay, the dev manifest copied into the wef folder, the app relaunched, the add-in loaded from Add-ins):
+  - pls,fix Undo after x1000 toasted a raw InvalidArgument: Excel for Mac returns an unfilled cell's fill as
+    `{pattern: null, patternColor: "", color: "#FFFFFF"}` and `setCellProperties` refuses it verbatim (group-by-group
+    diagnostic, only the fill group refused; `{pattern: "None"}` accepted). Slice undo-fill (`settableProperties`
+    in `src/excel/undo.ts`).
+  - The table header band: a table created through `shapes.addTable` has NO style (`<a:tblPr/>` in the saved
+    XML) and every `styleSettings.load` on it is refused with GeneralException until a style is written blind;
+    after `style = MediumStyle2Accent1`, `isFirstRowHighlighted = true`, `areRowsBanded = false` the loads
+    answer, the XML carries `firstRow="1"` + the style id and the band shows. Slice table-style-fix (blind
+    `queueTableStyle`, no read).
+  - CUSTOM FUNCTIONS DEAD ON DESKTOP: every `=PLSFIX.*` returned #VALUE!. The manifest puts them on the shared
+    runtime (`taskpane.html`), which never loaded `functions.js`, so `CustomFunctions.associate` never ran. Proven
+    fix: `<script src="./functions.js">` after office.js (CAGR 0.1, ROUNDSUM 331 in the dev pane). Excel stores a
+    custom-function formula as `_xldudf_PLSFIX_CAGR(...)`; the demo's un-prefixed cells stayed #NAME?. Slice
+    custom-functions (page tag + gate, `cagr.rs` prefixed form, `share.ts` detector).
+- Verified on screen, live v2.8.12/13: Autocolor, overlay, fill right, Precedents (D14+D16), ribbon CAGR (10.0 %),
+  the Header preset (a grey band: the "top row" complaint was the PowerPoint table), projects (Excel select,
+  Move to project, the PowerPoint inbox grouped), all four export kinds, Update all 7/7, Revert, Break link.
+- Open at the time of writing: the three slices above (undo-fill, table-style-fix, custom-functions) to merge,
+  release and deploy; the Mac proof of v2.8.14's labels and free space; the manual docx (still v2.8.003); the
+  memory note; `share.ts` is the only consumer of the old `_xlfn.PLSFIX.` assumption. Daniel's own gates
+  unchanged (Windows, M365 upload, CF rate limit, check workflow).
+
 ## 14.09: v2.8.5 to v2.8.9 - tiers at every level, projects, a stale-payload refusal, strays swept by name
 
 - Written up 16.09 from the commit bodies and the transcript: the 14.09 session shipped five patches and wrote

@@ -390,3 +390,31 @@ old loop hangs every test, the fixed helper passes. Rules:
   commit bodies (`git log --format='%b'`) are the first stop, the transcript under
   `~/.claude/projects/<cwd>/` the fallback; the ledger line is written with the patch, not at the end.
 
+## 2026-09-16: a desktop pass without the computer-use grant, and what the Mac hosts really do
+
+- When the Claude app loses Screen Recording mid-session and the user cannot restart his terminals, the
+  Terminal's own permissions still carry a full rig: `screencapture -x` (downscaled with `sips -Z 1440`
+  for reading), a 40-line Swift tool posting `CGEvent` mouse, scroll and keyboard events at logical points
+  (`scratchpad/desk/click.swift`), `open -a` to bring the app forward (an AppleScript `activate` HANGS
+  while the add-in pane is open), AppleScript for Excel selections and cell reads. `text of range` is ""
+  for an error cell: read `value` or look at the screen. A `type` lands wherever the focus is: click the
+  cell first, the pane steals focus after every button.
+- Excel for Mac returns an unfilled cell's fill from `getCellProperties` as `{pattern: null, patternColor: "",
+  color: "#FFFFFF"}` (plus `@odata.type` annotations) and `setCellProperties` refuses that shape with
+  InvalidArgument at `Range.setCellProperties`; `{pattern: "None"}` alone is accepted. Never write back what a
+  read gave you; rebuild the settable object field by field.
+- A PowerPoint table created through `shapes.addTable` has no table style at all and every
+  `styleSettings.load` on it is refused with GeneralException until a style has been written blind; the
+  flags only take once the style exists. Write `style`, then the flags, never read first.
+- Custom functions declared on a SHARED runtime must be associated by the runtime page: the
+  `<Script><SourceLocation>` under the CustomFunctions extension point is ignored there. A page that does not
+  load `functions.js` gives #VALUE! for every function on every desktop and nobody notices until someone types
+  one. Excel stores such a formula as `_xldudf_PLSFIX_CAGR(...)`; a workbook that carries the un-prefixed text
+  shows #NAME? for ever, add-in or not.
+- Cloudflare's browser TTL rewrites `no-cache` to `max-age=14400` for `.js` (functions.js): a runtime change
+  can take four hours to reach a webview that already has the file. Excel restores the previous pane session
+  after a manifest swap and shows "Add-in Error: this add-in is no longer available": close it, load from
+  Add-ins again.
+- A sonnet agent reads "vitest was N" from the brief and measures a different N on its branch because the
+  base moved: give it the base commit, not a count, and let it measure.
+
