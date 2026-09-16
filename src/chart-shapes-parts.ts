@@ -1,8 +1,8 @@
 // The primitive builders every chart kind shares (box/rect/line/text
-// factories, truncation, the stacked-segment cursor, row ordering) plus pie
-// wedges and the legend; split out of chart-shapes.ts to keep both files
-// under the line cap. Pure: no Office.js, nothing from src/excel or src/ppt.
-// Invariant: every primitive lies inside the box it was given.
+// factories, truncation, the stacked-segment cursor) plus pie wedges and the
+// legend; split out of chart-shapes.ts to keep both files under the line cap
+// (the bar family's own row ordering lives in chart-shapes-bar.ts). Pure: no
+// Office.js. Invariant: every primitive lies inside the box it was given.
 
 import type { BridgeSeries } from "./chartmath";
 import type { Box } from "./layout";
@@ -177,18 +177,6 @@ export function bridgeRange(
     hi: Math.max(from, to),
     below: bridge.fall[i]! > 0 || to < from,
   };
-}
-
-export function rowOrder(
-  series: ChartSeries[],
-  i: number,
-  overlap: boolean,
-): number[] {
-  const indices = series.map((_, j) => j);
-  if (!overlap) return indices;
-  return indices.sort(
-    (a, b) => Math.abs(series[b]!.values[i]!) - Math.abs(series[a]!.values[i]!),
-  );
 }
 
 function clampTo(value: number, low: number, high: number): number {

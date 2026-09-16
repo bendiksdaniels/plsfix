@@ -13,11 +13,11 @@ import {
   legendItems,
   lineBetween,
   packLegendRows,
-  rowOrder,
   segmentLabel,
   stackSegment,
   truncate,
 } from "./chart-shapes-parts";
+import { rowOrder } from "./chart-shapes-bar";
 import { LABEL_PAD, LABEL_SIZE, SWATCH, textWidth } from "./chart-shapes";
 import type { Box } from "./layout";
 import type { ChartData, ChartSeries } from "./link/chart-model";

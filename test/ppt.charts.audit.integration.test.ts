@@ -212,17 +212,48 @@ describe("the host's shape budget at its edge", () => {
     };
   }
 
-  it("draws two hundred shapes on the desktop and refuses two hundred and five", async () => {
-    // The desktop budget is 200: 39 categories over two series is exactly
-    // that, and one category more is five shapes past it.
-    const { placed } = await insert(twoSeries(39));
+  // Five series over eighteen categories with no title: ninety bars, ninety
+  // three-digit value labels (a 90 pt-wide column holds one comfortably),
+  // nine category labels (dense-chart thinning cuts the eighteen-year axis
+  // to every second one at this width) and a five-item legend of ten - two
+  // hundred shapes exactly, the desktop's whole budget.
+  function manySeries(points: number): ChartData {
+    const categories = Array.from({ length: points }, (_, i) =>
+      String(2021 + i),
+    );
+    return {
+      v: 1,
+      kind: "column",
+      title: null,
+      categories,
+      series: [0, 1, 2, 3, 4].map((j) => {
+        const values = categories.map((_, i) => 100 + 10 * i + j);
+        return {
+          name: `S${String(j)}`,
+          values,
+          labels: values.map(String),
+          colors: values.map(() => "#B27E54"),
+        };
+      }),
+      font: "Aptos Narrow",
+      ink: "#282623",
+      titleColor: "#14213D",
+    };
+  }
+
+  it("draws two hundred shapes on the desktop and refuses past it", async () => {
+    // The desktop budget is 200: eighteen categories over five series is
+    // exactly that. One category more adds a full row across five series -
+    // eleven more shapes even with the category axis thinned further - well
+    // past the budget.
+    const { placed } = await insert(manySeries(18));
     expect(placed.note).toBeUndefined();
     expect(shapes()[0]!.group!.shapes).toHaveLength(200);
 
     helpers.selectSlide(presentation.slides[1]!.id);
-    const over = await insert(twoSeries(40));
+    const over = await insert(manySeries(19));
     expect(over.placed.note).toBe(
-      "as a picture: 205 shapes is over this host's budget of 200",
+      "as a picture: 211 shapes is over this host's budget of 200",
     );
     expect(presentation.slides[1]!.shapes[0]!.type).not.toBe("Group");
   });

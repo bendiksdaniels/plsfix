@@ -3,6 +3,7 @@
 // nothing from src/excel or src/ppt; every number is in the caller's points.
 // Invariant: every primitive lies inside the box it was given.
 
+import { barBars } from "./chart-shapes-bar";
 import { bridgeSeries } from "./chartmath";
 import { lineSeries } from "./chart-shapes-line";
 import type { Box, Size } from "./layout";
@@ -18,7 +19,6 @@ import {
   packLegendRows,
   pieWedges,
   rect,
-  rowOrder,
   segmentLabel,
   titleText,
   truncate,
@@ -71,11 +71,14 @@ export const LEGEND_BAND = 16;
 export const CATEGORY_BAND = 18;
 export const BAR_FILL = 0.6;
 export const LABEL_HEIGHT = 18;
-export const LABEL_PAD = 7;
+// Two text-box insets, PowerPoint's own default of 0.1 in (7.2 pt) on each
+// side of a label, rounded up: the estimate below covers the room the box's
+// own margins take, not only the glyphs.
+export const LABEL_PAD = 15;
 export const LINE_WEIGHT = 0.75;
 export const PIE_RADIUS = 0.8;
 export const PIE_LABEL_RADIUS = 1.18;
-export const CHAR_WIDTH = 0.55;
+export const CHAR_WIDTH = 0.6;
 export const SWATCH = 8;
 export const BAR_LABEL_COLUMN = 0.28;
 export const MIN_SEGMENT = 12;
@@ -211,7 +214,7 @@ export function valueY(value: number, scale: ValueScale, plot: Box): number {
   return plot.top + ((scale.max - value) / range) * plot.height;
 }
 
-function valueX(value: number, scale: ValueScale, plot: Box): number {
+export function valueX(value: number, scale: ValueScale, plot: Box): number {
   const range = scale.max - scale.min || 1;
   return plot.left + ((value - scale.min) / range) * plot.width;
 }
@@ -230,9 +233,18 @@ function baselineLine(
   return lineShape(box, data.ink, LINE_WEIGHT, "baseline");
 }
 
+// The widest of a set of labels at LABEL_SIZE: what a category slot needs to
+// hold one without wrapping, since addLabel (chart-draw.ts) turns word wrap
+// off and PowerPoint no longer does that fitting for us.
+function widestWidth(texts: readonly string[]): number {
+  return Math.max(0, ...texts.map((text) => textWidth(text, LABEL_SIZE)));
+}
+
 // Clustered or stacked columns: one slot per category, series side by side or
 // concatenated top to bottom; series outer so a stacked category's segments
-// (same left) sit next to each other in the output.
+// (same left) sit next to each other in the output. A slot too narrow for the
+// widest value label gets no value labels at all: a column asking for what
+// cannot fit is the "1 / 519" wrap this layout no longer produces.
 function columnBars(
   data: ChartData,
   chart: Box,
@@ -242,6 +254,7 @@ function columnBars(
   const stacked = data.kind === "stackedColumn";
   const n = data.categories.length;
   const slot = plot.width / n;
+  const showValues = slot >= widestWidth(data.series.flatMap((s) => s.labels));
   const cursors = data.categories.map(() => ({ pos: 0, neg: 0 }));
   const out: Primitive[] = [];
   data.series.forEach((series, j) => {
@@ -260,48 +273,10 @@ function columnBars(
       const top = valueY(hi, scale, plot);
       const box = boxAt(left, top, barWidth, valueY(lo, scale, plot) - top);
       out.push(rect(box, series.colors[i]!, `bar ${j}.${i}`));
-      out.push(...segmentLabel(data, series, j, i, box, stacked, true, chart));
-    });
-  });
-  return out;
-}
-
-// Bar and tornado rows: one row per category, series stacked vertically
-// within it (or overlapping, longer first, when `overlap` is set).
-function barBars(
-  data: ChartData,
-  chart: Box,
-  plot: Box,
-  scale: ValueScale,
-): Primitive[] {
-  const stacked = data.kind === "stackedBar";
-  const overlap = data.overlap === true && !stacked;
-  const n = data.categories.length;
-  const rowSlot = plot.height / n;
-  const out: Primitive[] = [];
-  data.categories.forEach((_, i) => {
-    const order = rowOrder(data.series, i, overlap);
-    const cursor = { pos: 0, neg: 0 };
-    const barHeight =
-      overlap || stacked
-        ? BAR_FILL * rowSlot
-        : (BAR_FILL * rowSlot) / data.series.length;
-    order.forEach((j, slotIndex) => {
-      const series = data.series[j]!;
-      const value = series.values[i]!;
-      const [lo, hi] = barRange(stacked, cursor, value);
-      // A stacked row is one band, like a stacked column's one slot.
-      const top =
-        overlap || stacked
-          ? plot.top + i * rowSlot + (rowSlot - barHeight) / 2
-          : plot.top +
-            i * rowSlot +
-            (rowSlot - data.series.length * barHeight) / 2 +
-            slotIndex * barHeight;
-      const left = valueX(lo, scale, plot);
-      const box = boxAt(left, top, valueX(hi, scale, plot) - left, barHeight);
-      out.push(rect(box, series.colors[i]!, `bar ${j}.${i}`));
-      out.push(...segmentLabel(data, series, j, i, box, stacked, false, chart));
+      const values = showValues
+        ? segmentLabel(data, series, j, i, box, stacked, true, chart)
+        : [];
+      out.push(...values);
     });
   });
   return out;
@@ -341,8 +316,27 @@ function waterfallBars(
   return out;
 }
 
-// One label per category: centred under its slot (column/waterfall) or
-// right-aligned in the left column (bar/tornado); truncated to fit.
+// 1 when a slot already holds the widest label; otherwise the fewest slots
+// merged together that would, so every k-th category label gets the room the
+// bare slot never had.
+function thinningFactor(slot: number, widest: number): number {
+  return slot >= widest ? 1 : Math.ceil(widest / slot);
+}
+
+// Every k-th index from 0 to n - 1: the first always kept, so an axis always
+// shows where it starts.
+function keptIndices(n: number, k: number): number[] {
+  const out: number[] = [];
+  for (let i = 0; i < n; i += k) out.push(i);
+  return out;
+}
+
+// One label per category kept: centred under its slot (column/waterfall/
+// line) or right-aligned in the left column (bar/tornado). An axis too dense
+// for even its widest name thins to every k-th label instead of truncating
+// all of them down to a bare ellipsis: the k slots (or rows) it would have
+// taken are merged into the one that is drawn, and truncate still runs on
+// that wider room in case it is still not enough.
 function categoryLabels(
   data: ChartData,
   plot: Box,
@@ -350,16 +344,22 @@ function categoryLabels(
   barLike: boolean,
 ): Text[] {
   const n = data.categories.length;
-  return data.categories.map((category, i) => {
-    if (barLike) {
-      const rowSlot = plot.height / n;
-      const content = truncate(category, LABEL_SIZE, band.width);
-      const box = boxAt(band.left, plot.top + i * rowSlot, band.width, rowSlot);
+  if (barLike) {
+    const rowSlot = plot.height / n;
+    const k = thinningFactor(rowSlot, LABEL_HEIGHT);
+    return keptIndices(n, k).map((i) => {
+      const height = Math.min(k * rowSlot, plot.height - i * rowSlot);
+      const box = boxAt(band.left, plot.top + i * rowSlot, band.width, height);
+      const content = truncate(data.categories[i]!, LABEL_SIZE, band.width);
       return label(box, content, data.ink, "r", `category ${i}`);
-    }
-    const slot = plot.width / n;
-    const content = truncate(category, LABEL_SIZE, slot);
-    const box = boxAt(plot.left + i * slot, band.top, slot, band.height);
+    });
+  }
+  const slot = plot.width / n;
+  const k = thinningFactor(slot, widestWidth(data.categories));
+  return keptIndices(n, k).map((i) => {
+    const width = Math.min(k * slot, plot.width - i * slot);
+    const box = boxAt(plot.left + i * slot, band.top, width, band.height);
+    const content = truncate(data.categories[i]!, LABEL_SIZE, width);
     return label(box, content, data.ink, "c", `category ${i}`);
   });
 }

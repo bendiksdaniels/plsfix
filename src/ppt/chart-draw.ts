@@ -141,9 +141,12 @@ function filled(shape: PowerPoint.Shape, color: string): PowerPoint.Shape {
   return shape;
 }
 
-// Four property writes and no more: the font, its size, its colour and the
-// alignment. The layout sized the box for PowerPoint's own insets, so the
-// margins, the wrap and the autosize are left exactly as the host made them.
+// Six property writes: the font, its size, its colour, the alignment, and -
+// since even a box the layout sized for PowerPoint's own insets can still
+// wrap the moment the real font runs a hair wider than the estimate - no word
+// wrap and no autosize, so the host shows exactly the box's one line instead
+// of stacking it ("1 / 519"). The margins are left exactly as the host made
+// them.
 function addLabel(
   shapes: PowerPoint.ShapeCollection,
   text: Text,
@@ -157,6 +160,8 @@ function addLabel(
   range.font.color = text.color;
   range.font.bold = text.bold;
   range.paragraphFormat.horizontalAlignment = ALIGNMENT[text.align];
+  shape.textFrame.wordWrap = false;
+  shape.textFrame.autoSizeSetting = PowerPoint.ShapeAutoSize.autoSizeNone;
   return shape;
 }
 

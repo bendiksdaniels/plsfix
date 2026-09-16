@@ -301,7 +301,7 @@ describe("values a chart can be given that have no scale of their own", () => {
     expect(outside(out, ROOMY)).toEqual([]);
   });
 
-  it("cuts a category name that cannot fit its slot to an ellipsis", () => {
+  it("thins a dense category axis to every k-th label instead of a wall of ellipses", () => {
     const crowded: ChartData = {
       ...base,
       kind: "column",
@@ -312,12 +312,15 @@ describe("values a chart can be given that have no scale of their own", () => {
       ),
       series: [series(Array.from({ length: 20 }, (_unused, i) => 10 + i))],
     };
-    const labels = texts(layoutChart(crowded, TIGHT)).filter((one) =>
-      one.name.startsWith("category "),
-    );
-    expect(labels).toHaveLength(20);
-    // A slot of 10 pt holds nothing but the ellipsis itself.
-    expect(labels.every((one) => one.text === "\u2026")).toBe(true);
+    const out = layoutChart(crowded, TIGHT);
+    const labels = texts(out).filter((one) => one.name.startsWith("category "));
+    // A slot of 10 pt cannot hold even one character of a name this long:
+    // thinning to every k-th label - the first always kept - is the
+    // dense-chart mitigation, not twenty labels of a bare ellipsis each.
+    expect(labels.length).toBeGreaterThan(0);
+    expect(labels.length).toBeLessThan(20);
+    expect(labels.some((one) => one.name === "category 0")).toBe(true);
+    expect(outside(out, TIGHT)).toEqual([]);
   });
 });
 

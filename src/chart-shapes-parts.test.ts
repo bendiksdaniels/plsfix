@@ -173,13 +173,27 @@ describe("a bar chart's value labels", () => {
 });
 
 describe("the kinds the clamp does not touch", () => {
-  it("labels forty nine-digit columns over their own bars, inside the box", () => {
+  it("keeps every nine-digit column bar inside the box and draws no value label so dense a chart cannot hold", () => {
     const out = layoutChart(wide("column"), ROOMY);
     expect(outside(out, ROOMY)).toEqual([]);
-    const bar = out.find((one) => one.name === "bar 0.39")!;
-    const label = labelled(out, "label 0.39");
-    // A column's label is its bar's own width, centred over it: the same
-    // geometry as before, whatever the number in it is.
+    const bar = out.find((one) => one.name === "bar 0.39");
+    expect(bar).toBeDefined();
+    // A 12 pt slot cannot hold a nine-digit value label without wrapping it:
+    // the layout draws none for the whole chart rather than stack every one
+    // of them into a column of digits (dense-chart mitigation, chart-place).
+    expect(texts(out).some((one) => one.name.startsWith("label "))).toBe(false);
+  });
+
+  it("still centres a column's label over its own bar, unclamped, once the slot has room", () => {
+    const roomy: ChartData = {
+      ...base,
+      kind: "column",
+      categories: ["Row 0", "Row 1"],
+      series: [series([100000000, 100000000])],
+    };
+    const out = layoutChart(roomy, ROOMY);
+    const bar = out.find((one) => one.name === "bar 0.0")!;
+    const label = labelled(out, "label 0.0");
     expect(label.box.left).toBeCloseTo(bar.box.left, 5);
     expect(label.box.width).toBeCloseTo(bar.box.width, 5);
     expect(label.align).toBe("c");

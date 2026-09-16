@@ -188,9 +188,11 @@ describe("insert a chart link", () => {
     expect(names).toContain(`${GROUP_NAME}: label 0.5`);
     expect(names).toContain(`${GROUP_NAME}: baseline`);
     expect(names).toContain(`${GROUP_NAME}: category 5`);
-    // A label carries the brand font, its size, its colour and its alignment,
-    // and nothing else: every extra property write costs a round trip's worth
-    // of time on the web.
+    // A label carries the brand font, its size, its colour, its alignment,
+    // and no word wrap or autosize (so the host cannot re-wrap a box the
+    // layout already sized): margins are the only thing left untouched, the
+    // one write that costs a round trip's worth of time on the web for no
+    // visible gain.
     const title = children()[0]!;
     expect(title.font).toEqual({
       name: "Aptos Narrow",
@@ -206,8 +208,8 @@ describe("insert a chart link", () => {
       bottom: null,
     });
     expect([title.autoSize, title.wordWrap, title.fillColor]).toEqual([
-      null,
-      null,
+      "AutoSizeNone",
+      false,
       null,
     ]);
   });
