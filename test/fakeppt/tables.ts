@@ -50,6 +50,13 @@ export interface FakeTableStyleSettings {
   areColumnsBanded: boolean;
 }
 
+// The one property pls,fix ever sets on TableAddOptions.uniformCellProperties:
+// real PowerPoint.TableCellProperties carries far more (fill, borders,
+// alignment...), but the fake only needs to prove this one travels.
+export interface TableUniformCellProperties {
+  font?: { size?: number };
+}
+
 export interface FakeTable {
   /** What addTable was asked for per column, null where it was left to PowerPoint. */
   columnWidths: (number | null)[];
@@ -57,6 +64,10 @@ export interface FakeTable {
   columnCount: number;
   cells: FakeTableCell[][];
   styleSettings: FakeTableStyleSettings;
+  /** What addTable's own uniformCellProperties carried, exactly as given;
+   * null when the add named none - a test's proof that the size PowerPoint
+   * creates every row at came from the call itself, not a coincidence. */
+  uniformCellProperties: TableUniformCellProperties | null;
 }
 
 function defaultStyleSettings(): FakeTableStyleSettings {
@@ -72,16 +83,20 @@ function defaultStyleSettings(): FakeTableStyleSettings {
 }
 
 // A fresh grid: PowerPoint fills the cells addTable was given values for and
-// leaves the rest empty, with every format inherited from the table style.
+// leaves the rest empty, with every format inherited from the table style -
+// except the font size, which uniformCellProperties sets on every cell right
+// away, the same as the real host does.
 export function newFakeTable(
   rowCount: number,
   columnCount: number,
   values: string[][] = [],
+  uniformCellProperties: TableUniformCellProperties | null = null,
 ): FakeTable {
+  const uniformSize = uniformCellProperties?.font?.size ?? null;
   const cells = Array.from({ length: rowCount }, (_row, r) =>
     Array.from({ length: columnCount }, (_column, c): FakeTableCell => ({
       text: values[r]?.[c] ?? "",
-      font: { bold: null, italic: null, color: null, size: null },
+      font: { bold: null, italic: null, color: null, size: uniformSize },
       fill: new FakeTableCellFill(),
       horizontalAlignment: null,
     })),
@@ -92,6 +107,7 @@ export function newFakeTable(
     columnCount,
     cells,
     styleSettings: defaultStyleSettings(),
+    uniformCellProperties,
   };
 }
 

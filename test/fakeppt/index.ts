@@ -20,6 +20,7 @@ export type {
   FakeTableCell,
   FakeTableCellFill,
   FakeTableStyleSettings,
+  TableUniformCellProperties,
 } from "./tables";
 export { FakePresentation } from "./model";
 // The current selection, in order: what getSelectedShapes() hands back.

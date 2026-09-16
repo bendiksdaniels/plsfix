@@ -102,3 +102,36 @@ export function separatorsMatch(
     canonical(thousands) === style.grouping
   );
 }
+
+/** The two separators an application shows numbers with, read not written. */
+export interface NumberSeparators {
+  decimal: string;
+  thousands: string;
+}
+
+// Office.js always hands back a number's text with the invariant comma and
+// point, whatever the application is set to show: optional leading sign or
+// opening parenthesis, digits grouped by comma, an optional point fraction, an
+// optional trailing percent, then a closing parenthesis or the trailing
+// spaces an accounting format pads a positive number with to line up under a
+// parenthesised one. Anything else - a currency symbol, a date - is not this
+// shape and is left alone.
+const PLAIN_NUMBER = /^[-+(]?\d+(?:,\d{3})*(?:\.\d+)?%?[)\s]*$/;
+
+/**
+ * Rewrites a number's invariant-separator text to the separators an
+ * application actually shows, in one pass so a source already carrying the
+ * target characters is never touched twice (tasks/lessons.md, 2026-08-27:
+ * never exact-match state Excel gives back - the same rule applies to
+ * rewriting it). A text that is not a plain formatted number, or an
+ * application already on the invariant separators, comes back unchanged.
+ */
+export function localizeNumberText(
+  text: string,
+  separators: NumberSeparators,
+): string {
+  const { decimal, thousands } = separators;
+  if (decimal === "." && thousands === ",") return text;
+  if (!PLAIN_NUMBER.test(text)) return text;
+  return text.replace(/[,.]/g, (mark) => (mark === "," ? thousands : decimal));
+}

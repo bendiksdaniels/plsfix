@@ -182,6 +182,15 @@ export function applyFillKey(block: Excel.Range, key: string): void {
   fill.patternColor = patternColor ?? BASE_WHITE;
 }
 
+// The colour half of a fill key, the same one format.fill.color would have
+// read before an overlay ever painted: null for "none" (no fill at all), the
+// colour otherwise, pattern and pattern colour dropped since a table cell
+// only ever wants one solid colour.
+export function fillKeyColor(key: string): string | null {
+  if (key === NO_FILL) return null;
+  return key.split("|")[1] ?? null;
+}
+
 export function hostSupports(apiSet: string): boolean {
   const requirements = Office.context?.requirements;
   return requirements ? requirements.isSetSupported("ExcelApi", apiSet) : true;

@@ -1,9 +1,19 @@
 // Unit tests for headerRow, the pure rule behind the `h` payload flag: no
 // Excel host needed, since it only ever looks at the cells already read.
+// renderTable's own separator handling needs the strict fake Excel host, since
+// it reads context.application in the same batch as the cells.
 
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
+import {
+  enableStrictLoadSemantics,
+  installFakeHost,
+  uninstallFakeHost,
+} from "../../test/fakehost";
 import type { TableCell } from "../link/model";
-import { headerRow } from "./link-table";
+import { headerRow, renderTable } from "./link-table";
+
+enableStrictLoadSemantics();
+afterEach(() => uninstallFakeHost());
 
 function cell(t: string, b?: true): TableCell {
   return b === true ? { t, b } : { t };
@@ -53,5 +63,43 @@ describe("headerRow", () => {
       [cell("1 000"), cell("1 200")],
     ];
     expect(headerRow(cells)).toBe(true);
+  });
+});
+
+describe("renderTable: number localisation", () => {
+  it("applies the application's own separators to a numeric cell's text", async () => {
+    const host = installFakeHost({
+      sheets: ["Model"],
+      separators: { decimal: ",", thousands: " " },
+    });
+    host.helpers.seed("Model!B4", [[8.5]]);
+    const render = await Excel.run(async (context) => {
+      const range = context.workbook.worksheets.getItem("Model").getRange("B4");
+      return renderTable(context, range);
+    });
+    expect(render.cells[0]?.[0]?.t).toBe("8,5");
+  });
+
+  it("leaves the text alone when the application already shows the invariant separators", async () => {
+    const host = installFakeHost({ sheets: ["Model"] });
+    host.helpers.seed("Model!B4", [[8.5]]);
+    const render = await Excel.run(async (context) => {
+      const range = context.workbook.worksheets.getItem("Model").getRange("B4");
+      return renderTable(context, range);
+    });
+    expect(render.cells[0]?.[0]?.t).toBe("8.5");
+  });
+
+  it("never localises a cell whose value is text, even if it reads like one", async () => {
+    const host = installFakeHost({
+      sheets: ["Model"],
+      separators: { decimal: ",", thousands: " " },
+    });
+    host.helpers.seed("Model!B4", [["8.5"]]);
+    const render = await Excel.run(async (context) => {
+      const range = context.workbook.worksheets.getItem("Model").getRange("B4");
+      return renderTable(context, range);
+    });
+    expect(render.cells[0]?.[0]?.t).toBe("8.5");
   });
 });

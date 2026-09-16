@@ -139,6 +139,42 @@ describe("insert a table link", () => {
   });
 });
 
+// Rows come out double height on insert, and only shrink once a repaint's own
+// font.size writes land, when the table is created at PowerPoint's default
+// (18 pt) and resized after the fact. Creating it with the payload's own
+// modal size already set avoids that first-paint overflow.
+describe("insert: uniform font size", () => {
+  it("creates the table with the modal cell size, and still writes a cell whose own size differs", async () => {
+    const cells: TableCell[][] = [
+      [
+        { t: "Year", z: 11 },
+        { t: "Revenue", z: 11 },
+      ],
+      [
+        { t: "2024", z: 11 },
+        { t: "1 000", z: 9 },
+      ],
+    ];
+    await insertTable(cells);
+    expect(table().uniformCellProperties).toEqual({ font: { size: 11 } });
+    expect(table().cells[0]![0]!.font.size).toBe(11);
+    expect(table().cells[0]![1]!.font.size).toBe(11);
+    expect(table().cells[1]![0]!.font.size).toBe(11);
+    // The minority cell still gets its own size: it is not left at the
+    // uniform one the table was created with.
+    expect(table().cells[1]![1]!.font.size).toBe(9);
+  });
+
+  it("names no uniform size when the payload carries none", async () => {
+    const cells: TableCell[][] = [
+      [{ t: "Year" }, { t: "Revenue" }],
+      [{ t: "2024" }, { t: "1 000" }],
+    ];
+    await insertTable(cells);
+    expect(table().uniformCellProperties).toBeNull();
+  });
+});
+
 describe("update a table link", () => {
   it("rewrites the cells where the table sits and leaves its geometry alone", async () => {
     const item = await insertTable();

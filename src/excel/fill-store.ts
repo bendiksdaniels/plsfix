@@ -8,7 +8,8 @@
 // remembers. Reading the fills stays with the caller: one overlay snapshots a
 // single selection, the other every anchored range in one batch.
 
-import { applyFillKey, fillKey, writeRuns } from "./internal";
+import { parseRect } from "../link/geometry";
+import { applyFillKey, fillKey, fillKeyColor, writeRuns } from "./internal";
 
 export interface FillSnapshot {
   sheetId: string;
@@ -87,6 +88,26 @@ export function requireNoOverlayOwner(stage: string, except?: FillStore): void {
   if (owner) throw new Error(`${stage}: turn ${owner.label} off first`);
 }
 
+/**
+ * The colour a painted store remembers for one cell, across every overlay:
+ * undefined when neither owns it, which tells the caller its own live read
+ * already is the true fill. Checked before a table export trusts a cell's
+ * live fill, so an overlay's tint - never the model's own formatting - is
+ * never the one that ships. Pure lookup against in-memory state: no sync.
+ */
+export function originalFillColor(
+  sheetId: string,
+  row: number,
+  column: number,
+): string | null | undefined {
+  for (const store of stores) {
+    if (!store.painted) continue;
+    const color = store.originalColorAt(sheetId, row, column);
+    if (color !== undefined) return color;
+  }
+  return undefined;
+}
+
 export class FillStore {
   private readonly snapshots = new Map<string, FillSnapshot>();
 
@@ -121,6 +142,28 @@ export class FillStore {
       address,
       cells,
     });
+  }
+
+  // The colour this store remembers under one cell (1-based row and column,
+  // A1-style): null when it owned the cell but the original there was no
+  // fill, undefined when none of this store's snapshots cover it at all.
+  originalColorAt(
+    sheetId: string,
+    row: number,
+    column: number,
+  ): string | null | undefined {
+    for (const snapshot of this.snapshots.values()) {
+      if (snapshot.sheetId !== sheetId) continue;
+      const rect = parseRect(snapshot.address);
+      if (!rect) continue;
+      const { top, left, bottom, right } = rect;
+      if (row < top || row > bottom || column < left || column > right) {
+        continue;
+      }
+      const key = snapshot.cells[row - top]?.[column - left];
+      return key === undefined ? undefined : fillKeyColor(key);
+    }
+    return undefined;
   }
 
   persist(context: Excel.RequestContext): void {

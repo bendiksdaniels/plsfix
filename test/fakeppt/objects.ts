@@ -22,7 +22,12 @@ import {
 } from "./model";
 import { requireNonNegative, validatedShapeInit } from "./size-guard";
 import { FakeClientResult, Loadable } from "./strict";
-import { applyPendingTableStyle, newFakeTable, TableProxy } from "./tables";
+import {
+  applyPendingTableStyle,
+  newFakeTable,
+  TableProxy,
+  type TableUniformCellProperties,
+} from "./tables";
 
 // The side PowerPoint gives a line whose width or height was left at zero.
 const LINE_DEFAULT_SIDE = 72;
@@ -195,16 +200,22 @@ class ShapeCollectionProxy extends Handle {
     options: BoxOptions & {
       values?: string[][];
       columns?: { columnWidth?: number }[];
+      uniformCellProperties?: TableUniformCellProperties;
     } = {},
   ): ShapeProxy {
     const slide = this.slide();
-    const { values, columns, ...box } = options;
+    const { values, columns, uniformCellProperties, ...box } = options;
     const shape = this.deck.addShape(slide, {
       name: `Table ${String(slide.shapes.length + 1)}`,
       type: "Table",
       ...box,
     });
-    shape.table = newFakeTable(rowCount, columnCount, values);
+    shape.table = newFakeTable(
+      rowCount,
+      columnCount,
+      values,
+      uniformCellProperties ?? null,
+    );
     shape.table.columnWidths = (columns ?? []).map(
       (column) => column.columnWidth ?? null,
     );

@@ -5,6 +5,7 @@
 // the anchor.
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type * as LinkHighlightModule from "../src/excel/link-highlight";
 import type * as LinksModule from "../src/excel/links";
 import { deriveLinkKeys, open } from "../src/link/crypto";
 import {
@@ -65,7 +66,10 @@ beforeEach(async () => {
   ]);
   helpers.setFont("Model!B4", { bold: true });
   helpers.setFont("Model!C5", { italic: true, color: "#FF0000", size: 9 });
-  helpers.setFill("Model!C4", { color: "#EEEEEE" });
+  // Solid, not just a colour: setFill assigns the raw fill fields, and a real
+  // Excel cell can never carry a colour with no pattern (fill.color's own
+  // setter always forces Solid) - fillKey needs the pair to say so.
+  helpers.setFill("Model!C4", { color: "#EEEEEE", pattern: "Solid" });
   helpers.setAlignment("Model!C4", "Right");
   helpers.sheet("Model").columnWidths.set(1, 96);
   helpers.sheet("Model").columnWidths.set(2, 48);
@@ -73,12 +77,19 @@ beforeEach(async () => {
 });
 afterEach(() => uninstallFakeHost());
 
-function token(): string {
-  return JSON.parse(String(helpers.setting(REGISTRY_SETTING))).links[0].token;
+// Looked up by id, not just links[0]: a test that exports more than one link
+// in the same workbook still finds the right token for each.
+function token(id: string): string {
+  const registry = JSON.parse(String(helpers.setting(REGISTRY_SETTING)));
+  const entry = (registry.links as { id: string; token: string }[]).find(
+    (one) => one.id === id,
+  );
+  if (!entry) throw new Error(`${id}: no registry entry`);
+  return entry.token;
 }
 
 async function tableOf(id: string): Promise<TablePayload> {
-  const keys = await deriveLinkKeys(token());
+  const keys = await deriveLinkKeys(token(id));
   const stored = relay.links.get(id)!;
   const payload = decodePayload(await open(keys.enc, id, stored.blob));
   if (payload.kind !== "table") throw new Error(`${id}: not a table`);
@@ -186,6 +197,27 @@ describe("exportSelectionAsTable", () => {
     expect(workbook.names).toEqual([]);
     expect(helpers.setting(REGISTRY_SETTING)).toBeNull();
     expect(relay.links.size).toBe(0);
+  });
+
+  // The audit overlay and the linked-cell highlight both paint pattern fills
+  // over cells and remember the originals in a FillStore; a table export must
+  // read those originals back, never the tint, or a deck picks up pink cells
+  // no model ever had.
+  it("substitutes the true fill for a cell an overlay is tinting", async () => {
+    const highlight: typeof LinkHighlightModule =
+      await import("../src/excel/link-highlight");
+    const baseline = await links.exportSelectionAsTable(ws, relay);
+    const baselineCells = (await tableOf(baseline.id)).cells;
+
+    expect(await highlight.toggleLinkHighlight()).toBe(true);
+    helpers.select("Model!B4:C5");
+    const tinted = await links.exportSelectionAsTable(ws, relay);
+    expect((await tableOf(tinted.id)).cells).toEqual(baselineCells);
+
+    expect(await highlight.toggleLinkHighlight()).toBe(false);
+    helpers.select("Model!B4:C5");
+    const restored = await links.exportSelectionAsTable(ws, relay);
+    expect((await tableOf(restored.id)).cells).toEqual(baselineCells);
   });
 
   it("lists and removes a table link like any other", async () => {

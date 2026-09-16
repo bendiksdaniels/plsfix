@@ -4,6 +4,7 @@ import {
   currencyFormat,
   formatAmount,
   isLanguage,
+  localizeNumberText,
   separatorSample,
   separatorsMatch,
 } from "./numbers";
@@ -53,5 +54,49 @@ describe("separators", () => {
     expect(isLanguage("lv")).toBe(true);
     expect(isLanguage("de")).toBe(false);
     expect(isLanguage(3)).toBe(false);
+  });
+});
+
+describe("localizeNumberText", () => {
+  it("rewrites the invariant thousands comma to the application's separator", () => {
+    expect(localizeNumberText("12,400", { decimal: ".", thousands: " " })).toBe(
+      "12 400",
+    );
+  });
+
+  it("rewrites a parenthesised negative the same way", () => {
+    expect(
+      localizeNumberText("(7,688)", { decimal: ".", thousands: " " }),
+    ).toBe("(7 688)");
+  });
+
+  it("rewrites the invariant decimal point to a comma", () => {
+    expect(localizeNumberText("8.0%", { decimal: ",", thousands: " " })).toBe(
+      "8,0%",
+    );
+  });
+
+  it("swaps both separators in one pass, never a two-step replace", () => {
+    expect(
+      localizeNumberText("1,234.56", { decimal: ",", thousands: "." }),
+    ).toBe("1.234,56");
+  });
+
+  it("leaves a text cell untouched", () => {
+    expect(
+      localizeNumberText("Revenue", { decimal: ",", thousands: " " }),
+    ).toBe("Revenue");
+  });
+
+  it("leaves a currency-prefixed cell untouched", () => {
+    expect(
+      localizeNumberText("EUR 12,400", { decimal: ",", thousands: " " }),
+    ).toBe("EUR 12,400");
+  });
+
+  it("is the identity when the application already shows the invariant separators", () => {
+    expect(
+      localizeNumberText("12,400.5", { decimal: ".", thousands: "," }),
+    ).toBe("12,400.5");
   });
 });
