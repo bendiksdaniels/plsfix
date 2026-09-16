@@ -418,3 +418,13 @@ old loop hangs every test, the fixed helper passes. Rules:
 - A sonnet agent reads "vitest was N" from the brief and measures a different N on its branch because the
   base moved: give it the base commit, not a count, and let it measure.
 
+- A shared runtime with `lifetime="long"` keeps the OLD pane code alive across "close the pane, load it
+  again from Add-ins": a deploy reaches a running desktop only after the app quits. The pane footer's
+  version (or Copy details' `version:` line) says which build is really running.
+- Quitting Excel through the menu with unsaved changes raises a save sheet; a scripted "Don't Save"
+  click that misses SAVES, and the stale workbook lands over a file just rebuilt on disk. Close the
+  workbook with `close active workbook saving no` first, then quit.
+- A repaint only redraws a chart on a new revision: to see a drawing fix on an existing link either push a
+  change to its source or re-insert it; an item whose source chart is gone from the workbook can only be
+  re-inserted from the inbox.
+

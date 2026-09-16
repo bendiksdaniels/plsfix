@@ -433,13 +433,12 @@ workbook and a scratch copy of the demo deck; every row below was seen on screen
       after Update all (process start time unchanged).
 - [x] FAILED, fixed in v2.8.13: a freshly inserted table came double height (rows sized for 18 pt); numbers
       read "12,400" where Excel shows "12 400"; an export made with the overlay on shipped its tint.
-- [ ] Table header band on the Mac: an API-created table has no style and refuses every styleSettings
-      load until a style is written blind; the fix (blind MediumStyle2Accent1 + first row) ships next.
-- [ ] Chart labels wrap ("1 / 519", "Retai / l", digit stacks on the 40-point chart); Free space on a busy
-      slide gives a sliver above the frames (slide 3) or a full-size overlap over text (slide 1): slice
-      chart-place.
-- [ ] pls,fix Undo after x1000 restores the cells but toasts a raw InvalidArgument: the Mac's unfilled
-      cell snapshot (`pattern: null`, `patternColor: ""`) is refused by setCellProperties: slice undo-fill.
-- [ ] Custom functions: every =PLSFIX.* returned #VALUE! because taskpane.html never loaded functions.js
-      on the shared runtime; the demo's stored PLSFIX.CAGR cells show #NAME? (Excel stores
-      `_xldudf_PLSFIX_CAGR`): slice custom-functions.
+- [x] Table header band on the Mac (v2.8.16): the pasted table shows the band, `firstRow="1"` + the
+      style id in the saved XML, rows at the payload's 11 pt, "13 500" separators.
+- [x] v2.8.14 on the Mac: the pie's labels are single-line; a Free-space insert on a full slide answers
+      "Placed over other objects: the largest free spot is 888 x 69 pt" instead of a sliver. Still open:
+      the slide-1 text-extent case (a chart below a short list) and a re-inserted 40-point chart.
+- [x] pls,fix Undo after x1000 (v2.8.15): the sanitised restore; proven in the fake with the Mac's own
+      snapshot shape, not yet re-pressed on the Mac after the deploy.
+- [x] Custom functions (v2.8.17): a typed =PLSFIX.CAGR(100,161.051,5) gives 0.1 on the live pane; the
+      rebuilt demo's CAGR sheet computes all six rows at load (two refused, as designed).

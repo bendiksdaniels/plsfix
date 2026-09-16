@@ -1,48 +1,27 @@
-# AUTORESUME - pls,fix (v2.8.9 tagged 14.09, PUBLIC on GitHub, MIT)
+# AUTORESUME - pls,fix (v2.8.17 tagged 16.09, PUBLIC on GitHub, MIT)
 
-## NEXT SESSION (from 16.09): the table header, the Mac matrix, the docs debt
+## NEXT SESSION (from 16.09 evening): the matrix twice, Windows, the web rig
 
-State at hand-over (16.09 morning, session "resume work on this"): **v2.8.9 LIVE** (main c376efe = origin,
-tag v2.8.9, live `/version` 2.8.9, relay 35 links / 47 revisions / inbox 7), gates green (2718 vitest, cargo
-green), no worktree, no branch, no dev server, both wef folders hold the v2.8.8 prod manifest. The plan of
-the 16.09 session is `~/.claude-accounts/work/plans/jiggly-tickling-raccoon.md` (approved 16.09). Read
-`tasks/lessons.md` 13.09 evening + night and 14.09 first: the desktop recipe (computer-use grant per task,
-deck copy in the scratchpad, focus keeper loop, dev sideload against the live relay, crash detection by the
-PowerPoint process start time, MERP dialog), the E1-E15 bisection and the refused-batch stray sweep.
+State at hand-over: **v2.8.17 LIVE 16.09** (main 176b97d+ = origin, live `/version` 2.8.17, release runs
+green for v2.8.10 to v2.8.17, manual docx v2.8.017, memory `project_plsfix.md` current), gates green
+(2784 vitest, cargo green, ux 0/72, sweep 0/151), no worktree, no branch, no dev server, both wef folders
+hold the prod manifest. Excel and PowerPoint on his Mac are open on `demo/out/pls,fix Demo Model.xlsx` and
+the scratch deck copy (session scratchpad, gone with the session). Read `tasks/lessons.md` 16.09 first.
 
-1. **The table's top row** (Daniel, 14.09: "formatting: it does not highlight the top row"). Reading, to be
-   confirmed on screen: the P&L table exported with its header row lands in PowerPoint without a highlighted
-   header. Facts: an insert writes formats for formatted cells only (`withText=false` in
-   `src/ppt/tables.ts`), so whatever style the API gave the table stays; an in-place repaint (`withText=true`)
-   runs `fill.clear()` on every cell without an Excel fill and wipes the style's header band and body tint; a
-   rebuild does not clear; the pane never sets `Table.styleSettings` (PowerPointApi 1.9). Design (plan): a
-   payload flag `h` from Excel (rows >= 2 and every non-empty cell of row 0 bold, `src/excel/link-table.ts`),
-   `styleSettings.isFirstRowHighlighted = h` on insert, rebuild and repaint (a NoStyle table gets
-   MediumStyle2Accent1), a second tag `PLSFIX_PAINT` (`src/link/paint-map.ts`) recording the cells pls,fix
-   filled so a repaint clears only those that lost their fill, the fake's `styleSettings`, tests, copy.
-2. **Desktop pass on Daniel's Mac** (computer use; the grant is his): `npm run demo` + a fresh copy of
-   `demo/deck/pls,fix Demo Deck.pptx` in the scratchpad. (a) The header: export the P&L range WITH its header,
-   insert, Push a change, Update all, band present both times; also the Excel "Header" preset and the
-   "Row title" cycle on the demo's top row (the other reading of his sentence). (b) The crash matrix, twice
-   each, process start time after each step: charts of every kind the demo has (Bridge Revenue column, EBITDA
-   margin line, Rounding Segment pie, a Waterfall made on the Bridge sheet, a Tornado from Sensitivity) plus a
-   40-point column chart made in Excel by hand (200 shapes is the desktop cap; `tierUp` groups sub-groups
-   again so no addGroup takes more than six and a remainder of one stays ungrouped), the P&L table (and a
-   60 x 20 one), Export as text, Export selection pictures; each via Insert with Free space / a half / a
-   quarter / Whole slide / Selected shape (an empty placeholder), Paste latest linked, then Update all after a
-   pushed revision (change a cell, Push selected), Update this slide, Revert last update, Change source, Break
-   link. Any crash: bisect the way E1-E15 did (dev sideload, one variable per run). `GROUP_TIER_MAC` stays 6.
-   (c) Free space on the deck's slide 3 (v2.8.4 logic, `src/layout.ts` + `src/ppt/placement.ts`): three chart
-   inserts with Free space land in three different free spots, no full-size overlap while a quarter is free
-   (13.09 the second chart landed exactly over the first and a third inside a dashed frame). (d) Projects
-   (v2.8.6/7): pick a project in Excel, export, the PowerPoint "All projects" filter shows it, Update all names
-   the project in its toast. Web (rig) and Windows (Daniel's own pass, `tasks/launch-check.md`) are unchanged.
-3. **Docs debt of v2.8.5-v2.8.9**: the manual docx is stamped v2.8.003 while `manual/src/content/links.rs`
-   already has "Projekti" (`npm run manual` at the final version, commit "Manual regenerated at vX.Y.ZZZ");
-   `docs/FEATURES.md` and `tasks/launch-check.md` have no rows for projects, the tiers or the header; the CLAUDE
-   Map; memory `project_plsfix.md` (still says v2.8.3); this file's 16.09 section; `git push -u --all origin`.
-4. Order: 1 (code first, no desktop needed), then 2 (the grant), then 3. Commit per reviewed slice,
-   `sh scripts/release.sh patch`, `~/signet-tools-gateway/deploy.sh modelis` -> "SERVER IN SYNC".
+1. **Crash matrix, twice per route** (the 14.09 brief, still not run as a matrix): today's 12 inserts, Update
+   all, Revert and two pane reloads never crashed PowerPoint 16.107, but no route was run twice and Update
+   this slide, Change source and Break link on charts were not driven. The recipe needs no computer-use
+   grant: `screencapture` + the Swift CGEvent tool (lessons 16.09); keep the process start time in view.
+2. **Slide 1 text-extent proof**: `text-extent.ts` is fake-proven only; on the Mac slide 1 was full (the Big40
+   group), so the "chart lands below a short list" case still wants a slide with text only.
+3. **Windows and the web rig** are untouched by everything since v2.8.9: `tasks/launch-check.md`
+   (Daniel's own Windows pass) and `scripts/rig/` (the web pass) both need a run before the store listing.
+4. **Follow-ups seen today, not fixed**: the PowerPoint Inbox needed one manual refresh to show fresh
+   exports (pane opened seconds after the pushes); a pie at a quarter-size spot still wraps nothing but
+   is small (cosmetic); the Big40 chart on slide 1 keeps its old stacked labels until re-inserted (a
+   repaint only redraws on a new revision, and its source chart is gone from the rebuilt workbook).
+5. Daniel's gates unchanged: Windows pass, M365 centralized upload (the manifest changed at v2.7.5, not
+   since), Cloudflare rate-limit rule on `/modelis/api/*`, the `check` workflow re-enable.
 
 ## 16.09: "most of the features feel sloppy" - the desktop sweep and its seven slices (v2.8.10 to v2.8.14, more to come)
 
@@ -94,10 +73,12 @@ PowerPoint process start time, MERP dialog), the E1-E15 bisection and the refuse
 - Verified on screen, live v2.8.12/13: Autocolor, overlay, fill right, Precedents (D14+D16), ribbon CAGR (10.0 %),
   the Header preset (a grey band: the "top row" complaint was the PowerPoint table), projects (Excel select,
   Move to project, the PowerPoint inbox grouped), all four export kinds, Update all 7/7, Revert, Break link.
-- Open at the time of writing: the three slices above (undo-fill, table-style-fix, custom-functions) to merge,
-  release and deploy; the Mac proof of v2.8.14's labels and free space; the manual docx (still v2.8.003); the
-  memory note; `share.ts` is the only consumer of the old `_xlfn.PLSFIX.` assumption. Daniel's own gates
-  unchanged (Windows, M365 upload, CF rate limit, check workflow).
+- Closed the same evening: v2.8.15 undo-fill, v2.8.16 table-style-fix (blind style write; proven on the
+  Mac: the pasted table carries `firstRow="1"` + the style id, band visible, rows at 11 pt, "13 500"), v2.8.17
+  custom-functions (proven: a typed `=PLSFIX.CAGR(100,161.051,5)` gives 0.1 on the live pane; the rebuilt demo's
+  column I computes 10.0 % / -5.6 % / 0.0 % / 17.1 % / refused / refused at load); v2.8.14 proven on the Mac:
+  single-line pie labels, the overlap note "the largest free spot is 888 x 69 pt" on a full slide. Manual
+  regenerated at v2.8.017, memory note current. Seven sonnet slices, 2.6M agent tokens, every one reviewed.
 
 ## 14.09: v2.8.5 to v2.8.9 - tiers at every level, projects, a stale-payload refusal, strays swept by name
 
