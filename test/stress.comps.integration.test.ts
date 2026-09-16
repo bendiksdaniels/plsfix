@@ -11,7 +11,6 @@ import {
   caught,
   expectSentence,
   PAST_CAP,
-  planned,
   REPORT_CONTEXT,
   type Rig,
   seedComps,
@@ -300,11 +299,9 @@ describe("Comps stats: found here, fixed elsewhere", () => {
     expect(rig.smt.undoTarget()).toBe(slot);
   });
 
-  it.skip("writes its block over hidden rows the same as visible ones", async () => {
-    // Throws today on the missing helper. Needs test/fakehost.ts (another
-    // slice): rowHidden/columnHidden on FakeSheet plus helpers.hideRows.
+  it("writes its block over hidden rows the same as visible ones", async () => {
     seedComps(rig);
-    planned(rig.helpers).hideRows("Model!3:3");
+    rig.helpers.hideRows("Model!3:3");
 
     expect(await run()).toBe("Comps stats written: 1 column over 3 rows");
     // The span covers the hidden row: Excel's own MIN counts it, so the block
@@ -313,11 +310,9 @@ describe("Comps stats: found here, fixed elsewhere", () => {
     expect(rig.helpers.value("Model!A6")).toBe("Min");
   });
 
-  it.skip("writes its block under a filtered range", async () => {
-    // Throws today on the missing helper. Needs test/fakehost.ts (another
-    // slice): worksheet.autoFilter with an applied range.
+  it("writes its block under a filtered range", async () => {
     seedComps(rig);
-    planned(rig.helpers).applyFilter("Model!A1:C4", "Model!3:3");
+    rig.helpers.applyFilter("Model!A1:C4", "Model!3:3");
 
     expect(await run()).toBe("Comps stats written: 1 column over 3 rows");
     // Under the table's last row, not under the last visible one.
