@@ -151,10 +151,10 @@ survive row/column moves (Macabacus mechanism).
 | Spot placement (halves, quarters, whole slide, selected shape) | - | Choose where on the slide the object lands, fitted and centred | shipped v2.8 | P1 (M3) |
 | Change source / versioning (Model_v4 detection) | both | Repoint links, newest-file prompts | shipped v2.1 | P2 (M3) |
 | Export text (cell -> text box) | both | Live text links | shipped v2.5 (one cell, whole-box; runs inside a sentence deferred) | P2 (M3) |
-| Native PPT table export | US | Editable table, format survives refresh | Partial (PPT table API at 1.8; format drift risk) | P3 |
+| Native PPT table export | US | Editable table, format survives refresh | shipped v2.3.0 (table links: `addTable` on PowerPointApi 1.8, per-cell formats, the header band and the paint tag since v2.8.11) | P3 |
 | Preserve cell visibility / image width options | US | Advanced export toggles | Backend | P3 |
 | Data Pack (deck's sources -> one workbook) | US | Collect linked content | Backend | P3 |
-| Highlight linked cells in Excel | US | Show what is linked out | Yes (once registry exists) | P2 (M3) |
+| Highlight linked cells in Excel | US | Show what is linked out | shipped v2.1.16 (the Links tab tick box, `src/excel/link-highlight.ts`) | P2 (M3) |
 
 ## 9. PowerPoint companion (Milestones 2-4, separate manifest)
 
@@ -253,12 +253,13 @@ Milestone 2 (linking PoC) — done at v2.0, one line only half done:
 Milestone 3 (link manager) — mostly done at v2.0, three lines still open:
 
 - "- [ ] List and filter all links in a presentation" — listing shipped v2.0 (by slide, source,
-  status); filtering was not built.
+  status); the filters shipped v2.5.0 (status), v2.5.3 (source workbook, slide) and v2.8.6 (project),
+  and v2.8.19 folds the list into folders per project.
 - "- [ ] Update selected, slide, or all links" — shipped v2.0
 - "- [ ] Preserve position and size during refresh" — shipped v2.0
 - "- [ ] Change source and resolve workbook versions" — shipped v2.1 (PowerPoint "Change
   source": re-point a tracked picture at another export from the Inbox, slide/position/size kept)
-- "- [ ] Highlight linked cells in Excel" — still open
+- "- [ ] Highlight linked cells in Excel" — shipped v2.1.16 (the Links tab tick box)
 - "- [ ] Performance and failure-isolation testing" — still open (blocked on Daniel's real-Office
   pass, `tasks/AUTORESUME.md` open gate 1)
 
