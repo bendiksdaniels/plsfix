@@ -281,7 +281,7 @@ describe("Comps stats pressed twice", () => {
 });
 
 describe("Comps stats: found here, fixed elsewhere", () => {
-  it.skip("spends no Undo slot when the host refuses the write itself", async () => {
+  it("spends no Undo slot when the host refuses the write itself", async () => {
     // Fails today at the last line with "Model!A6:C11": the write comes back
     // InvalidOperation, but captureUndo has already pushed the block onto the
     // five-deep stack, dropping the modeller's oldest entry - and that new

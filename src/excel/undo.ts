@@ -1,7 +1,9 @@
 // pls,fix Undo: a five-deep stack, newest first, capturing what a mutating
 // action is about to overwrite so it can be restored on demand. Office.js
 // writes never reach Excel's own undo stack, so this is the pane's only
-// safety net for its last few actions.
+// safety net for its last few actions. A capture is pending until the write
+// it belongs to lands: syncWrite/paintSync commit it on success and discard
+// it on refusal, so a write the host refuses never spends a real slot.
 
 import { SELECTION_CELL_CAP } from "./internal";
 import { syncWrite } from "./protection";
@@ -29,6 +31,10 @@ export const UNDO_CELL_BUDGET = 25_000;
 
 // Newest first: index 0 is what "Undo" acts on next.
 let undoStack: UndoEntry[] = [];
+// The entry (if any) whose write has not yet settled - set by captureUndoAreas,
+// cleared by commitUndo or discardUndo. Never more than one at a time: a new
+// capture discards whatever was still pending before pushing its own.
+let pendingUndo: UndoEntry | null = null;
 
 // The full settable surface, so a restore is not partial: fills, fonts,
 // borders, alignment, wrapping and indent all come back (row height cannot).
@@ -174,6 +180,10 @@ export async function captureUndoAreas(
   context: Excel.RequestContext,
   ranges: Excel.Range[],
 ): Promise<void> {
+  // A capture with no sync after it (its flow threw first) stays pending
+  // forever unless the next capture clears it.
+  discardUndo();
+
   for (const range of ranges) range.load("address,rowCount,columnCount");
   await context.sync();
 
@@ -191,7 +201,7 @@ export async function captureUndoAreas(
   }
   undoSkipped = false;
 
-  const pending = ranges.map((range) => {
+  const captured = ranges.map((range) => {
     const properties = requestFormats(range);
     const sheet = range.worksheet;
     sheet.load("id");
@@ -201,8 +211,8 @@ export async function captureUndoAreas(
   await context.sync();
 
   const entry: UndoEntry = {
-    label: pending.map(({ range }) => range.address).join(", "),
-    blocks: pending.map(({ range, sheet, properties }) => ({
+    label: captured.map(({ range }) => range.address).join(", "),
+    blocks: captured.map(({ range, sheet, properties }) => ({
       sheetId: sheet.id,
       address: parseAddress(range.address).address,
       formulas: range.formulas as (string | number | boolean)[][],
@@ -215,6 +225,25 @@ export async function captureUndoAreas(
     maxDepth: UNDO_DEPTH,
     maxCells: UNDO_CELL_BUDGET,
   });
+  pendingUndo = entry;
+}
+
+/** The pending capture's write landed: it stays on the stack for good. */
+export function commitUndo(): void {
+  pendingUndo = null;
+}
+
+/**
+ * The pending capture's write never landed, so it must not be offered as a
+ * restore: dropped from the stack while it is still the top entry (an
+ * already-committed entry underneath, or one from an unrelated flow, is never
+ * touched) either way.
+ */
+export function discardUndo(): void {
+  if (pendingUndo && undoStack[0] === pendingUndo) {
+    undoStack = undoStack.slice(1);
+  }
+  pendingUndo = null;
 }
 
 export function undoTarget(): string | null {
@@ -233,6 +262,9 @@ export function lastUndoSkipped(): boolean {
 }
 
 export async function undoLastAction(): Promise<string> {
+  // A capture still pending belongs to a flow that never resolved: it must
+  // never be offered as a restore.
+  discardUndo();
   const top = undoStack[0];
   if (!top) throw new Error("There is no pls,fix action to undo yet.");
 

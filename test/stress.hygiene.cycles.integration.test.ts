@@ -335,12 +335,11 @@ describe("pressed twice", () => {
     expect(helpers.cell("Model!C1").indentLevel).toBe(2);
   });
 
-  // REPORTED (P2): the capture runs before the write, so a write the host
-  // refuses still pushes an entry - and the ring is five deep, so the refusal
-  // evicts a real one. Fix in src/excel/undo.ts (not a P2 file): a
-  // dropLastUndo() the writing flows call when syncWrite throws, or a handle
-  // captureUndoAreas hands back that rolls the entry off again.
-  it.skip("spends no undo slot on a write the sheet refused", async () => {
+  // The capture runs before the write, so a write the host refuses must not
+  // spend a real slot - the ring is five deep, and the refusal would evict one
+  // that landed. src/excel/undo.ts holds the entry pending until syncWrite
+  // commits or discards it.
+  it("spends no undo slot on a write the sheet refused", async () => {
     helpers.seed("Model!A1", [["a"], ["b"], ["c"], ["d"], ["e"], ["f"]]);
     for (const row of [1, 2, 3, 4, 5]) {
       helpers.select(`Model!A${String(row)}`);

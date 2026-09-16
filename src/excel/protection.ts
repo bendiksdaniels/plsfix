@@ -11,6 +11,7 @@
 // own stage and a way out in the message.
 
 import { hostSupports } from "./internal";
+import { commitUndo, discardUndo } from "./undo";
 
 const PROTECTION_API_SET = "1.2";
 const WORKBOOK_PROTECTION_API_SET = "1.7";
@@ -65,6 +66,8 @@ export async function structureProtected(
  * protected, or that the selection cuts a merged cell. Everything else travels
  * untouched. A flow writing the sheet list rather than cells passes
  * `structureNote` as `refused`, so AccessDenied is worded for what it wrote.
+ * Settles the pending pls,fix Undo entry either way: committed once the write
+ * lands, discarded before every throw so a refused write never spends a slot.
  */
 export async function syncWrite(
   context: Excel.RequestContext,
@@ -73,7 +76,9 @@ export async function syncWrite(
 ): Promise<void> {
   try {
     await context.sync();
+    commitUndo();
   } catch (error) {
+    discardUndo();
     const { code } = error as { code?: string };
     if (code === Excel.ErrorCodes.accessDenied) {
       throw new Error(refused(stage));
@@ -90,6 +95,7 @@ export async function syncWrite(
 /**
  * Runs a paint batch. A protected sheet or a locked cell comes back as the
  * note rather than as a rejection; every other failure travels untouched.
+ * Settles the pending pls,fix Undo entry either way, the same as syncWrite.
  */
 export async function paintSync(
   context: Excel.RequestContext,
@@ -98,8 +104,10 @@ export async function paintSync(
 ): Promise<string> {
   try {
     await context.sync();
+    commitUndo();
     return done;
   } catch (error) {
+    discardUndo();
     if ((error as { code?: string }).code === Excel.ErrorCodes.accessDenied) {
       return protectedNote(stage);
     }
