@@ -5,7 +5,7 @@
 
 import { cappedAreas, selectedAreas } from "./areas";
 import { numberFormat, overCap } from "./internal";
-import { syncWrite } from "./protection";
+import { protectedNote, syncWrite } from "./protection";
 import {
   type NumberFormatName,
   type PresetName,
@@ -111,7 +111,7 @@ export async function applyPreset(name: PresetName): Promise<void> {
     const areas = await selectedAreas(context, "Formatting");
     await captureUndoAreas(context, areas);
     for (const area of areas) paintPreset(area, name);
-    await syncWrite(context, "Formatting");
+    await syncWrite(context, "Formatting", protectedNote, areas.length);
   });
 }
 
@@ -120,7 +120,7 @@ export async function clearFormats(): Promise<void> {
     const areas = await selectedAreas(context, "Clearing formats");
     await captureUndoAreas(context, areas);
     for (const area of areas) area.clear(Excel.ClearApplyTo.formats);
-    await syncWrite(context, "Clearing formats");
+    await syncWrite(context, "Clearing formats", protectedNote, areas.length);
   });
 }
 
@@ -139,6 +139,6 @@ export async function applyNumberFormat(name: NumberFormatName): Promise<void> {
         format,
       );
     }
-    await syncWrite(context, "Number formatting");
+    await syncWrite(context, "Number formatting", protectedNote, areas.length);
   });
 }

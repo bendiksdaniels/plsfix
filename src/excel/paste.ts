@@ -6,7 +6,7 @@
 
 import { cappedAreas, selectedAreas } from "./areas";
 import { overCap, SELECTION_CELL_CAP, withinCap } from "./internal";
-import { syncWrite } from "./protection";
+import { protectedNote, syncWrite } from "./protection";
 import { parseAddress } from "./shared";
 import { captureUndoAreas } from "./undo";
 import { type CellBlock, duplicateFormulas } from "../formula-duplicate";
@@ -112,7 +112,7 @@ export async function pasteSpecial(mode: PasteMode): Promise<void> {
     for (const target of targets) {
       target.copyFrom(from, pasteCopyType(mode), false, transposed);
     }
-    await syncWrite(context, PASTE);
+    await syncWrite(context, PASTE, protectedNote, targets.length);
   });
 }
 
@@ -138,7 +138,7 @@ export async function pastePreserveFormulas(): Promise<void> {
 
     for (const destination of destinations)
       destination.formulas = from.formulas;
-    await syncWrite(context, PASTE);
+    await syncWrite(context, PASTE, protectedNote, destinations.length);
   });
 }
 
@@ -245,7 +245,7 @@ export async function pasteDuplicateFormulas(): Promise<void> {
       moves.map((move) => move.destination),
     );
     writeDuplicates(block, moves, from.formulas as CellValue[][]);
-    await syncWrite(context, PASTE);
+    await syncWrite(context, PASTE, protectedNote, moves.length);
   });
 }
 
@@ -313,7 +313,7 @@ export async function pasteNumberFormats(): Promise<void> {
       if (!plan) return;
       destination.numberFormat = tileGrid(formats, plan.rows, plan.columns);
     });
-    await syncWrite(context, PASTE);
+    await syncWrite(context, PASTE, protectedNote, destinations.length);
   });
 }
 
@@ -369,7 +369,7 @@ export async function pasteRowHeights(): Promise<string> {
       }
       written += 1;
     });
-    await syncWrite(context, PASTE);
+    await syncWrite(context, PASTE, protectedNote, targets.length);
     return rowHeightReport(written, skipped);
   });
 }

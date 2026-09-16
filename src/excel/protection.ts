@@ -31,9 +31,16 @@ export async function sheetProtected(
   return sheet.protection.protected;
 }
 
-/** The line the pane shows instead of an error when a paint was refused. */
-export function protectedNote(stage: string): string {
-  return `${stage}: this sheet is protected, nothing was changed`;
+/**
+ * The line the pane shows instead of an error when a paint was refused. A
+ * batch of more than one area (a ctrl-clicked selection) may have already
+ * landed some of them before the host refused another, so it is worded as
+ * partly protected rather than promising an untouched sheet.
+ */
+export function protectedNote(stage: string, areas = 1): string {
+  return areas > 1
+    ? `${stage}: this sheet is partly protected, the locked cells were skipped and the others were changed`
+    : `${stage}: this sheet is protected, nothing was changed`;
 }
 
 /**
@@ -66,13 +73,17 @@ export async function structureProtected(
  * protected, or that the selection cuts a merged cell. Everything else travels
  * untouched. A flow writing the sheet list rather than cells passes
  * `structureNote` as `refused`, so AccessDenied is worded for what it wrote.
+ * `areas` is the number of ranges the batch wrote in one go (a ctrl-clicked
+ * selection): callers writing more than one pass their count on, so a locked
+ * area among unlocked ones is worded as partly protected, not untouched.
  * Settles the pending pls,fix Undo entry either way: committed once the write
  * lands, discarded before every throw so a refused write never spends a slot.
  */
 export async function syncWrite(
   context: Excel.RequestContext,
   stage: string,
-  refused: (stage: string) => string = protectedNote,
+  refused: (stage: string, areas?: number) => string = protectedNote,
+  areas = 1,
 ): Promise<void> {
   try {
     await context.sync();
@@ -81,7 +92,7 @@ export async function syncWrite(
     discardUndo();
     const { code } = error as { code?: string };
     if (code === Excel.ErrorCodes.accessDenied) {
-      throw new Error(refused(stage));
+      throw new Error(refused(stage, areas));
     }
     if (code === Excel.ErrorCodes.invalidOperation) {
       throw new Error(

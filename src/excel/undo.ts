@@ -6,7 +6,7 @@
 // it on refusal, so a write the host refuses never spends a real slot.
 
 import { SELECTION_CELL_CAP } from "./internal";
-import { syncWrite } from "./protection";
+import { protectedNote, syncWrite } from "./protection";
 import { parseAddress } from "./shared";
 import { pushCapped } from "./undo-stack";
 
@@ -180,8 +180,7 @@ export async function captureUndoAreas(
   context: Excel.RequestContext,
   ranges: Excel.Range[],
 ): Promise<void> {
-  // A capture with no sync after it (its flow threw first) stays pending
-  // forever unless the next capture clears it.
+  // A stale pending entry (its flow never reached a sync) is cleared first.
   discardUndo();
 
   for (const range of ranges) range.load("address,rowCount,columnCount");
@@ -292,8 +291,10 @@ export async function undoLastAction(): Promise<string> {
       );
     });
     // A sheet protected since the action ran refuses the restore: it comes
-    // back named, the way every other write into a locked sheet does.
-    await syncWrite(context, "Undo");
+    // back named, the way every other write into a locked sheet does. A
+    // multi-block entry (a ctrl-clicked capture) may restore some blocks and
+    // be refused on another, so its own area count travels too.
+    await syncWrite(context, "Undo", protectedNote, top.blocks.length);
 
     // Only a restore that landed consumes the entry; a failed one stays
     // retryable (this line is unreached when the write above throws).

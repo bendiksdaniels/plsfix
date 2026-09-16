@@ -13,7 +13,7 @@ import {
   SHEET_ROWS,
   withinCap,
 } from "./internal";
-import { syncWrite } from "./protection";
+import { protectedNote, syncWrite } from "./protection";
 import { parseAddress } from "./shared";
 import { captureUndo, captureUndoAreas } from "./undo";
 import { seriesSpan } from "../chartmath";
@@ -56,7 +56,7 @@ async function editAreas(
       if (property === "formulas") area.formulas = next;
       else area.numberFormat = next;
     }
-    await syncWrite(context, what);
+    await syncWrite(context, what, protectedNote, areas.length);
   });
 }
 

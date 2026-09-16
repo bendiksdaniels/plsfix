@@ -245,13 +245,11 @@ describe("a host that says no", () => {
     expect(helpers.cell("Model!A2").indentLevel).toBe(0);
   });
 
-  // REPORTED (P2): a ctrl-clicked selection on a partly unlocked sheet is
-  // several write statements in one batch. The unlocked areas land, the locked
-  // one is refused, and the pane still says "nothing was changed". Fix in
-  // src/excel/protection.ts (not a P2 file): protectedNote must not promise an
-  // untouched sheet when the batch held more than one range, or syncWrite must
-  // hand the caller the areas it wrote.
-  it.skip("does not promise an untouched sheet when it painted one area", async () => {
+  // A ctrl-clicked selection on a partly unlocked sheet is several write
+  // statements in one batch: the unlocked areas land, the locked one is
+  // refused. protectedNote now words a batch of more than one area as partly
+  // protected instead of promising an untouched sheet.
+  it("does not promise an untouched sheet when it painted one area", async () => {
     helpers.seed("Model!A1", [["Revenue"]]);
     helpers.seed("Model!C1", [["Cost"]]);
     helpers.selectAreas(["Model!A1", "Model!C1"]);
