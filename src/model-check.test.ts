@@ -64,6 +64,15 @@ describe("volatileIn", () => {
   it("looks through the prefix Excel writes on an unresolved function", () => {
     expect(volatileIn("=_xlfn.INDIRECT(A1)")).toBe("INDIRECT");
   });
+
+  // Excel stores a custom function's own formula under a second prefix,
+  // _xldudf_<namespace>_ (underscores, no dot), once the workbook is saved.
+  // That prefix is cut off the same way, so a custom function is judged by
+  // its own name rather than by the opaque prefixed token.
+  it("looks through the prefix Excel writes on a saved custom function", () => {
+    expect(volatileIn("=_xldudf_NOW(A1)")).toBe("NOW");
+    expect(volatileIn("=_xldudf_PLSFIX_CAGR(B11,G11,5)")).toBeNull();
+  });
 });
 
 describe("hardcodeIn", () => {

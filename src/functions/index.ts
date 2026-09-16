@@ -121,8 +121,22 @@ export function smtCagr(first: number, last: number, periods: number): number {
   return rate;
 }
 
+// The UX gates (ux:check, ux:sweep) load this bundle in a headless browser
+// with no Office host at all, where the global CustomFunctions runtime below
+// was never defined; referencing it directly would throw before the gate got
+// to check anything. typeof is the one safe way to ask for a global that may
+// not exist.
+function associate(
+  id: string,
+  implementation: typeof smtRound | typeof smtRoundSum | typeof smtCagr,
+): void {
+  if (typeof CustomFunctions !== "undefined") {
+    CustomFunctions.associate(id, implementation);
+  }
+}
+
 // The ids match src/functions/metadata.ts; the manifest's <Namespace> makes
 // them PLSFIX.ROUND, PLSFIX.ROUNDSUM and PLSFIX.CAGR in the grid.
-CustomFunctions.associate("ROUND", smtRound);
-CustomFunctions.associate("ROUNDSUM", smtRoundSum);
-CustomFunctions.associate("CAGR", smtCagr);
+associate("ROUND", smtRound);
+associate("ROUNDSUM", smtRoundSum);
+associate("CAGR", smtCagr);

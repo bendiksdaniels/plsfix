@@ -63,14 +63,17 @@ export function isExternalFormula(formula: CellValue): formula is string {
   return classifyCell(formula, null) === "external" && formula.includes("]");
 }
 
-// =PLSFIX.ROUND and =PLSFIX.ROUNDSUM are this add-in's own functions. Opened without
-// it, Excel keeps them as _xlfn.PLSFIX.ROUND and every one of those cells reads
-// #NAME?, so a model full of them is only a model on a machine that has the
-// add-in. The namespace is matched either way round: the stored formula carries
-// the _xlfn. prefix once the workbook has been opened somewhere without us.
+// =PLSFIX.ROUND, =PLSFIX.ROUNDSUM and =PLSFIX.CAGR are this add-in's own
+// functions, shown that way in the formula bar while the add-in is loaded.
+// Excel stores them differently: once the workbook is saved the cell holds
+// _xldudf_PLSFIX_<NAME>(...), and opened without the add-in that stored form
+// is what the formula reads while the cell shows #NAME?. Both forms are
+// matched, so a model full of them is flagged whether the add-in happens to
+// be loaded right now or not.
 export function isAddinFormula(formula: CellValue): formula is string {
   if (!isFormula(formula)) return false;
-  return formula.toUpperCase().includes("PLSFIX.");
+  const upper = formula.toUpperCase();
+  return upper.includes("PLSFIX.") || upper.includes("_XLDUDF_PLSFIX_");
 }
 
 function isVisible(sheet: ShareSheet): boolean {

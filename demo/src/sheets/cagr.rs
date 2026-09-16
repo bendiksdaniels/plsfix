@@ -107,7 +107,12 @@ fn write_series_row(pen: &mut Pen, styles: &Styles, row: u32, label: &str, value
     }
     let first = cell(row, FIRST_YEAR_COL);
     let last = cell(row, LAST_YEAR_COL);
-    pen.formula(row, FUNCTION_COL, &format!("=PLSFIX.CAGR({first},{last},{PERIODS})"), &styles.pct)?;
+    // Excel stores a custom function's formula under its own prefix,
+    // _xldudf_<namespace>_<name>(...), once the workbook is saved (proven on
+    // Excel for Mac 16.107). A plain "PLSFIX.CAGR(...)" written here instead
+    // is never resolved and the cell shows #NAME? the moment the file opens,
+    // so this writes the exact form Excel itself would have written.
+    pen.formula(row, FUNCTION_COL, &format!("=_xldudf_PLSFIX_CAGR({first},{last},{PERIODS})"), &styles.pct)?;
     pen.formula(row, HAND_COL, &format!("=IFERROR(({last}/{first})^(1/{PERIODS})-1,\"n/a\")"), &styles.pct)?;
     Ok(())
 }

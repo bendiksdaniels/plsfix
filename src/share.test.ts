@@ -193,10 +193,13 @@ describe("shareReport", () => {
 });
 
 describe("isAddinFormula", () => {
-  it("catches this add-in's own functions, prefixed or not", () => {
+  it("catches this add-in's own functions, friendly or stored", () => {
     expect(isAddinFormula("=PLSFIX.ROUND(B4,0)")).toBe(true);
-    expect(isAddinFormula("=_xlfn.PLSFIX.ROUNDSUM(B4:B9,0)")).toBe(true);
     expect(isAddinFormula("=SUM(A1)+PLSFIX.ROUND(B4,0)")).toBe(true);
+    // The form Excel stores once the workbook is saved: opened without the
+    // add-in, this is what the formula reads and the cell shows #NAME?.
+    expect(isAddinFormula("=_xldudf_PLSFIX_ROUNDSUM(B4,B9,0)")).toBe(true);
+    expect(isAddinFormula("=_XLDUDF_PLSFIX_CAGR(B11,G11,5)")).toBe(true);
   });
 
   it("leaves an ordinary formula and a plain value alone", () => {

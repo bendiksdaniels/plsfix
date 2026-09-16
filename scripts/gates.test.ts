@@ -166,3 +166,32 @@ describe("the dev server serves what the manifest points at", () => {
     }
   });
 });
+
+// The manifest declares the custom functions on the shared runtime, so Excel
+// loads taskpane.html as the custom-functions runtime and never reads the
+// <Script><SourceLocation> the CustomFunctions extension point names; the
+// associate() calls in functions.js only ever run if the pane page itself
+// loads that script. Proven on Excel for Mac 16.107: without this tag every
+// =PLSFIX.* formula returns #VALUE! because nothing ever associated them.
+describe("the panes load the custom-functions bundle", () => {
+  const read = (file: string) =>
+    readFileSync(new URL(`../${file}`, import.meta.url), "utf8");
+
+  it("taskpane.html loads functions.js right after office.js, before the pane bundle", () => {
+    const html = read("taskpane.html");
+    const officeAt = html.indexOf(
+      'src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"',
+    );
+    const functionsAt = html.indexOf('<script src="./functions.js">');
+    const paneAt = html.indexOf('<script type="module" src="/src/main.ts">');
+    expect(officeAt).toBeGreaterThan(-1);
+    expect(functionsAt).toBeGreaterThan(officeAt);
+    expect(paneAt).toBeGreaterThan(functionsAt);
+  });
+
+  // PowerPoint has no custom-functions runtime: pptpane.html must never carry
+  // a script tag that only makes sense on the Excel pane.
+  it("pptpane.html never loads functions.js", () => {
+    expect(read("pptpane.html")).not.toContain("functions.js");
+  });
+});

@@ -98,4 +98,16 @@ describe("the custom-functions bundle", () => {
     ]);
     expect(module.smtCagr(100, 200, 4)).toBeCloseTo(0.189207, 6);
   });
+
+  // The UX gates (ux:check, ux:sweep) load taskpane.html, and with it this
+  // bundle, in a headless browser with no Office host at all: the global
+  // CustomFunctions runtime is never defined there. Importing the module must
+  // not throw just because nothing is there to associate against.
+  it("does not throw when CustomFunctions itself is undefined", async () => {
+    expect(typeof (globalThis as Record<string, unknown>).CustomFunctions).toBe(
+      "undefined",
+    );
+    vi.resetModules();
+    await expect(import("./index")).resolves.toBeDefined();
+  });
 });

@@ -6,6 +6,7 @@ use std::io::{Cursor, Read};
 
 use smt_demo::layout::{cell, cell_abs, last_year_col, pnl, variance as vlayout, year_col, FIRST_YEAR_COL, PNL_SHEET};
 use smt_demo::sheets::{
+    cagr,
     pnl::{planted_cells, table_range},
     rounding, scratch, variance, BROKEN_NAME, SHEETS,
 };
@@ -325,4 +326,19 @@ fn pnl_guide_names_the_real_export_range() {
     let task3 = cell_text(&sheet, "A4", &strings);
     let expected = table_range();
     assert!(task3.contains(&expected), "P&L task 3 = {task3:?}, expected the range {expected}");
+}
+
+// Excel stores a custom function's formula under its own prefix once the
+// workbook is saved (proven on Excel for Mac 16.107): a plain "PLSFIX.CAGR(...)"
+// written by a generator is never resolved and the cell shows #NAME? at load,
+// so the generator has to write the exact form Excel itself would have saved.
+#[test]
+fn cagr_formula_is_saved_in_excels_own_stored_form() {
+    let (mut archive, _) = archive();
+    let sheet = sheet_xml(&mut archive, cagr::NAME);
+    let xml = cell_xml(&sheet, "I11");
+    assert!(
+        xml.contains("<f>_xldudf_PLSFIX_CAGR(B11,G11,5)</f>"),
+        "CAGR formula must be Excel's stored form, not the un-prefixed name: {xml}"
+    );
 }

@@ -6,6 +6,12 @@
     <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
     <title>pls,fix</title>
     <script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
+    <!-- The manifest declares the custom functions on this page's shared
+         runtime, so Excel loads this file as the custom-functions runtime and
+         never reads the <Script><SourceLocation> the CustomFunctions
+         extension point names. Without this tag the associate() calls inside
+         functions.js never run and every =PLSFIX.* formula answers #VALUE!. -->
+    <script src="./functions.js"></script>
   </head>
   <body>
     <main class="app-shell">

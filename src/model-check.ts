@@ -74,6 +74,13 @@ const VOLATILE = new Set([
 // the name is matched.
 const CALL = /([A-Za-z_][A-Za-z0-9_.]*)\s*\(/g;
 
+// Excel writes a second prefix on a custom function's own formula once the
+// workbook is saved: _xldudf_<namespace>_, underscore-joined with no dot, so
+// the CALL token's dot-split above never touches it. Cut off the same way, so
+// a custom function such as _xldudf_PLSFIX_CAGR is judged by its own name
+// rather than by an opaque prefixed token.
+const XLDUDF_PREFIX = /^_xldudf_/i;
+
 /**
  * The first volatile function called in a formula, uppercased, else null.
  * Case-insensitive: Excel stores what the modeller typed.
@@ -82,7 +89,8 @@ export function volatileIn(formula: string): string | null {
   CALL.lastIndex = 0;
   let match = CALL.exec(formula);
   while (match !== null) {
-    const token = (match[1] ?? "").split(".").pop() ?? "";
+    const raw = (match[1] ?? "").replace(XLDUDF_PREFIX, "");
+    const token = raw.split(".").pop() ?? "";
     const name = token.toUpperCase();
     if (VOLATILE.has(name)) {
       CALL.lastIndex = 0;
