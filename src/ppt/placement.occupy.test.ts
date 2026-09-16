@@ -83,7 +83,7 @@ describe("occupied boxes", () => {
     });
   });
 
-  it("still treats a caption as occupied", async () => {
+  it("still treats a caption as occupied when no font size is reported", async () => {
     const { presentation } = await bootPpt();
     const slide = presentation.slides[0]!;
     presentation.addShape(slide, {
@@ -100,6 +100,9 @@ describe("occupied boxes", () => {
     const resolved = await PowerPoint.run((context) =>
       resolveTarget(context, "insert test", target, SIZE),
     );
+    // A host that never reports a font size (mixed runs, or this fake's own
+    // default) is left untrimmed rather than guessed at: the full frame
+    // still counts as occupied, today's behaviour.
     expect(
       overlaps(
         resolved.placement.box,
@@ -111,6 +114,95 @@ describe("occupied boxes", () => {
         },
         12,
       ),
+    ).toBe(false);
+  });
+
+  it("trims a caption with a known font size to the lines it actually holds", async () => {
+    const { presentation } = await bootPpt();
+    const slide = presentation.slides[0]!;
+    // Full slide width, so left/right of the caption is not an option: the
+    // only way this chart fits without shrinking or overlapping is below the
+    // one line the caption actually holds.
+    const caption = presentation.addShape(slide, {
+      type: "TextBox",
+      text: "Revenue chart",
+      hasText: true,
+      left: 36,
+      top: 36,
+      width: 888,
+      height: 468,
+    });
+    Object.assign(caption, { font: { size: 11 } });
+
+    const target: InsertTarget = { slideId: slide.id, where: "free" };
+    const resolved = await PowerPoint.run((context) =>
+      resolveTarget(context, "insert test", target, SIZE),
+    );
+    // One 11 pt line is under 25 pt tall with its insets: the chart lands in
+    // the freed lower frame instead of the largest-remaining-rectangle
+    // fallback (or an overlap) the untrimmed 468 pt box used to force.
+    expect(resolved.placement.overlapping).toBe(false);
+    expect(resolved.placement.scale).toBe(1);
+    expect(resolved.placement.box.top).toBeGreaterThan(36 + 25);
+  });
+
+  // Slide 1 of the demo deck: a title, a rule and one content placeholder
+  // whose text is five short numbered paragraphs plus a bold line at 14 pt -
+  // the lower 60% of the 888 x 468 placeholder is empty in the real deck.
+  it("lands a chart below slide 1's text instead of over it", async () => {
+    const { presentation } = await bootPpt();
+    const slide = presentation.slides[0]!;
+    presentation.addShape(slide, {
+      type: "Placeholder",
+      text: "Title",
+      hasText: true,
+      left: 36,
+      top: 0,
+      width: 888,
+      height: 22,
+    });
+    presentation.addShape(slide, {
+      left: 36,
+      top: 22,
+      width: 888,
+      height: 2,
+    });
+    const body = presentation.addShape(slide, {
+      type: "Placeholder",
+      hasText: true,
+      text: [
+        `1. ${"a".repeat(40)}`,
+        `2. ${"b".repeat(60)}`,
+        `3. ${"c".repeat(90)}`,
+        `4. ${"d".repeat(55)}`,
+        `5. ${"e".repeat(70)}`,
+        "Bold summary line here",
+      ].join("\n"),
+      left: 36,
+      top: 36,
+      width: 888,
+      height: 468,
+    });
+    Object.assign(body, { font: { size: 14 } });
+
+    const chart = { width: 900, height: 400 };
+    // What the real caller (charts.ts's minPlacementScale) works out for a
+    // 900 x 400 chart against MIN_SIZE 200 x 120: the higher of the two
+    // ratios, 0.3.
+    const minScale = 0.3;
+    const target: InsertTarget = { slideId: slide.id, where: "free" };
+    const resolved = await PowerPoint.run((context) =>
+      resolveTarget(context, "insert test", target, chart, minScale),
+    );
+    expect(resolved.placement.overlapping).toBe(false);
+    expect(resolved.placement.scale).toBeGreaterThanOrEqual(minScale);
+    expect(
+      overlaps(resolved.placement.box, {
+        left: 36,
+        top: 36,
+        width: 888,
+        height: 108,
+      }),
     ).toBe(false);
   });
 });

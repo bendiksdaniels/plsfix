@@ -128,10 +128,13 @@ describe("insert from inbox", () => {
   });
 
   // Two exports onto one slide used to land on exactly the same centred box,
-  // so the second hid the first. Placement reads what the slide already holds.
+  // so the second hid the first. Placement reads what the slide already
+  // holds. 200 (not 400): the free-space search now overlaps rather than
+  // shrink a picture past PICTURE_MIN_SCALE (host.ts, half its natural
+  // size), and a 400 px second image needs more of a shrink than that here.
   it("places a second insert clear of the first", async () => {
     const ws = await createWorkspace(memoryStore());
-    for (const size of [800, 400]) {
+    for (const size of [800, 200]) {
       const item = await seedLink(fakePng(size, size / 2));
       await relay.postInbox(
         ws.id,

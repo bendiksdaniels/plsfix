@@ -9,11 +9,11 @@
 // slide/shape first" errors are the only ones its callers see for those
 // cases - never a raw office.js string.
 
+import { placeInFreeSpace } from "../free-space";
 import {
   fitInto,
   hasArea,
   isDecorativeFrame,
-  placeInFreeSpace,
   reportedBox,
   spotBox,
   type Box,
@@ -22,6 +22,7 @@ import {
   type Spot,
 } from "../layout";
 import { SLIDE_16_9 } from "../link/status";
+import { textOccupiedHeight } from "../text-extent";
 import { withSyncDeadline } from "./chart-draw";
 import { requireObjectToolsApi } from "./object-tools";
 import {
@@ -38,6 +39,12 @@ export const SLIDE_GAP = 12;
 // PowerPoint reports a layout placeholder as its own shape type; an empty one
 // is the slide's "click to add" furniture, not an object to place around.
 const PLACEHOLDER = "Placeholder";
+// A plain text box, the other shape kind whose occupied box is cut to its
+// text: PowerPoint.Shape.textFrame throws InvalidArgument on a shape that
+// does not support one (a picture, a table, a group), so the read below is
+// never attempted on anything but these two types.
+const TEXT_BOX = "TextBox";
+const TEXT_SHAPE_TYPES: ReadonlySet<string> = new Set([PLACEHOLDER, TEXT_BOX]);
 
 export const SLIDE = SLIDE_16_9;
 export const CONTENT_WIDTH = SLIDE.width - 2 * SLIDE_MARGIN;
@@ -179,13 +186,64 @@ async function occupiedBoxes(
   await withSyncDeadline(context.sync(), "reading the slide's shapes");
   const empty = await emptyPlaceholders(context, shapes.items);
   await loadFrameLooks(context, shapes.items);
+  const extents = await loadTextExtents(context, shapes.items);
   const boxes: Box[] = [];
   for (const shape of shapes.items) {
     if (empty.has(shape.id) || isFrame(shape)) continue;
     const box = await boundsOf(context, shape);
-    if (hasArea(box)) boxes.push(box);
+    if (!hasArea(box)) continue;
+    const extent = extents.get(shape.id);
+    boxes.push(extent ? trimToText(box, extent) : box);
   }
   return boxes;
+}
+
+interface TextExtent {
+  text: string;
+  fontSize: number;
+}
+
+// A placeholder or text box's own text and font size, for the shapes whose
+// text is worth reading at all: not empty (an empty one is already excluded
+// above, or - a plain text box - stays fully occupied, today's behaviour) and
+// of a type that supports a text frame in the first place.
+async function loadTextExtents(
+  context: PowerPoint.RequestContext,
+  shapes: PowerPoint.Shape[],
+): Promise<Map<string, TextExtent>> {
+  const candidates = shapes.filter((shape) => TEXT_SHAPE_TYPES.has(shape.type));
+  if (candidates.length === 0) return new Map();
+  for (const shape of candidates) {
+    shape.textFrame.textRange.load("text");
+    shape.textFrame.textRange.font.load("size");
+  }
+  await withSyncDeadline(context.sync(), "reading the text");
+  const extents = new Map<string, TextExtent>();
+  for (const shape of candidates) {
+    const text = shape.textFrame.textRange.text;
+    const fontSize = shape.textFrame.textRange.font.size;
+    // Empty text is excluded here (an empty placeholder is already free, and
+    // a plain empty text box stays fully occupied, today's behaviour); a
+    // size that is not a plain number - text set in more than one size, or a
+    // host that never reports one - is left untrimmed rather than guessed
+    // at, the same conservative answer as no extent at all.
+    if (text.length === 0 || typeof fontSize !== "number") continue;
+    extents.set(shape.id, { text, fontSize });
+  }
+  return extents;
+}
+
+// The box's own left/top/width unchanged, height cut to what the text needs:
+// a placeholder occupies the lines it holds, not the whole frame it was
+// given, so free space below a short caption is free space again.
+function trimToText(box: Box, extent: TextExtent): Box {
+  const height = textOccupiedHeight(
+    extent.text,
+    extent.fontSize,
+    box.width,
+    box.height,
+  );
+  return { ...box, height };
 }
 
 const FRAME_TYPE = "GeometricShape";

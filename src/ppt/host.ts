@@ -21,7 +21,7 @@ import {
 import { pictureNote } from "../link/chart-model";
 import { base64ToBytes, pngSize } from "../link/png";
 import { fitToSlide, type Box } from "../link/status";
-import type { Spot } from "../layout";
+import type { Size, Spot } from "../layout";
 import { withSyncDeadline } from "./chart-draw";
 import { chartPlan, declineReason, insertChart } from "./charts";
 import { missingShapeError } from "./missing-shape";
@@ -147,6 +147,11 @@ export interface InsertResult {
   overlapping: boolean;
   // Named spot that still had a hole, when overlapping. overlapNote uses it.
   freeSpot?: Spot;
+  // The largest free spot's own size, when overlapping and placeInFreeSpace
+  // found a hole too small for the caller's minScale: overlapNote leads with
+  // this over freeSpot, since a literal size says more than a spot name for
+  // a hole that never lined up with a half or a quarter.
+  freeSpotSize?: Size;
   // Why a chart arrived as a picture; the pane says it after the overlap note.
   note?: string;
 }
@@ -165,7 +170,10 @@ const SPOT_LABEL: Record<Spot, string> = {
   whole: "the slide",
 };
 
-export function overlapNote(spot?: Spot): string {
+export function overlapNote(spot?: Spot, freeSpotSize?: Size): string {
+  if (freeSpotSize) {
+    return `Placed over other objects: the largest free spot is ${String(freeSpotSize.width)} x ${String(freeSpotSize.height)} pt`;
+  }
   if (spot === undefined || spot === "whole") return OVERLAP_NOTE;
   return `Placed over other objects: ${SPOT_LABEL[spot]} was free at a smaller size`;
 }
@@ -195,6 +203,12 @@ export async function insertLink(
   return insertPictureLink(stage, item, payload, tag, note, target);
 }
 
+// How far a plain picture link may shrink before the free-space search gives
+// up and overlaps instead: half its natural size. A picture (unlike a chart)
+// has no MIN_SIZE of its own below which it stops being readable, but half
+// size is still a real image and a better answer than a postage stamp.
+const PICTURE_MIN_SCALE = 0.5;
+
 // The two ways an un-drawable chart or a plain picture lands: the selection
 // API below PowerPointApi 1.8, or an in-place rectangle with the PNG as its
 // fill (insertPictureInPlace, its own function to stay under the line cap)
@@ -211,7 +225,7 @@ async function insertPictureLink(
   const fitted = fitToSlide(size.width, size.height);
   if (!supportsInPlaceRefresh()) {
     const resolved = await PowerPoint.run((context) =>
-      resolveTarget(context, stage, target, fitted),
+      resolveTarget(context, stage, target, fitted, PICTURE_MIN_SCALE),
     );
     const { slideId, placement, consume } = resolved;
     const shapeId = await insertPictureBySelection(
@@ -227,6 +241,7 @@ async function insertPictureLink(
       shapeId,
       overlapping: placement.overlapping,
       freeSpot: placement.freeSpot,
+      freeSpotSize: placement.freeSpotSize,
       note,
     };
   }
@@ -243,7 +258,13 @@ async function insertPictureInPlace(
   fitted: Box,
 ): Promise<InsertResult> {
   const placed = await PowerPoint.run(async (context) => {
-    const resolved = await resolveTarget(context, stage, target, fitted);
+    const resolved = await resolveTarget(
+      context,
+      stage,
+      target,
+      fitted,
+      PICTURE_MIN_SCALE,
+    );
     const { slideId, placement, consume } = resolved;
     const shape = context.presentation.slides
       .getItem(slideId)
@@ -266,6 +287,7 @@ async function insertPictureInPlace(
       shapeId: shape.id,
       overlapping: placement.overlapping,
       freeSpot: placement.freeSpot,
+      freeSpotSize: placement.freeSpotSize,
       consume,
     };
   });
@@ -275,6 +297,7 @@ async function insertPictureInPlace(
     shapeId: placed.shapeId,
     overlapping: placed.overlapping,
     freeSpot: placed.freeSpot,
+    freeSpotSize: placed.freeSpotSize,
     note,
   };
 }

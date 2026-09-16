@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { placeInFreeSpace } from "./free-space";
 import { SLIDE_16_9 } from "./link/status";
 import {
   dropBelow,
@@ -7,7 +8,6 @@ import {
   hasArea,
   isDecorativeFrame,
   overlaps,
-  placeInFreeSpace,
   reportedBox,
   spotBox,
   type Spot,
@@ -66,33 +66,59 @@ describe("placeInFreeSpace", () => {
     expect(placement.box).toMatchObject({ left: 330, top: 170 });
   });
 
-  // scanGrid's own early return: the object is too big for the canvas even
-  // at minScale. The hole fallback then fits it into the remaining content
-  // rather than hanging a full-size box off the slide.
-  it("fits a too-big object into the remaining content instead of overlapping", () => {
+  // A floor, not a suggestion (chart-place): scanGrid's own early return (the
+  // object is too big for the canvas even at minScale) used to fall back to
+  // fitHole shrinking it into the remaining content regardless of minScale -
+  // a chart on a busy slide could land as a sliver nobody could read. Past
+  // minScale, the answer is the pre-v2.8.4 one again: centred, full size,
+  // overlapping, with the hole it could not use reported so the caller can
+  // say why.
+  it("overlaps full-size, past minScale, rather than shrinking into a small hole", () => {
     const huge = { width: 3000, height: 3000 };
     const speck = { left: 0, top: 0, width: 1, height: 1 };
     const placement = placeInFreeSpace(huge, [speck], slide, 36, 12);
+    expect(placement.overlapping).toBe(true);
+    expect(placement.scale).toBe(1);
+    expect(placement.box).toMatchObject({ left: -1020, top: -1230 });
+    // The whole content area (888 x 468) was free, just not big enough.
+    expect(placement.freeSpotSize).toEqual({ width: 888, height: 468 });
+  });
+
+  it("still shrinks into a hole that clears minScale, exactly as before", () => {
+    const huge = { width: 3000, height: 3000 };
+    const speck = { left: 0, top: 0, width: 1, height: 1 };
+    const placement = placeInFreeSpace(huge, [speck], slide, 36, 12, 0.1);
     expect(placement.overlapping).toBe(false);
     expect(placement.scale).toBeLessThan(1);
     expect(placement.box.width).toBeLessThanOrEqual(888);
     expect(placement.box.height).toBeLessThanOrEqual(468);
   });
 
-  // minScale 1 forbids the 0.1 grid shrink: the strip between these walls is
-  // narrower than the object, so today the fallback is a full-size overlap.
-  // Fitting the object into that strip at a reduced scale is the better answer.
-  it("fits into the largest remaining rectangle rather than overlapping full size", () => {
+  // minScale 1 forbids the 0.1 grid shrink, so this always fell to fitHole.
+  // The strip between the walls only fits the object at 0.72: below the
+  // floor the caller asked for, so this is now the overlap, not the shrink.
+  it("overlaps full-size when the only free strip is narrower than minScale allows", () => {
     const left = { left: 0, top: 0, width: 41, height: 540 };
     const right = { left: 280, top: 0, width: 680, height: 540 };
     const placement = placeInFreeSpace(size, [left, right], slide, 36, 12, 1);
+    expect(placement.overlapping).toBe(true);
+    expect(placement.scale).toBe(1);
+    expect(placement.box).toMatchObject({ left: 330, top: 170 });
+    expect(placement.freeSpot).toBe("left-half");
+    expect(placement.freeSpotSize).toEqual({ width: 215, height: 468 });
+  });
+
+  it("still fits that same strip once minScale allows the shrink", () => {
+    const left = { left: 0, top: 0, width: 41, height: 540 };
+    const right = { left: 280, top: 0, width: 680, height: 540 };
+    const placement = placeInFreeSpace(size, [left, right], slide, 36, 12, 0.5);
     expect(placement.overlapping).toBe(false);
     expect(placement.scale).toBeLessThan(1);
     expect(overlaps(placement.box, left, 12)).toBe(false);
     expect(overlaps(placement.box, right, 12)).toBe(false);
   });
 
-  it("shrinks into a small remaining hole rather than covering the slide", () => {
+  it("overlaps full-size over a small remaining hole, naming its size and spot", () => {
     const hole = { left: 700, top: 400, width: 80, height: 60 };
     const blocked = [
       { left: 0, top: 0, width: 960, height: 400 },
@@ -102,11 +128,33 @@ describe("placeInFreeSpace", () => {
     ];
     expect(overlaps(hole, blocked[0]!)).toBe(false);
     const placement = placeInFreeSpace(size, blocked, slide, 36, 12, 1);
-    expect(placement.overlapping).toBe(false);
-    expect(placement.scale).toBeLessThan(1);
-    expect(placement.box.left).toBeGreaterThanOrEqual(hole.left);
-    expect(placement.box.top).toBeGreaterThanOrEqual(hole.top);
+    expect(placement.overlapping).toBe(true);
+    expect(placement.scale).toBe(1);
+    expect(placement.box).toMatchObject({ left: 330, top: 170 });
     expect(placement.freeSpot).toBe("bottom-right");
+    expect(placement.freeSpotSize).toEqual({ width: 56, height: 36 });
+  });
+
+  // Slide 3 of the demo deck: a title, a rule, two chart groups already
+  // sitting in their dashed frames (excluded by placement.ts before this
+  // reaches placeInFreeSpace) and two captions. The only free space left is
+  // an 888 x 132 strip above the charts - too short at minScale 0.4 for a
+  // third chart's natural 500 x 400 - so a Free-space insert here must
+  // overlap rather than land as an unreadable sliver.
+  it("slide 3: overlaps a busy slide rather than shrinking a chart into the top strip", () => {
+    const title = { left: 36, top: 0, width: 888, height: 22 };
+    const rule = { left: 36, top: 22, width: 888, height: 2 };
+    const columnGroup = { left: 60, top: 200, width: 390, height: 200 };
+    const pieGroup = { left: 500, top: 180, width: 400, height: 240 };
+    const caption1 = { left: 36, top: 508, width: 438, height: 24 };
+    const caption2 = { left: 486, top: 508, width: 438, height: 24 };
+    const occupied = [title, rule, columnGroup, pieGroup, caption1, caption2];
+    const chart = { width: 500, height: 400 };
+    const placement = placeInFreeSpace(chart, occupied, slide, 36, 12, 0.4);
+    expect(placement.overlapping).toBe(true);
+    expect(placement.scale).toBe(1);
+    expect(placement.freeSpotSize).toEqual({ width: 888, height: 132 });
+    expect(placement.box).toMatchObject({ width: 500, height: 400 });
   });
 });
 

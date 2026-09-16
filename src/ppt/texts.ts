@@ -34,6 +34,10 @@ const EM_PER_CHAR = 0.55;
 const PADDING = 14;
 const LINE_HEIGHT = 28;
 const MIN_WIDTH = 60;
+// A text link is never worth shrinking: autoSizeShapeToFitText grows the box
+// straight back to its text the moment it lands, so a scaled-down box would
+// only ever be a placement fiction. Its own natural size is the floor.
+const TEXT_MIN_SCALE = 1;
 
 export function textSize(payload: TextPayload): Size {
   const width = Math.ceil(payload.text.length * FONT_PT * EM_PER_CHAR);
@@ -56,6 +60,7 @@ export async function insertText(
       stage,
       target,
       textSize(payload),
+      TEXT_MIN_SCALE,
     );
     const { slideId, placement, consume } = resolved;
     const shapes = context.presentation.slides.getItem(slideId).shapes;
@@ -78,6 +83,7 @@ export async function insertText(
       shapeId: shape.id,
       overlapping: placement.overlapping,
       freeSpot: placement.freeSpot,
+      freeSpotSize: placement.freeSpotSize,
       consume,
     };
   });
@@ -87,6 +93,7 @@ export async function insertText(
     shapeId: placed.shapeId,
     overlapping: placed.overlapping,
     freeSpot: placed.freeSpot,
+    freeSpotSize: placed.freeSpotSize,
   };
 }
 

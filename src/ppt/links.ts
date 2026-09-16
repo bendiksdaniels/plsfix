@@ -398,7 +398,9 @@ export async function listInbox(
 // say: where the object had to land, then why a chart came as a picture.
 export function insertNote(placed: InsertResult): string {
   const parts = [
-    placed.overlapping ? realHost.overlapNote(placed.freeSpot) : null,
+    placed.overlapping
+      ? realHost.overlapNote(placed.freeSpot, placed.freeSpotSize)
+      : null,
     placed.note ?? null,
   ].filter((part): part is string => part !== null);
   return parts.length === 0 ? "" : ` ${parts.join(". ")}`;

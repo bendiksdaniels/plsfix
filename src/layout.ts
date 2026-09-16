@@ -1,7 +1,10 @@
-// Where a new object goes so it covers nothing: dropped clear of what is in the
-// way (a chart the add-in inserts, positioned by src/excel/chart-place.ts), or
-// in the free space of a bounded canvas (a slide). Pure geometry in the
-// caller's units; the callers read the occupied boxes and write what comes back.
+// The box/canvas types every placement caller shares, and the geometry that
+// does not need a search: a named spot's own rectangle, fitting a size into a
+// box keeping its aspect, whether two boxes overlap, a group's box from its
+// children, a decorative frame's look, and dropping a box straight down clear
+// of what is in the way (src/excel/chart-place.ts). The free-space search
+// itself - placeInFreeSpace - is free-space.ts, split out to keep both files
+// under the line cap. Pure geometry in the caller's units.
 
 export interface Box {
   left: number;
@@ -28,6 +31,10 @@ export interface Placement {
   overlapping: boolean;
   /** Named spot the remaining hole sits in, when the object had to shrink or overlap. */
   freeSpot?: Spot;
+  /** The largest free box's own size, set when overlapping and a hole (too
+   * small for minScale) was found anyway: what the toast tells the user to
+   * explain the overlap ("the largest free spot is 888 x 40 pt"). */
+  freeSpotSize?: Size;
 }
 
 // A named half or quarter of the canvas, or the whole content area: what the
@@ -154,7 +161,13 @@ export function isDecorativeFrame(shape: FrameLook): boolean {
   return shape.dashStyle !== null && shape.dashStyle !== "Solid";
 }
 
-function clear(box: Box, occupied: readonly Box[], gap: number): boolean {
+// Exported for free-space.ts's own scan and largest-hole search: the same
+// "nothing occupied is in the way, gap included" test dropBelow uses here.
+export function clear(
+  box: Box,
+  occupied: readonly Box[],
+  gap: number,
+): boolean {
   return occupied.every((other) => !overlaps(box, other, gap));
 }
 
@@ -178,212 +191,4 @@ export function dropBelow(
     box = { ...box, top: bottom + gap };
   }
   return box;
-}
-
-/**
- * Centred when nothing else is there; otherwise the first free spot reading
- * left to right, top to bottom, on a grid of `step`; an object too big for any spot shrinks a tenth at a time down to
- * `minScale`; past that it fits into the largest remaining rectangle, or is
- * centred and flagged as overlapping when even that hole has no area.
- */
-export function placeInFreeSpace(
-  size: Size,
-  occupied: readonly Box[],
-  canvas: Canvas,
-  margin: number,
-  gap: number,
-  minScale = 0.4,
-  step = 8,
-): Placement {
-  if (occupied.length === 0) {
-    return {
-      box: rounded(centred(size, canvas)),
-      scale: 1,
-      overlapping: false,
-    };
-  }
-  for (let scale = 1; scale >= minScale - 1e-9; scale = round1(scale - 0.1)) {
-    const scaled = { width: size.width * scale, height: size.height * scale };
-    const box = scanGrid(scaled, occupied, canvas, margin, gap, step);
-    if (box) return { box: rounded(box), scale, overlapping: false };
-  }
-  return fitHole(size, occupied, canvas, margin, gap);
-}
-
-const NAMED_SPOTS: Spot[] = [
-  "top-left",
-  "top-right",
-  "bottom-left",
-  "bottom-right",
-  "left-half",
-  "right-half",
-  "whole",
-];
-
-function areaOf(box: Box): number {
-  return box.width * box.height;
-}
-
-function intersection(a: Box, b: Box): Box | null {
-  const left = Math.max(a.left, b.left);
-  const top = Math.max(a.top, b.top);
-  const right = Math.min(a.left + a.width, b.left + b.width);
-  const bottom = Math.min(a.top + a.height, b.top + b.height);
-  if (right <= left || bottom <= top) return null;
-  return { left, top, width: right - left, height: bottom - top };
-}
-
-function namedSpotFor(
-  box: Box,
-  canvas: Canvas,
-  margin: number,
-  gap: number,
-): Spot | undefined {
-  if (!hasArea(box)) return undefined;
-  let best: Spot | undefined;
-  let bestOverlap = 0;
-  let bestSpotArea = Infinity;
-  for (const spot of NAMED_SPOTS) {
-    const region = spotBox(spot, canvas, margin, gap);
-    const overlap = intersection(box, region);
-    const overlapArea = overlap ? areaOf(overlap) : 0;
-    const spotArea = areaOf(region);
-    if (
-      overlapArea > bestOverlap ||
-      (overlapArea === bestOverlap &&
-        overlapArea > 0 &&
-        spotArea < bestSpotArea)
-    ) {
-      best = spot;
-      bestOverlap = overlapArea;
-      bestSpotArea = spotArea;
-    }
-  }
-  return best;
-}
-
-function uniqueSorted(values: number[]): number[] {
-  return [...new Set(values)].sort((a, b) => a - b);
-}
-
-function largestFreeBox(
-  occupied: readonly Box[],
-  canvas: Canvas,
-  margin: number,
-  gap: number,
-): Box | null {
-  const left = margin;
-  const top = margin;
-  const right = canvas.width - margin;
-  const bottom = canvas.height - margin;
-  const xs = uniqueSorted([
-    left,
-    right,
-    ...occupied.flatMap((box) => [
-      box.left,
-      box.left + box.width,
-      box.left - gap,
-      box.left + box.width + gap,
-    ]),
-  ]).filter((x) => x >= left && x <= right);
-  const ys = uniqueSorted([
-    top,
-    bottom,
-    ...occupied.flatMap((box) => [
-      box.top,
-      box.top + box.height,
-      box.top - gap,
-      box.top + box.height + gap,
-    ]),
-  ]).filter((y) => y >= top && y <= bottom);
-  let best: Box | null = null;
-  let bestArea = 0;
-  for (let i = 0; i < xs.length; i += 1) {
-    for (let j = i + 1; j < xs.length; j += 1) {
-      for (let k = 0; k < ys.length; k += 1) {
-        for (let l = k + 1; l < ys.length; l += 1) {
-          const candidate: Box = {
-            left: xs[i]!,
-            top: ys[k]!,
-            width: xs[j]! - xs[i]!,
-            height: ys[l]! - ys[k]!,
-          };
-          if (!hasArea(candidate) || !clear(candidate, occupied, gap)) continue;
-          const area = areaOf(candidate);
-          if (area > bestArea) {
-            best = candidate;
-            bestArea = area;
-          }
-        }
-      }
-    }
-  }
-  return best;
-}
-
-function fitHole(
-  size: Size,
-  occupied: readonly Box[],
-  canvas: Canvas,
-  margin: number,
-  gap: number,
-): Placement {
-  const hole = largestFreeBox(occupied, canvas, margin, gap);
-  const freeSpot = hole ? namedSpotFor(hole, canvas, margin, gap) : undefined;
-  if (hole) {
-    const fitted = fitInto(size, hole);
-    if (hasArea(fitted)) {
-      const scale = size.width > 0 ? fitted.width / size.width : 1;
-      return { box: rounded(fitted), scale, overlapping: false, freeSpot };
-    }
-  }
-  return {
-    box: rounded(centred(size, canvas)),
-    scale: 1,
-    overlapping: true,
-    freeSpot,
-  };
-}
-
-// Alone on the canvas an object is centred, as a slide reads best; the
-// top-left scan is for company.
-function centred(size: Size, canvas: Canvas): Box {
-  return {
-    ...size,
-    left: (canvas.width - size.width) / 2,
-    top: (canvas.height - size.height) / 2,
-  };
-}
-
-function scanGrid(
-  size: Size,
-  occupied: readonly Box[],
-  canvas: Canvas,
-  margin: number,
-  gap: number,
-  step: number,
-): Box | null {
-  const maxLeft = canvas.width - margin - size.width;
-  const maxTop = canvas.height - margin - size.height;
-  if (maxLeft < margin || maxTop < margin) return null;
-  for (let top = margin; top <= maxTop; top += step) {
-    for (let left = margin; left <= maxLeft; left += step) {
-      const box = { ...size, left, top };
-      if (clear(box, occupied, gap)) return box;
-    }
-  }
-  return null;
-}
-
-function round1(value: number): number {
-  return Math.round(value * 10) / 10;
-}
-
-function rounded(box: Box): Box {
-  return {
-    left: Math.round(box.left),
-    top: Math.round(box.top),
-    width: Math.round(box.width),
-    height: Math.round(box.height),
-  };
 }
