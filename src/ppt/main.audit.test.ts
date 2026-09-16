@@ -168,7 +168,8 @@ function isError(): boolean {
 }
 
 function linkRows(): HTMLTableRowElement[] {
-  return [...document.querySelectorAll<HTMLTableRowElement>("#link-rows tr")];
+  const selector = "#link-rows tr[data-key]";
+  return [...document.querySelectorAll<HTMLTableRowElement>(selector)];
 }
 
 function inboxButtons(): HTMLButtonElement[] {

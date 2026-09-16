@@ -216,7 +216,11 @@ export async function copiedDetails(): Promise<string> {
   return copied;
 }
 export function linkRows(): HTMLTableRowElement[] {
-  return [...document.querySelectorAll<HTMLTableRowElement>("#link-rows tr")];
+  return [
+    ...document.querySelectorAll<HTMLTableRowElement>(
+      "#link-rows tr[data-key]",
+    ),
+  ];
 }
 export function tickRow(index: number): void {
   const box = linkRows()[index]?.querySelector("input");

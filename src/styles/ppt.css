@@ -1,6 +1,6 @@
 /* The PowerPoint pane only: the link toolbar, the deck's link table and its
    status badges, the inbox and the "Change source" picker. Owns the link
-   table's column budget - which column gives way at which width. */
+   table's folder headers and its column widths at each breakpoint. */
 
 .link-actions {
   display: grid;
@@ -125,8 +125,8 @@
 
 /* Fixed layout, so these widths rule: the tick, the slide number, the status
    and the age get exactly what they need and the object name takes the rest -
-   ellipsised, with the full text in its title. The workbook name is the least
-   identifying column, so it is the one a narrow dock does without. */
+   ellipsised, with the full text in its title. The workbook and kind ride
+   under the name as a second line (.link-meta), ellipsised the same way. */
 .link-table {
   width: 100%;
   border-collapse: collapse;
@@ -168,12 +168,9 @@
   width: 42px;
 }
 .link-table th:nth-child(4) {
-  display: none;
-}
-.link-table th:nth-child(5) {
   width: 74px;
 }
-.link-table th:nth-child(6) {
+.link-table th:nth-child(5) {
   width: 64px;
 }
 .link-select input {
@@ -189,8 +186,23 @@
 .link-label {
   font-weight: 700;
 }
-.link-source {
-  display: none;
+.link-folder td {
+  padding: 10px 3px 4px;
+  border-bottom: 0;
+  color: var(--muted);
+  font-size: var(--fs-micro);
+  font-weight: 750;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.link-meta {
+  display: block;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: var(--fs-micro);
+  font-weight: 400;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .link-updated {
   color: var(--muted);
@@ -205,25 +217,16 @@
 }
 
 @media (min-width: 460px) {
-  .link-table th:nth-child(5) {
+  .link-table th:nth-child(4) {
     width: 112px;
   }
-  .link-table th:nth-child(6) {
+  .link-table th:nth-child(5) {
     width: 72px;
   }
   .link-updated,
   .link-status,
   .link-status .badge {
     white-space: nowrap;
-  }
-}
-@media (min-width: 620px) {
-  .link-table th:nth-child(4) {
-    display: table-cell;
-    width: 22%;
-  }
-  .link-source {
-    display: table-cell;
   }
 }
 

@@ -3,7 +3,13 @@
 // name rule.
 
 import { describe, expect, it } from "vitest";
-import { cleanProject, NO_PROJECT, PROJECT_MAX, projectLabel } from "./project";
+import {
+  cleanProject,
+  groupByProject,
+  NO_PROJECT,
+  PROJECT_MAX,
+  projectLabel,
+} from "./project";
 
 describe("cleanProject", () => {
   it("trims and keeps a short name", () => {
@@ -31,5 +37,54 @@ describe("projectLabel", () => {
   it("says No project when the name is missing", () => {
     expect(projectLabel(undefined)).toBe(NO_PROJECT);
     expect(projectLabel("Amasty")).toBe("Amasty");
+  });
+});
+
+describe("groupByProject", () => {
+  interface Item {
+    id: string;
+    project?: string;
+  }
+  const byProject = (item: Item): string | undefined => item.project;
+
+  it("orders named groups by locale and puts No project last", () => {
+    const items: Item[] = [
+      { id: "1", project: "Balcia" },
+      { id: "2", project: undefined },
+      { id: "3", project: "Amasty" },
+    ];
+    const names = groupByProject(items, byProject).map(([name]) => name);
+    expect(names).toEqual(["Amasty", "Balcia", NO_PROJECT]);
+  });
+
+  it("keeps items in their input order inside a group", () => {
+    const items: Item[] = [
+      { id: "1", project: "Amasty" },
+      { id: "2", project: "Amasty" },
+      { id: "3", project: "Amasty" },
+    ];
+    expect(groupByProject(items, byProject)).toEqual([["Amasty", items]]);
+  });
+
+  it("puts one group per distinct name", () => {
+    const items: Item[] = [
+      { id: "1", project: "Amasty" },
+      { id: "2", project: "Balcia" },
+      { id: "3", project: "Amasty" },
+    ];
+    const groups = groupByProject(items, byProject);
+    expect(groups.map(([name, group]) => [name, group.length])).toEqual([
+      ["Amasty", 2],
+      ["Balcia", 1],
+    ]);
+  });
+
+  it("returns an empty array for empty input", () => {
+    expect(groupByProject([], byProject)).toEqual([]);
+  });
+
+  it("groups an undefined project under NO_PROJECT", () => {
+    const items: Item[] = [{ id: "1", project: undefined }];
+    expect(groupByProject(items, byProject)).toEqual([[NO_PROJECT, items]]);
   });
 });

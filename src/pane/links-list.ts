@@ -7,7 +7,7 @@
 
 import type { WorkbookLinkRow } from "../excel";
 import type { LinkKind, RegistryEntry } from "../link/model";
-import { projectLabel } from "../link/project";
+import { groupByProject } from "../link/project";
 import { NEVER, relativeStamp } from "../ui/time";
 
 const EMPTY_MESSAGE = "No linked objects in this workbook yet.";
@@ -53,14 +53,10 @@ export function renderWorkbookLinks(
     body.append(messageRow(EMPTY_MESSAGE));
     return;
   }
-  const groups = new Map<string, WorkbookLinkRow[]>();
-  for (const row of rows) {
-    const name = projectLabel(row.entry.project);
-    const group = groups.get(name) ?? [];
-    group.push(row);
-    groups.set(name, group);
-  }
-  for (const [name, group] of groups) {
+  for (const [name, group] of groupByProject(
+    rows,
+    (row) => row.entry.project,
+  )) {
     body.append(projectHeader(name));
     for (const row of group) body.append(linkRow(row, selected, onToggle));
   }

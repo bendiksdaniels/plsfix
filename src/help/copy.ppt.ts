@@ -8,7 +8,7 @@ import type { HelpCopy } from "./copy";
 export const PPT_HELP: HelpCopy = {
   "deck-links": {
     about:
-      "Every pls,fix object in this deck, and the buttons that refresh or release them.",
+      "Every pls,fix object in this deck, in a folder per project, with the workbook it comes from, plus the buttons that refresh or release them.",
     buttons: {
       "refresh-links":
         "Scans the deck again and asks the relay which links have a newer picture waiting.",

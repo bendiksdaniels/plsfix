@@ -52,6 +52,27 @@ export function cleanProjectList(
   return out;
 }
 
+// The one grouping rule the Excel Links tab, the PowerPoint Inbox and the
+// PowerPoint deck list all share: named projects in locale order, No project
+// last, items kept in their input order inside each group.
+export function groupByProject<T>(
+  items: readonly T[],
+  project: (item: T) => string | undefined,
+): [string, T[]][] {
+  const groups = new Map<string, T[]>();
+  for (const item of items) {
+    const name = projectLabel(project(item));
+    const group = groups.get(name);
+    if (group) group.push(item);
+    else groups.set(name, [item]);
+  }
+  const named = [...groups.keys()]
+    .filter((name) => name !== NO_PROJECT)
+    .sort((a, b) => a.localeCompare(b));
+  const ordered = groups.has(NO_PROJECT) ? [...named, NO_PROJECT] : named;
+  return ordered.map((name) => [name, groups.get(name)!]);
+}
+
 export function withActiveProject(
   registry: {
     v: 1;

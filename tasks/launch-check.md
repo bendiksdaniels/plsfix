@@ -427,6 +427,9 @@ workbook and a scratch copy of the demo deck; every row below was seen on screen
 - [x] Links: Export as table / active chart / selection / as text all push; New project + Move to project
       work; the PowerPoint Inbox groups the exports under the project; Push all then Update all repaints
       every link (7 updated); Revert last update repaints the older revision; Break link works.
+- [ ] PowerPoint v2.8.18: the Linked objects list opens as folders ("AMASTY · 2", then "NO PROJECT")
+      with the workbook and kind under every object at the pane's default width; ticking, Update
+      selected and Go to slide still act on the rows, never on a folder header.
 - [x] PowerPoint v2.8.9: the Revenue column chart (left half), the Segment pie (right half), the EBITDA
       margin line chart (free space) and the 40-point Big40 chart (slide 1, free space) all land as shape
       groups; a text link and a placeholder picture land on slide 4; PowerPoint alive after every insert and
