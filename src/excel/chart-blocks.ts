@@ -3,9 +3,11 @@
 // write that lands the block immediately right of the selection.
 //
 // Owns: everything the tornado and the football field do identically before
-// their chart is added. Invariant: nothing is written before the target block
-// is known empty and the sheet is known to take writes, so a refusal never
-// spends a pls,fix Undo slot.
+// their chart is added, plus serialised(), the shared queue both flows run
+// their whole insert through so a second press meets the first press's
+// written block rather than racing it while it is still empty. Invariant:
+// nothing is written before the target block is known empty and the sheet is
+// known to take writes, so a refusal never spends a pls,fix Undo slot.
 
 import { requireEmptyBlock, SHEET_COLUMNS } from "./internal";
 import { protectedNote, sheetProtected, syncWrite } from "./protection";
@@ -15,6 +17,23 @@ import { type CellValue } from "../model";
 /** Label, low and high: the three columns both charts read and write. */
 export const CHART_BLOCK_COLUMNS = 3;
 const PLAIN_FORMAT = "General";
+
+// Resolved, never rejected: one call's failure must not take the next one
+// with it. Same shape as exclusive() in link-lock.ts, minus the stage name -
+// insertFootballField and insertTornado have nothing else to report.
+let queue: Promise<void> = Promise.resolve();
+
+/** Runs `work` once every call queued before it has settled, whatever the
+ * outcome of those. Never call it from inside `work`: the nested call would
+ * wait for a queue only its own caller can advance. */
+export function serialised<T>(work: () => Promise<T>): Promise<T> {
+  const task = queue.then(() => work());
+  queue = task.then(
+    () => undefined,
+    () => undefined,
+  );
+  return task;
+}
 
 export function isFiniteNumber(value: CellValue | undefined): value is number {
   return typeof value === "number" && Number.isFinite(value);

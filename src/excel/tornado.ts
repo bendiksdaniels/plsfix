@@ -13,6 +13,7 @@ import {
   isFiniteNumber,
   readTriples,
   requireRoomBeside,
+  serialised,
   type TripleRules,
   valueFormat,
   writeHelperBlock,
@@ -123,51 +124,53 @@ function notes(placed: boolean): string {
 
 // Label, low outcome, high outcome; the helper block lands immediately right of
 // the selection, and pls,fix Undo captures whatever stood there first.
-export async function insertTornado(): Promise<string> {
-  return Excel.run(async (context) => {
-    // The cap answers before the values are asked for: a clicked column header
-    // is a million cells, and the driver cap only runs after the read.
-    const range = await withinCap(
-      context,
-      await selectedSingleRange(context, STAGE),
-      STAGE,
-    );
-    const sheet = range.worksheet;
-    range.load("rowCount,columnCount,rowIndex,columnIndex,values,numberFormat");
-    await context.sync();
-    requireTornadoShape(range);
+async function runTornado(context: Excel.RequestContext): Promise<string> {
+  // The cap answers before the values are asked for: a clicked column header
+  // is a million cells, and the driver cap only runs after the read.
+  const range = await withinCap(
+    context,
+    await selectedSingleRange(context, STAGE),
+    STAGE,
+  );
+  const sheet = range.worksheet;
+  range.load("rowCount,columnCount,rowIndex,columnIndex,values,numberFormat");
+  await context.sync();
+  requireTornadoShape(range);
 
-    const drivers = readTriples(range.values as CellValue[][], TORNADO_RULES);
-    const format = valueFormat(
-      range.numberFormat as string[][],
-      drivers.length,
-    );
-    const { heading, base } = await readTornadoHeader(context, sheet, range);
-    const series = tornadoSeries(drivers, base);
+  const drivers = readTriples(range.values as CellValue[][], TORNADO_RULES);
+  const format = valueFormat(range.numberFormat as string[][], drivers.length);
+  const { heading, base } = await readTornadoHeader(context, sheet, range);
+  const series = tornadoSeries(drivers, base);
 
-    const block = await writeHelperBlock(context, sheet, range, {
-      stage: STAGE,
-      headers: TORNADO_HEADERS,
-      rows: series.labels.map((label, index) => [
-        label,
-        series.low[index] ?? 0,
-        series.high[index] ?? 0,
-      ]),
-      format,
-    });
-
-    const chart = sheet.charts.add(
-      Excel.ChartType.barClustered,
-      block,
-      Excel.ChartSeriesBy.columns,
-    );
-    styleTornado(chart, heading);
-    await context.sync();
-    const placed = await placeChartBeside(context, sheet, chart, block);
-    await context.sync();
-
-    const count = series.labels.length;
-    const tail = notes(placed);
-    return `Tornado added: ${count} drivers, base ${formatChartAmount(series.base)}${tail}`;
+  const block = await writeHelperBlock(context, sheet, range, {
+    stage: STAGE,
+    headers: TORNADO_HEADERS,
+    rows: series.labels.map((label, index) => [
+      label,
+      series.low[index] ?? 0,
+      series.high[index] ?? 0,
+    ]),
+    format,
   });
+
+  const chart = sheet.charts.add(
+    Excel.ChartType.barClustered,
+    block,
+    Excel.ChartSeriesBy.columns,
+  );
+  styleTornado(chart, heading);
+  await context.sync();
+  const placed = await placeChartBeside(context, sheet, chart, block);
+  await context.sync();
+
+  const count = series.labels.length;
+  const tail = notes(placed);
+  return `Tornado added: ${count} drivers, base ${formatChartAmount(series.base)}${tail}`;
+}
+
+// Serialised with the football field: a second press must meet this press's
+// helper block, not an empty one, so it hits the "not empty" refusal instead
+// of drawing a second chart on top of the first.
+export async function insertTornado(): Promise<string> {
+  return serialised(() => Excel.run(runTornado));
 }
