@@ -1,4 +1,4 @@
-# AUTORESUME - pls,fix (v2.8.17 tagged 16.09, PUBLIC on GitHub, MIT)
+# AUTORESUME - pls,fix (v2.8.20 live 16.09, in-house deployment package 21.09, PUBLIC on GitHub, MIT)
 
 ## NEXT SESSION (from 16.09 night): the matrix twice, Windows, the web rig, the folders on his Mac
 
@@ -8,6 +8,9 @@ green for v2.8.10 to v2.8.19 and running for v2.8.20 at hand-over, manual docx v
 no worktree, no branch, no dev server, both wef folders hold the prod manifest. v2.8.18 is a version-only
 tag (the 16.09 night section says why). Read `tasks/lessons.md` 16.09 first, all three entries.
 
+0. **In-house deployment package ready 21.09** (`tasks/deploy-inhouse.md`): the Microsoft 365 upload
+   waits for the admin request, which is Daniel's send (recipients + count + his go); proof list in
+   its section 3 after propagation.
 1. **Crash matrix, twice per route** (the 14.09 brief, still not run as a matrix): today's 12 inserts, Update
    all, Revert and two pane reloads never crashed PowerPoint 16.107, but no route was run twice and Update
    this slide, Change source and Break link on charts were not driven. The recipe needs no computer-use
@@ -25,6 +28,27 @@ tag (the 16.09 night section says why). Read `tasks/lessons.md` 16.09 first, all
 6. **The folders on his Mac**: v2.8.19's deck list (a folder per project, the workbook under every object) is
    proven in the ux gate and the jsdom suites only; the sideloaded pane reloads it from the live server
    (pane reload, or Home > Add-ins > pls,fix once per launch). His computer-use grant or his own look.
+
+## 21.09: the in-house deployment package (the private launch, no store)
+
+- Daniel: "lets launch the plsfix project", then "lets go for private deployment so it also would be
+  online": the Microsoft 365 centralized deployment (Integrated apps), so the add-in reaches Excel and
+  PowerPoint on Windows, Mac and the web for the assigned users without AppSource.
+- Proven 21.09: main = origin = live 2.8.20, atlas audit 0 red, release run v2.8.20 green with 8 assets;
+  every URL in `manifest.prod.xml` answers 200 on the public path without Access;
+  `office-addin-manifest validate` says "The manifest is valid."; the manifest is byte-identical in the
+  repo, on the server (`/modelis/manifest.xml`) and as the release asset (one SHA-256 `1b0372bd...d68e`);
+  the production unit runs `MODELIS_TRUSTED_PROXY=cloudflare`, so the relay rates by real client address
+  (an office NAT = one client: 100 writes / 1 200 reads a minute, 64 MiB of writes a minute).
+- Written: `tasks/deploy-inhouse.md` (package, admin steps, proof after propagation, afterwards, the NAT
+  note); `docs/IT-vienlapa.md` refreshed against the code (CAGR, 100 not 300 writes a minute plus the
+  64 MiB budget, the manifest source, SharedRuntime 1.1, plain Latvian instead of Microsoft's localisation
+  words); the limit line in `tasks/launch-next-steps.md` corrected. Outside the repo: the one-pager as a
+  PDF on the Desktop (`pls,fix IT vienlapa.pdf`, HTML from the md through headless Chrome) and the
+  request draft (LV) in the Obsidian Claude vault, `DB Automatizacijas/`, unsent.
+- Open: the upload needs a Global or Exchange administrator of the tenant; the request to that
+  administrator is a send under Daniel's employer identity and waits for his go (recipients + count);
+  after propagation, the proof list in `deploy-inhouse.md` section 3.
 
 ## 16.09 late night: the fix wave, every pinned defect green (v2.8.20)
 

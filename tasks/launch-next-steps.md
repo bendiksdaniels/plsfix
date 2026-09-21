@@ -59,7 +59,7 @@ the release, browser window sized to 1366 x 768, system screenshot. The rig
 ## 5. Hosting hygiene before strangers arrive [Daniel + a session]
 
 - [ ] Cloudflare rate-limit rule on `/modelis/api/*` (dashboard, free plan: one rule). The
-      server already limits per IP (300 writes / 1200 reads per minute) and caps the relay at
+      server already limits per IP (100 writes / 1200 reads per minute, 64 MiB of writes per minute) and caps the relay at
       1 GiB; the edge rule stops a flood before it reaches the VPS.
 - [ ] The feature wave's relay hardening (`MODELIS_TRUSTED_PROXY`, per-client byte budget):
       when it lands, add the paragraph to `docs/SELF-HOSTING.md` and set the unit's env var at
