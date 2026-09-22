@@ -453,3 +453,19 @@ as a user-visible wording change and asks whether the product should read differ
 tests are trusted. Also: a fix wave of three same-shape agents cost 335k + 464k + 369k; the one that
 touched a shared helper (describeError) was the expensive one, the fix round after review was the
 controller's (12 files, mechanical) and cheaper than a resume.
+
+## 2026-09-23: the click-through of every control, three rig lessons
+
+- A sweep that judges "reacted" by a DOM fingerprint is blind to a repeated sentence: thirteen Links-tab
+  buttons all answered "Excel is not connected." and twelve of them read as dead because the toast was
+  byte-identical to the previous press. Reset the toast to a sentinel before every press (the vitest
+  click-through suites did from the start; `scripts/ux/sweep-probe.js` does now), and route every refusal
+  through the guard so the busy flicker is visible too.
+- A blanket busy latch needs a resync for EVERY button with a rule of its own, and the test must hang a
+  sync with each rule state armed: the first cut re-synced Generate and left Reveal wherever the blanket
+  release put it (enabled with no key). `renderKey` on release, and the harness holds Reveal to the rule
+  (`forget-key` is the one press allowed to leave it disabled).
+- A helper that captures a child node (`button.querySelector("strong")`) and later restores
+  `button.innerHTML` paints a detached node from then on: the second arming of "Clean past the data"
+  showed no "Click again to confirm". Look the target up at every paint, and test arm -> run -> arm, not
+  only arm -> disarm.
