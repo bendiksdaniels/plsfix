@@ -54,6 +54,12 @@ function parseArgs(argv) {
     throw new Error(`--port needs an integer, got ${String(port)}`);
   }
   const onlyPane = flag(argv, "pane", null);
+  const slugs = PANES.map((p) => p.slug);
+  if (onlyPane !== null && !slugs.includes(onlyPane)) {
+    throw new Error(
+      `--pane "${onlyPane}" is not one of this sweep's panes. Valid: ${slugs.join(", ")}`,
+    );
+  }
   return {
     port,
     panes: onlyPane ? PANES.filter((p) => p.slug === onlyPane) : PANES,
