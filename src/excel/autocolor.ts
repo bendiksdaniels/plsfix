@@ -3,7 +3,7 @@
 // handler that recolors edited cells live. The handler is off by default.
 
 import { activeArea, cappedAreas } from "./areas";
-import { EDIT_CELL_CAP, writeRuns } from "./internal";
+import { EDIT_CELL_CAP, requireEmptyBlock, writeRuns } from "./internal";
 import { paintSync, protectedNote, sheetProtected } from "./protection";
 import { captureUndo, captureUndoAreas } from "./undo";
 import { type CellClass, classifyCell } from "../classify";
@@ -132,6 +132,11 @@ export async function insertColorKey(): Promise<string> {
       anchor.columnIndex,
       COLOR_KEY_ROWS.length + 1,
       2,
+    );
+    await requireEmptyBlock(
+      context,
+      block,
+      `Insert color key needs an empty block of ${String(COLOR_KEY_ROWS.length + 1)} rows by 2 columns at the selection.`,
     );
     await captureUndo(context, block);
 
