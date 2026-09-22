@@ -91,6 +91,17 @@
     if (tab) tab.click();
   }
 
+  // #refresh-sheets duplicates exactly what opening its OWN tab already does:
+  // tab-workbook's click handler also calls refreshSheets() (src/main.ts
+  // wireControls()), so once surfaceOwnTab() has revealed the Workbook tab
+  // for this very click (true whenever some earlier target left another tab
+  // active), the button's own press repeats the identical read - and with no
+  // host ever connected here, every read of it says the same "Connect to
+  // Excel to list the sheets.", so nothing looks new. Same shape as an
+  // already-active tab below: pressed for real, just never expected to
+  // change anything past what its own reveal already did one line above it.
+  var SAME_AS_OWN_TAB_REVEAL = new Set(["#refresh-sheets"]);
+
   // Fires a real DOM click and reports what happened within budgetMs. kind
   // "checkbox" toggles + fires change; "select" moves to the next option
   // (wrapping) + fires change - with only zero or one option (nothing
@@ -124,7 +135,11 @@
       el.click();
     }
     var result = await waitForReaction(before, budgetMs);
-    if (alreadyActiveTab && !result.reacted && !result.erred) {
+    if (
+      (alreadyActiveTab || SAME_AS_OWN_TAB_REVEAL.has(selector)) &&
+      !result.reacted &&
+      !result.erred
+    ) {
       result.reacted = true;
       result.skippedAlreadyActive = true;
     }
@@ -145,6 +160,54 @@
         selector: cssPathFor(button),
         label: textOf(button),
         action: button.dataset.action,
+      });
+    }
+    // Every remaining .app-shell button carries an id but no data-action:
+    // main.ts / ppt/main.ts wire these directly (delete-names, generate-key,
+    // the whole PowerPoint pane). Not re-added here: [role=tab] and
+    // .help-toggle get their own loops below, and a first-run button is
+    // caught by the .first-run loop even though it too has no data-action -
+    // all three would otherwise be clicked a second, redundant time. Also
+    // skipped:
+    //  - a button under a container the app keeps hidden until some OTHER
+    //    control opens it (#project-prompt until "New project" is pressed,
+    //    #change-source-chooser until "Change source" is) - surfaceOwnTab()
+    //    only ever reveals a [role=tabpanel] ancestor, so such a button
+    //    would either throw on a precondition nobody set up or, worse, show
+    //    no reaction at all because the container was already sitting in
+    //    that same hidden/empty state: a false dead-button verdict, not a
+    //    real one;
+    //  - on the Excel pane only (id="tab-workbook" exists there and nowhere
+    //    else - PowerPoint's own Links view happens to share the container
+    //    id "view-links", and every one of ITS buttons is wired unconditio-
+    //    nally in src/ppt/main.ts, so it must stay covered), every id-only
+    //    button under #view-links (export-*, new/move-to-project, push-*,
+    //    go-to-source, remove-link, generate/copy/reveal/forget-key):
+    //    src/pane/links-tab.ts's wireActions()/wireBoxes() are the only
+    //    place any of them are ever given a listener, and src/main.ts calls
+    //    that (through connectExcel()) only once Excel is connected - never
+    //    true for this sweep's whole scenario, a host that is neither Excel
+    //    nor PowerPoint at all. Proven dead here would only ever prove that
+    //    same one fact for all fourteen; the vitest click-through suite (a
+    //    fake but CONNECTED Excel) is what actually holds each of them to a
+    //    real reaction.
+    function hiddenOutsideTab(el) {
+      var hidden = el.closest("[hidden]");
+      return Boolean(hidden) && hidden.getAttribute("role") !== "tabpanel";
+    }
+    var isExcelPane = Boolean(document.getElementById("tab-workbook"));
+    for (var idButton of document.querySelectorAll(".app-shell button[id]")) {
+      if (idButton.hasAttribute("data-action")) continue;
+      if (idButton.getAttribute("role") === "tab") continue;
+      if (idButton.classList.contains("help-toggle")) continue;
+      if (idButton.closest(".first-run")) continue;
+      if (isExcelPane && idButton.closest("#view-links")) continue;
+      if (hiddenOutsideTab(idButton)) continue;
+      out.push({
+        kind: "button",
+        selector: "#" + idButton.id,
+        label: textOf(idButton),
+        action: idButton.id,
       });
     }
     for (var tab of document.querySelectorAll('[role="tab"]')) {
