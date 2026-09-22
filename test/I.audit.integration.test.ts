@@ -183,14 +183,38 @@ describe("independence: no usable Excel host", () => {
   it("still opens the shortcut card - Office chrome, not a workbook action", async () => {
     // The fake host's Office.context.ui has no displayDialogAsync, so this
     // exercises openShortcutCard's window.open fallback; jsdom does not
-    // implement navigation, so the fallback itself is stubbed out here.
-    vi.stubGlobal("open", vi.fn());
+    // implement navigation, so the fallback itself is stubbed out here. A
+    // real window.open() answers with the new Window on success, so the
+    // stub does too - only a falsy answer is the blocked-pop-up failure.
+    vi.stubGlobal(
+      "open",
+      vi.fn(() => ({}) as Window),
+    );
     await boot({ hostOverride: "Word" });
     click("shortcut-card");
     await settle();
     expect(toastText()).toBe("Shortcut card opened");
     vi.unstubAllGlobals();
   });
+
+  it.each([
+    ["a host that is not Excel at all", { hostOverride: "Word" }],
+    ["ExcelApi too old for the pane", { isSetSupported: () => false }],
+  ] as const)(
+    "answers the Links tab's own buttons too, not just [data-action] - %s",
+    async (_label, opts) => {
+      await boot(opts);
+
+      click("export-selection");
+      await settle();
+      expect(toastText()).toBe("Excel is not connected.");
+      expect(document.getElementById("toast")?.className).toContain("error");
+
+      click("generate-key");
+      await settle();
+      expect(toastText()).toBe("Excel is not connected.");
+    },
+  );
 });
 
 describe("a fully connected Excel host", () => {
@@ -424,5 +448,74 @@ describe("degraded boot: Office.onReady never settles but Excel answers a real p
     expect(document.getElementById("connection-status")?.textContent).toBe(
       "Excel connected",
     );
+  });
+});
+
+describe("setBusy disables every button, then rule buttons resync instead of blanket-enabling (item 2)", () => {
+  it("hangs a guarded action: every button goes disabled, and on release the rule buttons keep their own state", async () => {
+    await boot();
+
+    // styles-delete's own rule: disabled tracks skippedSheets, not busy - a
+    // real scan (nothing skipped on this small fixture) turns it false even
+    // though the button stays hidden (nothing unused to delete). Arm, then
+    // confirm: deleteStyles() re-scans on its own, no separate scan button.
+    click("styles-delete");
+    await settle();
+    click("styles-delete");
+    await settle();
+    const stylesDelete = document.getElementById(
+      "styles-delete",
+    ) as HTMLButtonElement;
+    expect(stylesDelete.disabled).toBe(false);
+
+    const traceBack = document.getElementById(
+      "trace-back",
+    ) as HTMLButtonElement;
+    const copyModelCheck = document.getElementById(
+      "copy-model-check",
+    ) as HTMLButtonElement;
+    const deleteNamesButton = document.getElementById(
+      "delete-names",
+    ) as HTMLButtonElement;
+    const generateKey = document.getElementById(
+      "generate-key",
+    ) as HTMLButtonElement;
+    const undoButton = document.querySelector<HTMLButtonElement>(
+      '[data-action="undo"]',
+    )!;
+    // Nothing has traced or checked yet, and the key read had nothing
+    // stored: each starts in the state its own module gives it, not one
+    // this test forces.
+    expect(traceBack.disabled).toBe(true);
+    expect(copyModelCheck.disabled).toBe(true);
+    expect(generateKey.disabled).toBe(false);
+
+    const { guard } = await import("../src/pane/shared");
+    let release!: (value: string) => void;
+    const hang = new Promise<string>((resolve) => {
+      release = resolve;
+    });
+    // guard() sets busy synchronously, before its first await, so the latch
+    // is already on the instant this call returns - no tick needed.
+    void guard(() => hang, "cycle-fill");
+
+    const everyButton = Array.from(
+      document.querySelectorAll<HTMLButtonElement>(".app-shell button"),
+    );
+    expect(everyButton.length).toBeGreaterThan(20);
+    expect(everyButton.every((button) => button.disabled)).toBe(true);
+
+    release("done");
+    await settle();
+
+    // A blanket re-enable would have left every one of these five wrong.
+    expect(stylesDelete.disabled).toBe(false);
+    expect(traceBack.disabled).toBe(true);
+    expect(copyModelCheck.disabled).toBe(true);
+    expect(generateKey.disabled).toBe(false);
+    expect(deleteNamesButton.disabled).toBe(false);
+    // An ordinary [data-action] button has no rule of its own: busy is the
+    // only thing that ever disables it, so release is a plain re-enable.
+    expect(undoButton.disabled).toBe(false);
   });
 });

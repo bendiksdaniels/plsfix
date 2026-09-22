@@ -254,12 +254,27 @@ describe("dispatch: without Excel connected", () => {
 
   it("falls back to a plain tab when the host has no dialog API at all", async () => {
     Object.assign(globalThis, { Office: { context: {} } });
-    const opened = vi.fn();
+    // A real window.open() answers with the new Window on success; only a
+    // falsy answer (null, a blocked pop-up) is the failure this dispatch
+    // must catch, so the fake stands in for the successful case here.
+    const opened = vi.fn(() => ({}) as Window);
     vi.stubGlobal("open", opened);
     await expect(dispatch("shortcut-card")).resolves.toBe(
       "Shortcut card opened",
     );
     expect(opened).toHaveBeenCalledTimes(1);
+    vi.unstubAllGlobals();
+  });
+
+  it("throws when the host has no dialog API and the pop-up is blocked", async () => {
+    Object.assign(globalThis, { Office: { context: {} } });
+    vi.stubGlobal(
+      "open",
+      vi.fn(() => null),
+    );
+    await expect(dispatch("shortcut-card")).rejects.toThrow(
+      "The shortcut card could not open. Allow pop-ups for this pane.",
+    );
     vi.unstubAllGlobals();
   });
 

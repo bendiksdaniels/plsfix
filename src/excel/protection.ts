@@ -32,15 +32,25 @@ export async function sheetProtected(
 }
 
 /**
+ * The bare sentence, with no stage of its own: for a caller that prefixes it
+ * with something other than a plain stage label (src/excel/audit.ts's
+ * overlayNote is read back by trace-panel.ts's own "Audit overlay on/off"
+ * line, which would double the stage if this carried one already).
+ */
+export function protectedSentence(areas = 1): string {
+  return areas > 1
+    ? "this sheet is partly protected, the areas before the locked one were changed, the rest were not"
+    : "this sheet is protected, nothing was changed";
+}
+
+/**
  * The line the pane shows instead of an error when a paint was refused. A
  * batch of more than one area (a ctrl-clicked selection) may have already
  * landed some of them before the host refused another, so it is worded as
  * partly protected rather than promising an untouched sheet.
  */
 export function protectedNote(stage: string, areas = 1): string {
-  return areas > 1
-    ? `${stage}: this sheet is partly protected, the areas before the locked one were changed, the rest were not`
-    : `${stage}: this sheet is protected, nothing was changed`;
+  return `${stage}: ${protectedSentence(areas)}`;
 }
 
 /**

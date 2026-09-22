@@ -25,8 +25,27 @@ export const actionButtons = Array.from(
 export const toast = createToast(getElement("toast"));
 export const tabs = installTabs(getElement("tab-bar"));
 
+// Five buttons answer "may I be pressed" on their own terms, not just busy
+// or not - Back with nothing queued, Copy report before a check has run,
+// the two armed-confirm deletes, Generate before a key read lands - so a
+// blanket re-enable on release would hand back a press none of them are
+// ready for. main.ts's boot() registers the one function that puts each of
+// them back where its own module last left it, once every tab owning one is
+// wired; nothing to call is a safe no-op for a host that never got a
+// supported Excel, and for any test that loads this module alone.
+let resyncRuleButtons: () => void = () => undefined;
+
+export function setRuleButtonsSync(fn: () => void): void {
+  resyncRuleButtons = fn;
+}
+
 function setBusy(busy: boolean): void {
-  for (const button of actionButtons) button.disabled = busy;
+  for (const button of document.querySelectorAll<HTMLButtonElement>(
+    ".app-shell button",
+  )) {
+    button.disabled = busy;
+  }
+  if (!busy) resyncRuleButtons();
 }
 
 export function errorMessage(error: unknown): string {

@@ -3,7 +3,7 @@
 // button so a failure can be pasted into a bug report. No Office.js here -
 // this module only ever touches the DOM node it is given.
 
-import { copyText } from "./clipboard";
+import { COPY_FAILED_MESSAGE, copyText } from "./clipboard";
 
 export type ToastKind = "success" | "error";
 
@@ -37,7 +37,14 @@ export function createToast(
       button.type = "button";
       button.className = "toast-copy";
       button.textContent = "Copy details";
-      button.addEventListener("click", () => void copyText(details));
+      button.addEventListener("click", () => {
+        void copyText(details).then((copied) => {
+          show(
+            copied ? "Details copied." : COPY_FAILED_MESSAGE,
+            copied ? "success" : "error",
+          );
+        });
+      });
       container.append(button);
     }
 

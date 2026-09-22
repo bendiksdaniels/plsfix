@@ -127,6 +127,13 @@ describe("toolEntries", () => {
       ]);
     }
   });
+
+  it("labels a glyph-only button by its aria-label, not the glyph on its face", async () => {
+    const { toolEntries } = await load();
+    const entries = toolEntries(document);
+    const entry = entries.find((e) => e.action === "refresh-selection");
+    expect(entry?.label).toBe("Refresh selection");
+  });
 });
 
 describe("installToolSearch", () => {
@@ -282,5 +289,42 @@ describe("installToolSearch", () => {
     findQuery.focus();
     document.dispatchEvent(new KeyboardEvent("keydown", { key: "/" }));
     expect(document.activeElement).toBe(findQuery);
+  });
+
+  it("does not offer a disabled button as a result", async () => {
+    const { installToolSearch } = await load();
+    installToolSearch(document);
+
+    // copy-model-check ("Copy report") starts disabled until a model check
+    // has run, and is the only catalogued button naming both words.
+    type("copy report");
+
+    expect(results().hidden).toBe(true);
+  });
+
+  it("finds a glyph-only button by its aria-label", async () => {
+    const { installToolSearch } = await load();
+    installToolSearch(document);
+
+    type("refresh selection");
+
+    expect(results().hidden).toBe(false);
+    expect(results().textContent).toContain("Refresh selection");
+  });
+
+  it("does not offer the New project prompt's Create/Cancel before New project opens it", async () => {
+    const { installToolSearch } = await load();
+    installToolSearch(document);
+
+    // #project-prompt (holding project-ok "Create" and project-cancel
+    // "Cancel") starts hidden; New project itself does not and stays a
+    // valid result for the same query.
+    type("create");
+    const actions = Array.from(results().querySelectorAll("li")).map(
+      (li) => li.dataset.toolAction,
+    );
+
+    expect(actions).toContain("new-project");
+    expect(actions).not.toContain("project-ok");
   });
 });

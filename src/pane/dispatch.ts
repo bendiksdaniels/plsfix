@@ -80,7 +80,11 @@ import {
 function openShortcutCard(): Promise<string> {
   const url = new URL("shortcuts.html", location.href).href;
   if (!Office.context?.ui?.displayDialogAsync) {
-    window.open(url, "_blank");
+    if (!window.open(url, "_blank")) {
+      throw new Error(
+        "The shortcut card could not open. Allow pop-ups for this pane.",
+      );
+    }
     return Promise.resolve("Shortcut card opened");
   }
   return new Promise((resolve) => {
@@ -108,13 +112,18 @@ const HOST_FREE_ACTIONS = new Set([
   "shortcuts-reset",
 ]);
 
+// The one sentence every workbook action answers with when there is no
+// connected, supported Excel - shared rather than restated, including by
+// main.ts's Links-tab buttons, which never reach this switch at all.
+export const EXCEL_NOT_CONNECTED_MESSAGE = "Excel is not connected.";
+
 export async function dispatch(action: string): Promise<string> {
   // Every other action reaches Excel through ../excel: without a connected
   // workbook that would throw whatever raw error the adapter or Excel.js
   // hits first, instead of the one clean sentence a pane with no host (or a
   // rejected one) owes every click.
   if (!HOST_FREE_ACTIONS.has(action) && !isExcelReady()) {
-    throw new Error("Excel is not connected.");
+    throw new Error(EXCEL_NOT_CONNECTED_MESSAGE);
   }
 
   if (action.startsWith("style-")) {

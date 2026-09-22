@@ -180,7 +180,29 @@ describe("model check panel", () => {
     vi.mocked(runModelCheck).mockResolvedValue(report([finding()]));
     expect(await check.runCheck()).toBe("Model check: 1 finding on 2 sheets");
     expect(copy.disabled).toBe(false);
+
+    // jsdom does not define execCommand at all (so the real fallback throws,
+    // caught, as false); assigning it stands in for a host where the copy
+    // genuinely lands.
+    Object.assign(document, { execCommand: vi.fn(() => true) });
     expect(await check.copyReport()).toBe("Copied 1 lines");
+    Reflect.deleteProperty(document, "execCommand");
+  });
+
+  it("reports the copy failed when neither clipboard path works", async () => {
+    const { check } = await load();
+    vi.mocked(runModelCheck).mockResolvedValue(report([finding()]));
+    await check.runCheck();
+
+    Object.defineProperty(navigator, "clipboard", {
+      value: undefined,
+      configurable: true,
+    });
+    Object.assign(document, { execCommand: vi.fn(() => false) });
+    await expect(check.copyReport()).rejects.toThrow(
+      "Copy failed: select the text and copy it by hand.",
+    );
+    Reflect.deleteProperty(document, "execCommand");
   });
 
   it("names the location, the kind and the note on every row", async () => {

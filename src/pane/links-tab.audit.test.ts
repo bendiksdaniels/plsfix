@@ -360,7 +360,7 @@ describe("markup the tab cannot work with", () => {
 // Office webviews deny the async Clipboard API; copyText falls back to a
 // hidden textarea, and jsdom implements neither. The button must still report.
 describe("the link key without a clipboard", () => {
-  it("still reports the copy", async () => {
+  it("reports the copy failed instead of a false success", async () => {
     Object.defineProperty(navigator, "clipboard", {
       value: undefined,
       configurable: true,
@@ -374,7 +374,12 @@ describe("the link key without a clipboard", () => {
     click("copy-key");
     await settle(h);
 
-    expect(h.errors).toEqual([]);
-    expect(h.messages).toContain("Link key copied.");
+    // jsdom's execCommand("copy") fallback does not really land text on a
+    // clipboard, so this exercises the same "neither path worked" case a
+    // webview with both APIs denied would hit.
+    expect(h.errors).toContain(
+      "Copy failed: select the text and copy it by hand.",
+    );
+    expect(h.messages).not.toContain("Link key copied.");
   });
 });

@@ -73,6 +73,15 @@ function renderGroups(chips: HTMLElement, groups: CellPrecedents[]): void {
   }
 }
 
+// Back only ever has something to go to once a walk has pushed onto the
+// stack, which itself only happens with a view already showing - so this is
+// safe to call any time, including to put the button back after setBusy's
+// blanket disable, whether or not a trace is on screen right now.
+export function syncTraceBack(): void {
+  getElement<HTMLButtonElement>("trace-back").disabled =
+    traceStack.length === 0;
+}
+
 function renderTrace(): void {
   const panel = getElement<HTMLDivElement>("trace-panel");
   const chips = getElement<HTMLDivElement>("trace-chips");
@@ -87,8 +96,7 @@ function renderTrace(): void {
 
   const { direction, result, groups } = traceView;
   getElement("trace-origin").textContent = `${result.origin} · ${direction}`;
-  getElement<HTMLButtonElement>("trace-back").disabled =
-    traceStack.length === 0;
+  syncTraceBack();
 
   if (groups) {
     renderGroups(chips, groups);
@@ -190,7 +198,9 @@ export async function toggleAudit(): Promise<string> {
   auditOn = await toggleAuditOverlay();
   renderAuditState();
   const state = auditOn ? "Audit overlay on" : "Audit overlay off";
-  // Skipped protected cells, if any, ride along in the same toast.
+  // The adapter's note is the bare sentence, with no stage of its own
+  // (src/excel/protection.ts's protectedSentence) - composed here so the
+  // stage is named exactly once, never doubled and never dropped.
   const note = lastAuditNote();
   return note ? `${state}: ${note}` : state;
 }

@@ -230,6 +230,11 @@ function officeGlobal(runtime: FakeRuntime): Record<string, unknown> {
         runtime.commands.set(id, handler);
       },
     },
+    // Office.addin.showAsTaskpane: what a ribbon or shortcut error brings to
+    // the front when the pane is closed. A plain resolved promise, the way
+    // test/fakehost.ts's Excel fake already answers it; a test wraps this in
+    // vi.spyOn to see whether and how often it was called.
+    addin: { showAsTaskpane: () => Promise.resolve() },
     context: {
       get platform(): string {
         return runtime.platform;

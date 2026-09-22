@@ -602,6 +602,17 @@ describe("autocolor", () => {
     expect(helpers.font("Model!B7").color).toBe(theme.partialFont);
     expect(helpers.fill("Model!B7").pattern).toBe("None");
   });
+
+  it("refuses a colour key block with anything standing in it", async () => {
+    helpers.seed("Model!C5", [["existing"]]);
+    helpers.select("Model!B2");
+
+    expect(await rejects(() => smt.insertColorKey())).toBe(
+      "Insert color key needs an empty block of 6 rows by 2 columns at the selection.",
+    );
+    expect(helpers.value("Model!B2")).toBe("");
+    expect(helpers.value("Model!C5")).toBe("existing");
+  });
 });
 
 // ---------------------------------------------------------------------------

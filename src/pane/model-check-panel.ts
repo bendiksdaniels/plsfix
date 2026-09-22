@@ -12,7 +12,7 @@ import {
   reportText,
   summarize,
 } from "../model-check";
-import { copyText } from "../ui/clipboard";
+import { COPY_FAILED_MESSAGE, copyText } from "../ui/clipboard";
 import { getElement } from "../ui/dom";
 import { guard } from "./shared";
 import { refreshSheets } from "./workbook-tab";
@@ -135,6 +135,7 @@ export async function runCheck(): Promise<string> {
 
 export async function copyReport(): Promise<string> {
   if (report === null) return "Run the model check first.";
-  await copyText(reportText(report));
+  const copied = await copyText(reportText(report));
+  if (!copied) throw new Error(COPY_FAILED_MESSAGE);
   return `Copied ${String(report.findings.length)} lines`;
 }

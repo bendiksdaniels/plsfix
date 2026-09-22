@@ -130,12 +130,16 @@ export function registerCommands(): void {
         // value as an argument, and half this table takes arguments.
         .then(() => run())
         .then(() => refreshSelection())
-        .catch((error: unknown) => {
+        .catch(async (error: unknown) => {
           const { message, details } = describeError(
             error,
             { host: "Excel", version: APP_VERSION },
             id,
           );
+          // A ribbon button or shortcut can fire with the pane closed; a
+          // toast nobody can see is as good as none, so a failure surfaces
+          // the pane the way NEEDS_PANE always does, success stays silent.
+          await showPane();
           toast.show(message, "error", details);
         })
         .finally(() => {

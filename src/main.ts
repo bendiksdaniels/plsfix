@@ -16,7 +16,7 @@ import {
   wireBrand,
 } from "./pane/brand-tab";
 import { registerCommands } from "./pane/commands";
-import { dispatch } from "./pane/dispatch";
+import { dispatch, EXCEL_NOT_CONNECTED_MESSAGE } from "./pane/dispatch";
 import { renderFind, runFind } from "./pane/find-panel";
 import { installLinksTab } from "./pane/links-tab";
 import { copyReport, renderModelCheck } from "./pane/model-check-panel";
@@ -32,6 +32,7 @@ import {
   refreshSelection,
   renderActionState,
   setExcelReady,
+  setRuleButtonsSync,
   toast,
 } from "./pane/shared";
 import { renderShare } from "./pane/share-panel";
@@ -43,7 +44,7 @@ import {
   renderStyles,
 } from "./pane/styles-panel";
 import { installToolSearch } from "./pane/tool-search";
-import { renderAuditState, traceBack } from "./pane/trace-panel";
+import { renderAuditState, syncTraceBack, traceBack } from "./pane/trace-panel";
 import {
   armDelete,
   deleteNames,
@@ -51,6 +52,7 @@ import {
   isDeleteArmed,
   refreshSheets,
   renderNames,
+  syncDeleteNamesButton,
 } from "./pane/workbook-tab";
 import { getElement } from "./ui/dom";
 import { installFirstRun } from "./ui/first-run";
@@ -254,6 +256,30 @@ async function boot(host: Office.HostType, degraded: boolean): Promise<void> {
   const linksTab = excelConnected ? await connectExcel(degraded) : null;
 
   wireControls();
+
+  // The five buttons setBusy cannot judge by itself: each is put back to
+  // whatever its own module last rendered, not blanket re-enabled.
+  setRuleButtonsSync(() => {
+    syncTraceBack();
+    renderModelCheck();
+    renderStyles();
+    syncDeleteNamesButton();
+    linksTab?.syncGenerateKey();
+  });
+
+  // installLinksTab() lives inside connectExcel() and never runs without a
+  // connected, supported Excel, so its 16 id-wired buttons (export, push,
+  // project and link-key) would otherwise sit with no listener at all -
+  // dead rather than refusing gracefully like every [data-action] button.
+  if (!excelConnected) {
+    for (const button of document.querySelectorAll<HTMLButtonElement>(
+      "#view-links button",
+    )) {
+      button.addEventListener("click", () => {
+        toast.show(EXCEL_NOT_CONNECTED_MESSAGE, "error");
+      });
+    }
+  }
 
   if (excelConnected) {
     // Debounced: dragging a selection fires the event continuously.

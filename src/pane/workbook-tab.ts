@@ -151,6 +151,13 @@ export function armDelete(): void {
   deleteTimer = window.setTimeout(disarmDelete, DELETE_CONFIRM_MS);
 }
 
+// Nothing else ever disables this button - only setBusy's blanket pass does,
+// so put back after it - whether the scrubber has been run this session or
+// not changes what it says, never whether it is disabled.
+export function syncDeleteNamesButton(): void {
+  getElement<HTMLButtonElement>("delete-names").disabled = false;
+}
+
 export function renderNames(scanned: boolean): void {
   const result = getElement("names-result");
   const listed = brokenList.slice(0, 6).join(", ");

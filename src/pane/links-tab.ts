@@ -30,7 +30,7 @@ import {
   type KeyStore,
   type Workspace,
 } from "../link/workspace";
-import { copyText } from "../ui/clipboard";
+import { COPY_FAILED_MESSAGE, copyText } from "../ui/clipboard";
 import type { Guard } from "../ui/guard";
 import type { Toast } from "../ui/toast";
 import { refreshChartPick, watchSheetChanges } from "./links-charts";
@@ -89,6 +89,8 @@ export function installLinksTab(deps: LinksTabDeps): {
   refresh(): Promise<void>;
   /** The selection moved: the chart list follows if the sheet changed. */
   sheetChanged(): Promise<void>;
+  /** Puts Generate back once setBusy's blanket disable lets go of it. */
+  syncGenerateKey(): void;
 } {
   const tab = newTab(deps);
   wireBoxes(tab);
@@ -97,6 +99,7 @@ export function installLinksTab(deps: LinksTabDeps): {
   return {
     refresh: () => refresh(tab),
     sheetChanged: () => refreshChartPick(tab),
+    syncGenerateKey: () => applyKeyState(tab),
   };
 }
 
@@ -381,7 +384,8 @@ async function generateKey(tab: Tab): Promise<string> {
 }
 
 async function copyKey(tab: Tab): Promise<string> {
-  await copyText(requireWorkspace(tab).exportKey);
+  const copied = await copyText(requireWorkspace(tab).exportKey);
+  if (!copied) throw new Error(COPY_FAILED_MESSAGE);
   return "Link key copied.";
 }
 

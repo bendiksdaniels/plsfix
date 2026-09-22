@@ -17,11 +17,15 @@ function textOf(element: Element): string {
   return (element.textContent ?? "").replace(/\s+/g, " ").trim();
 }
 
-// label = the button's <strong> line else its own text, trimmed - the same
-// two-step read src/ui/help.ts uses for a card's dt, minus the aria-label
-// step: an icon-only button is still catalogued, just under its glyph, so a
-// modeller who does not know the glyph finds it by its help sentence instead.
+// label = the button's aria-label when its face is a glyph ("↻", "⌨", "⟲",
+// "←"), else its <strong> line, else its own text - the same priority
+// src/ui/help.ts's labelOf uses for a card's dt, so a glyph-only button is
+// found by what it does, not by the character a search box cannot type.
 function labelOf(button: HTMLElement): string {
+  const ariaLabel = (button.getAttribute("aria-label") ?? "")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (ariaLabel) return ariaLabel;
   const strong = button.querySelector("strong");
   return textOf(strong ?? button);
 }
@@ -96,6 +100,26 @@ function findButton(root: Document, action: string): HTMLButtonElement | null {
   return byId instanceof HTMLButtonElement ? byId : null;
 }
 
+// Whether a press on this button right now would do anything: not disabled
+// (Copy report before a check has run, Back before there is anywhere to go),
+// and not sitting inside something hidden for a reason other than its tab
+// not being the active one - a tab panel is expected to be hidden and
+// runEntry switches to it first, but the #project-prompt Create/Cancel pair
+// hides for its own reason and stays dead until "New project" opens it.
+function canAct(button: HTMLButtonElement): boolean {
+  if (button.disabled) return false;
+  for (
+    let ancestor = button.parentElement;
+    ancestor !== null;
+    ancestor = ancestor.parentElement
+  ) {
+    if (ancestor.hidden && ancestor.getAttribute("role") !== "tabpanel") {
+      return false;
+    }
+  }
+  return true;
+}
+
 function buildRow(entry: ToolEntry, index: number): HTMLLIElement {
   const li = document.createElement("li");
   li.id = `tool-search-option-${String(index)}`;
@@ -153,7 +177,15 @@ function hideResults(state: SearchState): void {
 }
 
 function renderResults(state: SearchState): void {
-  state.matches = rankTools(state.input.value, state.tools, RESULT_LIMIT);
+  // Ranked fresh off the live DOM every keystroke, not off the catalogue's
+  // boot-time snapshot: a button's disabled or hidden-ancestor state moves
+  // as the pane is used (Copy report, Back, New project's Create/Cancel),
+  // and a row must never outlive what it names.
+  const candidates = state.tools.filter((entry) => {
+    const button = findButton(state.root, entry.action);
+    return button !== null && canAct(button);
+  });
+  state.matches = rankTools(state.input.value, candidates, RESULT_LIMIT);
   state.list.textContent = "";
   state.matches.forEach((entry, index) =>
     state.list.append(buildRow(entry, index)),
@@ -169,7 +201,9 @@ function renderResults(state: SearchState): void {
 // and toast applies exactly as a modeller's own click would.
 function runEntry(state: SearchState, entry: ToolEntry): void {
   const button = findButton(state.root, entry.action);
-  if (button === null) return;
+  // Re-checked rather than trusted from render time: nothing stops a slow
+  // click landing after the button's own state moved on.
+  if (button === null || !canAct(button)) return;
   const tab = tabOf(button, state.root);
   if (tab !== null) tabs.activate(tab.id);
   button.click();

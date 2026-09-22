@@ -33,5 +33,6 @@ export async function runReconciliation(): Promise<string> {
 
   const result = await reconcileSelection(target, tolerance);
   line.textContent = reconcileSummary(result, getActiveSettings().language);
-  return `Found ${String(result.count)} matching cells`;
+  const cell = result.count === 1 ? "cell" : "cells";
+  return `Found ${String(result.count)} matching ${cell}`;
 }

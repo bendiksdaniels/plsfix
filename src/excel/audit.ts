@@ -11,7 +11,7 @@ import {
   SELECTION_CELL_CAP,
   writeRuns,
 } from "./internal";
-import { protectedNote, sheetProtected } from "./protection";
+import { protectedSentence, sheetProtected } from "./protection";
 import { parseAddress } from "./shared";
 import { type AuditMark, auditGrid } from "../audit";
 import { type CellValue } from "../model";
@@ -119,7 +119,7 @@ export async function toggleAuditOverlay(): Promise<boolean> {
     // A protected sheet refuses every fill the overlay would write, and half a
     // painted overlay is worse than none: it is skipped and said so.
     if (await sheetProtected(context, selected.worksheet)) {
-      overlayNote = protectedNote(OVERLAY_STAGE);
+      overlayNote = protectedSentence();
       return false;
     }
 
