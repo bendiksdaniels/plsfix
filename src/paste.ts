@@ -221,6 +221,24 @@ export function toggleIfError(
   );
 }
 
+// The same read toggleIfError makes, without building the output grid: what
+// the receipt (src/excel/formulas.ts) counts before it writes.
+export function countIfErrorToggle(cells: CellValue[][]): {
+  added: number;
+  stripped: number;
+} {
+  let added = 0;
+  let stripped = 0;
+  for (const row of cells) {
+    for (const cell of row) {
+      if (!isFormula(cell)) continue;
+      if (unwrapIfError(cell.slice(1)) === null) added += 1;
+      else stripped += 1;
+    }
+  }
+  return { added, stripped };
+}
+
 export function buildCagrFormula(
   firstRef: string,
   lastRef: string,

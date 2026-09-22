@@ -218,9 +218,12 @@ describe("a deck with no link key", () => {
     await settle();
     expect(toastText()).toBe("Slide 2.");
 
+    // break-selected only arms on the first press (src/ui/confirm.ts); the
+    // second is what actually breaks it.
+    click("break-selected");
     click("break-selected");
     await settle();
-    expect(toastText()).toBe("1 link broken. The picture stays on the slide.");
+    expect(toastText()).toBe("1 link broken. The object stays on the slide.");
     expect(linkRows()).toHaveLength(0);
     expect(presentation.slides[1]!.shapes[0]!.fillImage).toBe(
       fakePng(800, 400),

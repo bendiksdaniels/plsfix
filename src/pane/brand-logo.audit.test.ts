@@ -219,13 +219,19 @@ describe("logo colour picker", () => {
     pickLogo();
     await settle();
 
-    (document.getElementById("reset-brand") as HTMLButtonElement).click();
+    // reset-brand only arms on the first press (src/ui/confirm.ts); the
+    // second is what actually resets it.
+    const resetButton = document.getElementById(
+      "reset-brand",
+    ) as HTMLButtonElement;
+    resetButton.click();
+    resetButton.click();
     await settle();
 
     expect(settings.getActiveSettings()).toEqual(settings.DEFAULT_SETTINGS);
     expect(document.getElementById("logo-swatches")?.hidden).toBe(true);
     expect(document.getElementById("logo-hint")?.hidden).toBe(true);
-    expect(toastText()).toBe("Palette reset to pls,fix defaults");
+    expect(toastText()).toBe("Brand settings reset to pls,fix defaults");
   });
 });
 

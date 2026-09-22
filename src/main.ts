@@ -54,6 +54,7 @@ import {
   renderNames,
   syncDeleteNamesButton,
 } from "./pane/workbook-tab";
+import { armConfirm } from "./ui/confirm";
 import { getElement } from "./ui/dom";
 import { installFirstRun } from "./ui/first-run";
 import { installHelp } from "./ui/help";
@@ -168,9 +169,21 @@ async function connectExcel(
 // tabs, searches and answers every click instead of leaving buttons dead.
 function wireControls(): void {
   for (const button of actionButtons) {
+    const action = button.dataset.action;
+    // A data-confirm button (clean-past-data, shortcuts-reset) is destructive
+    // or one-way: the first press only arms it, src/ui/confirm.ts owns the
+    // rest, and this is the run it confirms into on the second.
+    if (action && button.hasAttribute("data-confirm")) {
+      const confirm = armConfirm(button, () => {
+        void guard(() => dispatch(action), action);
+      });
+      button.addEventListener("click", () => confirm.handleClick());
+      continue;
+    }
     button.addEventListener("click", () => {
-      const action = button.dataset.action;
-      if (action) void guard(() => dispatch(action), action);
+      const clickedAction = button.dataset.action;
+      if (clickedAction)
+        void guard(() => dispatch(clickedAction), clickedAction);
     });
   }
 

@@ -470,9 +470,15 @@ describe("state (a): unpaired, nothing selected", () => {
   it("answers the brief's specific sentences unpaired", async () => {
     await bootPpt({ paired: false });
 
-    for (const id of ["update-selected", "break-selected", "go-to-slide"]) {
+    for (const id of ["update-selected", "go-to-slide"]) {
       expect(await press(id)).toBe("Tick a link in the list first.");
     }
+    // break-selected only arms on the first press (src/ui/confirm.ts); the
+    // second is what actually runs and meets the empty selection.
+    await press("break-selected");
+    expect(await press("break-selected")).toBe(
+      "Tick a link in the list first.",
+    );
     // revertSelected() passes its own message to requireSelection()
     // (src/ppt/main.ts), the one PPT-side button with a rule of its own
     // here, the way copy-model-check/trace-back etc. do on the Excel side.
@@ -672,7 +678,62 @@ describe("state (d): paired, an inserted link, its row ticked", () => {
       /^\d+ (reverted|without a previous version|failed)|^Nothing to revert$/,
     );
     tickRow(0);
+    // break-selected only arms on the first press (src/ui/confirm.ts); the
+    // second is what actually breaks it.
+    await pressStatic("break-selected");
     expect(await pressStatic("break-selected")).toMatch(/^1 link broken\./);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Two-click buttons: the first press only arms; the second is the real one.
+// ---------------------------------------------------------------------------
+
+describe("two-click confirms", () => {
+  it("break-selected arms on the first click and breaks on the second", async () => {
+    await bootPpt({ paired: true });
+    await seedWaitingInbox();
+    await pressStatic("refresh-inbox");
+    document.querySelector<HTMLButtonElement>(".inbox-insert")!.click();
+    await settle();
+    expect(linkRows().length, "seed: expected one inserted link row").toBe(1);
+    tickRow(0);
+
+    const button = findButton("break-selected")!;
+    expect(button.classList.contains("armed")).toBe(false);
+    await press("break-selected");
+    expect(
+      button.classList.contains("armed"),
+      "first press should only arm it",
+    ).toBe(true);
+
+    const secondToast = await press("break-selected");
+    expect(secondToast).toBe("1 link broken. The object stays on the slide.");
+    expect(
+      button.classList.contains("armed"),
+      "the confirmed break disarms it again",
+    ).toBe(false);
+  });
+
+  it("forget-key arms on the first click and forgets on the second", async () => {
+    await bootPpt({ paired: true });
+
+    const button = findButton("forget-key")!;
+    expect(button.classList.contains("armed")).toBe(false);
+    await press("forget-key");
+    expect(
+      button.classList.contains("armed"),
+      "first press should only arm it",
+    ).toBe(true);
+
+    const secondToast = await press("forget-key");
+    expect(secondToast).toBe(
+      "Link key forgotten. The links already in this deck still update.",
+    );
+    expect(
+      button.classList.contains("armed"),
+      "the confirmed forget disarms it again",
+    ).toBe(false);
   });
 });
 

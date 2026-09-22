@@ -22,6 +22,7 @@ import {
   absoluteRef,
   buildCagrFormula,
   buildRoundFormula,
+  countIfErrorToggle,
   detectFillExtent,
   flipSign,
   formatDecimals,
@@ -169,10 +170,33 @@ export async function fastFillAuto(direction: "right" | "down"): Promise<void> {
   });
 }
 
-export async function toggleIfErrorGuard(): Promise<void> {
-  await editAreas("The IFERROR guard", "formulas", (grid) =>
-    toggleIfError(grid, "0"),
-  );
+// "N formula"/"N formulas": the same singular rule every other count in this
+// file's receipts uses.
+function formulaCount(count: number): string {
+  return `${count} ${count === 1 ? "formula" : "formulas"}`;
+}
+
+// A mixed selection can gain the guard on some cells and lose it on others in
+// one press, so the receipt names whichever happened - both, when both did.
+function ifErrorReceipt(added: number, stripped: number): string {
+  const addedPhrase = `IFERROR added to ${formulaCount(added)}`;
+  if (stripped === 0) return addedPhrase;
+  const strippedPhrase = `stripped from ${formulaCount(stripped)}`;
+  return added === 0
+    ? `IFERROR ${strippedPhrase}`
+    : `${addedPhrase}, ${strippedPhrase}`;
+}
+
+export async function toggleIfErrorGuard(): Promise<string> {
+  let added = 0;
+  let stripped = 0;
+  await editAreas("The IFERROR guard", "formulas", (grid) => {
+    const counts = countIfErrorToggle(grid);
+    added += counts.added;
+    stripped += counts.stripped;
+    return toggleIfError(grid, "0");
+  });
+  return ifErrorReceipt(added, stripped);
 }
 
 export async function scaleSelection(factor: 1000 | 0.001): Promise<void> {
@@ -197,8 +221,8 @@ export async function applyDecimalStep(delta: 1 | -1): Promise<void> {
   );
 }
 
-export async function insertCagr(): Promise<void> {
-  await Excel.run(async (context) => {
+export async function insertCagr(): Promise<string> {
+  return Excel.run(async (context) => {
     // How many cells before their values: a whole-column click would otherwise
     // ship a million of them across the bridge to find two periods in.
     const selected = await selectedSingleRange(context, CAGR);
@@ -240,7 +264,10 @@ export async function insertCagr(): Promise<void> {
         ),
       ],
     ];
+    destination.load("address");
     await syncWrite(context, CAGR);
+    const landed = parseAddress(destination.address);
+    return `CAGR written at ${landed.sheet}!${landed.address}`;
   });
 }
 

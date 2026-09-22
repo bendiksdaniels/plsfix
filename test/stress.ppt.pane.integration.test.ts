@@ -157,7 +157,7 @@ describe("a second action while the first is still running", () => {
     click("break-selected");
     await settle();
 
-    expect(toastText()).toBe("1 link broken. The picture stays on the slide.");
+    expect(toastText()).toBe("1 link broken. The object stays on the slide.");
     expect(linkRows()).toHaveLength(0);
     expect(deck().slides[1]!.shapes).toHaveLength(1);
   });
@@ -190,6 +190,9 @@ describe("a button pressed at the wrong moment", () => {
       ["break-selected", "Tick a link in the list first."],
       ["go-to-slide", "Tick a link in the list first."],
     ] as [string, string][]) {
+      // break-selected only arms on the first press (src/ui/confirm.ts); the
+      // second is what actually runs and meets the empty selection.
+      if (id === "break-selected") click(id);
       click(id);
       await settle();
       expect(toastText()).toBe(sentence);

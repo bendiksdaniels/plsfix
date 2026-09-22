@@ -1,7 +1,7 @@
 // Workbook tools: the sheet explorer (go to, show/hide), the six sheet tools
 // above it, the broken-name scrubber and the contents-sheet writer. The "click
-// again to confirm" arm on the delete button lapses on its own. Office.js only
-// reaches here through ../excel.
+// again to confirm" arm on the delete button lapses on its own, owned by
+// src/ui/confirm.ts. Office.js only reaches here through ../excel.
 //
 // Every sheet tool re-renders the explorer, and every one of them says in its
 // own line that it changed the sheet list: those changes are outside pls,fix
@@ -21,21 +21,27 @@ import {
   type SheetMove,
   showOnlySheet,
 } from "../excel";
+import { armConfirm, type ConfirmButton } from "../ui/confirm";
 import { getElement } from "../ui/dom";
-import {
-  DELETE_CONFIRM_MS,
-  errorMessage,
-  guard,
-  isExcelReady,
-  toast,
-} from "./shared";
+import { errorMessage, guard, isExcelReady, toast } from "./shared";
 
 let brokenList: string[] = [];
-let deleteArmed = false;
-let deleteTimer: number | undefined;
+let nameDeleteConfirm: ConfirmButton | undefined;
+
+// Lazy for the same reason src/pane/styles-panel.ts's own confirm is: built
+// on first use, run unused since main.ts still owns the deleteNames() call
+// (this module cannot import dispatch.ts without a cycle).
+function deleteNamesConfirm(): ConfirmButton {
+  nameDeleteConfirm ??= armConfirm(
+    getElement<HTMLButtonElement>("delete-names"),
+    () => undefined,
+    { label: deleteLabel },
+  );
+  return nameDeleteConfirm;
+}
 
 export function isDeleteArmed(): boolean {
-  return deleteArmed;
+  return deleteNamesConfirm().isArmed();
 }
 
 async function goToSheet(name: string): Promise<string> {
@@ -134,21 +140,13 @@ function deleteLabel(): string {
 }
 
 export function disarmDelete(): void {
-  window.clearTimeout(deleteTimer);
-  deleteArmed = false;
-  const button = getElement<HTMLButtonElement>("delete-names");
-  button.classList.remove("armed");
-  button.textContent = deleteLabel();
+  deleteNamesConfirm().disarm();
 }
 
 // Deleting a name cannot be undone by us or by Excel, so the first click only
 // arms the button and the arming lapses on its own.
 export function armDelete(): void {
-  const button = getElement<HTMLButtonElement>("delete-names");
-  deleteArmed = true;
-  button.classList.add("armed");
-  button.textContent = "Click again to confirm";
-  deleteTimer = window.setTimeout(disarmDelete, DELETE_CONFIRM_MS);
+  deleteNamesConfirm().arm();
 }
 
 // Nothing else ever disables this button - only setBusy's blanket pass does,

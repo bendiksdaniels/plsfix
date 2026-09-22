@@ -22,6 +22,7 @@ import type { RegistryEntry } from "../link/model";
 import type { RelayApi } from "../link/relay";
 import type { KeyStore } from "../link/workspace";
 import { WORKSPACE_STORAGE_KEY } from "../link/workspace";
+import { CONFIRM_MS } from "../ui/confirm";
 import type { Guard } from "../ui/guard";
 import type { Toast, ToastKind } from "../ui/toast";
 import { installLinksTab } from "./links-tab";
@@ -281,6 +282,9 @@ describe("installLinksTab", () => {
     expect(exportSelection).toHaveBeenCalledTimes(1);
     expect(h.messages).toContain("Sent to PowerPoint: Model!B4:F12");
 
+    // forget-key only arms on the first press (src/ui/confirm.ts); the
+    // second is what actually forgets it.
+    click("forget-key");
     click("forget-key");
     await settle(h);
     expect(h.stored.size).toBe(0);
@@ -389,10 +393,82 @@ describe("installLinksTab", () => {
     await settle(h);
     expect(goToSource).toHaveBeenCalledWith(ID_A);
 
+    // remove-link only arms on the first press (src/ui/confirm.ts); the
+    // second is what actually removes it.
+    click("remove-link");
     click("remove-link");
     await settle(h);
     expect(removeLink).toHaveBeenCalledWith(ID_A, h.relay);
     expect(h.messages).toContain("Removed 1 link");
+  });
+});
+
+describe("two-click confirms", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(listWorkbookLinks).mockResolvedValue([]);
+  });
+
+  it("remove-link, forget-key and a replacing generate-key arm and lapse without running", async () => {
+    vi.mocked(listWorkbookLinks).mockResolvedValue([row(ID_A)]);
+    const h = harness();
+    install(h);
+    await settle(h);
+
+    // A first key needs no confirming (armConfirm's `when`): this press
+    // runs at once, so generate-key has an existing key to replace below.
+    click("generate-key");
+    await settle(h);
+    expect(h.messages).toEqual(["Link key generated. Paste it in PowerPoint."]);
+
+    vi.useFakeTimers();
+    try {
+      for (const id of ["remove-link", "generate-key", "forget-key"]) {
+        click(id);
+        expect(
+          button(id).classList.contains("armed"),
+          `${id}: first press should only arm it`,
+        ).toBe(true);
+        vi.advanceTimersByTime(CONFIRM_MS);
+        expect(
+          button(id).classList.contains("armed"),
+          `${id}: five seconds on, it should have disarmed itself`,
+        ).toBe(false);
+      }
+    } finally {
+      vi.useRealTimers();
+    }
+
+    // Nothing beyond the one generate ever ran: every arm lapsed instead of
+    // being confirmed.
+    expect(removeLink).not.toHaveBeenCalled();
+    expect(h.messages).toEqual(["Link key generated. Paste it in PowerPoint."]);
+    expect(h.stored.size).toBe(1);
+  });
+
+  it("generate-key runs at once for a first key but arms for a replacement", async () => {
+    const h = harness();
+    install(h);
+    await settle(h);
+
+    expect(button("generate-key").classList.contains("armed")).toBe(false);
+    click("generate-key");
+    await settle(h);
+    // No key existed yet: the press ran immediately, never armed.
+    expect(button("generate-key").classList.contains("armed")).toBe(false);
+    expect(h.messages).toEqual(["Link key generated. Paste it in PowerPoint."]);
+
+    click("generate-key");
+    // A key exists now: the same button needs a second press to replace it.
+    expect(button("generate-key").classList.contains("armed")).toBe(true);
+    expect(h.messages).toEqual(["Link key generated. Paste it in PowerPoint."]);
+
+    click("generate-key");
+    await settle(h);
+    expect(h.messages).toEqual([
+      "Link key generated. Paste it in PowerPoint.",
+      "Link key generated. Paste it in PowerPoint.",
+    ]);
   });
 });
 

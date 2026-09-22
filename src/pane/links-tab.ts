@@ -31,6 +31,7 @@ import {
   type Workspace,
 } from "../link/workspace";
 import { COPY_FAILED_MESSAGE, copyText } from "../ui/clipboard";
+import { armConfirm, type ArmConfirmOptions } from "../ui/confirm";
 import type { Guard } from "../ui/guard";
 import type { Toast } from "../ui/toast";
 import { refreshChartPick, watchSheetChanges } from "./links-charts";
@@ -151,10 +152,14 @@ function wireActions(tab: Tab): void {
   wire(tab, "export-text", () => exportRange(tab, "text"));
   wire(tab, "export-chart", () => exportChart(tab));
   wire(tab, "go-to-source", () => jumpToSource(tab));
-  wire(tab, "remove-link", () => removeSelected(tab));
-  wire(tab, "generate-key", () => generateKey(tab));
+  wireConfirm(tab, "remove-link", () => removeSelected(tab));
+  // A first key needs no confirming; replacing one that already pairs a
+  // deck does, since decks holding it stop seeing new exports.
+  wireConfirm(tab, "generate-key", () => generateKey(tab), {
+    when: () => tab.workspace !== null,
+  });
   wire(tab, "copy-key", () => copyKey(tab));
-  wire(tab, "forget-key", () => forgetKey(tab));
+  wireConfirm(tab, "forget-key", () => forgetKey(tab));
   wirePush(tab, "push-selected", false);
   wirePush(tab, "push-all", true);
   wire(tab, "new-project", () => showProjectPrompt(tab));
@@ -472,6 +477,21 @@ function requireSelection(tab: Tab): [string, ...string[]] {
 
 function wire(tab: Tab, id: string, run: () => Promise<string>): void {
   listen(tab, id, () => guarded(tab, id, run));
+}
+
+// remove-link, generate-key and forget-key are destructive or one-way (a
+// removed link, an overwritten key, a key gone from this computer): the
+// first press only arms, src/ui/confirm.ts owns the rest.
+function wireConfirm(
+  tab: Tab,
+  id: string,
+  run: () => Promise<string>,
+  options: ArmConfirmOptions = {},
+): void {
+  const button = element<HTMLButtonElement>(tab.deps.root, id);
+  tab.buttons.push(button);
+  const confirm = armConfirm(button, () => void guarded(tab, id, run), options);
+  button.addEventListener("click", () => confirm.handleClick());
 }
 
 function wirePush(tab: Tab, id: string, all: boolean): void {

@@ -14,6 +14,7 @@ import {
   officeKeyStore,
   type Workspace,
 } from "../link/workspace";
+import { armConfirm } from "../ui/confirm";
 import { getElement } from "../ui/dom";
 import { installFirstRun } from "../ui/first-run";
 import { makeGuard } from "../ui/guard";
@@ -366,7 +367,7 @@ async function breakSelected(): Promise<string> {
     await refreshQuietly();
   }
   const count = `${String(subset.length)} link${subset.length === 1 ? "" : "s"}`;
-  return `${count} broken. The picture stays on the slide.`;
+  return `${count} broken. The object stays on the slide.`;
 }
 
 async function goToSelectedSlide(): Promise<string> {
@@ -520,8 +521,19 @@ const BUTTON_ACTIONS: Record<string, () => Promise<string>> = {
   "apply-object-style": applyObjectStyle,
 };
 
+// break-selected and forget-key are one-way (an unlinked object, a key gone
+// from this computer): the first press only arms, src/ui/confirm.ts owns
+// the rest, and act(run, id) is what it confirms into on the second.
+const CONFIRM_BUTTON_IDS = new Set(["break-selected", "forget-key"]);
+
 for (const [id, run] of Object.entries(BUTTON_ACTIONS)) {
-  getElement<HTMLButtonElement>(id).addEventListener("click", () => {
+  const button = getElement<HTMLButtonElement>(id);
+  if (CONFIRM_BUTTON_IDS.has(id)) {
+    const confirm = armConfirm(button, () => act(run, id));
+    button.addEventListener("click", () => confirm.handleClick());
+    continue;
+  }
+  button.addEventListener("click", () => {
     act(run, id);
   });
 }

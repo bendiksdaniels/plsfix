@@ -242,6 +242,9 @@ describe("the Inbox and the pairing key", () => {
     const state = document.getElementById("workspace-state");
     expect(state?.textContent).toBe("Paired");
 
+    // forget-key only arms on the first press (src/ui/confirm.ts); the
+    // second is what actually forgets it.
+    click("forget-key");
     click("forget-key");
     await settle();
     expect(toastText()).toBe(

@@ -16,7 +16,7 @@ export const PPT_HELP: HelpCopy = {
         "Repaints the ticked links with their latest picture. Slide and position do not move.",
       "update-slide": "Repaints every link on the slide you are on.",
       "update-all":
-        "Repaints every link that matches the filter. All projects means the whole deck.",
+        "Repaints every link the filters show. All projects means the whole deck.",
       "revert-selected":
         "Puts the ticked links back to the picture before the last update. One step only.",
       "go-to-slide": "Jumps to the slide the first ticked link sits on.",
@@ -27,7 +27,7 @@ export const PPT_HELP: HelpCopy = {
       "change-source-cancel":
         "Closes the picker and leaves the link pointing where it did.",
       "break-selected":
-        "Takes the link marker off the ticked objects. They stay on the slide but stop updating.",
+        "Takes the link marker off the ticked objects. They stay on the slide but stop updating. Press twice.",
     },
   },
   "inbox-heading": {
@@ -49,7 +49,7 @@ export const PPT_HELP: HelpCopy = {
       "save-key":
         "Stores the pasted key on this computer and opens the inbox items pushed from Excel.",
       "forget-key":
-        "Deletes the key from this computer. The deck's links stay, but the inbox closes.",
+        "Deletes the key from this computer. The deck's links stay, but the inbox closes. Press twice.",
     },
   },
   "object-tools-heading": {

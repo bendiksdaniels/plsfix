@@ -525,14 +525,13 @@ describe("state (a): fresh workbook, active cell A1, nothing seeded", () => {
     expect(await press("export-selection")).toBe(
       "Generate a link key first (Links > Link key).",
     );
-    for (const id of [
-      "push-selected",
-      "go-to-source",
-      "remove-link",
-      "move-to-project",
-    ]) {
+    for (const id of ["push-selected", "go-to-source", "move-to-project"]) {
       expect(await press(id)).toBe("Select a link in the list first.");
     }
+    // remove-link only arms on the first press (src/ui/confirm.ts); the
+    // second is what actually runs and meets the empty selection.
+    await press("remove-link");
+    expect(await press("remove-link")).toBe("Select a link in the list first.");
 
     findButton("new-project")!.click();
     await settle();
@@ -799,6 +798,116 @@ describe("two-click confirms", () => {
       button.classList.contains("armed"),
       "the confirmed delete disarms it again",
     ).toBe(false);
+  });
+
+  it("clean-past-data arms on the first click and cleans on the second", async () => {
+    await bootExcel();
+    findButton("tab-workbook")!.click();
+    await settle();
+
+    const button = findButton("clean-past-data")!;
+    expect(button.classList.contains("armed")).toBe(false);
+    await press("clean-past-data");
+    expect(
+      button.classList.contains("armed"),
+      "first press should only arm it",
+    ).toBe(true);
+
+    const secondToast = await press("clean-past-data");
+    expect(secondToast).toMatch(
+      /^Nothing (on this sheet to clean|past the data on)/,
+    );
+    expect(
+      button.classList.contains("armed"),
+      "the confirmed clean disarms it again",
+    ).toBe(false);
+  });
+
+  it("shortcuts-reset arms on the first click and resets on the second", async () => {
+    await bootExcel();
+    findButton("tab-brand")!.click();
+    await settle();
+
+    const button = findButton("shortcuts-reset")!;
+    expect(button.classList.contains("armed")).toBe(false);
+    await press("shortcuts-reset");
+    expect(
+      button.classList.contains("armed"),
+      "first press should only arm it",
+    ).toBe(true);
+
+    await press("shortcuts-reset");
+    expect(
+      button.classList.contains("armed"),
+      "the confirmed reset disarms it again",
+    ).toBe(false);
+  });
+
+  it("remove-link arms on the first click and removes on the second", async () => {
+    await bootExcel();
+    await seedLinkAndRow();
+    tickFirstLinkRow();
+
+    const button = findButton("remove-link")!;
+    expect(button.classList.contains("armed")).toBe(false);
+    await press("remove-link");
+    expect(
+      button.classList.contains("armed"),
+      "first press should only arm it",
+    ).toBe(true);
+
+    const secondToast = await press("remove-link");
+    expect(secondToast).toBe("Removed 1 link");
+    expect(
+      button.classList.contains("armed"),
+      "the confirmed remove disarms it again",
+    ).toBe(false);
+  });
+
+  it("forget-key arms on the first click and forgets on the second", async () => {
+    await bootExcel();
+    await seedLinkAndRow();
+
+    const button = findButton("forget-key")!;
+    expect(button.classList.contains("armed")).toBe(false);
+    await press("forget-key");
+    expect(
+      button.classList.contains("armed"),
+      "first press should only arm it",
+    ).toBe(true);
+
+    const secondToast = await press("forget-key");
+    expect(secondToast).toBe("Link key forgotten on this computer.");
+    expect(
+      button.classList.contains("armed"),
+      "the confirmed forget disarms it again",
+    ).toBe(false);
+  });
+
+  it("generate-key runs at once for a first key, then arms to replace it", async () => {
+    await bootExcel();
+    const linksTab = findButton("tab-links")!;
+    linksTab.click();
+    await settle();
+
+    const button = findButton("generate-key")!;
+    expect(button.classList.contains("armed")).toBe(false);
+    // No key exists yet: the first key needs no confirming.
+    expect(await press("generate-key")).toBe(
+      "Link key generated. Paste it in PowerPoint.",
+    );
+    expect(button.classList.contains("armed")).toBe(false);
+
+    // A key exists now: replacing it unpairs every deck holding the old one.
+    await press("generate-key");
+    expect(
+      button.classList.contains("armed"),
+      "a press over an existing key should only arm it",
+    ).toBe(true);
+    expect(await press("generate-key")).toBe(
+      "Link key generated. Paste it in PowerPoint.",
+    );
+    expect(button.classList.contains("armed")).toBe(false);
   });
 });
 
