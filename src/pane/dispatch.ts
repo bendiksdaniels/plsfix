@@ -80,7 +80,11 @@ import {
 function openShortcutCard(): Promise<string> {
   const url = new URL("shortcuts.html", location.href).href;
   if (!Office.context?.ui?.displayDialogAsync) {
-    window.open(url, "_blank");
+    if (!window.open(url, "_blank")) {
+      throw new Error(
+        "The shortcut card could not open. Allow pop-ups for this pane.",
+      );
+    }
     return Promise.resolve("Shortcut card opened");
   }
   return new Promise((resolve) => {

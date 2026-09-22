@@ -147,4 +147,17 @@ describe("the reconcile panel", () => {
     );
     expect(resultLine()).toBe(HINT);
   });
+
+  it("says cell, not cells, for a single match", async () => {
+    field("reconcile-target").value = "40";
+    vi.mocked(reconcileSelection).mockResolvedValue({
+      addresses: ["A1"],
+      count: 1,
+      difference: 0,
+      sum: 40,
+      values: [40],
+    });
+
+    expect(await runReconciliation()).toBe("Found 1 matching cell");
+  });
 });

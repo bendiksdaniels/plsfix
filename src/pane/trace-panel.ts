@@ -189,8 +189,9 @@ export async function traceBack(): Promise<string> {
 export async function toggleAudit(): Promise<string> {
   auditOn = await toggleAuditOverlay();
   renderAuditState();
-  const state = auditOn ? "Audit overlay on" : "Audit overlay off";
-  // Skipped protected cells, if any, ride along in the same toast.
+  // A note from the adapter already carries its own stage prefix
+  // (protectedNote names "Audit overlay" itself), so it replaces the plain
+  // on/off line rather than being appended after a second one.
   const note = lastAuditNote();
-  return note ? `${state}: ${note}` : state;
+  return note ?? (auditOn ? "Audit overlay on" : "Audit overlay off");
 }

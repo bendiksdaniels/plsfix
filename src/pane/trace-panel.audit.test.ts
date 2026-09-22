@@ -105,7 +105,7 @@ describe("the audit overlay toggle", () => {
     );
 
     expect(await panel.toggleAudit()).toBe(
-      "Audit overlay off: Audit overlay: this sheet is protected, nothing was changed",
+      "Audit overlay: this sheet is protected, nothing was changed",
     );
     expect(text("audit-state")).toBe("Off");
   });
