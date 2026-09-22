@@ -105,17 +105,48 @@ installErrorReporting(REPORT_CONTEXT, (message, details) =>
   toast.show(message, "error", details),
 );
 const tabs = installTabs(getElement("tab-bar"));
+
+// A ribbon button or shortcut can fire with the pane closed; a toast nobody
+// can see is as good as none, so an error shows the pane first (host chrome
+// only, unlike showTools below: a link or inbox failure has no business
+// jumping the view to the Tools tab).
+async function showPaneOnError(): Promise<void> {
+  await Promise.resolve(Office.addin?.showAsTaskpane()).catch(() => undefined);
+}
+
 // Ribbon commands share this runtime, so they register with the page and
-// toast into it whether or not the pane is showing.
+// toast into it whether or not the pane is showing. commands.ts's own
+// promise chain (this notify) only runs without a `run` below, which is
+// never the case here - the ribbon's actual error path is the guard's,
+// wired through `run` - but the interface promises the same behaviour
+// either way, so an error shows the pane here too.
 registerCommands({
-  notify: (message, kind, lines) => toast.show(message, kind, lines),
+  notify: (message, kind, lines) => {
+    if (kind === "error") {
+      void showPaneOnError().then(() => toast.show(message, kind, lines));
+    } else {
+      toast.show(message, kind, lines);
+    }
+  },
   context: REPORT_CONTEXT,
   showTools: async () => {
     await Office.addin?.showAsTaskpane();
     tabs.activate("tab-tools");
   },
   // Through the pane's own guard: one action at a time, ribbon included.
-  run: (work, action) => guard(work, action),
+  // The guard's own notify only toasts - never shown here, since a regular
+  // pane click's guard call reaches it too - so a ribbon/shortcut failure
+  // shows the pane itself before letting the guard's usual describe/toast
+  // run, by catching here and rethrowing unchanged.
+  run: (work, action) =>
+    guard(async () => {
+      try {
+        return await work();
+      } catch (error) {
+        await showPaneOnError();
+        throw error;
+      }
+    }, action),
 });
 // The "?" on every section heading, added once the markup is in place.
 installHelp(document);

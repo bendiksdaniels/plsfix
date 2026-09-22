@@ -276,3 +276,65 @@ describe("the Inbox tab coming into view", () => {
     expect(toastText()).toBe("");
   });
 });
+
+describe("a ribbon command showing the pane on error", () => {
+  function showAsTaskpaneSpy(): ReturnType<typeof vi.spyOn> {
+    return vi.spyOn(
+      (globalThis as { Office: { addin: { showAsTaskpane: () => void } } })
+        .Office.addin,
+      "showAsTaskpane",
+    );
+  }
+
+  it("shows the pane before toasting, so a closed pane's toast is not lost", async () => {
+    await bootPane();
+    const spy = showAsTaskpaneSpy();
+
+    // Nothing selected: Swap needs exactly two objects.
+    await hostHelpers().runCommand("PLSFIX_PPT_SWAP");
+    await settle();
+
+    expect(spy).toHaveBeenCalledOnce();
+    expect(toastText()).toBe("Select exactly two objects to swap.");
+  });
+
+  it("does not show the pane when the command succeeds", async () => {
+    await bootPane();
+    const slide = deck().slides[0]!;
+    const a = deck().addShape(slide, {
+      left: 10,
+      top: 10,
+      width: 40,
+      height: 40,
+    });
+    const b = deck().addShape(slide, {
+      left: 90,
+      top: 10,
+      width: 40,
+      height: 40,
+    });
+    hostHelpers().selectShapes([a.id, b.id]);
+    const spy = showAsTaskpaneSpy();
+
+    await hostHelpers().runCommand("PLSFIX_PPT_SWAP");
+    await settle();
+
+    expect(spy).not.toHaveBeenCalled();
+    expect(toastText()).toBe("Swapped two objects.");
+  });
+
+  it("does not show the pane for a regular button's failure - it is already open", async () => {
+    await bootPane();
+    await plant();
+    click("refresh-links");
+    await settle();
+    const spy = showAsTaskpaneSpy();
+
+    // No row ticked.
+    click("update-selected");
+    await settle();
+
+    expect(spy).not.toHaveBeenCalled();
+    expect(toastText()).toBe("Tick a link in the list first.");
+  });
+});

@@ -279,6 +279,42 @@ describe("the promise chain when a command fails", () => {
     expect(renderActionState).toHaveBeenCalledOnce();
     expect(completed).toHaveBeenCalledOnce();
   });
+
+  it("shows the pane before toasting, so a closed pane's toast is not lost", async () => {
+    const associated = stubOffice();
+    vi.mocked(pasteSpecial).mockRejectedValueOnce(
+      new Error("Mark a copy source first."),
+    );
+    registerCommands();
+    const completed = vi.fn();
+    associated.get("PLSFIX_PASTE_VALUES")!({ completed });
+    await settle();
+
+    const office = (
+      globalThis as { Office: { addin: { showAsTaskpane: () => void } } }
+    ).Office;
+    expect(office.addin.showAsTaskpane).toHaveBeenCalledOnce();
+    expect(toast.show).toHaveBeenCalledWith(
+      "Mark a copy source first.",
+      "error",
+      expect.stringContaining("PLSFIX_PASTE_VALUES"),
+    );
+    expect(completed).toHaveBeenCalledOnce();
+  });
+
+  it("does not show the pane when a command succeeds", async () => {
+    const associated = stubOffice();
+    registerCommands();
+    const completed = vi.fn();
+    associated.get("PLSFIX_PASTE_VALUES")!({ completed });
+    await settle();
+
+    const office = (
+      globalThis as { Office: { addin: { showAsTaskpane: () => void } } }
+    ).Office;
+    expect(office.addin.showAsTaskpane).not.toHaveBeenCalled();
+    expect(completed).toHaveBeenCalledOnce();
+  });
 });
 
 describe("PLSFIX_SHOWPANE", () => {
