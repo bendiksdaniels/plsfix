@@ -197,9 +197,10 @@ export async function traceBack(): Promise<string> {
 export async function toggleAudit(): Promise<string> {
   auditOn = await toggleAuditOverlay();
   renderAuditState();
-  // A note from the adapter already carries its own stage prefix
-  // (protectedNote names "Audit overlay" itself), so it replaces the plain
-  // on/off line rather than being appended after a second one.
+  const state = auditOn ? "Audit overlay on" : "Audit overlay off";
+  // The adapter's note is the bare sentence, with no stage of its own
+  // (src/excel/protection.ts's protectedSentence) - composed here so the
+  // stage is named exactly once, never doubled and never dropped.
   const note = lastAuditNote();
-  return note ?? (auditOn ? "Audit overlay on" : "Audit overlay off");
+  return note ? `${state}: ${note}` : state;
 }

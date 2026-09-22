@@ -80,8 +80,11 @@ describe("the audit overlay on a protected sheet", () => {
     const before = helpers.cellMap("Model");
 
     expect(await smt.toggleAuditOverlay()).toBe(false);
+    // Bare, with no stage of its own: the pane's toggleAudit() composes the
+    // "Audit overlay on/off" state onto it, so the stage names once, not
+    // twice (src/excel/protection.ts's protectedSentence).
     expect(smt.lastAuditNote()).toBe(
-      "Audit overlay: this sheet is protected, nothing was changed",
+      "this sheet is protected, nothing was changed",
     );
     // Read once: a later toggle must not inherit it.
     expect(smt.lastAuditNote()).toBeNull();

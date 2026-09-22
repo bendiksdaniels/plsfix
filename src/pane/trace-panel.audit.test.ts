@@ -97,15 +97,30 @@ describe("the audit overlay toggle", () => {
     expect(text("audit-state")).toBe("Off");
   });
 
-  it("carries the note the adapter left behind", async () => {
+  it("carries the note the adapter left behind, stated once", async () => {
     const { excel, panel } = await load();
     vi.mocked(excel.toggleAuditOverlay).mockResolvedValueOnce(false);
+    // Bare, with no stage of its own (src/excel/protection.ts's
+    // protectedSentence): the state prefix below is the only one.
     vi.mocked(excel.lastAuditNote).mockReturnValueOnce(
-      "Audit overlay: this sheet is protected, nothing was changed",
+      "this sheet is protected, nothing was changed",
     );
 
     expect(await panel.toggleAudit()).toBe(
-      "Audit overlay: this sheet is protected, nothing was changed",
+      "Audit overlay off: this sheet is protected, nothing was changed",
+    );
+    expect(text("audit-state")).toBe("Off");
+  });
+
+  it("carries a note that was never a protection stage the same way", async () => {
+    const { excel, panel } = await load();
+    vi.mocked(excel.toggleAuditOverlay).mockResolvedValueOnce(false);
+    vi.mocked(excel.lastAuditNote).mockReturnValueOnce(
+      "no formula here to stripe",
+    );
+
+    expect(await panel.toggleAudit()).toBe(
+      "Audit overlay off: no formula here to stripe",
     );
     expect(text("audit-state")).toBe("Off");
   });
