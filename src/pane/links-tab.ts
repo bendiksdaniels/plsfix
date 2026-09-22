@@ -30,7 +30,7 @@ import {
   type KeyStore,
   type Workspace,
 } from "../link/workspace";
-import { copyText } from "../ui/clipboard";
+import { COPY_FAILED_MESSAGE, copyText } from "../ui/clipboard";
 import type { Guard } from "../ui/guard";
 import type { Toast } from "../ui/toast";
 import { refreshChartPick, watchSheetChanges } from "./links-charts";
@@ -381,7 +381,8 @@ async function generateKey(tab: Tab): Promise<string> {
 }
 
 async function copyKey(tab: Tab): Promise<string> {
-  await copyText(requireWorkspace(tab).exportKey);
+  const copied = await copyText(requireWorkspace(tab).exportKey);
+  if (!copied) throw new Error(COPY_FAILED_MESSAGE);
   return "Link key copied.";
 }
 
