@@ -32,6 +32,7 @@ import {
   refreshSelection,
   renderActionState,
   setExcelReady,
+  setRuleButtonsSync,
   toast,
 } from "./pane/shared";
 import { renderShare } from "./pane/share-panel";
@@ -43,7 +44,7 @@ import {
   renderStyles,
 } from "./pane/styles-panel";
 import { installToolSearch } from "./pane/tool-search";
-import { renderAuditState, traceBack } from "./pane/trace-panel";
+import { renderAuditState, syncTraceBack, traceBack } from "./pane/trace-panel";
 import {
   armDelete,
   deleteNames,
@@ -51,6 +52,7 @@ import {
   isDeleteArmed,
   refreshSheets,
   renderNames,
+  syncDeleteNamesButton,
 } from "./pane/workbook-tab";
 import { getElement } from "./ui/dom";
 import { installFirstRun } from "./ui/first-run";
@@ -254,6 +256,16 @@ async function boot(host: Office.HostType, degraded: boolean): Promise<void> {
   const linksTab = excelConnected ? await connectExcel(degraded) : null;
 
   wireControls();
+
+  // The five buttons setBusy cannot judge by itself: each is put back to
+  // whatever its own module last rendered, not blanket re-enabled.
+  setRuleButtonsSync(() => {
+    syncTraceBack();
+    renderModelCheck();
+    renderStyles();
+    syncDeleteNamesButton();
+    linksTab?.syncGenerateKey();
+  });
 
   // installLinksTab() lives inside connectExcel() and never runs without a
   // connected, supported Excel, so its 16 id-wired buttons (export, push,

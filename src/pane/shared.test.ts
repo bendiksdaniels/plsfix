@@ -154,6 +154,41 @@ describe("guard", () => {
     expect(buttons.every((button) => !button.disabled)).toBe(true);
   });
 
+  it("disables every .app-shell button, not just [data-action] ones", async () => {
+    const { guard } = await load();
+    // trace-back carries no data-action - it is wired directly in main.ts -
+    // so it is exactly the kind of button this used to leave clickable.
+    const traceBack = document.getElementById(
+      "trace-back",
+    ) as HTMLButtonElement;
+    let sawBusy = false;
+    await guard(async () => {
+      sawBusy = traceBack.disabled;
+      return "done";
+    });
+    expect(sawBusy).toBe(true);
+    // No rule registered in this test: the default is a blanket re-enable.
+    expect(traceBack.disabled).toBe(false);
+  });
+
+  it("lets a registered rule keep a button disabled instead of blanket re-enabling it", async () => {
+    const { guard, setRuleButtonsSync } = await load();
+    const traceBack = document.getElementById(
+      "trace-back",
+    ) as HTMLButtonElement;
+    let calls = 0;
+    setRuleButtonsSync(() => {
+      calls += 1;
+      // Nothing queued to go back to: the button's own rule keeps it off.
+      traceBack.disabled = true;
+    });
+
+    await guard(async () => "done");
+
+    expect(calls).toBe(1);
+    expect(traceBack.disabled).toBe(true);
+  });
+
   it("shows the run's own message on success", async () => {
     const { guard } = await load();
     await guard(async () => "Saved");

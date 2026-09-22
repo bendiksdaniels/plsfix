@@ -89,6 +89,8 @@ export function installLinksTab(deps: LinksTabDeps): {
   refresh(): Promise<void>;
   /** The selection moved: the chart list follows if the sheet changed. */
   sheetChanged(): Promise<void>;
+  /** Puts Generate back once setBusy's blanket disable lets go of it. */
+  syncGenerateKey(): void;
 } {
   const tab = newTab(deps);
   wireBoxes(tab);
@@ -97,6 +99,7 @@ export function installLinksTab(deps: LinksTabDeps): {
   return {
     refresh: () => refresh(tab),
     sheetChanged: () => refreshChartPick(tab),
+    syncGenerateKey: () => applyKeyState(tab),
   };
 }
 
