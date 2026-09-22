@@ -47,7 +47,11 @@ export function armConfirm(
   options: ArmConfirmOptions = {},
 ): ConfirmButton {
   const iconOnly = button.classList.contains("icon-button");
-  const target: HTMLElement = button.querySelector("strong") ?? button;
+  // Looked up at every paint, never captured: restoring restingHTML below
+  // replaces the <strong> node, and a reference taken once would point at
+  // the detached one from then on, so a second arming would show nothing.
+  const target = (): HTMLElement =>
+    button.querySelector<HTMLElement>("strong") ?? button;
   const restingHTML = button.innerHTML;
   const restingAriaLabel = button.getAttribute("aria-label");
   const restingTitle = button.getAttribute("title");
@@ -71,10 +75,10 @@ export function armConfirm(
       return;
     }
     if (armedNow) {
-      target.textContent = CONFIRM_LABEL;
+      target().textContent = CONFIRM_LABEL;
       return;
     }
-    if (options.label) target.textContent = options.label();
+    if (options.label) target().textContent = options.label();
     else button.innerHTML = restingHTML;
   }
 

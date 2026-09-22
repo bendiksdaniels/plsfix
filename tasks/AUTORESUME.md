@@ -1,13 +1,17 @@
-# AUTORESUME - pls,fix (v2.8.20 live 16.09, in-house deployment package 21.09, PUBLIC on GitHub, MIT)
+# AUTORESUME - pls,fix (v2.8.23 live 23.09, in-house deployment package 21.09, PUBLIC on GitHub, MIT)
 
-## NEXT SESSION (from 16.09 night): the matrix twice, Windows, the web rig, the folders on his Mac
+## NEXT SESSION (from 23.09): the real-Office pass of the click-through, the matrix twice, Windows
 
-State at hand-over: **v2.8.20 LIVE 16.09** (main e09184b = origin, live `/version` 2.8.20, release runs
-green for v2.8.10 to v2.8.19 and running for v2.8.20 at hand-over, manual docx v2.8.020, memory
-`project_plsfix.md` current), gates green (2863 vitest, ZERO skipped, cargo green, ux 0/72, sweep 0/151),
-no worktree, no branch, no dev server, both wef folders hold the prod manifest. v2.8.18 is a version-only
-tag (the 16.09 night section says why). Read `tasks/lessons.md` 16.09 first, all three entries.
+State at hand-over: **v2.8.23 LIVE 23.09** (main = origin, `deploy.sh modelis` "SERVER IN SYNC", live
+`/version` 2.8.23, release runs green for v2.8.21-23, manual docx v2.8.023, memory `project_plsfix.md`
+current), gates green (2949 vitest, ZERO skipped, cargo green, ux 0/72, sweep 0/190), no worktree, no
+branch, no dev server, both wef folders hold the prod manifest. The 23.09 section below is the record of
+the click-through session; `tasks/click-through-2026-09-22.md` has the verdict per control.
 
+7. **Real-Office pass of the click-through changes** (waits for Daniel's explicit "go desktop", both apps
+   closed, him away from the Mac): nothing shipped on 23.09 (v2.8.21-23) has been seen in a real host.
+   Checklist in `tasks/click-through-2026-09-22.md` section 5 and in the plan
+   `~/.claude/plans/cheeky-orbiting-frog.md` phase C; rig recovery from the 16.09 transcript (lessons 16.09).
 0. **In-house deployment package ready 21.09** (`tasks/deploy-inhouse.md`): the Microsoft 365 upload
    waits for the admin request, which is Daniel's send (recipients + count + his go); proof list in
    its section 3 after propagation.
@@ -19,15 +23,50 @@ tag (the 16.09 night section says why). Read `tasks/lessons.md` 16.09 first, all
    group), so the "chart lands below a short list" case still wants a slide with text only.
 3. **Windows and the web rig** are untouched by everything since v2.8.9: `tasks/launch-check.md`
    (Daniel's own Windows pass) and `scripts/rig/` (the web pass) both need a run before the store listing.
-4. **Follow-ups seen today, not fixed**: the PowerPoint Inbox needed one manual refresh to show fresh
-   exports (pane opened seconds after the pushes); a pie at a quarter-size spot still wraps nothing but
-   is small (cosmetic); the Big40 chart on slide 1 keeps its old stacked labels until re-inserted (a
-   repaint only redraws on a new revision, and its source chart is gone from the rebuilt workbook).
+4. **Follow-ups seen 16.09**: the Inbox manual refresh is FIXED (v2.8.22: the Inbox reads the relay when
+   its tab opens); still open: a pie at a quarter-size spot still wraps nothing but is small (cosmetic);
+   the Big40 chart on slide 1 keeps its old stacked labels until re-inserted (a repaint only redraws on a
+   new revision, and its source chart is gone from the rebuilt workbook).
 5. Daniel's gates unchanged: Windows pass, M365 centralized upload (the manifest changed at v2.7.5, not
    since), Cloudflare rate-limit rule on `/modelis/api/*`, the `check` workflow re-enable.
 6. **The folders on his Mac**: v2.8.19's deck list (a folder per project, the workbook under every object) is
    proven in the ux gate and the jsdom suites only; the sideloaded pane reloads it from the live server
    (pane reload, or Home > Add-ins > pls,fix once per launch). His computer-use grant or his own look.
+
+## 23.09: the click-through of every control (v2.8.21, v2.8.22, v2.8.23)
+
+Daniel, 22.09 22:10: "make sure the app does not crash, all the buttons in the add-in work as intended,
+click through each of them and make sure they are all simple to use". Plan approved
+(`~/.claude/plans/cheeky-orbiting-frog.md`); three sonnet slices in `~/.worktrees/plsfix/`, Fable review
+before each merge, one patch release per merge; record per control in `tasks/click-through-2026-09-22.md`.
+
+- **v2.8.21, harness**: `test/clickthrough.excel.integration.test.ts` and `test/clickthrough.ppt.integration.test.ts`
+  press every static and generated button of both panes over the fakes in four states each, plus every
+  ribbon command, holding each press to a reaction, a product sentence, no uncaught error and a released
+  busy latch, with coverage asserted against the shipped HTML; `npm run ux:sweep` presses the id-wired
+  buttons too and refuses an unknown `--pane` slug. No known defect carried.
+- **v2.8.22, fixes**: the Links tab's 16 buttons were DEAD without a supported Excel (no listener at all);
+  the busy latch covered only `[data-action]` buttons (Export/Push/Remove pressable mid-run); a ribbon or
+  shortcut error toasted into a closed pane; copy buttons claimed success on a failed copy; the tool search
+  pressed disabled and hidden buttons; the Inbox needed a manual refresh; Insert color key overwrote a
+  block; "Audit overlay off: Audit overlay: ..." doubled, "Found 1 matching cells", a blocked shortcut card
+  reported as opened. Review found and fixed on main: the release re-synced Generate but not Reveal
+  (`renderKey` on release); the no-Excel refusal now runs through the guard; the sweep resets the toast to
+  a sentinel before each press (13 same-sentence buttons read as dead without it).
+- **v2.8.23, simple to use**: `src/ui/confirm.ts` two-click confirm on Clean past the data, Remove link,
+  Generate when a key exists, Forget key (both panes), Break link, Reset brand, Reset all shortcuts (the
+  two deletes moved onto it); receipts for the 16 cycles, Row height / Column width, IFERROR and CAGR
+  (`src/cycle-labels.ts`); status filter words = the badges, "Pushed" column, "Update all" title follows
+  the filters, "The object stays on the slide.", "Brand settings reset", the first-run card lists the bound
+  keys, "centre"; manual `links.rs` follows. Review found and fixed on main: the helper captured the
+  `<strong>` once and painted a detached node on the second arming (looked up per paint now, test proves
+  it); the click-through `settle()` drains while every tab is disabled, bounded, after one load-timing flake.
+- Kept as they are (Daniel's call): sheet "Move up/down" (vertical list), "Pinstripes ↔" (columns),
+  "CAGR label" under Charts, the 7 commands with no ribbon button, shortcut collisions with Excel's own
+  keys. Pre-existing load flake noted, not touched: `src/ppt/pane.audit.test.ts` "reports a relay that is
+  down and still finishes booting" (settle by rounds; green in every run here).
+- Cost: survey ~1.3M (three Explore agents), slices H 0.68M + F 0.65M + W 0.70M (sonnet), reviews and
+  the controller on Fable; two agents were cut by the account's session limit at 00:40 and resumed.
 
 ## 21.09: the in-house deployment package (the private launch, no store)
 

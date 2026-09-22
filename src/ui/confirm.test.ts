@@ -63,6 +63,34 @@ describe("armConfirm", () => {
     expect(button.querySelector(".action-icon")).not.toBeNull();
   });
 
+  it("arms a rich row again after a restore, not a detached <strong>", () => {
+    // Restoring the resting markup replaces the <strong> node: the second
+    // arming must paint the one now in the button, or the modeller sees no
+    // "Click again to confirm" the second time round.
+    const button = document.createElement("button");
+    button.innerHTML =
+      '<span class="action-icon toc">⌫</span>' +
+      "<span><strong>Clean past the data</strong>" +
+      "<small>Drops the empty rows and columns</small></span>";
+    const run = vi.fn();
+    const confirm = armConfirm(button, run);
+
+    confirm.handleClick();
+    confirm.handleClick();
+    expect(run).toHaveBeenCalledTimes(1);
+    expect(button.querySelector("strong")?.textContent).toBe(
+      "Clean past the data",
+    );
+
+    confirm.handleClick();
+    expect(button.querySelector("strong")?.textContent).toBe(
+      "Click again to confirm",
+    );
+    expect(button.querySelector("small")?.textContent).toBe(
+      "Drops the empty rows and columns",
+    );
+  });
+
   it("reads the resting label fresh from a callback rather than a frozen snapshot", () => {
     // styles-delete's own shape: the resting text carries a live count that
     // can change between an arm and its disarm (a rescan in between).

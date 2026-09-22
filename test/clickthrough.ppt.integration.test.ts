@@ -88,8 +88,18 @@ async function drain(rounds = 12): Promise<void> {
     await new Promise((resolve) => setTimeout(resolve, 0));
   }
 }
+// Busy in either pane shows as every tab button disabled (the blanket
+// latch), and never otherwise: after the fixed rounds, keep draining while
+// that holds, bounded, so a press whose chain runs long under load is waited
+// out instead of misread as a latch that never released.
+function paneBusy(): boolean {
+  const tabs = document.querySelectorAll<HTMLButtonElement>("[role=tab]");
+  return tabs.length > 0 && [...tabs].every((tab) => tab.disabled);
+}
+
 async function settle(): Promise<void> {
   await drain();
+  for (let i = 0; i < 200 && paneBusy(); i += 1) await drain(1);
 }
 
 interface BootOptions {
