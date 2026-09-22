@@ -31,6 +31,7 @@ import {
   setActiveSettings,
 } from "../settings";
 import { copyPaletteJson, readPaletteFile } from "./brand-io";
+import { armConfirm } from "../ui/confirm";
 import { getElement } from "../ui/dom";
 import { describeError } from "../ui/report";
 import { APP_VERSION, errorMessage, isExcelReady, toast } from "./shared";
@@ -317,12 +318,21 @@ export function wireBrand(): void {
     },
   );
 
+  const resetBrandConfirm = armConfirm(
+    getElement<HTMLButtonElement>("reset-brand"),
+    () => {
+      applySettings(
+        { ...DEFAULT_SETTINGS },
+        "Palette reset to pls,fix defaults",
+      );
+      const strip = getElement<HTMLDivElement>("logo-swatches");
+      strip.replaceChildren();
+      strip.hidden = true;
+      getElement<HTMLParagraphElement>("logo-hint").hidden = true;
+    },
+  );
   getElement<HTMLButtonElement>("reset-brand").addEventListener("click", () => {
-    applySettings({ ...DEFAULT_SETTINGS }, "Palette reset to pls,fix defaults");
-    const strip = getElement<HTMLDivElement>("logo-swatches");
-    strip.replaceChildren();
-    strip.hidden = true;
-    getElement<HTMLParagraphElement>("logo-hint").hidden = true;
+    resetBrandConfirm.handleClick();
   });
 
   getElement<HTMLInputElement>("logo-file").addEventListener(

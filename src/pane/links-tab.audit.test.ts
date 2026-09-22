@@ -265,6 +265,9 @@ describe("the link table across a refresh", () => {
     for (const box of ticks()) box.click();
     ticks()[0]!.click();
 
+    // remove-link only arms on the first press (src/ui/confirm.ts); the
+    // second is what actually removes the ticked rows.
+    click("remove-link");
     click("remove-link");
     await settle(h);
     expect(vi.mocked(removeLink).mock.calls.map((call) => call[0])).toEqual([

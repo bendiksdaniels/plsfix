@@ -1,20 +1,16 @@
 // Style scrubber: scans the workbook's custom cell styles for ones no cell
 // wears any more and deletes them. The "click again to confirm" arm on the
-// delete button lapses on its own. Office.js only reaches here through
-// ../excel.
+// delete button lapses on its own, owned by src/ui/confirm.ts. Office.js
+// only reaches here through ../excel.
 
 import { deleteUnusedStyles, listUnusedStyles, type StyleScan } from "../excel";
+import { armConfirm, type ConfirmButton } from "../ui/confirm";
 import { getElement } from "../ui/dom";
-import { DELETE_CONFIRM_MS, tabs } from "./shared";
+import { tabs } from "./shared";
 
 // Null until the first scan: the delete acts on a list, never on a guess.
 let styleScan: StyleScan | null = null;
-let stylesArmed = false;
-let stylesTimer: number | undefined;
-
-export function isStylesArmed(): boolean {
-  return stylesArmed;
-}
+let deleteConfirm: ConfirmButton | undefined;
 
 function unusedCount(): string {
   const count = styleScan?.unused.length ?? 0;
@@ -25,22 +21,33 @@ function stylesDeleteLabel(): string {
   return `Delete ${unusedCount()}`;
 }
 
+// Lazy: built on first use, the same moment the old code first looked the
+// button up, so a hostless or degraded boot that never touches this panel
+// never has to find it. The run callback is unused - main.ts still owns the
+// dispatch() call, the way it always has, since this module cannot import
+// dispatch.ts without a cycle (dispatch.ts already imports deleteStyles from
+// here).
+function stylesConfirm(): ConfirmButton {
+  deleteConfirm ??= armConfirm(
+    getElement<HTMLButtonElement>("styles-delete"),
+    () => undefined,
+    { label: stylesDeleteLabel },
+  );
+  return deleteConfirm;
+}
+
+export function isStylesArmed(): boolean {
+  return stylesConfirm().isArmed();
+}
+
 export function disarmStyles(): void {
-  window.clearTimeout(stylesTimer);
-  stylesArmed = false;
-  const button = getElement<HTMLButtonElement>("styles-delete");
-  button.classList.remove("armed");
-  button.textContent = stylesDeleteLabel();
+  stylesConfirm().disarm();
 }
 
 // Deleting a style restyles every cell wearing it and no undo brings it back,
 // so the first click only arms the button and the arming lapses on its own.
 export function armStyles(): void {
-  const button = getElement<HTMLButtonElement>("styles-delete");
-  stylesArmed = true;
-  button.classList.add("armed");
-  button.textContent = "Click again to confirm";
-  stylesTimer = window.setTimeout(disarmStyles, DELETE_CONFIRM_MS);
+  stylesConfirm().arm();
 }
 
 // A sheet too large to read could be wearing any of these styles, so the count

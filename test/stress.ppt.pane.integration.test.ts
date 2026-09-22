@@ -190,6 +190,9 @@ describe("a button pressed at the wrong moment", () => {
       ["break-selected", "Tick a link in the list first."],
       ["go-to-slide", "Tick a link in the list first."],
     ] as [string, string][]) {
+      // break-selected only arms on the first press (src/ui/confirm.ts); the
+      // second is what actually runs and meets the empty selection.
+      if (id === "break-selected") click(id);
       click(id);
       await settle();
       expect(toastText()).toBe(sentence);

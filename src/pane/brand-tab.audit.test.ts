@@ -6,6 +6,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { CONFIRM_MS } from "../ui/confirm";
 
 vi.mock("../excel", () => ({
   // What ./shared reaches for at import time.
@@ -232,6 +233,63 @@ describe("brand tab", () => {
     await settle();
 
     expect(toastText()).toBe("That file could not be read.");
+  });
+});
+
+describe("reset-brand: two-click confirm", () => {
+  beforeEach(() => {
+    store = new Map();
+    vi.stubGlobal("localStorage", workingStorage());
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("arms on the first press without resetting anything, resets on the second", async () => {
+    const { tab, settings } = await load();
+    tab.wireBrand();
+    tab.renderBrand();
+    const button = document.getElementById("reset-brand") as HTMLButtonElement;
+    const before = settings.getActiveSettings().accent;
+    hex("accent").value = "#123456";
+    hex("accent").dispatchEvent(new Event("change"));
+    await settle();
+    expect(settings.getActiveSettings().accent).toBe("#123456");
+
+    button.click();
+    // An icon-only button (src/ui/confirm.ts): the glyph stays, the
+    // accessible name carries the confirm instead.
+    expect(button.textContent?.trim()).toBe("⟲");
+    expect(button.getAttribute("aria-label")).toBe("Click again to confirm");
+    expect(button.classList.contains("armed")).toBe(true);
+    expect(settings.getActiveSettings().accent).toBe("#123456");
+
+    button.click();
+    expect(settings.getActiveSettings().accent).toBe(before);
+    expect(button.classList.contains("armed")).toBe(false);
+    expect(button.getAttribute("aria-label")).toBe("Reset to pls,fix defaults");
+  });
+
+  it("lapses on its own after five seconds and a press only re-arms", async () => {
+    const { tab, settings } = await load();
+    tab.wireBrand();
+    tab.renderBrand();
+    const button = document.getElementById("reset-brand") as HTMLButtonElement;
+    hex("accent").value = "#123456";
+    hex("accent").dispatchEvent(new Event("change"));
+    await settle();
+
+    vi.useFakeTimers();
+    try {
+      button.click();
+      expect(button.classList.contains("armed")).toBe(true);
+      vi.advanceTimersByTime(CONFIRM_MS);
+      expect(button.classList.contains("armed")).toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
+    expect(settings.getActiveSettings().accent).toBe("#123456");
   });
 });
 

@@ -56,6 +56,16 @@ button:disabled {
 .icon-button.back:hover:not(:disabled) {
   transform: none;
 }
+/* Second click within five seconds: same red as .danger.armed, but the
+   glyph and the button's own size never change - only title/aria-label
+   carry the sentence (src/ui/confirm.ts), so nothing here stretches a
+   fixed 34px square into a sentence-length button. */
+.icon-button.armed,
+.icon-button.armed:hover:not(:disabled) {
+  border-color: var(--red);
+  color: #fff;
+  background: var(--red);
+}
 
 .action-list {
   display: grid;

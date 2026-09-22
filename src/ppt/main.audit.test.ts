@@ -227,6 +227,9 @@ describe("the Links tab", () => {
   it("asks for a tick before update selected, go to slide and break", async () => {
     await insertOne();
     for (const id of ["update-selected", "go-to-slide", "break-selected"]) {
+      // break-selected only arms on the first press (src/ui/confirm.ts);
+      // the second is what actually runs and meets the empty selection.
+      if (id === "break-selected") click(id);
       click(id);
       await settle();
       expect(toastText()).toBe("Tick a link in the list first.");
@@ -270,6 +273,9 @@ describe("the Links tab", () => {
     expect(toastText()).toBe("Slide 3.");
     expect(presentation.selectedSlideIds).toEqual([presentation.slides[2]!.id]);
 
+    // break-selected only arms on the first press (src/ui/confirm.ts); the
+    // second is what actually breaks it.
+    click("break-selected");
     click("break-selected");
     await settle();
     expect(toastText()).toBe("1 link broken. The picture stays on the slide.");
