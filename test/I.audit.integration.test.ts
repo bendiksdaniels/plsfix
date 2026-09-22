@@ -183,14 +183,38 @@ describe("independence: no usable Excel host", () => {
   it("still opens the shortcut card - Office chrome, not a workbook action", async () => {
     // The fake host's Office.context.ui has no displayDialogAsync, so this
     // exercises openShortcutCard's window.open fallback; jsdom does not
-    // implement navigation, so the fallback itself is stubbed out here.
-    vi.stubGlobal("open", vi.fn());
+    // implement navigation, so the fallback itself is stubbed out here. A
+    // real window.open() answers with the new Window on success, so the
+    // stub does too - only a falsy answer is the blocked-pop-up failure.
+    vi.stubGlobal(
+      "open",
+      vi.fn(() => ({}) as Window),
+    );
     await boot({ hostOverride: "Word" });
     click("shortcut-card");
     await settle();
     expect(toastText()).toBe("Shortcut card opened");
     vi.unstubAllGlobals();
   });
+
+  it.each([
+    ["a host that is not Excel at all", { hostOverride: "Word" }],
+    ["ExcelApi too old for the pane", { isSetSupported: () => false }],
+  ] as const)(
+    "answers the Links tab's own buttons too, not just [data-action] - %s",
+    async (_label, opts) => {
+      await boot(opts);
+
+      click("export-selection");
+      await settle();
+      expect(toastText()).toBe("Excel is not connected.");
+      expect(document.getElementById("toast")?.className).toContain("error");
+
+      click("generate-key");
+      await settle();
+      expect(toastText()).toBe("Excel is not connected.");
+    },
+  );
 });
 
 describe("a fully connected Excel host", () => {

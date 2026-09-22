@@ -16,7 +16,7 @@ import {
   wireBrand,
 } from "./pane/brand-tab";
 import { registerCommands } from "./pane/commands";
-import { dispatch } from "./pane/dispatch";
+import { dispatch, EXCEL_NOT_CONNECTED_MESSAGE } from "./pane/dispatch";
 import { renderFind, runFind } from "./pane/find-panel";
 import { installLinksTab } from "./pane/links-tab";
 import { copyReport, renderModelCheck } from "./pane/model-check-panel";
@@ -254,6 +254,20 @@ async function boot(host: Office.HostType, degraded: boolean): Promise<void> {
   const linksTab = excelConnected ? await connectExcel(degraded) : null;
 
   wireControls();
+
+  // installLinksTab() lives inside connectExcel() and never runs without a
+  // connected, supported Excel, so its 16 id-wired buttons (export, push,
+  // project and link-key) would otherwise sit with no listener at all -
+  // dead rather than refusing gracefully like every [data-action] button.
+  if (!excelConnected) {
+    for (const button of document.querySelectorAll<HTMLButtonElement>(
+      "#view-links button",
+    )) {
+      button.addEventListener("click", () => {
+        toast.show(EXCEL_NOT_CONNECTED_MESSAGE, "error");
+      });
+    }
+  }
 
   if (excelConnected) {
     // Debounced: dragging a selection fires the event continuously.
