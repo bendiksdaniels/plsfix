@@ -205,12 +205,10 @@ describe("the undo note the guard adds", () => {
   it("adds it to the action that skipped the capture, and to no other", async () => {
     helpers.seed("Model!A1", [["Revenue"]]);
     helpers.select("Model!A1:E10000");
-    expect(await press("cycle-indent")).toBe(
-      "Selection updated (too large for undo)",
-    );
+    expect(await press("cycle-indent")).toBe("Indent: 1 (too large for undo)");
 
     helpers.select("Model!A1");
-    expect(await press("cycle-indent")).toBe("Selection updated");
+    expect(await press("cycle-indent")).toBe("Indent: 2");
   });
 
   // The flag is drained in the guard's finally, so a refusal that had already
@@ -224,13 +222,17 @@ describe("the undo note the guard adds", () => {
     await boot();
     helpers.seed("Model!A1", [["Revenue"]]);
     helpers.select("Model!A1");
-    expect(await press("cycle-indent")).toBe("Selection updated");
+    expect(await press("cycle-indent")).toBe("Indent: 1");
   });
 
   it("never claims a skipped capture for the tools that never capture", async () => {
     helpers.select("Model!A1:E10000");
-    expect(await press("cycle-row-height")).toBe("Selection updated");
-    expect(await press("cycle-col-width")).toBe("Selection updated");
+    expect(await press("cycle-row-height")).toBe(
+      "Row height 18 pt (outside pls,fix Undo)",
+    );
+    expect(await press("cycle-col-width")).toBe(
+      "Column width 80 (outside pls,fix Undo)",
+    );
   });
 });
 
@@ -245,7 +247,7 @@ describe("the guard under two presses", () => {
     );
     expect(buttonsDisabled()).toBe(false);
 
-    expect(await press("cycle-indent")).toBe("Selection updated");
+    expect(await press("cycle-indent")).toBe("Indent: 1");
     expect(buttonsDisabled()).toBe(false);
   });
 

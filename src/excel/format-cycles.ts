@@ -2,14 +2,26 @@
 // the three hygiene ones (indent, alignment, underline). Each one reads its
 // current state from the selection's first cell (borders from the first area's
 // own edges), steps once through the brand's cycle and writes the next look
-// into every area of the selection.
+// into every area of the selection, then answers with the step it landed on
+// (src/cycle-labels.ts names it; a mixed selection reads off the one cell the
+// cycle's state comes from, so the receipt always names a real step).
 //
 // Owns: the Office.js side of the cycles only; which looks follow which lives
-// in the pure src/cycles.ts, and the presets in selection.ts.
+// in the pure src/cycles.ts, the labels in src/cycle-labels.ts, and the
+// presets in selection.ts.
 
 import { activeArea, cappedAreas, selectedAreas } from "./areas";
 import { protectedNote, syncWrite } from "./protection";
 import { captureUndoAreas } from "./undo";
+import {
+  alignLabel,
+  BORDER_CYCLE_LABELS,
+  FILL_CYCLE_LABELS,
+  FONT_CYCLE_LABELS,
+  numberCycleLabels,
+  ROW_STYLE_LABELS,
+  underlineLabel,
+} from "../cycle-labels";
 import {
   BORDER_EDGE_NAMES,
   type BorderCycleState,
@@ -87,8 +99,8 @@ function applyStyleSpec(format: Excel.RangeFormat, spec: StyleSpec): void {
 
 export async function applyNumberCycle(
   family: NumberCycleFamily,
-): Promise<void> {
-  await Excel.run(async (context) => {
+): Promise<string> {
+  return Excel.run(async (context) => {
     const areas = await cappedAreas(context, "Format cycling");
     const active = activeArea(areas).getCell(0, 0);
     for (const area of areas) area.load("rowCount,columnCount");
@@ -96,21 +108,22 @@ export async function applyNumberCycle(
     await context.sync();
     await captureUndoAreas(context, areas);
 
+    const settings = getActiveSettings();
+    const cycle = buildNumberCycles(settings)[family];
     const current = active.numberFormat[0]?.[0];
-    const next = nextInCycle(
-      typeof current === "string" ? current : "",
-      buildNumberCycles(getActiveSettings())[family],
-    );
+    const next = nextInCycle(typeof current === "string" ? current : "", cycle);
+    const label = numberCycleLabels(settings)[family][cycle.indexOf(next)];
 
     for (const area of areas) {
       area.numberFormat = makeFormatGrid(area.rowCount, area.columnCount, next);
     }
     await syncWrite(context, "Format cycling", protectedNote, areas.length);
+    return `Number format: ${label ?? next}`;
   });
 }
 
-export async function applyRowStyleCycle(kind: RowStyleKind): Promise<void> {
-  await Excel.run(async (context) => {
+export async function applyRowStyleCycle(kind: RowStyleKind): Promise<string> {
+  return Excel.run(async (context) => {
     const areas = await selectedAreas(context, "Row styles");
     const active = activeArea(areas).getCell(0, 0);
     for (const area of areas) area.load("rowCount");
@@ -133,11 +146,13 @@ export async function applyRowStyleCycle(kind: RowStyleKind): Promise<void> {
 
     const variants = buildRowStyleCycles(getActiveSettings())[kind];
     const index = matchStyleIndex(readCellStyle(active), variants);
-    const next = variants[(index + 1) % variants.length];
+    const nextIndex = (index + 1) % variants.length;
+    const next = variants[nextIndex];
     await captureUndoAreas(context, areas);
 
     if (next) for (const area of areas) paintRowStyle(area, next);
     await syncWrite(context, "Row styles", protectedNote, areas.length);
+    return `Row style: ${ROW_STYLE_LABELS[kind][nextIndex]}`;
   });
 }
 
@@ -151,17 +166,15 @@ function paintRowStyle(area: Excel.Range, next: StyleSpec): void {
   applyStyleSpec(area.format, next);
 }
 
-export async function applyFillCycle(): Promise<void> {
-  await Excel.run(async (context) => {
+export async function applyFillCycle(): Promise<string> {
+  return Excel.run(async (context) => {
     const areas = await selectedAreas(context, "Fill cycling");
     const active = activeArea(areas).getCell(0, 0);
     active.load("format/fill/color,format/fill/pattern");
     await context.sync();
 
-    const next = nextInCycle(
-      readFill(active),
-      buildFillCycle(getActiveSettings()),
-    );
+    const cycle = buildFillCycle(getActiveSettings());
+    const next = nextInCycle(readFill(active), cycle);
     await captureUndoAreas(context, areas);
 
     for (const area of areas) {
@@ -170,20 +183,20 @@ export async function applyFillCycle(): Promise<void> {
     }
 
     await syncWrite(context, "Fill cycling", protectedNote, areas.length);
+    const label = FILL_CYCLE_LABELS[cycle.indexOf(next)] ?? next;
+    return `Fill: ${label}`;
   });
 }
 
-export async function applyFontColorCycle(): Promise<void> {
-  await Excel.run(async (context) => {
+export async function applyFontColorCycle(): Promise<string> {
+  return Excel.run(async (context) => {
     const areas = await selectedAreas(context, "Font colour cycling");
     const active = activeArea(areas).getCell(0, 0);
     active.load("format/font/color");
     await context.sync();
 
-    const next = nextInCycle(
-      active.format.font.color.toUpperCase(),
-      buildFontCycle(getActiveSettings()),
-    );
+    const cycle = buildFontCycle(getActiveSettings());
+    const next = nextInCycle(active.format.font.color.toUpperCase(), cycle);
     await captureUndoAreas(context, areas);
 
     for (const area of areas) area.format.font.color = next;
@@ -193,6 +206,8 @@ export async function applyFontColorCycle(): Promise<void> {
       protectedNote,
       areas.length,
     );
+    const label = FONT_CYCLE_LABELS[cycle.indexOf(next)] ?? next;
+    return `Font colour: ${label}`;
   });
 }
 
@@ -280,8 +295,8 @@ interface HygieneCycle<T> {
   write: (format: Excel.RangeFormat, next: T) => void;
 }
 
-async function applyHygieneCycle<T>(cycle: HygieneCycle<T>): Promise<void> {
-  await Excel.run(async (context) => {
+async function applyHygieneCycle<T>(cycle: HygieneCycle<T>): Promise<T> {
+  return Excel.run(async (context) => {
     const areas = await selectedAreas(context, cycle.stage);
     const active = activeArea(areas).getCell(0, 0);
     active.load(cycle.property);
@@ -292,11 +307,12 @@ async function applyHygieneCycle<T>(cycle: HygieneCycle<T>): Promise<void> {
 
     for (const area of areas) cycle.write(area.format, next);
     await syncWrite(context, cycle.stage, protectedNote, areas.length);
+    return next;
   });
 }
 
-export async function applyIndentCycle(): Promise<void> {
-  await applyHygieneCycle({
+export async function applyIndentCycle(): Promise<string> {
+  const next = await applyHygieneCycle({
     stage: "Indent cycling",
     property: "format/indentLevel",
     read: (format) => format.indentLevel,
@@ -305,10 +321,11 @@ export async function applyIndentCycle(): Promise<void> {
       format.indentLevel = next;
     },
   });
+  return `Indent: ${next}`;
 }
 
-export async function applyAlignmentCycle(): Promise<void> {
-  await applyHygieneCycle({
+export async function applyAlignmentCycle(): Promise<string> {
+  const next = await applyHygieneCycle({
     stage: "Alignment cycling",
     property: "format/horizontalAlignment",
     read: (format) => format.horizontalAlignment as string,
@@ -317,10 +334,11 @@ export async function applyAlignmentCycle(): Promise<void> {
       format.horizontalAlignment = next as Excel.HorizontalAlignment;
     },
   });
+  return `Aligned: ${alignLabel(next)}`;
 }
 
-export async function applyUnderlineCycle(): Promise<void> {
-  await applyHygieneCycle({
+export async function applyUnderlineCycle(): Promise<string> {
+  const next = await applyHygieneCycle({
     stage: "Underline cycling",
     property: "format/font/underline",
     read: (format) => format.font.underline as string,
@@ -329,10 +347,11 @@ export async function applyUnderlineCycle(): Promise<void> {
       format.font.underline = next as Excel.RangeUnderlineStyle;
     },
   });
+  return `Underline: ${underlineLabel(next)}`;
 }
 
-export async function applyBorderCycle(): Promise<void> {
-  await Excel.run(async (context) => {
+export async function applyBorderCycle(): Promise<string> {
+  return Excel.run(async (context) => {
     const areas = await cappedAreas(context, "Border cycling");
     for (const area of areas) area.load("rowCount,columnCount");
     await context.sync();
@@ -347,10 +366,12 @@ export async function applyBorderCycle(): Promise<void> {
 
     const states = buildBorderCycle(getActiveSettings());
     const index = matchBorderIndex(readEdges(handles[0] ?? []), states);
-    const next = states[(index + 1) % states.length];
+    const nextIndex = (index + 1) % states.length;
+    const next = states[nextIndex];
     await captureUndoAreas(context, areas);
 
     if (next) for (const edges of handles) writeEdges(edges, next);
     await syncWrite(context, "Border cycling", protectedNote, areas.length);
+    return `Borders: ${BORDER_CYCLE_LABELS[nextIndex]}`;
   });
 }

@@ -135,7 +135,7 @@ export async function dispatch(action: string): Promise<string> {
   } else if (action.startsWith("number-")) {
     await applyNumberFormat(action.replace("number-", "") as NumberFormatName);
   } else if (action.startsWith("cycle-number-")) {
-    await applyNumberCycle(
+    return applyNumberCycle(
       action.replace("cycle-number-", "") as NumberCycleFamily,
     );
   } else if (action.startsWith("cycle-row-") && action !== "cycle-row-height") {
@@ -143,26 +143,21 @@ export async function dispatch(action: string): Promise<string> {
     // routes it to applyRowHeightCycle), not one of the three row-STYLE
     // kinds this prefix owns - the prefix used to swallow it first and call
     // applyRowStyleCycle("height"), which is not a real RowStyleKind.
-    await applyRowStyleCycle(action.replace("cycle-row-", "") as RowStyleKind);
+    return applyRowStyleCycle(action.replace("cycle-row-", "") as RowStyleKind);
   } else if (action.startsWith("template-")) {
     return insertTemplate(action.replace("template-", ""));
   } else {
     switch (action) {
       case "cycle-fill":
-        await applyFillCycle();
-        break;
+        return applyFillCycle();
       case "cycle-font":
-        await applyFontColorCycle();
-        break;
+        return applyFontColorCycle();
       case "cycle-border":
-        await applyBorderCycle();
-        break;
+        return applyBorderCycle();
       case "cycle-row-height":
-        await applyRowHeightCycle();
-        break;
+        return applyRowHeightCycle();
       case "cycle-col-width":
-        await applyColumnWidthCycle();
-        break;
+        return applyColumnWidthCycle();
       case "clear-formats":
         await clearFormats();
         break;
@@ -173,8 +168,7 @@ export async function dispatch(action: string): Promise<string> {
         await fastFillAuto("down");
         break;
       case "if-error":
-        await toggleIfErrorGuard();
-        break;
+        return toggleIfErrorGuard();
       case "autocolor":
         return autocolorSelection();
       case "insert-color-key":
@@ -186,8 +180,7 @@ export async function dispatch(action: string): Promise<string> {
         await scaleSelection(1000);
         break;
       case "cagr":
-        await insertCagr();
-        break;
+        return insertCagr();
       case "sign-flip":
         await applySignFlip();
         break;
@@ -274,14 +267,11 @@ export async function dispatch(action: string): Promise<string> {
       case "pinstripes-columns":
         return applyPinstripes("columns");
       case "cycle-indent":
-        await applyIndentCycle();
-        break;
+        return applyIndentCycle();
       case "cycle-align":
-        await applyAlignmentCycle();
-        break;
+        return applyAlignmentCycle();
       case "cycle-underline":
-        await applyUnderlineCycle();
-        break;
+        return applyUnderlineCycle();
       case "sheets-unhide-all":
         return unhideAllSheets();
       case "sheets-show-only":

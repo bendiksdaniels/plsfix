@@ -44,7 +44,7 @@ function walkOf(ladder: number[]): number[] {
 }
 
 /** Every cycle in this suite's area, by the stage name it refuses under. */
-function formatCycles(): [string, () => Promise<void>][] {
+function formatCycles(): [string, () => Promise<string>][] {
   return [
     ["Format cycling", () => smt.applyNumberCycle("currency")],
     ["Row styles", () => smt.applyRowStyleCycle("title")],
@@ -112,7 +112,7 @@ describe("selections at and past the caps", () => {
     for (const [stage, run] of [
       ["Format cycling", () => smt.applyNumberCycle("currency")],
       ["Border cycling", () => smt.applyBorderCycle()],
-    ] as [string, () => Promise<void>][]) {
+    ] as [string, () => Promise<string>][]) {
       await boot();
       helpers.select("Model!A1:XFD1048576");
       expect(await rejects(run)).toBe(

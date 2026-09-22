@@ -38,7 +38,7 @@ async function rejects(run: () => Promise<unknown>): Promise<string> {
 }
 
 /** The three cycles under one name, so a scenario runs against all of them. */
-function hygieneCycles(): [string, () => Promise<void>][] {
+function hygieneCycles(): [string, () => Promise<string>][] {
   return [
     ["Indent cycling", () => smt.applyIndentCycle()],
     ["Alignment cycling", () => smt.applyAlignmentCycle()],
