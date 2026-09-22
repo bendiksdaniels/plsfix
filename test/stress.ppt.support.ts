@@ -160,8 +160,10 @@ export async function waiting(): Promise<InboxItem> {
 }
 
 // A fresh pane: new modules, new deck of three slides with the first
-// selected, new relay, and the link key already paired.
-export async function bootPane(): Promise<void> {
+// selected, new relay, and the link key already paired unless told
+// otherwise (an unpaired boot still builds a workspace of its own, for a
+// test that pairs partway through - it is just never handed to the pane).
+export async function bootPane(paired = true): Promise<void> {
   vi.resetModules();
   uninstallFakePpt();
   relay = new FakeRelay();
@@ -170,7 +172,8 @@ export async function bootPane(): Promise<void> {
     join(process.cwd(), "pptpane.html"),
     "utf8",
   );
-  const storage = new Map([[WORKSPACE_STORAGE_KEY, workspace.exportKey]]);
+  const storage = new Map<string, string>();
+  if (paired) storage.set(WORKSPACE_STORAGE_KEY, workspace.exportKey);
   const host = installFakePpt({ slides: 3, storage });
   presentation = host.presentation;
   helpers = host.helpers;

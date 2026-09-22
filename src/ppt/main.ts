@@ -495,6 +495,17 @@ for (const [id, run] of Object.entries(BUTTON_ACTIONS)) {
   });
 }
 
+// Excel exports and a deleted deck object never tell this pane, so the list
+// is read again when the tab comes into view - the same reason the Excel
+// pane's Workbook tab re-reads its sheet list on its own click (src/main.ts).
+// Silent unless a read can actually happen: nothing is paired yet, the host
+// is not ready, or a batch is already running answer with no toast at all,
+// never the "still busy" one a second guarded action would get.
+getElement<HTMLButtonElement>("tab-inbox").addEventListener("click", () => {
+  if (ready && workspace !== null && !isBusy)
+    act(refreshInbox, "refresh-inbox");
+});
+
 workspaceKey.addEventListener("keydown", (event) => {
   if (event.key !== "Enter") return;
   event.preventDefault();

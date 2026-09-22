@@ -251,3 +251,28 @@ describe("a button pressed at the wrong moment", () => {
     expect(toastText()).toBe("1 linked object.");
   });
 });
+
+describe("the Inbox tab coming into view", () => {
+  it("reads the inbox when the tab is clicked, not only at boot", async () => {
+    await bootPane();
+    // Boot itself already read the inbox once, before this item existed.
+    await waiting();
+
+    click("tab-inbox");
+    await settle();
+
+    expect(
+      document.querySelectorAll("#inbox-list button").length,
+    ).toBeGreaterThan(0);
+    expect(toastText()).toBe("1 waiting to insert.");
+  });
+
+  it("does nothing, no toast, when the pane is not paired", async () => {
+    await bootPane(false);
+
+    click("tab-inbox");
+    await settle();
+
+    expect(toastText()).toBe("");
+  });
+});
