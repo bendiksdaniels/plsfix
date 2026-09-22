@@ -177,19 +177,16 @@ function armSentinel(): void {
 // their own the brief names.
 // ---------------------------------------------------------------------------
 
-// The brief's five, plus one this suite found the same way: reveal-key
-// (src/pane/links-tab.ts wireBoxes(), by its own comment) "is local and
-// instant - it touches neither Office nor the store - so it stays out of
-// the guard and out of the busy state" and toggles tab.reveal.disabled
-// purely off whether a key exists (renderKey), never off busy - forget-key
-// legitimately leaves it disabled behind it.
+// The brief's five. reveal-key is NOT one of them: it is disabled purely
+// off whether a key exists (renderKey), so after any press it must come
+// back exactly as it was - the one press allowed to leave it disabled is
+// forget-key, which removes the key it reveals (assertBusyReleased).
 const BUSY_LATCH_EXCEPTIONS = new Set([
   "trace-back",
   "copy-model-check",
   "styles-delete",
   "delete-names",
   "generate-key",
-  "reveal-key",
 ]);
 
 function enabledSnapshot(): Map<string, boolean> {
@@ -211,6 +208,7 @@ function assertBusyReleased(
 ): void {
   for (const [key, wasEnabled] of before) {
     if (!wasEnabled) continue;
+    if (key === "reveal-key" && pressedKey === "forget-key") continue;
     expect(
       after.get(key),
       `after pressing "${pressedKey}", button "${key}" is still disabled (busy latch not released)`,

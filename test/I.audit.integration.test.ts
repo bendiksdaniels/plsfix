@@ -489,6 +489,15 @@ describe("setBusy disables every button, then rule buttons resync instead of bla
     expect(traceBack.disabled).toBe(true);
     expect(copyModelCheck.disabled).toBe(true);
     expect(generateKey.disabled).toBe(false);
+    // Reveal is disabled only while there is no key to reveal: generate one,
+    // so the release below has to hand it back enabled, not blanket-disabled.
+    const revealKey = document.getElementById(
+      "reveal-key",
+    ) as HTMLButtonElement;
+    expect(revealKey.disabled).toBe(true);
+    click("generate-key");
+    await settle();
+    expect(revealKey.disabled).toBe(false);
 
     const { guard } = await import("../src/pane/shared");
     let release!: (value: string) => void;
@@ -513,6 +522,7 @@ describe("setBusy disables every button, then rule buttons resync instead of bla
     expect(traceBack.disabled).toBe(true);
     expect(copyModelCheck.disabled).toBe(true);
     expect(generateKey.disabled).toBe(false);
+    expect(revealKey.disabled).toBe(false);
     expect(deleteNamesButton.disabled).toBe(false);
     // An ordinary [data-action] button has no rule of its own: busy is the
     // only thing that ever disables it, so release is a plain re-enable.

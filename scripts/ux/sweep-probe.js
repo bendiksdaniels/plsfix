@@ -41,6 +41,17 @@
     return parts.join("|");
   }
 
+  // A toast that repeats the previous press's exact sentence (thirteen
+  // Links-tab buttons all answer "Excel is not connected." here) would leave
+  // the page byte-identical, so the text is reset to a sentinel before every
+  // press - the vitest click-through suites do the same - and any toast at
+  // all counts as a reaction.
+  var TOAST_SENTINEL = "SWEEP-NO-TOAST-YET";
+  function armToastSentinel() {
+    var text = document.querySelector("#toast .toast-text");
+    if (text) text.textContent = TOAST_SENTINEL;
+  }
+
   function snapshot() {
     return {
       html: document.body.innerHTML,
@@ -124,6 +135,7 @@
       kind === "click" &&
       el.getAttribute("role") === "tab" &&
       el.getAttribute("aria-selected") === "true";
+    armToastSentinel();
     var before = snapshot();
     if (kind === "checkbox") {
       el.checked = !el.checked;
@@ -177,31 +189,15 @@
     //    no reaction at all because the container was already sitting in
     //    that same hidden/empty state: a false dead-button verdict, not a
     //    real one;
-    //  - on the Excel pane only (id="tab-workbook" exists there and nowhere
-    //    else - PowerPoint's own Links view happens to share the container
-    //    id "view-links", and every one of ITS buttons is wired unconditio-
-    //    nally in src/ppt/main.ts, so it must stay covered), every id-only
-    //    button under #view-links (export-*, new/move-to-project, push-*,
-    //    go-to-source, remove-link, generate/copy/reveal/forget-key):
-    //    src/pane/links-tab.ts's wireActions()/wireBoxes() are the only
-    //    place any of them are ever given a listener, and src/main.ts calls
-    //    that (through connectExcel()) only once Excel is connected - never
-    //    true for this sweep's whole scenario, a host that is neither Excel
-    //    nor PowerPoint at all. Proven dead here would only ever prove that
-    //    same one fact for all fourteen; the vitest click-through suite (a
-    //    fake but CONNECTED Excel) is what actually holds each of them to a
-    //    real reaction.
     function hiddenOutsideTab(el) {
       var hidden = el.closest("[hidden]");
       return Boolean(hidden) && hidden.getAttribute("role") !== "tabpanel";
     }
-    var isExcelPane = Boolean(document.getElementById("tab-workbook"));
     for (var idButton of document.querySelectorAll(".app-shell button[id]")) {
       if (idButton.hasAttribute("data-action")) continue;
       if (idButton.getAttribute("role") === "tab") continue;
       if (idButton.classList.contains("help-toggle")) continue;
       if (idButton.closest(".first-run")) continue;
-      if (isExcelPane && idButton.closest("#view-links")) continue;
       if (hiddenOutsideTab(idButton)) continue;
       out.push({
         kind: "button",

@@ -264,7 +264,7 @@ async function boot(host: Office.HostType, degraded: boolean): Promise<void> {
     renderModelCheck();
     renderStyles();
     syncDeleteNamesButton();
-    linksTab?.syncGenerateKey();
+    linksTab?.syncKeyButtons();
   });
 
   // installLinksTab() lives inside connectExcel() and never runs without a
@@ -275,8 +275,12 @@ async function boot(host: Office.HostType, degraded: boolean): Promise<void> {
     for (const button of document.querySelectorAll<HTMLButtonElement>(
       "#view-links button",
     )) {
+      // Through the guard, like every [data-action] refusal: the same busy
+      // flicker, the same error path, never a bare toast of its own.
       button.addEventListener("click", () => {
-        toast.show(EXCEL_NOT_CONNECTED_MESSAGE, "error");
+        void guard(async () => {
+          throw new Error(EXCEL_NOT_CONNECTED_MESSAGE);
+        }, button.id);
       });
     }
   }
