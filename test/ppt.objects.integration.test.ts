@@ -88,7 +88,10 @@ describe("align", () => {
       const ids = seedThree();
       helpers.selectShapes(ids);
       const message = await tools.alignSelected(mode);
-      expect(message).toBe(`Aligned 3 objects ${mode}.`);
+      // pptpane.html's select labels "center" as "Centre" (object-tools.ts
+      // alignModeLabel): the toast says it that way too.
+      const label = mode === "center" ? "centre" : mode;
+      expect(message).toBe(`Aligned 3 objects ${label}.`);
       expect(positions(ids).map((p) => p[axis])).toEqual(expected);
     },
   );

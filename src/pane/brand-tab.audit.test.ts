@@ -268,7 +268,7 @@ describe("reset-brand: two-click confirm", () => {
     button.click();
     expect(settings.getActiveSettings().accent).toBe(before);
     expect(button.classList.contains("armed")).toBe(false);
-    expect(button.getAttribute("aria-label")).toBe("Reset to pls,fix defaults");
+    expect(button.getAttribute("aria-label")).toBe("Reset brand settings");
   });
 
   it("lapses on its own after five seconds and a press only re-arms", async () => {

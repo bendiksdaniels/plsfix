@@ -231,7 +231,7 @@ describe("logo colour picker", () => {
     expect(settings.getActiveSettings()).toEqual(settings.DEFAULT_SETTINGS);
     expect(document.getElementById("logo-swatches")?.hidden).toBe(true);
     expect(document.getElementById("logo-hint")?.hidden).toBe(true);
-    expect(toastText()).toBe("Palette reset to pls,fix defaults");
+    expect(toastText()).toBe("Brand settings reset to pls,fix defaults");
   });
 });
 

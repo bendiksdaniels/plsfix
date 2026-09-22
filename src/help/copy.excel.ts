@@ -205,7 +205,8 @@ const brand: HelpCopy = {
   "palette-heading": {
     about: "The seven colors every pls,fix style and autocolor draws from.",
     buttons: {
-      "reset-brand": "Puts all seven colors back to the pls,fix defaults.",
+      "reset-brand":
+        "Puts the colors, font, number style, currency and autocolor-on-edit back to the defaults. Press twice.",
     },
   },
   "logo-heading": {
@@ -228,7 +229,7 @@ const brand: HelpCopy = {
       "shortcuts-apply":
         "Saves the keys you typed. Combinations another add-in or Excel already uses are named in the message.",
       "shortcuts-reset":
-        "Clears every custom key and puts the shipped pls,fix defaults back.",
+        "Clears every custom key and puts the shipped pls,fix defaults back. Press twice.",
       "shortcuts-card":
         "Opens the printable page listing every shortcut, the same card the Tools tab opens.",
     },
@@ -266,7 +267,7 @@ const workbook: HelpCopy = {
       "styles-scan":
         "Lists the custom cell styles no cell in this workbook uses.",
       "styles-delete":
-        "Deletes the styles the scan found. A sheet too large to scan blocks the delete.",
+        "Deletes the styles the scan found. A sheet too large to scan blocks the delete. Press twice.",
     },
   },
   "toc-heading": {
@@ -282,7 +283,7 @@ const workbook: HelpCopy = {
       "share-prepare":
         "Puts every visible sheet back at A1, then reports what a reader would still find. Nothing is deleted.",
       "clean-past-data":
-        "Deletes the empty rows and columns past this sheet's data. Outside pls,fix Undo.",
+        "Deletes the empty rows and columns past this sheet's data. Outside pls,fix Undo. Press twice.",
     },
   },
   "model-check": {
@@ -300,7 +301,7 @@ const workbook: HelpCopy = {
     buttons: {
       "scan-names":
         "Lists the defined names that point at #REF!, that is, at deleted cells.",
-      "delete-names": "Deletes the broken names the scan found.",
+      "delete-names": "Deletes the broken names the scan found. Press twice.",
     },
   },
 };
@@ -331,7 +332,7 @@ const links: HelpCopy = {
       "go-to-source":
         "Jumps to the range or chart the ticked link was exported from.",
       "remove-link":
-        "Drops the link from this workbook. A picture already in a deck stays where it is.",
+        "Drops the link from this workbook. A picture already in a deck stays where it is. Press twice.",
       "new-project":
         "Opens the name box. New exports join the project you create.",
       "move-to-project":
@@ -344,13 +345,13 @@ const links: HelpCopy = {
     about: "The shared key that pairs this workbook's exports with a deck.",
     buttons: {
       "generate-key":
-        "Makes a new key. Decks still holding the old one stop seeing new exports.",
+        "Makes a new key. Decks still holding the old one stop seeing new exports. Press twice to replace an existing key.",
       "copy-key":
         "Copies the whole key, ready to paste into PowerPoint > Settings.",
       "reveal-key":
         "Shows the key in full. The panel otherwise shows its two ends only.",
       "forget-key":
-        "Deletes the key from this computer. Exports already pushed stay on the relay.",
+        "Deletes the key from this computer. Exports already pushed stay on the relay. Press twice.",
     },
   },
 };

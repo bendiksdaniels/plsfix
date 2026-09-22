@@ -226,7 +226,7 @@ describe("two-click confirms", () => {
 
     click("break-selected");
     await settle();
-    expect(toastText()).toBe("1 link broken. The picture stays on the slide.");
+    expect(toastText()).toBe("1 link broken. The object stays on the slide.");
     expect(linkRows()).toHaveLength(0);
   });
 

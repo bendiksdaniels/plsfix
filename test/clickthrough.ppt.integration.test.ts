@@ -708,7 +708,7 @@ describe("two-click confirms", () => {
     ).toBe(true);
 
     const secondToast = await press("break-selected");
-    expect(secondToast).toBe("1 link broken. The picture stays on the slide.");
+    expect(secondToast).toBe("1 link broken. The object stays on the slide.");
     expect(
       button.classList.contains("armed"),
       "the confirmed break disarms it again",

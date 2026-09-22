@@ -109,7 +109,7 @@
             <button
               id="update-all"
               type="button"
-              title="Update every link in this deck"
+              title="Update every link the filters show"
             >
               Update all
             </button>
@@ -163,8 +163,8 @@
             <label class="sr-only" for="link-status-filter">Link status</label>
             <select id="link-status-filter">
               <option value="all">All statuses</option>
-              <option value="updateAvailable">Needs update</option>
-              <option value="missing">Missing source</option>
+              <option value="updateAvailable">Update available</option>
+              <option value="missing">Source missing</option>
               <option value="wrongKey">Wrong link key</option>
               <option value="current">Up to date</option>
             </select>
@@ -192,7 +192,7 @@
                 <th scope="col">Slide</th>
                 <th scope="col">Object</th>
                 <th scope="col">Status</th>
-                <th scope="col">Updated</th>
+                <th scope="col">Pushed</th>
               </tr>
             </thead>
             <tbody id="link-rows"></tbody>

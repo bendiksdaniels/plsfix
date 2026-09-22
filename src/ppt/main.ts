@@ -367,7 +367,7 @@ async function breakSelected(): Promise<string> {
     await refreshQuietly();
   }
   const count = `${String(subset.length)} link${subset.length === 1 ? "" : "s"}`;
-  return `${count} broken. The picture stays on the slide.`;
+  return `${count} broken. The object stays on the slide.`;
 }
 
 async function goToSelectedSlide(): Promise<string> {

@@ -279,8 +279,8 @@ fn filters() -> Section {
             },
             Block::Para("Stāvokļa filtra četras vērtības:"),
             Block::Bullets(&[
-                r#""Needs update": avota dati Excel pusē mainījušies kopš pēdējās atjaunināšanas."#,
-                r#""Missing source": relejā šai saitei vairs nav neviena attēla."#,
+                r#""Update available": avota dati Excel pusē mainījušies kopš pēdējās atjaunināšanas."#,
+                r#""Source missing": relejā šai saitei vairs nav neviena attēla."#,
                 r#""Wrong link key": attēls saglabāts ar citu saites atslēgu, nevis šī datora aktuālo."#,
                 r#""Up to date": attēls atbilst jaunākajam Excel eksportam."#,
             ]),

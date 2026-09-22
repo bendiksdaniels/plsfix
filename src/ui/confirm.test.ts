@@ -82,10 +82,12 @@ describe("armConfirm", () => {
 
   it("keeps an icon-only button's glyph, relabelling its title and aria-label instead", () => {
     // reset-brand's own shape: a fixed-size icon square, no room for a
-    // sentence, so only the accessible name and the tooltip change.
+    // sentence, so only the accessible name and the tooltip change. Two
+    // different resting strings here (unlike the real button, which uses the
+    // same text for both), so a mix-up between the two attributes would fail.
     const button = document.createElement("button");
     button.className = "icon-button";
-    button.setAttribute("aria-label", "Reset to pls,fix defaults");
+    button.setAttribute("aria-label", "Reset brand settings");
     button.setAttribute("title", "Reset to defaults");
     button.textContent = "⟲";
     const confirm = armConfirm(button, vi.fn());
@@ -98,7 +100,7 @@ describe("armConfirm", () => {
 
     confirm.disarm();
     expect(button.textContent).toBe("⟲");
-    expect(button.getAttribute("aria-label")).toBe("Reset to pls,fix defaults");
+    expect(button.getAttribute("aria-label")).toBe("Reset brand settings");
     expect(button.getAttribute("title")).toBe("Reset to defaults");
   });
 

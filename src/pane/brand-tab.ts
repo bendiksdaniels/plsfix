@@ -323,7 +323,7 @@ export function wireBrand(): void {
     () => {
       applySettings(
         { ...DEFAULT_SETTINGS },
-        "Palette reset to pls,fix defaults",
+        "Brand settings reset to pls,fix defaults",
       );
       const strip = getElement<HTMLDivElement>("logo-swatches");
       strip.replaceChildren();

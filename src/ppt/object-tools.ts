@@ -103,13 +103,20 @@ async function transform(
   });
 }
 
+// The toast names the mode in the pane's own spelling: pptpane.html's select
+// labels "center" as "Centre" (object-tools-heading > align-objects), so the
+// word the button chose has to read the same way the option that picked it did.
+function alignModeLabel(mode: AlignMode): string {
+  return mode === "center" ? "centre" : mode;
+}
+
 export async function alignSelected(mode: AlignMode): Promise<string> {
   const count = await transform(
     2,
     "Select at least two objects to align.",
     (boxes) => alignBoxes(boxes, mode),
   );
-  return `Aligned ${String(count)} objects ${mode}.`;
+  return `Aligned ${String(count)} objects ${alignModeLabel(mode)}.`;
 }
 
 export async function distributeSelected(
