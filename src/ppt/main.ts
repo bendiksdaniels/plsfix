@@ -5,6 +5,7 @@
 // "Change source" picker chooser.ts, and deck/relay calls links.ts / host.ts.
 
 import "../styles.css";
+import type { BundleRead } from "../link/bundle";
 import type { InboxItem } from "../link/model";
 import { relayBaseUrl, RelayClient } from "../link/relay";
 import type { LinkTransport } from "../link/transport-setting";
@@ -15,6 +16,7 @@ import {
   officeKeyStore,
   type Workspace,
 } from "../link/workspace";
+import { bundleFromPaste } from "../ui/clipboard-links";
 import { armConfirm } from "../ui/confirm";
 import { getElement } from "../ui/dom";
 import { installFirstRun } from "../ui/first-run";
@@ -62,6 +64,7 @@ import {
   swapSelected,
 } from "./object-tools";
 import { createPaneDetails } from "./pane-details";
+import { pasteLinks, summarizePaste } from "./paste-links";
 import { readInsertTarget, refreshSlideOptions } from "./target";
 import { renderInbox, renderLinkRows } from "./views";
 
@@ -89,6 +92,9 @@ const insertSlideSelect = getElement<HTMLSelectElement>("insert-slide");
 const insertWhereSelect = getElement<HTMLSelectElement>("insert-where");
 const inboxList = getElement("inbox-list");
 const inboxUnpaired = getElement("inbox-unpaired");
+const pasteLinksArea = getElement("paste-links-area");
+const pasteLinksBox = getElement<HTMLTextAreaElement>("paste-links");
+const pasteNotDurable = getElement("paste-not-durable");
 const workspaceState = getElement("workspace-state");
 const workspaceKey = getElement<HTMLInputElement>("workspace-key");
 const linkTransportSelect = getElement<HTMLSelectElement>("link-transport");
@@ -259,6 +265,11 @@ function renderInboxView(): void {
   const paired = transport.workspace() !== null;
   inboxList.hidden = !paired;
   inboxUnpaired.hidden = paired;
+  // The paste box is local mode's whole reason to be here; the unpaired hint
+  // above is relay-only, so the two are never shown together.
+  const local = transport.mode() === "local";
+  pasteLinksArea.hidden = !local;
+  pasteNotDurable.hidden = !local || (transport.store()?.durable() ?? true);
 }
 
 // Also the Settings tab's own render: the select's value, whether the Link
@@ -507,6 +518,37 @@ async function forgetKey(): Promise<string> {
   return "Link key forgotten. The links already in this deck still update.";
 }
 
+// Empties this computer's local store: the deck's own objects are untouched,
+// only what was pasted and what is still waiting to be.
+async function clearPastedLinks(): Promise<string> {
+  await transport.store()?.clear();
+  inboxItems = [];
+  renderInboxView();
+  await refreshQuietly();
+  return "Pasted links cleared from this computer. The deck keeps its objects.";
+}
+
+// The paste itself: decode inside act() so a bad copy, an empty store or a
+// failed row all land through the one guard every other button uses.
+async function pasteFromExcel(read: BundleRead): Promise<string> {
+  if (!read.ok) {
+    throw new Error(
+      read.reason === "newerVersion"
+        ? "This copy comes from a newer pls,fix. Update the add-in."
+        : "That is not a pls,fix copy from Excel.",
+    );
+  }
+  const store = transport.store();
+  if (store === null) {
+    throw new Error("Switch Settings to copy and paste first.");
+  }
+  const summary = await pasteLinks(read.bundle, store);
+  await refreshQuietly();
+  await inboxQuietly();
+  for (const line of summary.failures) details.add(line);
+  return summarizePaste(summary);
+}
+
 // The inbox is a courtesy after pairing: a relay that is down must not turn a
 // saved key into a failure.
 async function inboxQuietly(): Promise<void> {
@@ -535,6 +577,7 @@ const BUTTON_ACTIONS: Record<string, () => Promise<string>> = {
   "paste-latest-linked": pasteLatestLinked,
   "save-key": saveKey,
   "forget-key": forgetKey,
+  "clear-pasted-links": clearPastedLinks,
   "align-objects": () =>
     alignSelected(objectAlignMode.value as Parameters<typeof alignSelected>[0]),
   "distribute-objects": () =>
@@ -551,7 +594,11 @@ const BUTTON_ACTIONS: Record<string, () => Promise<string>> = {
 // break-selected and forget-key are one-way (an unlinked object, a key gone
 // from this computer): the first press only arms, src/ui/confirm.ts owns
 // the rest, and act(run, id) is what it confirms into on the second.
-const CONFIRM_BUTTON_IDS = new Set(["break-selected", "forget-key"]);
+const CONFIRM_BUTTON_IDS = new Set([
+  "break-selected",
+  "forget-key",
+  "clear-pasted-links",
+]);
 
 for (const [id, run] of Object.entries(BUTTON_ACTIONS)) {
   const button = getElement<HTMLButtonElement>(id);
@@ -596,6 +643,18 @@ linkTransportSelect.addEventListener("change", () => {
       ? "Links now travel by copy and paste on this computer."
       : "Links now travel through the relay.";
   }, "link-transport");
+});
+
+// A paste box, not a text field: typing into it is not a copy from Excel, so
+// whatever lands there is wiped back out at once.
+pasteLinksBox.addEventListener("input", (event) => {
+  (event.target as HTMLTextAreaElement).value = "";
+});
+pasteLinksBox.addEventListener("paste", (event) => {
+  event.preventDefault();
+  // Read inside the event: clipboardData is empty once this handler returns.
+  const read = bundleFromPaste(event.clipboardData);
+  act(() => pasteFromExcel(read), "paste-links");
 });
 
 linkSearch.addEventListener("input", renderLinks);

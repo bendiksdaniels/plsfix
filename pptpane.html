@@ -193,7 +193,7 @@
                 <th scope="col">Slide</th>
                 <th scope="col">Object</th>
                 <th scope="col">Status</th>
-                <th scope="col">Pushed</th>
+                <th scope="col">Sent</th>
               </tr>
             </thead>
             <tbody id="link-rows"></tbody>
@@ -310,6 +310,25 @@
             >
               ↻
             </button>
+          </div>
+          <div id="paste-links-area" hidden>
+            <label class="paste-label" for="paste-links"
+              >Paste from Excel</label
+            >
+            <textarea
+              id="paste-links"
+              class="paste-box"
+              rows="2"
+              spellcheck="false"
+              placeholder="Click here, then Ctrl+V (⌘V on a Mac)"
+            ></textarea>
+            <button id="clear-pasted-links" type="button">
+              Clear pasted links
+            </button>
+            <p class="hint" id="paste-not-durable" hidden>
+              This computer does not keep pasted links between sessions: paste
+              again after reopening the pane.
+            </p>
           </div>
           <div class="object-action-row insert-target-row">
             <label for="insert-slide">Slide</label>

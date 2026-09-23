@@ -260,6 +260,49 @@
   background: var(--surface-sunken);
 }
 
+/* Local mode's paste target (Inbox tab): a dashed drop zone in the style of
+   the Excel pane's .upload-drop, Clear pasted links below it. */
+#paste-links-area {
+  display: grid;
+  gap: var(--gap-tight);
+  margin-bottom: 10px;
+}
+.paste-label {
+  color: var(--muted);
+  font-size: var(--fs-micro);
+  font-weight: 750;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.paste-box {
+  display: block;
+  width: 100%;
+  min-height: 56px;
+  padding: 8px 10px;
+  border: 1.5px dashed var(--line);
+  border-radius: var(--radius-row);
+  background: rgba(46, 196, 182, 0.06);
+  color: var(--ink);
+  font: inherit;
+  resize: vertical;
+}
+.paste-box:focus-visible {
+  border-color: var(--accent);
+  background: rgba(46, 196, 182, 0.1);
+  outline: none;
+}
+#paste-links-area button {
+  min-height: var(--control-h);
+  padding: 4px 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+  color: var(--ink);
+  background: var(--surface);
+  font-size: var(--fs-body);
+  font-weight: 700;
+  cursor: pointer;
+}
+
 .inbox-list {
   display: grid;
   gap: var(--gap-tight);

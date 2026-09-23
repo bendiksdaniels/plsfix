@@ -36,6 +36,8 @@ export const PPT_HELP: HelpCopy = {
     buttons: {
       "refresh-inbox":
         "Asks the relay for the exports waiting under your link key.",
+      "clear-pasted-links":
+        "Deletes every pasted link and waiting item kept on this computer. The deck keeps its objects. Press twice.",
       "paste-latest-linked":
         "Inserts the newest Excel export at the picked slide and spot, and creates its tracked link.",
       "first-run-ppt-dismiss":

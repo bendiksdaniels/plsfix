@@ -1,13 +1,14 @@
 // @vitest-environment jsdom
 // Slice H click-through harness (PowerPoint pane): presses every button of
 // the shipped pptpane.html + src/ppt/main.ts over the fake PowerPoint host,
-// relay mocked, in four shapes - (a) unpaired nothing selected, (b) paired
+// relay mocked, in five shapes - (a) unpaired nothing selected, (b) paired
 // nothing selected, (c) paired with two then three shapes selected (object
-// tools), (d) paired with an inbox export inserted and its row ticked - and
-// asserts every press answers like a product should: no crash, some
-// reaction, never a raw office.js code or "undefined" standing alone in the
-// toast, and the busy latch releasing again. Also runs every PLSFIX_PPT_*
-// ribbon command, the search box and the filter selects.
+// tools), (d) paired with an inbox export inserted and its row ticked, (e)
+// local mode, a bundle pasted from Excel - and asserts every press answers
+// like a product should: no crash, some reaction, never a raw office.js
+// code or "undefined" standing alone in the toast, and the busy latch
+// releasing again. Also runs every PLSFIX_PPT_* ribbon command, the search
+// box and the filter selects.
 // Owns no product logic; a real defect found along the way is catalogued in
 // KNOWN_DEFECTS below rather than patched here (src/ is out of scope for
 // this slice) and the suite asserts it is STILL there, so a later fix must
@@ -17,12 +18,19 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type * as RelayModule from "../src/link/relay";
+import { BUNDLE_SENTENCE, bundleHtml, encodeBundle } from "../src/link/bundle";
 import { deriveLinkKeys, newToken, seal } from "../src/link/crypto";
+import { localWorkspace } from "../src/link/local";
+import { LocalCollector } from "../src/link/local-collector";
 import {
   encodeInboxItem,
   encodePayload,
+  encodeTag,
   newLinkId,
+  TAG_KEY,
+  TAG_LINK,
   type InboxItem,
+  type LinkTag,
   type Payload,
 } from "../src/link/model";
 import { TRANSPORT_STORAGE_KEY } from "../src/link/transport-setting";
@@ -97,6 +105,9 @@ async function settle(): Promise<void> {
 interface BootOptions {
   slides?: number;
   paired?: boolean;
+  // State (e): local mode. Overrides `paired` - local mode is always its
+  // own kind of paired (the fixed local workspace), never the relay's.
+  local?: boolean;
 }
 
 async function bootPpt(options: BootOptions = {}): Promise<void> {
@@ -105,7 +116,10 @@ async function bootPpt(options: BootOptions = {}): Promise<void> {
   pane();
   relay = new FakeRelay();
   const storage = new Map<string, string>();
-  if (options.paired ?? true) {
+  if (options.local) {
+    workspace = null;
+    storage.set(TRANSPORT_STORAGE_KEY, "local");
+  } else if (options.paired ?? true) {
     workspace = await createWorkspace({
       get: async () => null,
       set: async () => undefined,
@@ -423,6 +437,90 @@ async function seedWaitingInbox(): Promise<InboxItem> {
   return item;
 }
 
+// ---------------------------------------------------------------------------
+// Local mode: a synthetic clipboard paste, built the way Excel's
+// LocalCollector records an export (src/link/local-collector.ts) and carried
+// the way a real copy is - the HTML flavor first, text/plain the sentence.
+// ---------------------------------------------------------------------------
+
+function pasteEvent(html: string, plain: string): Event {
+  const event = new Event("paste", { bubbles: true, cancelable: true });
+  Object.defineProperty(event, "clipboardData", {
+    value: { getData: (type: string) => (type === "text/html" ? html : plain) },
+  });
+  return event;
+}
+
+function bundleEvent(bundle: ReturnType<LocalCollector["bundle"]>): Event {
+  return pasteEvent(bundleHtml(encodeBundle(bundle)), BUNDLE_SENTENCE);
+}
+
+function pasteBox(): HTMLTextAreaElement {
+  return document.getElementById("paste-links") as HTMLTextAreaElement;
+}
+
+// One Excel export the way LocalCollector records it: the link's sealed
+// payload plus its inbox row (design 2026-09-23 s.4 - every export copies
+// both; LocalStore.ingest is what decides the row is kept or dropped).
+async function exportLinkLocally(
+  collector: LocalCollector,
+  id: string,
+  token: string,
+  payload: Payload,
+  currentRev = 0,
+): Promise<void> {
+  const keys = await deriveLinkKeys(token);
+  await collector.putLink(
+    id,
+    keys.auth,
+    await seal(keys.enc, id, encodePayload(payload)),
+    currentRev,
+  );
+  const localWs = await localWorkspace();
+  const item: InboxItem = {
+    id,
+    token,
+    kind: "range",
+    label: "Model!B4:F12",
+    src: SRC,
+    createdAt: new Date().toISOString(),
+  };
+  await collector.postInbox(
+    localWs.id,
+    localWs.auth,
+    id,
+    await seal(localWs.enc, localWs.id, encodeInboxItem(item)),
+  );
+}
+
+// A shape already on the given slide, tagged at `rev`: the deck a bundle is
+// about to update, the way a colleague's deck arrives.
+function plantLink(
+  slide: FakeSlide,
+  id: string,
+  token: string,
+  rev: number,
+): void {
+  const shape = presentation.addShape(slide, {
+    type: "GeometricShape",
+    fillImage: fakePng(800, 400),
+    left: 100,
+    top: 80,
+    width: 400,
+    height: 200,
+  });
+  const tag: LinkTag = {
+    v: 1,
+    id,
+    kind: "range",
+    rev,
+    src: SRC,
+    pushedAt: new Date().toISOString(),
+  };
+  shape.tags.set(TAG_LINK, encodeTag(tag));
+  shape.tags.set(TAG_KEY, token);
+}
+
 // Three same-size, same-type shapes on the given slide, so
 // sameKindAndSize (src/ppt/object-math.ts) matches every pair.
 function addPlainShapes(slide: FakeSlide, count: number): FakePptShape[] {
@@ -694,6 +792,85 @@ describe("state (d): paired, an inserted link, its row ticked", () => {
 });
 
 // ---------------------------------------------------------------------------
+// State (e): local mode - no key stored at all, transport pinned local. One
+// paste can both repaint a link already on a slide and park a brand new one
+// in the Inbox; a copy that is not a pls,fix bundle says so in one sentence.
+// ---------------------------------------------------------------------------
+
+describe("state (e): local mode, a bundle pasted from Excel", () => {
+  it("presses every static button and every ribbon command once", async () => {
+    await bootPpt({ local: true });
+
+    for (const id of new Set(staticButtonIds())) {
+      await pressStatic(id);
+    }
+
+    for (const id of helpers.commandIds()) {
+      await helpers.runCommand(id);
+      await settle();
+    }
+  });
+
+  it("repaints a held link and parks a new one in the Inbox, from one paste", async () => {
+    await bootPpt({ local: true, slides: 3 });
+    const heldId = newId();
+    const heldToken = newToken();
+    plantLink(presentation.slides[1]!, heldId, heldToken, 1);
+    const freshId = newId();
+    const freshToken = newToken();
+
+    const collector = new LocalCollector();
+    await exportLinkLocally(
+      collector,
+      heldId,
+      heldToken,
+      picturePayload(fakePng(400, 200)),
+      1,
+    );
+    await exportLinkLocally(
+      collector,
+      freshId,
+      freshToken,
+      picturePayload(fakePng(200, 100)),
+    );
+
+    pasteBox().dispatchEvent(bundleEvent(collector.bundle()));
+    await settle();
+
+    expect(toastText()).toBe(
+      "Pasted 2 links: 1 updated, 1 waiting in the Inbox.",
+    );
+    expect(presentation.slides[1]!.shapes[0]!.fillImage).toBe(
+      fakePng(400, 200),
+    );
+    // inboxQuietly() inside the paste itself re-reads the Inbox, so the new
+    // link's Insert button is already there with no extra press.
+    expect(
+      document.querySelector<HTMLButtonElement>(".inbox-insert"),
+    ).toBeTruthy();
+  });
+
+  it("says one plain sentence for a paste that is not a pls,fix copy", async () => {
+    await bootPpt({ local: true });
+
+    pasteBox().dispatchEvent(pasteEvent("", "not a bundle at all"));
+    await settle();
+
+    expect(toastText()).toBe("That is not a pls,fix copy from Excel.");
+  });
+
+  it("never fills the box: typing is wiped back out", async () => {
+    await bootPpt({ local: true });
+    const box = pasteBox();
+
+    box.value = "something typed by hand";
+    box.dispatchEvent(new Event("input", { bubbles: true }));
+
+    expect(box.value).toBe("");
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Two-click buttons: the first press only arms; the second is the real one.
 // ---------------------------------------------------------------------------
 
@@ -742,6 +919,42 @@ describe("two-click confirms", () => {
       button.classList.contains("armed"),
       "the confirmed forget disarms it again",
     ).toBe(false);
+  });
+
+  it("clear-pasted-links arms on the first click and clears on the second", async () => {
+    await bootPpt({ local: true });
+    const collector = new LocalCollector();
+    await exportLinkLocally(
+      collector,
+      newId(),
+      newToken(),
+      picturePayload(fakePng(200, 100)),
+    );
+    pasteBox().dispatchEvent(bundleEvent(collector.bundle()));
+    await settle();
+    expect(
+      document.querySelectorAll("#inbox-list button").length,
+    ).toBeGreaterThan(0);
+
+    const button = findButton("clear-pasted-links")!;
+    expect(button.classList.contains("armed")).toBe(false);
+    await press("clear-pasted-links");
+    expect(
+      button.classList.contains("armed"),
+      "first press should only arm it",
+    ).toBe(true);
+
+    const secondToast = await press("clear-pasted-links");
+    expect(secondToast).toBe(
+      "Pasted links cleared from this computer. The deck keeps its objects.",
+    );
+    expect(
+      button.classList.contains("armed"),
+      "the confirmed clear disarms it again",
+    ).toBe(false);
+
+    await pressStatic("refresh-inbox");
+    expect(toastText()).toBe("Nothing waiting from Excel.");
   });
 });
 
