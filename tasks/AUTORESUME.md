@@ -1,17 +1,19 @@
-# AUTORESUME - pls,fix (v2.8.23 live 23.09, in-house deployment package 21.09, PUBLIC on GitHub, MIT)
+# AUTORESUME - pls,fix (v2.9.1 live 23.09: local links; in-house deployment package 21.09, PUBLIC on GitHub, MIT)
 
-## NEXT SESSION (from 23.09): the real-Office pass of the click-through, the matrix twice, Windows
+## NEXT SESSION (from 23.09 evening): the real-Office pass of local links and the click-through
 
-State at hand-over: **v2.8.23 LIVE 23.09** (main = origin, `deploy.sh modelis` "SERVER IN SYNC", live
-`/version` 2.8.23, release runs green for v2.8.21-23, manual docx v2.8.023, memory `project_plsfix.md`
-current), gates green (2949 vitest, ZERO skipped, cargo green, ux 0/72, sweep 0/190), no worktree, no
-branch, no dev server, both wef folders hold the prod manifest. The 23.09 section below is the record of
-the click-through session; `tasks/click-through-2026-09-22.md` has the verdict per control.
+State at hand-over: **v2.9.1 LIVE 23.09** (main = origin, `deploy.sh modelis`: modelis clean, live
+`/version` 2.9.1; the script's overall INCOMPLETE is drift in lei and tulkojums, other tools), release runs
+green for v2.8.24 and v2.9.0 and running for v2.9.1 at hand-over, manual docx v2.9.001, gates green (3051
+vitest, zero skipped, cargo green, sweep 0/193, ux 0/72, `npm run ux:clipboard` PASS), no worktree, no branch.
+The 23.09 sections below: local links (this evening) and the click-through (this morning).
 
-7. **Real-Office pass of the click-through changes** (waits for Daniel's explicit "go desktop", both apps
-   closed, him away from the Mac): nothing shipped on 23.09 (v2.8.21-23) has been seen in a real host.
-   Checklist in `tasks/click-through-2026-09-22.md` section 5 and in the plan
-   `~/.claude/plans/cheeky-orbiting-frog.md` phase C; rig recovery from the 16.09 transcript (lessons 16.09).
+8. **Real-Office pass of local links** (Daniel's grant, or his own two minutes on the Mac): the rows in
+   `tasks/launch-check.md` "local links": export one range, paste in PowerPoint's Inbox box, insert; change it,
+   Copy all, paste, the deck updates; paste onto a slide gives the one sentence; note whether the Copy for
+   PowerPoint bar ever appears (the one-click write refused); reopen PowerPoint, the Inbox keeps what waited.
+   The two-flavor clipboard is proven in Chromium (`npm run ux:clipboard`), not yet in WKWebView.
+7. **Real-Office pass of the click-through changes**: unchanged, see below.
 0. **In-house deployment package ready 21.09** (`tasks/deploy-inhouse.md`): the Microsoft 365 upload
    waits for the admin request, which is Daniel's send (recipients + count + his go); proof list in
    its section 3 after propagation.
@@ -32,6 +34,37 @@ the click-through session; `tasks/click-through-2026-09-22.md` has the verdict p
 6. **The folders on his Mac**: v2.8.19's deck list (a folder per project, the workbook under every object) is
    proven in the ux gate and the jsdom suites only; the sideloaded pane reloads it from the live server
    (pane reload, or Home > Add-ins > pls,fix once per launch). His computer-use grant or his own look.
+
+## 23.09 evening: local links, Excel to PowerPoint without a relay (v2.8.24, v2.9.0, v2.9.1)
+
+Daniel, 23.09: "work more on how the linking feature would work on local device without servers", then
+"local by default, relay optional", then "go". Spec `docs/superpowers/specs/2026-09-23-local-links-design.md`,
+plan `docs/superpowers/plans/2026-09-23-local-links.md` (18 tasks, 4 slices), sonnet implementers in
+`~/.worktrees/plsfix/`, review before every merge.
+
+- **How it works**: a bundle (sealed links + inbox rows as JSON) travels by one copy and one paste. The
+  clipboard's HTML flavor carries it in a `data-plsfix-links` attribute; plain text is one sentence, so a paste
+  onto a slide is harmless. Excel: `src/link/local-collector.ts` records what a push would send;
+  `src/pane/links-transport.ts` starts the clipboard write inside the click (WebKit needs it) and falls back
+  to a "Copy for PowerPoint" button, then a manual box. PowerPoint: `src/link/local-store.ts` answers every
+  deck flow from pasted bundles (two revisions per link, 32 MB IndexedDB budget, `src/link/local-persist.ts`);
+  `src/ppt/paste-links.ts` ingests, repaints what the deck holds and parks the rest in the Inbox. Local revs
+  live above 2^40 so a switch between transports always reads as an update. New status "Not pasted yet".
+- **Setting**: per device (`plsfix.link.transport.v1`), local by default, relay kept where a link key is
+  already stored (Daniel's devices stay on the relay). Excel: Links tab, last section; PowerPoint: Settings.
+- **Found on the way**: the PowerPoint relay-down boot test flaked under the full suite; root cause = every
+  PowerPoint test helper waited a fixed 12 turns while the boot awaits WebCrypto on Node's thread pool.
+  `test/ppt-ready.ts` (`trackPptBoot`, `settlePpt`) now waits for the work; proven by slowing `importKey`
+  25 ms (fails before, passes after, `test/ppt-ready.integration.test.ts`); lessons 23.09.
+- **Review fixes on the slices**: Excel transport logic moved out of the over-cap `links-tab.ts`; a local
+  chart export keeps Excel's note; PowerPoint paste sentences and the pre-boot transport moved out of
+  `main.ts`; the Latvian manual's paste step clicks the field and says deck links update at once.
+- **Proof**: 3051 vitest; `npm run ux:clipboard` round-trips 5 MB through both write paths with a digest
+  match in headless Chromium; the live panes serve the new controls.
+- **Open**: the Office for Mac pass (item 8 above). Deliberately not built: offline start of the pane
+  itself, sync between two computers without a relay, auto-push in local mode.
+- Cost: plan and spec on the controller; slices ~0.40M (core) + 0.34M (test waits) + 0.58M (Excel) +
+  0.53M (PowerPoint) + 0.51M (words), all sonnet; reviews and merges on the controller.
 
 ## 23.09: the click-through of every control (v2.8.21, v2.8.22, v2.8.23)
 
