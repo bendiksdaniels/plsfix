@@ -6,6 +6,7 @@
 // the host adapter and the relay are both injectable.
 
 import { deriveLinkKeys, open } from "../link/crypto";
+import { previousRevOf } from "../link/local";
 import { decodePayload, sourceLabel, type Payload } from "../link/model";
 import { isRelayError, type RelayApi } from "../link/relay";
 import type { FoundLink, RefreshRequest } from "./host";
@@ -19,11 +20,11 @@ export interface RevertSummary {
   failures: string[];
 }
 
-// The relay holds the tag's revision and the one before it, so a link that was
-// never updated - or one already reverted - has nowhere left to go.
+// The relay (or this computer's store) holds the tag's revision and the one
+// before it, so a link that was never updated - or one already reverted - has
+// nowhere left to go. Local revs stop at the first one of their own space.
 function previousRev(found: FoundLink): number | null {
-  const rev = found.tag.rev - 1;
-  return Number.isInteger(rev) && rev >= 1 ? rev : null;
+  return previousRevOf(found.tag.rev);
 }
 
 async function fetchRevision(
@@ -83,7 +84,7 @@ function countFailure(
   const gone = isRelayError(error) && error.kind === "missing";
   summary.failures.push(
     gone
-      ? `revert ${sourceLabel(found.tag.src, found.tag.kind)}: the relay no longer holds version ${String(rev)}.`
+      ? `revert ${sourceLabel(found.tag.src, found.tag.kind)}: the previous version is no longer available.`
       : failureLine(found, error),
   );
 }

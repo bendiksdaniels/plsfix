@@ -39,7 +39,7 @@ export function deriveStatus(
 // for a named older rev on purpose and never calls this.
 export class StaleRelayError extends Error {
   constructor() {
-    super("The relay sent an older picture than this deck already holds.");
+    super("The update is older than the picture this deck already holds.");
     this.name = "StaleRelayError";
   }
 }
