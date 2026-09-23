@@ -79,8 +79,8 @@ fn local_mode() -> Section {
             ),
             Block::Steps(&[
                 r#"Excel pusē eksportējiet ierasti, piemēram, ar "Export selection", vai atzīmējiet vienu vai vairākas saites sarakstā un nospiediet "Copy selected" vai "Copy all"."#,
-                r#"PowerPoint pusē atveriet pls,fix paneli, sadaļu "Inbox", nospiediet ielīmēšanas laukā un tad Ctrl+V (Mac datorā Cmd+V)."#,
-                r#"Ielīmētās saites parādās sarakstā tāpat kā no releja saņemtās; ievietojiet tās ar "Insert" vai "Paste latest linked"."#,
+                r#"PowerPoint pusē atveriet pls,fix paneli, sadaļu "Inbox", noklikšķiniet ielīmēšanas laukā "Paste from Excel" un nospiediet Ctrl+V (Mac datorā Cmd+V)."#,
+                r#"Saites, kas prezentācijā jau ir, atjaunojas uzreiz. Jaunās parādās sarakstā "Waiting to insert" tāpat kā no releja saņemtās; ievietojiet tās ar "Insert" vai "Paste latest linked"."#,
             ]),
             Block::Para(
                 r#"Kuru ceļu saite izvēlas, nosaka izvēlne "Links travel" zem saišu saraksta Excel pusē un izvēlne "How links reach PowerPoint" PowerPoint pusē, sadaļā "Settings". "Copy and paste on this computer" saiti sūta tikai ar kopēšanu un ielīmēšanu; "Through the relay" izmanto releju kā līdz šim. Pārslēgšanās neizdzēš nedz saglabāto atslēgu, nedz relejā jau nosūtītās saites, nedz ielīmētās saites."#,
