@@ -53,7 +53,11 @@ import {
   type LinkRow,
 } from "./links";
 import { revertLinks, summarizeRevert } from "./revert";
-import { openPptTransport, type PptTransport } from "./transport";
+import {
+  openPptTransport,
+  preBootTransport,
+  type PptTransport,
+} from "./transport";
 import {
   alignSelected,
   applyObjectStyle,
@@ -64,7 +68,7 @@ import {
   swapSelected,
 } from "./object-tools";
 import { createPaneDetails } from "./pane-details";
-import { pasteLinks, summarizePaste } from "./paste-links";
+import { pasteLinks, requireBundle, summarizePaste } from "./paste-links";
 import { readInsertTarget, refreshSlideOptions } from "./target";
 import { renderInbox, renderLinkRows } from "./views";
 
@@ -112,13 +116,7 @@ const selected = new Set<string>();
 // Replaced by the real one from openPptTransport() before Office.onReady sets
 // ready = true; only the pre-boot paint below (renderPairing/renderInboxView,
 // called at module load) ever sees this placeholder.
-let transport: PptTransport = {
-  mode: () => "relay",
-  relay: () => remote,
-  workspace: () => null,
-  store: () => null,
-  setMode: async () => undefined,
-};
+let transport: PptTransport = preBootTransport(remote);
 
 getElement("app-version").textContent = APP_VERSION;
 
@@ -531,18 +529,12 @@ async function clearPastedLinks(): Promise<string> {
 // The paste itself: decode inside act() so a bad copy, an empty store or a
 // failed row all land through the one guard every other button uses.
 async function pasteFromExcel(read: BundleRead): Promise<string> {
-  if (!read.ok) {
-    throw new Error(
-      read.reason === "newerVersion"
-        ? "This copy comes from a newer pls,fix. Update the add-in."
-        : "That is not a pls,fix copy from Excel.",
-    );
-  }
+  const bundle = requireBundle(read);
   const store = transport.store();
   if (store === null) {
     throw new Error("Switch Settings to copy and paste first.");
   }
-  const summary = await pasteLinks(read.bundle, store);
+  const summary = await pasteLinks(bundle, store);
   await refreshQuietly();
   await inboxQuietly();
   for (const line of summary.failures) details.add(line);

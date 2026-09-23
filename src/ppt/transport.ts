@@ -44,6 +44,18 @@ export interface PptTransportDeps {
   persistence?: () => Promise<LocalPersistence>;
 }
 
+// What main.ts paints with before Office.onReady has opened the real one:
+// relay mode, unpaired, no store. Never reached by a button (ready is false).
+export function preBootTransport(remote: RelayApi): PptTransport {
+  return {
+    mode: () => "relay",
+    relay: () => remote,
+    workspace: () => null,
+    store: () => null,
+    setMode: async () => undefined,
+  };
+}
+
 export async function openPptTransport(
   deps: PptTransportDeps,
 ): Promise<PptTransport> {

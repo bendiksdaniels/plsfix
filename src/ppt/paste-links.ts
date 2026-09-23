@@ -5,7 +5,7 @@
 // never asked twice); a link the deck does not hold yet only ever reaches
 // the Inbox here, never the slide.
 
-import type { Bundle } from "../link/bundle";
+import type { Bundle, BundleRead } from "../link/bundle";
 import type { LocalStore } from "../link/local-store";
 import * as realHost from "./host";
 import { listLinks, updateLinks, type PptHost } from "./links";
@@ -18,6 +18,16 @@ export interface PasteSummary {
   failed: number;
   failures: string[];
   notes: string[];
+}
+
+// What a paste that did not carry a usable bundle says, in the pane's words.
+export function requireBundle(read: BundleRead): Bundle {
+  if (read.ok) return read.bundle;
+  throw new Error(
+    read.reason === "newerVersion"
+      ? "This copy comes from a newer pls,fix. Update the add-in."
+      : "That is not a pls,fix copy from Excel.",
+  );
 }
 
 export async function pasteLinks(
