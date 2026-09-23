@@ -5,8 +5,10 @@
 // "Change source" picker chooser.ts, and deck/relay calls links.ts / host.ts.
 
 import "../styles.css";
+import type { BundleRead } from "../link/bundle";
 import type { InboxItem } from "../link/model";
 import { relayBaseUrl, RelayClient } from "../link/relay";
+import type { LinkTransport } from "../link/transport-setting";
 import {
   forgetWorkspace,
   importWorkspace,
@@ -14,6 +16,7 @@ import {
   officeKeyStore,
   type Workspace,
 } from "../link/workspace";
+import { bundleFromPaste } from "../ui/clipboard-links";
 import { armConfirm } from "../ui/confirm";
 import { getElement } from "../ui/dom";
 import { installFirstRun } from "../ui/first-run";
@@ -51,6 +54,11 @@ import {
 } from "./links";
 import { revertLinks, summarizeRevert } from "./revert";
 import {
+  openPptTransport,
+  preBootTransport,
+  type PptTransport,
+} from "./transport";
+import {
   alignSelected,
   applyObjectStyle,
   captureObjectStyle,
@@ -60,6 +68,7 @@ import {
   swapSelected,
 } from "./object-tools";
 import { createPaneDetails } from "./pane-details";
+import { pasteLinks, requireBundle, summarizePaste } from "./paste-links";
 import { readInsertTarget, refreshSlideOptions } from "./target";
 import { renderInbox, renderLinkRows } from "./views";
 
@@ -87,17 +96,27 @@ const insertSlideSelect = getElement<HTMLSelectElement>("insert-slide");
 const insertWhereSelect = getElement<HTMLSelectElement>("insert-where");
 const inboxList = getElement("inbox-list");
 const inboxUnpaired = getElement("inbox-unpaired");
+const pasteLinksArea = getElement("paste-links-area");
+const pasteLinksBox = getElement<HTMLTextAreaElement>("paste-links");
+const pasteNotDurable = getElement("paste-not-durable");
 const workspaceState = getElement("workspace-state");
 const workspaceKey = getElement<HTMLInputElement>("workspace-key");
+const linkTransportSelect = getElement<HTMLSelectElement>("link-transport");
+const linkKeyControls = getElement("link-key-controls");
 const toast = createToast(getElement("toast"));
 
-const relay = new RelayClient(relayBaseUrl(document.baseURI));
+const remote = new RelayClient(relayBaseUrl(document.baseURI));
 const keyStore = officeKeyStore();
 
 let rows: LinkRow[] = [];
 let inboxItems: InboxItem[] = [];
 let workspace: Workspace | null = null;
 const selected = new Set<string>();
+
+// Replaced by the real one from openPptTransport() before Office.onReady sets
+// ready = true; only the pre-boot paint below (renderPairing/renderInboxView,
+// called at module load) ever sees this placeholder.
+let transport: PptTransport = preBootTransport(remote);
 
 getElement("app-version").textContent = APP_VERSION;
 
@@ -241,12 +260,28 @@ function renderInboxView(): void {
   for (const insert of inboxList.querySelectorAll("button")) {
     insert.disabled = isBusy;
   }
-  inboxList.hidden = workspace === null;
-  inboxUnpaired.hidden = workspace !== null;
+  const paired = transport.workspace() !== null;
+  inboxList.hidden = !paired;
+  inboxUnpaired.hidden = paired;
+  // The paste box is local mode's whole reason to be here; the unpaired hint
+  // above is relay-only, so the two are never shown together.
+  const local = transport.mode() === "local";
+  pasteLinksArea.hidden = !local;
+  pasteNotDurable.hidden = !local || (transport.store()?.durable() ?? true);
 }
 
+// Also the Settings tab's own render: the select's value, whether the Link
+// key controls show at all (relay only - local mode needs no key), and the
+// one status sentence, worded for whichever mode is current.
 function renderPairing(): void {
-  workspaceState.textContent = workspace === null ? NOT_PAIRED : "Paired";
+  const local = transport.mode() === "local";
+  linkTransportSelect.value = transport.mode();
+  linkKeyControls.hidden = local;
+  workspaceState.textContent = local
+    ? "Copy and paste on this computer: no key needed."
+    : workspace === null
+      ? NOT_PAIRED
+      : "Paired";
 }
 
 // ---------------------------------------------------------------------------
@@ -302,7 +337,7 @@ function act(run: () => Promise<string>, action: string): void {
 // ---------------------------------------------------------------------------
 
 async function reloadLinks(): Promise<void> {
-  rows = await listLinks(relay);
+  rows = await listLinks(transport.relay());
   pruneSelection(rows, selected);
   renderLinks();
 }
@@ -324,7 +359,7 @@ async function refreshLinks(): Promise<string> {
 }
 
 async function updateRows(subset: LinkRow[]): Promise<string> {
-  const summary = await updateLinks(subset, relay);
+  const summary = await updateLinks(subset, transport.relay());
   details.set(updateDetails(summary));
   await refreshQuietly();
   return scopedSummary(summarize(summary), currentFilter().project);
@@ -350,7 +385,7 @@ async function revertSelected(): Promise<string> {
     selectedRows(rows, selected),
     "Tick the rows to revert.",
   );
-  const summary = await revertLinks(subset, relay);
+  const summary = await revertLinks(subset, transport.relay());
   details.set(
     summary.failures.length > 0 ? summary.failures.join("\n") : undefined,
   );
@@ -381,8 +416,9 @@ async function goToSelectedSlide(): Promise<string> {
 // ---------------------------------------------------------------------------
 
 function requireWorkspace(): Workspace {
-  if (workspace === null) throw new Error(PAIR_FIRST);
-  return workspace;
+  const ws = transport.workspace();
+  if (ws === null) throw new Error(PAIR_FIRST);
+  return ws;
 }
 
 async function refreshInbox(): Promise<string> {
@@ -390,7 +426,7 @@ async function refreshInbox(): Promise<string> {
   await refreshSlideOptions(insertSlideSelect, (error) => {
     details.addFailure(error, "The slide list was not refreshed");
   });
-  inboxItems = await listInbox(ws, relay);
+  inboxItems = await listInbox(ws, transport.relay());
   renderInboxView();
   if (inboxItems.length === 0) return "Nothing waiting from Excel.";
   return `${String(inboxItems.length)} waiting to insert.`;
@@ -399,7 +435,7 @@ async function refreshInbox(): Promise<string> {
 async function insertItem(item: InboxItem): Promise<string> {
   const ws = requireWorkspace();
   const target = await readInsertTarget(insertSlideSelect, insertWhereSelect);
-  const placed = await insertFromInbox(item, ws, relay, target);
+  const placed = await insertFromInbox(item, ws, transport.relay(), target);
   // The relay copy is gone, so the item leaves the list without a second call.
   inboxItems = inboxItems.filter((waiting) => waiting.id !== item.id);
   renderInboxView();
@@ -412,7 +448,7 @@ async function insertItem(item: InboxItem): Promise<string> {
 // relay here rather than trusting the rendered Inbox, which may be seconds old.
 async function pasteLatestLinked(): Promise<string> {
   const ws = requireWorkspace();
-  inboxItems = await listInbox(ws, relay);
+  inboxItems = await listInbox(ws, transport.relay());
   const item = latestInboxItem(inboxItems);
   if (item === null) {
     renderInboxView();
@@ -427,7 +463,7 @@ async function pasteLatestLinked(): Promise<string> {
 // state it must read and the reads that follow a successful change.
 const syncChangeSource = installChangeSource({
   act,
-  relay,
+  relay: () => transport.relay(),
   rows: () => selectedRows(rows, selected),
   inbox: () => inboxItems,
   workspace: requireWorkspace,
@@ -480,10 +516,35 @@ async function forgetKey(): Promise<string> {
   return "Link key forgotten. The links already in this deck still update.";
 }
 
+// Empties this computer's local store: the deck's own objects are untouched,
+// only what was pasted and what is still waiting to be.
+async function clearPastedLinks(): Promise<string> {
+  await transport.store()?.clear();
+  inboxItems = [];
+  renderInboxView();
+  await refreshQuietly();
+  return "Pasted links cleared from this computer. The deck keeps its objects.";
+}
+
+// The paste itself: decode inside act() so a bad copy, an empty store or a
+// failed row all land through the one guard every other button uses.
+async function pasteFromExcel(read: BundleRead): Promise<string> {
+  const bundle = requireBundle(read);
+  const store = transport.store();
+  if (store === null) {
+    throw new Error("Switch Settings to copy and paste first.");
+  }
+  const summary = await pasteLinks(bundle, store);
+  await refreshQuietly();
+  await inboxQuietly();
+  for (const line of summary.failures) details.add(line);
+  return summarizePaste(summary);
+}
+
 // The inbox is a courtesy after pairing: a relay that is down must not turn a
 // saved key into a failure.
 async function inboxQuietly(): Promise<void> {
-  if (workspace === null) return;
+  if (transport.workspace() === null) return;
   try {
     await refreshInbox();
   } catch (error) {
@@ -508,6 +569,7 @@ const BUTTON_ACTIONS: Record<string, () => Promise<string>> = {
   "paste-latest-linked": pasteLatestLinked,
   "save-key": saveKey,
   "forget-key": forgetKey,
+  "clear-pasted-links": clearPastedLinks,
   "align-objects": () =>
     alignSelected(objectAlignMode.value as Parameters<typeof alignSelected>[0]),
   "distribute-objects": () =>
@@ -524,7 +586,11 @@ const BUTTON_ACTIONS: Record<string, () => Promise<string>> = {
 // break-selected and forget-key are one-way (an unlinked object, a key gone
 // from this computer): the first press only arms, src/ui/confirm.ts owns
 // the rest, and act(run, id) is what it confirms into on the second.
-const CONFIRM_BUTTON_IDS = new Set(["break-selected", "forget-key"]);
+const CONFIRM_BUTTON_IDS = new Set([
+  "break-selected",
+  "forget-key",
+  "clear-pasted-links",
+]);
 
 for (const [id, run] of Object.entries(BUTTON_ACTIONS)) {
   const button = getElement<HTMLButtonElement>(id);
@@ -545,7 +611,7 @@ for (const [id, run] of Object.entries(BUTTON_ACTIONS)) {
 // is not ready, or a batch is already running answer with no toast at all,
 // never the "still busy" one a second guarded action would get.
 getElement<HTMLButtonElement>("tab-inbox").addEventListener("click", () => {
-  if (ready && workspace !== null && !isBusy)
+  if (ready && transport.workspace() !== null && !isBusy)
     act(refreshInbox, "refresh-inbox");
 });
 
@@ -553,6 +619,34 @@ workspaceKey.addEventListener("keydown", (event) => {
   if (event.key !== "Enter") return;
   event.preventDefault();
   act(saveKey, "save-key");
+});
+
+// Switching mode never deletes anything: the stored key, the relay copies
+// and the pasted links all stay where they are (design 2026-09-23 s.3).
+linkTransportSelect.addEventListener("change", () => {
+  const next = linkTransportSelect.value as LinkTransport;
+  act(async () => {
+    await transport.setMode(next);
+    renderPairing();
+    renderInboxView();
+    await refreshQuietly();
+    await inboxQuietly();
+    return next === "local"
+      ? "Links now travel by copy and paste on this computer."
+      : "Links now travel through the relay.";
+  }, "link-transport");
+});
+
+// A paste box, not a text field: typing into it is not a copy from Excel, so
+// whatever lands there is wiped back out at once.
+pasteLinksBox.addEventListener("input", (event) => {
+  (event.target as HTMLTextAreaElement).value = "";
+});
+pasteLinksBox.addEventListener("paste", (event) => {
+  event.preventDefault();
+  // Read inside the event: clipboardData is empty once this handler returns.
+  const read = bundleFromPaste(event.clipboardData);
+  act(() => pasteFromExcel(read), "paste-links");
 });
 
 linkSearch.addEventListener("input", renderLinks);
@@ -601,6 +695,14 @@ Office.onReady(async ({ host }) => {
     return;
   }
   showConnection("PowerPoint connected", "ready");
+  // Before ready = true: no button may reach a transport that is not there
+  // yet (design 2026-09-23 s.3, plan task 13).
+  transport = await openPptTransport({
+    keyStore,
+    remote,
+    paired: () => workspace,
+  });
+  renderPairing();
   ready = true;
 
   await bootStep(loadPairing, "load-key");
@@ -616,5 +718,6 @@ Office.onReady(async ({ host }) => {
   );
   // Unpaired is not a boot failure: the Inbox says so itself, and the Links
   // list works without a key.
-  if (workspace !== null) await bootStep(refreshInbox, "refresh-inbox");
+  if (transport.workspace() !== null)
+    await bootStep(refreshInbox, "refresh-inbox");
 });

@@ -70,6 +70,34 @@ describe("a second action while the first is still running", () => {
     expect(button("update-all").disabled).toBe(false);
   });
 
+  it("refuses a paste mid-batch and processes nothing from it", async () => {
+    await bootPane();
+    await plant();
+    click("refresh-links");
+    await settle();
+    const release = heldFetch();
+
+    click("update-all");
+    await settle(3);
+
+    // The busy guard runs before pasteFromExcel even looks at the clipboard
+    // data, so a bundle that would otherwise fail to decode never gets that
+    // far: the refusal is "still busy", never a decode error.
+    const box = document.getElementById("paste-links") as HTMLTextAreaElement;
+    const event = new Event("paste", { bubbles: true, cancelable: true });
+    Object.defineProperty(event, "clipboardData", {
+      value: { getData: () => "" },
+    });
+    box.dispatchEvent(event);
+    await settle();
+
+    expect(toastText()).toBe("Wait for the last action to finish.");
+
+    release();
+    await settle();
+    expect(toastText()).toBe("1 up to date");
+  });
+
   it("disables every button while a batch runs and gives them all back", async () => {
     await bootPane();
     await plant();
@@ -90,6 +118,7 @@ describe("a second action while the first is still running", () => {
       "paste-latest-linked",
       "save-key",
       "forget-key",
+      "clear-pasted-links",
       "align-objects",
     ];
     expect(ids.filter((id) => !button(id).disabled)).toEqual([]);

@@ -23,7 +23,9 @@ import { renderCandidates } from "./views";
 export interface ChangeSourceDeps {
   // The pane's guarded runner: busy state, toast, error reporting.
   act(run: () => Promise<string>, action: string): void;
-  relay: RelayApi;
+  // Read fresh on every Confirm, like workspace() below: local mode can
+  // switch to relay (or back) between one click and the next.
+  relay(): RelayApi;
   // The ticked rows and the waiting exports, read fresh on every click.
   rows(): LinkRow[];
   inbox(): InboxItem[];
@@ -57,7 +59,7 @@ export function installChangeSource(deps: ChangeSourceDeps): () => void {
     const item = pickCandidate(candidatesFor(row, deps.inbox()), list.value);
     const warning = kindWarning(row, item);
     if (warning !== undefined) deps.note(warning);
-    const summary = await changeSource(row, item, ws, deps.relay);
+    const summary = await changeSource(row, item, ws, deps.relay());
     panel.hidden = true;
     await deps.after();
     return summary;
