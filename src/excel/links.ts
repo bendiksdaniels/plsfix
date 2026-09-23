@@ -238,7 +238,15 @@ export async function pushRegistry(
         summary.missing += 1;
         continue;
       }
-      await pushOne(context, entry, resolved, workbook, relay, summary, options);
+      await pushOne(
+        context,
+        entry,
+        resolved,
+        workbook,
+        relay,
+        summary,
+        options,
+      );
     }
     writeRegistry(context, registry);
     await context.sync();

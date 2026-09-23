@@ -8,7 +8,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type * as LinksModule from "../src/excel/links";
 import { deriveLinkKeys, open } from "../src/link/crypto";
-import { decodeInboxItem, decodePayload, REGISTRY_SETTING } from "../src/link/model";
+import {
+  decodeInboxItem,
+  decodePayload,
+  REGISTRY_SETTING,
+} from "../src/link/model";
 import { LOCAL_REV_BASE, localWorkspace } from "../src/link/local";
 import { LocalCollector } from "../src/link/local-collector";
 import type { Workspace } from "../src/link/workspace";
@@ -50,7 +54,10 @@ describe("exporting and pushing against a LocalCollector", () => {
     const result = await links.exportSelection(ws, collector);
     const bundle = collector.bundle();
     expect(bundle.links).toHaveLength(1);
-    expect(bundle.links[0]).toMatchObject({ id: result.id, rev: LOCAL_REV_BASE + 1 });
+    expect(bundle.links[0]).toMatchObject({
+      id: result.id,
+      rev: LOCAL_REV_BASE + 1,
+    });
     expect(bundle.inbox).toHaveLength(1);
 
     const row = bundle.inbox[0]!;
@@ -58,7 +65,9 @@ describe("exporting and pushing against a LocalCollector", () => {
     expect(item).toMatchObject({ id: result.id, label: "Model!B4:F5" });
 
     const keys = await deriveLinkKeys(item.token);
-    const payload = decodePayload(await open(keys.enc, result.id, bundle.links[0]!.blob));
+    const payload = decodePayload(
+      await open(keys.enc, result.id, bundle.links[0]!.blob),
+    );
     expect(payload.kind).toBe("picture");
 
     // Change a cell, then Copy all with announce: a second recipient device
