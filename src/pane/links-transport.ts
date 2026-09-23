@@ -55,6 +55,13 @@ interface Elements {
   bar: HTMLElement;
   text: HTMLElement;
   manual: HTMLTextAreaElement;
+  select: HTMLSelectElement;
+  linkKeySection: HTMLElement;
+  autopushRow: HTMLElement;
+  pushSelected: HTMLElement;
+  pushAll: HTMLElement;
+  localHint: HTMLElement;
+  relayHint: HTMLElement;
 }
 
 interface State {
@@ -76,6 +83,9 @@ export async function installLinksTransport(
     mode: await loadTransport(deps.keyStore),
     prepared: null,
   };
+  // Before the tab's first render: a boot that reads relay must never flash
+  // local's sections first.
+  applyMode(state, state.mode);
   return {
     mode: () => state.mode,
     setMode: (mode) => setMode(state, mode),
@@ -87,6 +97,25 @@ export async function installLinksTransport(
 async function setMode(state: State, mode: LinkTransport): Promise<void> {
   await saveTransport(state.deps.keyStore, mode);
   state.mode = mode;
+  applyMode(state, mode);
+}
+
+// Visibility and labels only: local mode's own auto-push switch-off is
+// src/pane/links-tab.ts's job (it alone holds the real relay and the
+// toggle), run beside this from both the boot order and the select's
+// change handler.
+function applyMode(state: State, mode: LinkTransport): void {
+  const local = mode === "local";
+  state.els.select.value = mode;
+  state.els.linkKeySection.hidden = local;
+  state.els.autopushRow.hidden = local;
+  state.els.pushSelected.textContent = local
+    ? "Copy selected"
+    : "Push selected";
+  state.els.pushAll.textContent = local ? "Copy all" : "Push all";
+  state.els.localHint.hidden = !local;
+  state.els.relayHint.hidden = local;
+  if (!local) hideBar(state);
 }
 
 async function copy<T>(
@@ -160,6 +189,13 @@ function elements(root: ParentNode): Elements {
     bar: element(root, "copy-ready"),
     text: element(root, "copy-ready-text"),
     manual: element(root, "copy-manual"),
+    select: element(root, "link-transport"),
+    linkKeySection: element(root, "link-key-section"),
+    autopushRow: element(root, "links-autopush-row"),
+    pushSelected: element(root, "push-selected"),
+    pushAll: element(root, "push-all"),
+    localHint: element(root, "transport-local-hint"),
+    relayHint: element(root, "transport-relay-hint"),
   };
 }
 

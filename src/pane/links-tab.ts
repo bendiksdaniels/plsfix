@@ -15,6 +15,7 @@ import {
   readProjectState,
   removeLink,
   setActiveProject,
+  setAutoPush,
   touchWorkbookLinks,
   type ExportKind,
   watchWorksheetEdits,
@@ -181,6 +182,12 @@ function wireActions(tab: Tab): void {
   tab.projectSelect.addEventListener("change", () => {
     void guarded(tab, "link-project", () => chooseProject(tab));
   });
+  element<HTMLSelectElement>(tab.deps.root, "link-transport").addEventListener(
+    "change",
+    () => {
+      void guarded(tab, "link-transport", () => changeTransport(tab));
+    },
+  );
 
   // Links are added and sources deleted without the pane hearing about it, so
   // the list is read again whenever the tab comes into view - and a key read
@@ -202,15 +209,34 @@ async function boot(tab: Tab): Promise<void> {
   // Both boxes are told by the workbook, never by what they last showed. The
   // refresh above tells the same story in the table.
   await restoreToggles(tab.toggles);
-  // After restoreToggles: applyMode()'s local-mode auto-push switch-off
-  // (src/pane/links-transport.ts) has to see what the workbook really saved,
-  // not the box's unchecked HTML default.
   tab.transport = await installLinksTransport({
     root: tab.deps.root,
     keyStore: tab.deps.keyStore,
     toast: tab.deps.toast,
   });
+  // After restoreToggles, so the check below sees what the workbook really
+  // saved, not the box's unchecked HTML default.
+  await syncAutoPushForTransport(tab);
   await touchLinks(tab);
+}
+
+// Local mode cannot write the clipboard on an edit, so auto-push has to stay
+// off in it: switched off through the same toggle path a click would use,
+// only when it was actually on, so a local-mode boot that never had
+// auto-push never shows this toast.
+async function syncAutoPushForTransport(tab: Tab): Promise<void> {
+  if (tab.transport.mode() !== "local" || !tab.toggles.autopush.checked) {
+    return;
+  }
+  tab.toggles.autopush.checked = false;
+  try {
+    await setAutoPush(false, tab.deps.relay, () => undefined);
+  } catch {
+    // The box already reads off either way; the workbook flag is best effort.
+  }
+  tab.deps.toast.show(
+    "Auto-push needs the relay: it is off in copy and paste mode.",
+  );
 }
 
 // A LinksTransport that answers every call with one clear sentence: what
@@ -404,6 +430,16 @@ async function exportChart(tab: Tab): Promise<string> {
 
 async function copyForPowerPoint(tab: Tab): Promise<string> {
   return tab.transport.retryCopy();
+}
+
+async function changeTransport(tab: Tab): Promise<string> {
+  const select = element<HTMLSelectElement>(tab.deps.root, "link-transport");
+  const mode = select.value === "relay" ? "relay" : "local";
+  await tab.transport.setMode(mode);
+  await syncAutoPushForTransport(tab);
+  return mode === "local"
+    ? "Links now travel by copy and paste on this computer."
+    : "Links now travel through the relay.";
 }
 
 // pushLinks reports rather than throws, so a partial failure arrives as a

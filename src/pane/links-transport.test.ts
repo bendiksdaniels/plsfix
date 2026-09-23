@@ -6,7 +6,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { BUNDLE_MAX_CHARS } from "../link/bundle";
-import type { KeyStore } from "../link/workspace";
+import { WORKSPACE_STORAGE_KEY, type KeyStore } from "../link/workspace";
 import type { Toast } from "../ui/toast";
 import { installLinksTransport, type LinksTransport } from "./links-transport";
 
@@ -43,15 +43,46 @@ function fakeToast(): { toast: Toast; shown: string[] } {
 }
 
 async function transport(): Promise<LinksTransport> {
-  return installLinksTransport({
-    root: paneRoot(),
-    keyStore: memoryStore(),
-    toast: fakeToast().toast,
-  });
+  return transportWith(memoryStore());
+}
+
+async function transportWith(
+  keyStore: KeyStore,
+  toast: Toast = fakeToast().toast,
+): Promise<LinksTransport> {
+  return installLinksTransport({ root: paneRoot(), keyStore, toast });
 }
 
 function copyReadyBar(): HTMLElement {
   return document.getElementById("copy-ready") as HTMLElement;
+}
+
+function transportSelect(): HTMLSelectElement {
+  return document.getElementById("link-transport") as HTMLSelectElement;
+}
+
+function linkKeySection(): HTMLElement {
+  return document.getElementById("link-key-section") as HTMLElement;
+}
+
+function autopushRow(): HTMLElement {
+  return document.getElementById("links-autopush-row") as HTMLElement;
+}
+
+function pushSelectedLabel(): string {
+  return document.getElementById("push-selected")?.textContent ?? "";
+}
+
+function pushAllLabel(): string {
+  return document.getElementById("push-all")?.textContent ?? "";
+}
+
+function localHint(): HTMLElement {
+  return document.getElementById("transport-local-hint") as HTMLElement;
+}
+
+function relayHint(): HTMLElement {
+  return document.getElementById("transport-relay-hint") as HTMLElement;
 }
 
 function copyManual(): HTMLTextAreaElement {
@@ -250,5 +281,69 @@ describe("retryCopy", () => {
 describe("BUNDLE_MAX_CHARS", () => {
   it("is the 25 MB the spec names", () => {
     expect(BUNDLE_MAX_CHARS).toBe(25 * 1024 * 1024);
+  });
+});
+
+describe("the default mode a boot reads", () => {
+  it("is local when this device has never stored a link key", async () => {
+    const t = await transportWith(memoryStore());
+    expect(t.mode()).toBe("local");
+  });
+
+  it("is relay when this device already holds one", async () => {
+    const store = memoryStore();
+    await store.set(WORKSPACE_STORAGE_KEY, "k".repeat(43));
+    const t = await transportWith(store);
+    expect(t.mode()).toBe("relay");
+  });
+
+  it("applies before the tab's first render: the markup already matches", async () => {
+    const store = memoryStore();
+    await store.set(WORKSPACE_STORAGE_KEY, "k".repeat(43));
+    await transportWith(store);
+    expect(transportSelect().value).toBe("relay");
+    expect(linkKeySection().hidden).toBe(false);
+  });
+});
+
+describe("setMode: visibility and labels", () => {
+  it("relay: shows the link key, auto-push and relay hint; hides the copy bar", async () => {
+    const t = await transport();
+    await t.setMode("relay");
+
+    expect(t.mode()).toBe("relay");
+    expect(transportSelect().value).toBe("relay");
+    expect(linkKeySection().hidden).toBe(false);
+    expect(autopushRow().hidden).toBe(false);
+    expect(pushSelectedLabel()).toBe("Push selected");
+    expect(pushAllLabel()).toBe("Push all");
+    expect(localHint().hidden).toBe(true);
+    expect(relayHint().hidden).toBe(false);
+    expect(copyReadyBar().hidden).toBe(true);
+  });
+
+  it("local: hides the link key and auto-push, renames the push buttons", async () => {
+    const store = memoryStore();
+    await store.set(WORKSPACE_STORAGE_KEY, "k".repeat(43));
+    const t = await transportWith(store); // boots relay
+    await t.setMode("local");
+
+    expect(t.mode()).toBe("local");
+    expect(transportSelect().value).toBe("local");
+    expect(linkKeySection().hidden).toBe(true);
+    expect(autopushRow().hidden).toBe(true);
+    expect(pushSelectedLabel()).toBe("Copy selected");
+    expect(pushAllLabel()).toBe("Copy all");
+    expect(localHint().hidden).toBe(false);
+    expect(relayHint().hidden).toBe(true);
+  });
+
+  it("persists the choice for the next boot", async () => {
+    const store = memoryStore();
+    const t = await transportWith(store);
+    await t.setMode("relay");
+    expect(await store.get("plsfix.link.transport.v1")).toBe("relay");
+    const rebooted = await transportWith(store);
+    expect(rebooted.mode()).toBe("relay");
   });
 });

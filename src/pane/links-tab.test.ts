@@ -15,6 +15,8 @@ import {
   listWorkbookLinks,
   pushLinks,
   removeLink,
+  restoreAutoPush,
+  setAutoPush,
   type WorkbookLinkRow,
   listActiveSheetCharts,
 } from "../excel";
@@ -46,6 +48,10 @@ vi.mock("../excel", () => ({
   readProjectState: vi.fn(async () => ({ names: [], active: undefined })),
   setActiveProject: vi.fn(async () => undefined),
   moveLinksToProject: vi.fn(async () => undefined),
+  restoreAutoPush: vi.fn(async () => false),
+  setAutoPush: vi.fn(async () => undefined),
+  restoreLinkHighlight: vi.fn(async () => false),
+  toggleLinkHighlight: vi.fn(async () => false),
 }));
 
 const ID_A = "a".repeat(32);
@@ -647,5 +653,116 @@ describe("local transport", () => {
     await settle(h);
 
     expect(h.errors).toEqual(["Nothing is waiting to be copied."]);
+  });
+
+  function chooseTransport(value: "local" | "relay"): void {
+    const select = document.getElementById(
+      "link-transport",
+    ) as HTMLSelectElement;
+    select.value = value;
+    select.dispatchEvent(new Event("change"));
+  }
+
+  it("switches to relay from the select: push reaches h.relay again and the labels flip back", async () => {
+    vi.mocked(listWorkbookLinks).mockResolvedValue([row(ID_A)]);
+    vi.mocked(pushLinks).mockResolvedValue({
+      pushed: 1,
+      missing: 0,
+      failed: 0,
+      failures: [],
+    });
+    const h = localHarness();
+    install(h);
+    await settle(h);
+    expect(button("push-selected").textContent).toBe("Copy selected");
+
+    chooseTransport("relay");
+    await settle(h);
+
+    expect(h.messages).toContain("Links now travel through the relay.");
+    expect(h.stored.get(TRANSPORT_STORAGE_KEY)).toBe("relay");
+    expect(button("push-selected").textContent).toBe("Push selected");
+    expect(document.getElementById("link-key-section")?.hidden).toBe(false);
+
+    click("push-all");
+    await settle(h);
+    expect(pushLinks).toHaveBeenCalledWith("all", h.relay);
+  });
+
+  it("switches to local from the select: labels flip and the copy-ready bar stays hidden", async () => {
+    const h = harness(); // relay-seeded, as every non-local test above
+    install(h);
+    await settle(h);
+    expect(button("push-all").textContent).toBe("Push all");
+
+    chooseTransport("local");
+    await settle(h);
+
+    expect(h.messages).toContain(
+      "Links now travel by copy and paste on this computer.",
+    );
+    expect(h.stored.get(TRANSPORT_STORAGE_KEY)).toBe("local");
+    expect(button("push-all").textContent).toBe("Copy all");
+    expect(document.getElementById("link-key-section")?.hidden).toBe(true);
+    expect(document.getElementById("copy-ready")?.hidden).toBe(true);
+  });
+
+  it("switches auto-push off on a local boot that inherited it on from the workbook", async () => {
+    vi.mocked(restoreAutoPush).mockResolvedValue(true);
+    const h = localHarness();
+    install(h);
+    await settle(h);
+
+    expect(
+      document.querySelector<HTMLInputElement>("#links-autopush")!.checked,
+    ).toBe(false);
+    expect(vi.mocked(setAutoPush)).toHaveBeenCalledWith(
+      false,
+      h.relay,
+      expect.any(Function),
+    );
+    expect(h.toasts.map((t) => t.message)).toContain(
+      "Auto-push needs the relay: it is off in copy and paste mode.",
+    );
+  });
+
+  it("never switches off, or toasts about, an auto-push that was never on", async () => {
+    vi.mocked(restoreAutoPush).mockResolvedValue(false);
+    // A prior test's own boot may have called setAutoPush once already
+    // (this describe block has no beforeEach reset, by design: several of
+    // its tests set up the adapter mocks themselves); only this test's own
+    // boot is under test here.
+    vi.mocked(setAutoPush).mockClear();
+    const h = localHarness();
+    install(h);
+    await settle(h);
+
+    expect(vi.mocked(setAutoPush)).not.toHaveBeenCalled();
+    expect(h.toasts.map((t) => t.message)).not.toContain(
+      "Auto-push needs the relay: it is off in copy and paste mode.",
+    );
+  });
+
+  it("switches auto-push off when the select moves to local while it is ticked", async () => {
+    vi.mocked(restoreAutoPush).mockResolvedValue(true);
+    const h = harness(); // boots relay, so restoreAutoPush's "on" survives boot
+    install(h);
+    await settle(h);
+    const box = document.querySelector<HTMLInputElement>("#links-autopush")!;
+    expect(box.checked).toBe(true);
+    vi.mocked(setAutoPush).mockClear();
+
+    chooseTransport("local");
+    await settle(h);
+
+    expect(box.checked).toBe(false);
+    expect(vi.mocked(setAutoPush)).toHaveBeenCalledWith(
+      false,
+      h.relay,
+      expect.any(Function),
+    );
+    expect(h.toasts.map((t) => t.message)).toContain(
+      "Auto-push needs the relay: it is off in copy and paste mode.",
+    );
   });
 });
