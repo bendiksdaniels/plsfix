@@ -42,6 +42,7 @@
     "check": "npm run typecheck && npm run lint && npm run format:check && npm test && npm run test:server && npm run test:demo && npm run manifest:check && npm run validate && npm run functions:check && npm run shortcuts:check && npm run version:check",
     "ux:check": "node scripts/ux-check.mjs",
     "ux:sweep": "node scripts/ux/click-sweep.mjs",
+    "ux:clipboard": "node scripts/ux/clipboard-probe.mjs",
     "rig": "node scripts/rig/drive.mjs",
     "rig:manifests": "node scripts/rig/serve-manifest.mjs",
     "demo": "sh scripts/demo-open.sh",
