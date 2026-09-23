@@ -445,3 +445,30 @@ workbook and a scratch copy of the demo deck; every row below was seen on screen
       snapshot shape, not yet re-pressed on the Mac after the deploy.
 - [x] Custom functions (v2.8.17): a typed =PLSFIX.CAGR(100,161.051,5) gives 0.1 on the live pane; the
       rebuilt demo's CAGR sheet computes all six rows at load (two refused, as designed).
+
+## Added 23.09: local links, no relay (v2.9)
+
+Mac, Excel and PowerPoint, a fresh install (no link key stored anywhere yet, so both panes
+default to local mode): the demo workbook and a blank deck.
+
+- [ ] Excel Links tab: the "How links reach PowerPoint" section at the bottom reads "Copy and
+      paste on this computer"; export one range (Export selection). The toast says either
+      "Copied for PowerPoint: ..." or "... is linked and ready: press Copy for PowerPoint."
+- [ ] PowerPoint: pls,fix > Inbox, click the paste box, Ctrl+V (Cmd+V on the Mac). The object
+      inserts at the picked slide and spot, exactly as a relay paste would.
+- [ ] Change the exported range in Excel, tick it, press Copy all (Copy selected for one row);
+      paste again in PowerPoint's Inbox box: the deck's object repaints with the new figures,
+      position and size unchanged.
+- [ ] Paste the same copy onto the slide canvas instead of the pls,fix paste box (a plain
+      Ctrl+V on the slide, not in the pane): PowerPoint adds the one-line sentence as text,
+      never the raw bundle.
+- [ ] Note whether the Copy for PowerPoint bar ever appeared under Export selection or Copy
+      all: it should show only when the browser's own clipboard write was refused. Record
+      which presses showed it, if any (the open risk in the design: WKWebView on the Mac may
+      refuse the one-click write more often than Windows).
+- [ ] Quit and reopen PowerPoint (a fresh launch, not just closing the pane): pls,fix > Inbox
+      still lists whatever was left waiting there before the quit.
+- [ ] PowerPoint > Inbox > Clear pasted links (press twice): the Inbox empties and a refresh
+      says "Nothing waiting from Excel."; the objects already inserted on slides are untouched.
+
+Windows: the same rows, later. Note the Office build (File > Account) with the result.
