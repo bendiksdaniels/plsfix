@@ -95,8 +95,10 @@ async function payloadOf(src: Source, render: Render): Promise<Payload> {
 }
 
 // The note PowerPoint picks up: it carries the token, which is why it is sealed
-// with the workspace key the two panes were paired with.
-async function announce(
+// with the workspace key the two panes were paired with. Exported for a
+// Copy selected / Copy all in local mode, which re-announces every pushed
+// link so a deck that does not hold it yet can still insert it.
+export async function announce(
   entry: RegistryEntry,
   src: Source,
   ws: Workspace,
