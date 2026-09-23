@@ -360,27 +360,36 @@
               <h2 id="pairing-heading">Link key</h2>
             </div>
           </div>
-          <label class="key-label" for="workspace-key">
-            Paste the link key
-            <input
-              id="workspace-key"
-              class="key-input"
-              type="text"
-              spellcheck="false"
-              autocomplete="off"
-              placeholder="Excel &gt; Links &gt; Link key &gt; Copy"
-            />
+          <label class="key-label" for="link-transport">
+            How links reach PowerPoint
+            <select id="link-transport">
+              <option value="local">Copy and paste on this computer</option>
+              <option value="relay">Through the relay</option>
+            </select>
           </label>
-          <div class="io-row">
-            <button id="save-key" type="button">Save key</button>
-            <button id="forget-key" type="button">Forget key</button>
+          <div id="link-key-controls">
+            <label class="key-label" for="workspace-key">
+              Paste the link key
+              <input
+                id="workspace-key"
+                class="key-input"
+                type="text"
+                spellcheck="false"
+                autocomplete="off"
+                placeholder="Excel &gt; Links &gt; Link key &gt; Copy"
+              />
+            </label>
+            <div class="io-row">
+              <button id="save-key" type="button">Save key</button>
+              <button id="forget-key" type="button">Forget key</button>
+            </div>
+            <p class="hint">
+              The key stays on this computer and opens the inbox items your team
+              pushes from Excel. The relay never sees it.
+            </p>
           </div>
           <p class="hint" id="workspace-state">
             Not paired: paste the link key from Excel &gt; Links &gt; Link key
-          </p>
-          <p class="hint">
-            The key stays on this computer and opens the inbox items your team
-            pushes from Excel. The relay never sees it.
           </p>
         </section>
       </div>

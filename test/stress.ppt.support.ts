@@ -19,6 +19,7 @@ import {
   type LinkTag,
   type Payload,
 } from "../src/link/model";
+import { TRANSPORT_STORAGE_KEY } from "../src/link/transport-setting";
 import {
   createWorkspace,
   WORKSPACE_STORAGE_KEY,
@@ -180,6 +181,10 @@ export async function bootPane(
   );
   const storage = new Map<string, string>();
   if (paired) storage.set(WORKSPACE_STORAGE_KEY, workspace.exportKey);
+  // This whole suite is relay mode's stress pass; an unpaired boot would
+  // otherwise default to local mode, where there is no "not paired" to press
+  // a button into.
+  else storage.set(TRANSPORT_STORAGE_KEY, "relay");
   const host = installFakePpt({ slides: 3, storage });
   presentation = host.presentation;
   helpers = host.helpers;

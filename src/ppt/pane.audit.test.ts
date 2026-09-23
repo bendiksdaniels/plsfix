@@ -35,6 +35,7 @@ import {
 import { settlePpt, trackPptBoot } from "../../test/ppt-ready";
 import type * as RelayModule from "../link/relay";
 import { RelayError } from "../link/relay";
+import { TRANSPORT_STORAGE_KEY } from "../link/transport-setting";
 
 enableStrictLoadSemantics();
 
@@ -144,6 +145,10 @@ async function boot(
   );
   const storage = new Map<string, string>();
   if (paired) storage.set(WORKSPACE_STORAGE_KEY, workspace.exportKey);
+  // This suite is about relay mode specifically (a deck with no key, a relay
+  // that answers nothing); an unpaired boot would otherwise default to local
+  // mode (no key stored anywhere), where nothing here needs a key at all.
+  else storage.set(TRANSPORT_STORAGE_KEY, "relay");
   const host = installFakePpt({ slides: 3, storage });
   presentation = host.presentation;
   helpers = host.helpers;

@@ -25,6 +25,7 @@ import {
   type InboxItem,
   type Payload,
 } from "../src/link/model";
+import { TRANSPORT_STORAGE_KEY } from "../src/link/transport-setting";
 import {
   createWorkspace,
   WORKSPACE_STORAGE_KEY,
@@ -113,6 +114,10 @@ async function bootPpt(options: BootOptions = {}): Promise<void> {
     storage.set(WORKSPACE_STORAGE_KEY, workspace.exportKey);
   } else {
     workspace = null;
+    // States (a)-(d) are a pairing matrix (relay mode); an unpaired boot
+    // would otherwise default to local mode, where everything below is paired
+    // by construction and every "unpaired" assertion here would not hold.
+    storage.set(TRANSPORT_STORAGE_KEY, "relay");
   }
   const host = installFakePpt({ slides: options.slides ?? 3, storage });
   presentation = host.presentation;
