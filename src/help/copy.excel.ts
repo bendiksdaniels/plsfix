@@ -333,7 +333,7 @@ const links: HelpCopy = {
       "Every link this workbook feeds, grouped by project. The project list is the one new exports join.",
     buttons: {
       "push-selected":
-        "Renders the ticked links again and sends them to the relay.",
+        "Renders the ticked links again and sends them onward: to the relay, or copied here in local mode.",
       "push-all":
         "Renders every link in the shown project, or every link if All projects is selected.",
       "go-to-source":
@@ -358,7 +358,7 @@ const links: HelpCopy = {
       "reveal-key":
         "Shows the key in full. The panel otherwise shows its two ends only.",
       "forget-key":
-        "Deletes the key from this computer. Exports already pushed stay on the relay. Press twice.",
+        "In relay mode, deletes the key from this computer. Exports already pushed stay on the relay. Press twice.",
     },
   },
 };

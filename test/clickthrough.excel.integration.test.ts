@@ -81,6 +81,13 @@ async function drain(rounds = 12): Promise<void> {
 interface BootOptions {
   sheets?: string[];
   seed?: (h: FakeHelpers) => void;
+  // "local" (default, unset): a fresh key store, today's behaviour - no link
+  // key, so transport-setting.ts's own default rule picks local and every
+  // export/push goes through the clipboard. "relay": seeds a real link key
+  // before boot, the way a device that already paired one reads on its own,
+  // so the same default rule picks relay and every export/push goes through
+  // the FakeRelay instead.
+  transport?: "relay" | "local";
 }
 
 async function bootExcel(options: BootOptions = {}): Promise<void> {
@@ -94,6 +101,15 @@ async function bootExcel(options: BootOptions = {}): Promise<void> {
   // import, which is what actually gives every boot a clean key store; no
   // manual clearing needed (and `localStorage.clear` is not callable here to
   // even attempt it).
+  if (options.transport === "relay") {
+    // Imported fresh after resetModules(), so this writes into the same
+    // module instance src/main.ts reads back from below - a static
+    // top-of-file import would pre-date the reset and land in an orphaned
+    // copy (the same reason src/main itself is always a dynamic import here).
+    const { createWorkspace, officeKeyStore } =
+      await import("../src/link/workspace");
+    await createWorkspace(officeKeyStore());
+  }
   pane();
   const host = installFakeHost({ sheets: options.sheets ?? ["Model", "Data"] });
   helpers = host.helpers;
@@ -491,279 +507,295 @@ function tickFirstLinkRow(): void {
 // State (a): fresh workbook, active cell A1, nothing seeded.
 // ---------------------------------------------------------------------------
 
-describe("state (a): fresh workbook, active cell A1, nothing seeded", () => {
-  it("presses every static button and every ribbon command once", async () => {
-    await bootExcel();
+// Every state below runs once per transport: relay (a link key seeded
+// before boot, so export/push go to the FakeRelay) then local (today's
+// default, nothing seeded). describe.each so a failure names its transport.
+describe.each(["relay", "local"] as const)("transport: %s", (transport) => {
+  describe("state (a): fresh workbook, active cell A1, nothing seeded", () => {
+    it("presses every static button and every ribbon command once", async () => {
+      await bootExcel({ transport });
 
-    for (const key of new Set(staticButtonKeys())) {
-      // project-ok/project-cancel need their prompt open first; new-project
-      // opens it, and sits right before them in document order, so this
-      // single natural pass already covers the precondition.
-      await pressStatic(key);
-    }
-
-    // Ribbon: every PLSFIX_* command, fired the way Office's shared runtime
-    // does - a bare `event.completed` callback, nothing else - resolves and
-    // completes without throwing, before Excel has ever connected in this
-    // pass or not (state (a) still has excelConnected true here: the fake
-    // host always answers Office.onReady with Excel; "not connected" is a
-    // different, host-rejection scenario covered by test/I.audit.*).
-    for (const [id, handler] of helpers.actions()) {
-      const completed = vi.fn();
-      expect(
-        () => handler({ completed }),
-        `ribbon "${id}" threw synchronously`,
-      ).not.toThrow();
-      await settle();
-      expect(
-        completed,
-        `ribbon "${id}" never called event.completed()`,
-      ).toHaveBeenCalled();
-    }
-  });
-
-  it("answers the brief's specific sentences with nothing selected", async () => {
-    await bootExcel();
-
-    expect(await press("undo")).toBe("There is no pls,fix action to undo yet.");
-    expect(await press("paste-values")).toBe("Mark a copy source first.");
-    expect(await press("template-dcf")).toMatch(/^Template written:/);
-
-    const linksTab = findButton("tab-links")!;
-    linksTab.click();
-    await settle();
-    // A fresh workbook has never stored a link key, so local mode is the
-    // default (src/link/transport-setting.ts): nothing is prepared to copy
-    // yet, and the export itself needs no key at all.
-    expect(await press("copy-for-powerpoint")).toBe(
-      "Nothing is waiting to be copied.",
-    );
-    expect(await press("export-selection")).toBe(
-      "Model!A1:F13 is linked and ready: press Copy for PowerPoint.",
-    );
-    for (const id of ["push-selected", "go-to-source", "move-to-project"]) {
-      expect(await press(id)).toBe("Select a link in the list first.");
-    }
-    // remove-link only arms on the first press (src/ui/confirm.ts); the
-    // second is what actually runs and meets the empty selection.
-    await press("remove-link");
-    expect(await press("remove-link")).toBe("Select a link in the list first.");
-
-    findButton("new-project")!.click();
-    await settle();
-    expect(await press("project-ok")).toBe("Type a project name.");
-    expect(await press("project-cancel")).toBe("Cancelled.");
-  });
-});
-
-// ---------------------------------------------------------------------------
-// State (b): a seeded model block selected, a chart on the sheet, a second
-// sheet, a link, a link key, an unused style and a model-check finding.
-// ---------------------------------------------------------------------------
-
-describe("state (b): a seeded model block, a chart, a second sheet", () => {
-  it("presses every static button again, plus every generated row and chip", async () => {
-    await bootExcel({ seed: seedModelBlock });
-    (document.getElementById("find-query") as HTMLInputElement).value =
-      "Revenue";
-
-    await seedLinkAndRow();
-    tickFirstLinkRow();
-
-    // Ninety buttons fired in sequence over one small block is not gentle:
-    // several tools (template inserts, Smart Painter, anything that
-    // `.select()`s its own result) move the selection and/or the active
-    // cell as a side effect, and insert-color-key rewrote A1 itself in an
-    // early run of this suite. trace-precedents and find both depend on
-    // exact cell content or the active cell at the moment they run, so both
-    // are held out of the generic pass and re-armed immediately before
-    // their own explicit press, the only way to make either deterministic
-    // against however the ninety before it left the sheet.
-    const keys = new Set(staticButtonKeys());
-    keys.delete("trace-precedents");
-    keys.delete("find");
-    for (const key of keys) {
-      await pressStatic(key);
-    }
-    primeTraceD1(helpers);
-    findButton("tab-tools")!.click();
-    await settle();
-    await pressStatic("trace-precedents");
-
-    helpers.seed("Model!A1", [["Revenue"]]);
-    findButton("tab-workbook")!.click();
-    await settle();
-    await pressStatic("find");
-
-    // Generated: the Workbook tab's sheet explorer - one name button and one
-    // eye button per visible sheet (src/pane/workbook-tab.ts sheetRow()).
-    findButton("tab-workbook")!.click();
-    await settle();
-    const sheetRows = [
-      ...document.querySelectorAll<HTMLDivElement>("#sheet-list .sheet-row"),
-    ];
-    expect(
-      sheetRows.length,
-      "seed: expected two sheets in the explorer",
-    ).toBeGreaterThanOrEqual(2);
-    for (const row of sheetRows) {
-      const nameButton =
-        row.querySelector<HTMLButtonElement>("button.sheet-name");
-      if (nameButton) {
-        generatedCovered.add("sheet-name-button");
-        await pressElement(
-          nameButton,
-          `sheet-name:${nameButton.textContent ?? ""}`,
-        );
+      for (const key of new Set(staticButtonKeys())) {
+        // project-ok/project-cancel need their prompt open first; new-project
+        // opens it, and sits right before them in document order, so this
+        // single natural pass already covers the precondition.
+        await pressStatic(key);
       }
-      const eyeButton = row.querySelector<HTMLButtonElement>("button.eye");
-      if (eyeButton) {
-        generatedCovered.add("sheet-eye-button");
-        await pressElement(eyeButton, `sheet-eye:${eyeButton.title}`);
+
+      // Ribbon: every PLSFIX_* command, fired the way Office's shared runtime
+      // does - a bare `event.completed` callback, nothing else - resolves and
+      // completes without throwing, before Excel has ever connected in this
+      // pass or not (state (a) still has excelConnected true here: the fake
+      // host always answers Office.onReady with Excel; "not connected" is a
+      // different, host-rejection scenario covered by test/I.audit.*).
+      for (const [id, handler] of helpers.actions()) {
+        const completed = vi.fn();
+        expect(
+          () => handler({ completed }),
+          `ribbon "${id}" threw synchronously`,
+        ).not.toThrow();
+        await settle();
+        expect(
+          completed,
+          `ribbon "${id}" never called event.completed()`,
+        ).toHaveBeenCalled();
       }
-    }
+    });
 
-    // Generated: the Links tab's tick box - already exercised above
-    // (tickFirstLinkRow), counted here for the coverage census.
-    generatedCovered.add("link-row-tick");
+    it("answers the brief's specific sentences with nothing selected", async () => {
+      await bootExcel({ transport });
 
-    // Generated: the model-check report's finding rows (run-model-check ran
-    // as part of the static pass above, against the seeded hardcoded-growth
-    // formulas in column D).
-    findButton("tab-workbook")!.click();
-    await settle();
-    const findingRows = [
-      ...document.querySelectorAll<HTMLButtonElement>(
-        "#model-check-list > button",
-      ),
-    ];
-    expect(
-      findingRows.length,
-      "seed: expected at least one model-check finding",
-    ).toBeGreaterThan(0);
-    for (const row of findingRows) {
-      generatedCovered.add("model-check-finding-row");
-      await pressElement(row, `model-check-row:${row.title}`);
-    }
+      expect(await press("undo")).toBe(
+        "There is no pls,fix action to undo yet.",
+      );
+      expect(await press("paste-values")).toBe("Mark a copy source first.");
+      expect(await press("template-dcf")).toMatch(/^Template written:/);
 
-    // Generated: Super Find's result rows, from the explicit find press above.
-    const findRows = [
-      ...document.querySelectorAll<HTMLButtonElement>("#find-results > button"),
-    ];
-    expect(
-      findRows.length,
-      'seed: expected at least one find hit for "Revenue"',
-    ).toBeGreaterThan(0);
-    for (const row of findRows) {
-      generatedCovered.add("find-result-row");
-      await pressElement(row, `find-row:${row.title}`);
-    }
-
-    // Generated: Smart Track's chips, from the trace-precedents press above.
-    findButton("tab-tools")!.click();
-    await settle();
-    const chips = [
-      ...document.querySelectorAll<HTMLButtonElement>(
-        "#trace-chips button.chip",
-      ),
-    ];
-    expect(
-      chips.length,
-      "seed: expected at least one precedent chip",
-    ).toBeGreaterThan(0);
-    for (const chip of chips) {
-      generatedCovered.add("trace-chip");
-      await pressElement(chip, `trace-chip:${chip.textContent ?? ""}`);
-    }
-
-    // Ribbon again, now against a workbook with real content.
-    for (const [id, handler] of helpers.actions()) {
-      const completed = vi.fn();
-      expect(
-        () => handler({ completed }),
-        `ribbon "${id}" threw synchronously`,
-      ).not.toThrow();
+      const linksTab = findButton("tab-links")!;
+      linksTab.click();
       await settle();
-      expect(
-        completed,
-        `ribbon "${id}" never called event.completed()`,
-      ).toHaveBeenCalled();
-    }
+      // Local: a fresh workbook has never stored a link key, so local mode is
+      // the default (src/link/transport-setting.ts) and nothing is prepared to
+      // copy yet. Relay: this pass seeded a key before boot instead, the way a
+      // device that already paired one would, so nothing has been pushed yet
+      // either - "Copy for PowerPoint" only ever answers what a local copy left
+      // prepared, so the sentence is the same in both transports here.
+      expect(await press("copy-for-powerpoint")).toBe(
+        "Nothing is waiting to be copied.",
+      );
+      expect(await press("export-selection")).toBe(
+        transport === "local"
+          ? "Model!A1:F13 is linked and ready: press Copy for PowerPoint."
+          : "Sent to PowerPoint: Model!A1:F13",
+      );
+      for (const id of ["push-selected", "go-to-source", "move-to-project"]) {
+        expect(await press(id)).toBe("Select a link in the list first.");
+      }
+      // remove-link only arms on the first press (src/ui/confirm.ts); the
+      // second is what actually runs and meets the empty selection.
+      await press("remove-link");
+      expect(await press("remove-link")).toBe(
+        "Select a link in the list first.",
+      );
+
+      findButton("new-project")!.click();
+      await settle();
+      expect(await press("project-ok")).toBe("Type a project name.");
+      expect(await press("project-cancel")).toBe("Cancelled.");
+    });
   });
-});
 
-// ---------------------------------------------------------------------------
-// State (c): adverse - a multi-area selection, then (a fresh boot, second
-// pass) a protected sheet. Both keep the seeded model block; neither repeats
-// the generated-content census state (b) already covered.
-// ---------------------------------------------------------------------------
+  // ---------------------------------------------------------------------------
+  // State (b): a seeded model block selected, a chart on the sheet, a second
+  // sheet, a link, a link key, an unused style and a model-check finding.
+  // ---------------------------------------------------------------------------
 
-const SELECT_SINGLE_RANGE = /: select a single range$/;
-const SHEET_PROTECTED = /: this sheet is protected, nothing was changed$/;
+  describe("state (b): a seeded model block, a chart, a second sheet", () => {
+    it("presses every static button again, plus every generated row and chip", async () => {
+      await bootExcel({ seed: seedModelBlock, transport });
+      (document.getElementById("find-query") as HTMLInputElement).value =
+        "Revenue";
 
-describe("state (c): adverse - a multi-area selection", () => {
-  it("presses every static button and shows single-range tools their own refusal", async () => {
-    await bootExcel({ seed: seedModelBlock });
-    helpers.selectAreas(["Model!A1:B2", "Model!D4:D6"]);
+      await seedLinkAndRow();
+      tickFirstLinkRow();
 
-    const keys = new Set(staticButtonKeys());
-    keys.delete("trace-precedents");
-    keys.delete("find");
-    const seenSingleRangeRefusal: string[] = [];
-    for (const key of keys) {
-      const toast = await pressStatic(key);
-      if (SELECT_SINGLE_RANGE.test(toast)) seenSingleRangeRefusal.push(key);
-      // A multi-area selection must never desync the areas back to one: the
-      // adverse condition holds for every remaining press in this pass.
+      // Ninety buttons fired in sequence over one small block is not gentle:
+      // several tools (template inserts, Smart Painter, anything that
+      // `.select()`s its own result) move the selection and/or the active
+      // cell as a side effect, and insert-color-key rewrote A1 itself in an
+      // early run of this suite. trace-precedents and find both depend on
+      // exact cell content or the active cell at the moment they run, so both
+      // are held out of the generic pass and re-armed immediately before
+      // their own explicit press, the only way to make either deterministic
+      // against however the ninety before it left the sheet.
+      const keys = new Set(staticButtonKeys());
+      keys.delete("trace-precedents");
+      keys.delete("find");
+      for (const key of keys) {
+        await pressStatic(key);
+      }
+      primeTraceD1(helpers);
+      findButton("tab-tools")!.click();
+      await settle();
+      await pressStatic("trace-precedents");
+
+      helpers.seed("Model!A1", [["Revenue"]]);
+      findButton("tab-workbook")!.click();
+      await settle();
+      await pressStatic("find");
+
+      // Generated: the Workbook tab's sheet explorer - one name button and one
+      // eye button per visible sheet (src/pane/workbook-tab.ts sheetRow()).
+      findButton("tab-workbook")!.click();
+      await settle();
+      const sheetRows = [
+        ...document.querySelectorAll<HTMLDivElement>("#sheet-list .sheet-row"),
+      ];
+      expect(
+        sheetRows.length,
+        "seed: expected two sheets in the explorer",
+      ).toBeGreaterThanOrEqual(2);
+      for (const row of sheetRows) {
+        const nameButton =
+          row.querySelector<HTMLButtonElement>("button.sheet-name");
+        if (nameButton) {
+          generatedCovered.add("sheet-name-button");
+          await pressElement(
+            nameButton,
+            `sheet-name:${nameButton.textContent ?? ""}`,
+          );
+        }
+        const eyeButton = row.querySelector<HTMLButtonElement>("button.eye");
+        if (eyeButton) {
+          generatedCovered.add("sheet-eye-button");
+          await pressElement(eyeButton, `sheet-eye:${eyeButton.title}`);
+        }
+      }
+
+      // Generated: the Links tab's tick box - already exercised above
+      // (tickFirstLinkRow), counted here for the coverage census.
+      generatedCovered.add("link-row-tick");
+
+      // Generated: the model-check report's finding rows (run-model-check ran
+      // as part of the static pass above, against the seeded hardcoded-growth
+      // formulas in column D).
+      findButton("tab-workbook")!.click();
+      await settle();
+      const findingRows = [
+        ...document.querySelectorAll<HTMLButtonElement>(
+          "#model-check-list > button",
+        ),
+      ];
+      expect(
+        findingRows.length,
+        "seed: expected at least one model-check finding",
+      ).toBeGreaterThan(0);
+      for (const row of findingRows) {
+        generatedCovered.add("model-check-finding-row");
+        await pressElement(row, `model-check-row:${row.title}`);
+      }
+
+      // Generated: Super Find's result rows, from the explicit find press above.
+      const findRows = [
+        ...document.querySelectorAll<HTMLButtonElement>(
+          "#find-results > button",
+        ),
+      ];
+      expect(
+        findRows.length,
+        'seed: expected at least one find hit for "Revenue"',
+      ).toBeGreaterThan(0);
+      for (const row of findRows) {
+        generatedCovered.add("find-result-row");
+        await pressElement(row, `find-row:${row.title}`);
+      }
+
+      // Generated: Smart Track's chips, from the trace-precedents press above.
+      findButton("tab-tools")!.click();
+      await settle();
+      const chips = [
+        ...document.querySelectorAll<HTMLButtonElement>(
+          "#trace-chips button.chip",
+        ),
+      ];
+      expect(
+        chips.length,
+        "seed: expected at least one precedent chip",
+      ).toBeGreaterThan(0);
+      for (const chip of chips) {
+        generatedCovered.add("trace-chip");
+        await pressElement(chip, `trace-chip:${chip.textContent ?? ""}`);
+      }
+
+      // Ribbon again, now against a workbook with real content.
+      for (const [id, handler] of helpers.actions()) {
+        const completed = vi.fn();
+        expect(
+          () => handler({ completed }),
+          `ribbon "${id}" threw synchronously`,
+        ).not.toThrow();
+        await settle();
+        expect(
+          completed,
+          `ribbon "${id}" never called event.completed()`,
+        ).toHaveBeenCalled();
+      }
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // State (c): adverse - a multi-area selection, then (a fresh boot, second
+  // pass) a protected sheet. Both keep the seeded model block; neither repeats
+  // the generated-content census state (b) already covered.
+  // ---------------------------------------------------------------------------
+
+  const SELECT_SINGLE_RANGE = /: select a single range$/;
+  const SHEET_PROTECTED = /: this sheet is protected, nothing was changed$/;
+
+  describe("state (c): adverse - a multi-area selection", () => {
+    it("presses every static button and shows single-range tools their own refusal", async () => {
+      await bootExcel({ seed: seedModelBlock, transport });
       helpers.selectAreas(["Model!A1:B2", "Model!D4:D6"]);
-    }
-    primeTraceD1(helpers);
-    helpers.selectAreas(["Model!A1:B2", "Model!D4:D6"]);
-    findButton("tab-tools")!.click();
-    await settle();
-    await pressStatic("trace-precedents");
 
-    helpers.seed("Model!A1", [["Revenue"]]);
-    findButton("tab-workbook")!.click();
-    await settle();
-    await pressStatic("find");
+      const keys = new Set(staticButtonKeys());
+      keys.delete("trace-precedents");
+      keys.delete("find");
+      const seenSingleRangeRefusal: string[] = [];
+      for (const key of keys) {
+        const toast = await pressStatic(key);
+        if (SELECT_SINGLE_RANGE.test(toast)) seenSingleRangeRefusal.push(key);
+        // A multi-area selection must never desync the areas back to one: the
+        // adverse condition holds for every remaining press in this pass.
+        helpers.selectAreas(["Model!A1:B2", "Model!D4:D6"]);
+      }
+      primeTraceD1(helpers);
+      helpers.selectAreas(["Model!A1:B2", "Model!D4:D6"]);
+      findButton("tab-tools")!.click();
+      await settle();
+      await pressStatic("trace-precedents");
 
-    // Proof the mechanism actually engaged this pass, not just that nothing
-    // crashed - selectedSingleRange's own refusal (src/excel/internal.ts),
-    // worded per tool by its own `stage`.
-    expect(
-      seenSingleRangeRefusal,
-      "no single-range tool refused the multi-area selection this pass",
-    ).not.toEqual([]);
+      helpers.seed("Model!A1", [["Revenue"]]);
+      findButton("tab-workbook")!.click();
+      await settle();
+      await pressStatic("find");
+
+      // Proof the mechanism actually engaged this pass, not just that nothing
+      // crashed - selectedSingleRange's own refusal (src/excel/internal.ts),
+      // worded per tool by its own `stage`.
+      expect(
+        seenSingleRangeRefusal,
+        "no single-range tool refused the multi-area selection this pass",
+      ).not.toEqual([]);
+    });
   });
-});
 
-describe("state (c): adverse - a protected sheet", () => {
-  it("presses every static button and shows writers their own refusal", async () => {
-    await bootExcel({ seed: seedModelBlock });
-    helpers.protectSheet("Model", []);
+  describe("state (c): adverse - a protected sheet", () => {
+    it("presses every static button and shows writers their own refusal", async () => {
+      await bootExcel({ seed: seedModelBlock, transport });
+      helpers.protectSheet("Model", []);
 
-    const keys = new Set(staticButtonKeys());
-    keys.delete("trace-precedents");
-    keys.delete("find");
-    const seenProtectedRefusal: string[] = [];
-    for (const key of keys) {
-      const toast = await pressStatic(key);
-      if (SHEET_PROTECTED.test(toast)) seenProtectedRefusal.push(key);
-    }
-    primeTraceD1(helpers);
-    findButton("tab-tools")!.click();
-    await settle();
-    await pressStatic("trace-precedents");
+      const keys = new Set(staticButtonKeys());
+      keys.delete("trace-precedents");
+      keys.delete("find");
+      const seenProtectedRefusal: string[] = [];
+      for (const key of keys) {
+        const toast = await pressStatic(key);
+        if (SHEET_PROTECTED.test(toast)) seenProtectedRefusal.push(key);
+      }
+      primeTraceD1(helpers);
+      findButton("tab-tools")!.click();
+      await settle();
+      await pressStatic("trace-precedents");
 
-    findButton("tab-workbook")!.click();
-    await settle();
-    await pressStatic("find");
+      findButton("tab-workbook")!.click();
+      await settle();
+      await pressStatic("find");
 
-    expect(
-      seenProtectedRefusal,
-      "no writer refused the protected sheet this pass",
-    ).not.toEqual([]);
+      expect(
+        seenProtectedRefusal,
+        "no writer refused the protected sheet this pass",
+      ).not.toEqual([]);
+    });
   });
 });
 

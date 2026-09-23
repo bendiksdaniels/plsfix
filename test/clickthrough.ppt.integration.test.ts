@@ -493,6 +493,35 @@ async function exportLinkLocally(
   );
 }
 
+// States (b)/(c)/(d): "paired" the relay way (a real key) or the local way
+// (the fixed local workspace, bootPpt's own `local: true`) - the two ways
+// src/ppt/transport.ts answers workspace() for every deck flow below.
+async function bootPaired(transport: "relay" | "local"): Promise<void> {
+  await bootPpt(transport === "relay" ? { paired: true } : { local: true });
+}
+
+// One export left waiting in the Inbox, and the pane's own view of it
+// refreshed - relay's seedWaitingInbox against the paired workspace, or a
+// fresh export pasted as a bundle against the local store (ingest() parks an
+// id the deck does not hold yet in the Inbox exactly like a relay push does,
+// so both leave one ".inbox-insert" ready to click).
+async function seedWaitingExport(transport: "relay" | "local"): Promise<void> {
+  if (transport === "relay") {
+    await seedWaitingInbox();
+    await press("refresh-inbox");
+    return;
+  }
+  const collector = new LocalCollector();
+  await exportLinkLocally(
+    collector,
+    newId(),
+    newToken(),
+    picturePayload(fakePng(200, 100)),
+  );
+  pasteBox().dispatchEvent(bundleEvent(collector.bundle()));
+  await settle();
+}
+
 // A shape already on the given slide, tagged at `rev`: the deck a bundle is
 // about to update, the way a colleague's deck arrives.
 function plantLink(
@@ -603,191 +632,204 @@ describe("state (a): unpaired, nothing selected", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// State (b): paired, nothing selected.
-// ---------------------------------------------------------------------------
+// States (b)-(d) below run once per transport: relay (a real key, the
+// pairing matrix's own paired half) then local (the fixed local
+// workspace, bootPaired's own local branch, no key stored). State (a)
+// stays relay-only ("unpaired" has no local analog: local mode is always
+// paired by construction) and state (e) stays its own dedicated pass
+// (paste mechanics have no relay analog).
+describe.each(["relay", "local"] as const)("transport: %s", (transport) => {
+  // ---------------------------------------------------------------------------
+  // State (b): paired, nothing selected.
+  // ---------------------------------------------------------------------------
 
-describe("state (b): paired, nothing selected", () => {
-  it("presses every static button and every ribbon command once", async () => {
-    await bootPpt({ paired: true });
+  describe("state (b): paired, nothing selected", () => {
+    it("presses every static button and every ribbon command once", async () => {
+      await bootPaired(transport);
 
-    for (const id of new Set(staticButtonIds())) {
-      await pressStatic(id);
-    }
+      for (const id of new Set(staticButtonIds())) {
+        await pressStatic(id);
+      }
 
-    for (const id of helpers.commandIds()) {
-      await helpers.runCommand(id);
-      await settle();
-    }
-  });
-
-  it("filters the link list by typing, and every filter select reacts once", async () => {
-    await bootPpt({ paired: true });
-    // A row to filter: state (b) itself seeds no deck links, and an empty
-    // list hides the "no match" message regardless of query
-    // (renderLinks(): linksFilteredEmpty.hidden = rows.length === 0 || ...).
-    await seedWaitingInbox();
-    await press("refresh-inbox");
-    document.querySelector<HTMLButtonElement>(".inbox-insert")!.click();
-    await settle();
-    expect(linkRows().length, "seed: expected one inserted link row").toBe(1);
-
-    const search = document.getElementById("link-search") as HTMLInputElement;
-    const before = document.body.innerHTML;
-    search.value = "nothing matches this query";
-    search.dispatchEvent(new Event("input"));
-    await settle();
-    expect(
-      document.body.innerHTML,
-      "typing into the search box changed nothing",
-    ).not.toBe(before);
-    expect(document.getElementById("links-filtered-empty")?.hidden).toBe(false);
-    search.value = "";
-    search.dispatchEvent(new Event("input"));
-    await settle();
-
-    for (const id of [
-      "link-status-filter",
-      "link-source-filter",
-      "link-slide-filter",
-      "link-project-filter",
-    ]) {
-      const select = document.getElementById(id) as HTMLSelectElement;
-      for (let i = 0; i < select.options.length; i += 1) {
-        select.selectedIndex = i;
-        expect(() => select.dispatchEvent(new Event("change"))).not.toThrow();
+      for (const id of helpers.commandIds()) {
+        await helpers.runCommand(id);
         await settle();
       }
-    }
-  });
-});
+    });
 
-// ---------------------------------------------------------------------------
-// State (c): paired, object tools over two then three same-size shapes.
-// ---------------------------------------------------------------------------
-
-describe("state (c): paired, two then three shapes selected", () => {
-  it("aligns, matches and swaps two, then distributes three", async () => {
-    await bootPpt({ paired: true });
-    const slide = presentation.slides[0]!;
-    const shapes = addPlainShapes(slide, 3);
-
-    helpers.selectShapes([shapes[0]!.id, shapes[1]!.id]);
-    expect(await pressStatic("align-objects")).toBe("Aligned 2 objects left.");
-    expect(await pressStatic("match-size")).toBe(
-      "Matched 1 object to the reference size.",
-    );
-    expect(await pressStatic("swap-objects")).toBe("Swapped two objects.");
-
-    helpers.selectShapes(shapes.map((shape) => shape.id));
-    expect(await pressStatic("distribute-objects")).toBe(
-      "Distributed 3 objects across.",
-    );
-
-    helpers.selectShapes([shapes[0]!.id]);
-    expect(await pressStatic("select-similar")).toBe(
-      "Selected 3 similar objects.",
-    );
-
-    helpers.selectShapes([shapes[0]!.id]);
-    expect(await pressStatic("capture-object-style")).toBe(
-      "Object style captured.",
-    );
-    helpers.selectShapes([shapes[1]!.id, shapes[2]!.id]);
-    expect(await pressStatic("apply-object-style")).toBe("Painted 2 objects.");
-  });
-
-  it("runs every PLSFIX_PPT_* ribbon command over a real selection", async () => {
-    await bootPpt({ paired: true });
-    const slide = presentation.slides[0]!;
-    const shapes = addPlainShapes(slide, 3);
-    helpers.selectShapes(shapes.map((shape) => shape.id));
-
-    for (const id of helpers.commandIds()) {
-      const before = toastText();
-      await helpers.runCommand(id);
+    it("filters the link list by typing, and every filter select reacts once", async () => {
+      await bootPaired(transport);
+      // A row to filter: state (b) itself seeds no deck links, and an empty
+      // list hides the "no match" message regardless of query
+      // (renderLinks(): linksFilteredEmpty.hidden = rows.length === 0 || ...).
+      await seedWaitingExport(transport);
+      document.querySelector<HTMLButtonElement>(".inbox-insert")!.click();
       await settle();
-      assertToastSanity(id, toastText());
-      // PLSFIX_PPT_TOOLS answers with "" (it only opens the pane); every
-      // other command over three consistent shapes has real work to do.
-      if (id !== "PLSFIX_PPT_TOOLS") {
-        expect(toastText(), `ribbon "${id}" produced no new toast`).not.toBe(
-          before,
-        );
+      expect(linkRows().length, "seed: expected one inserted link row").toBe(1);
+
+      const search = document.getElementById("link-search") as HTMLInputElement;
+      const before = document.body.innerHTML;
+      search.value = "nothing matches this query";
+      search.dispatchEvent(new Event("input"));
+      await settle();
+      expect(
+        document.body.innerHTML,
+        "typing into the search box changed nothing",
+      ).not.toBe(before);
+      expect(document.getElementById("links-filtered-empty")?.hidden).toBe(
+        false,
+      );
+      search.value = "";
+      search.dispatchEvent(new Event("input"));
+      await settle();
+
+      for (const id of [
+        "link-status-filter",
+        "link-source-filter",
+        "link-slide-filter",
+        "link-project-filter",
+      ]) {
+        const select = document.getElementById(id) as HTMLSelectElement;
+        for (let i = 0; i < select.options.length; i += 1) {
+          select.selectedIndex = i;
+          expect(() => select.dispatchEvent(new Event("change"))).not.toThrow();
+          await settle();
+        }
       }
-      helpers.selectShapes(shapes.map((shape) => shape.id));
-    }
+    });
   });
-});
 
-// ---------------------------------------------------------------------------
-// State (d): paired, an inbox export inserted, its row ticked - and a
-// second waiting export, so "Change source" has a real candidate.
-// ---------------------------------------------------------------------------
+  // ---------------------------------------------------------------------------
+  // State (c): paired, object tools over two then three same-size shapes.
+  // ---------------------------------------------------------------------------
 
-describe("state (d): paired, an inserted link, its row ticked", () => {
-  it("updates, reverts, jumps, re-points and breaks a real linked row", async () => {
-    await bootPpt({ paired: true });
-    await seedWaitingInbox();
-    await pressStatic("refresh-inbox");
+  describe("state (c): paired, two then three shapes selected", () => {
+    it("aligns, matches and swaps two, then distributes three", async () => {
+      await bootPaired(transport);
+      const slide = presentation.slides[0]!;
+      const shapes = addPlainShapes(slide, 3);
 
-    const insertButton =
-      document.querySelector<HTMLButtonElement>(".inbox-insert");
-    expect(
-      insertButton,
-      "seed: expected an Insert button in the inbox",
-    ).toBeTruthy();
-    generatedCovered.add("insert-button");
-    await pressElement(insertButton!, "inbox-insert:first");
+      helpers.selectShapes([shapes[0]!.id, shapes[1]!.id]);
+      expect(await pressStatic("align-objects")).toBe(
+        "Aligned 2 objects left.",
+      );
+      expect(await pressStatic("match-size")).toBe(
+        "Matched 1 object to the reference size.",
+      );
+      expect(await pressStatic("swap-objects")).toBe("Swapped two objects.");
 
-    // A second export, left waiting, so change-source has something to
-    // re-point at.
-    await seedWaitingInbox();
-    await pressStatic("refresh-inbox");
+      helpers.selectShapes(shapes.map((shape) => shape.id));
+      expect(await pressStatic("distribute-objects")).toBe(
+        "Distributed 3 objects across.",
+      );
 
-    expect(linkRows().length, "seed: expected one inserted link row").toBe(1);
-    tickRow(0);
-    generatedCovered.add("link-row-tick");
+      helpers.selectShapes([shapes[0]!.id]);
+      expect(await pressStatic("select-similar")).toBe(
+        "Selected 3 similar objects.",
+      );
 
-    expect(await pressStatic("update-selected")).toMatch(/up to date|updated/i);
-    expect(await pressStatic("update-slide")).toMatch(
-      /up to date|updated|Select a slide first\.|No links on this slide/,
-    );
-    expect(await pressStatic("update-all")).toMatch(/up to date|updated/i);
-    expect(await pressStatic("go-to-slide")).toMatch(/^Slide \d+\.$/);
+      helpers.selectShapes([shapes[0]!.id]);
+      expect(await pressStatic("capture-object-style")).toBe(
+        "Object style captured.",
+      );
+      helpers.selectShapes([shapes[1]!.id, shapes[2]!.id]);
+      expect(await pressStatic("apply-object-style")).toBe(
+        "Painted 2 objects.",
+      );
+    });
 
-    tickRow(0);
-    expect(
-      findButton("change-source")!.disabled,
-      "exactly one row ticked: enabled",
-    ).toBe(false);
-    expect(await pressStatic("change-source")).toMatch(
-      /^Choose the export to point/,
-    );
-    expect(await pressStatic("change-source-cancel")).toBe(
-      "Change source cancelled. Nothing was re-pointed.",
-    );
-    await pressStatic("change-source");
-    // Both seeded items share SRC, so changeSource()'s own line
-    // (src/ppt/change-source.ts) names the same workbook on both sides.
-    expect(await pressStatic("change-source-confirm")).toMatch(
-      /^Source changed: Model_v4\.xlsx -> Model_v4\.xlsx$/,
-    );
+    it("runs every PLSFIX_PPT_* ribbon command over a real selection", async () => {
+      await bootPaired(transport);
+      const slide = presentation.slides[0]!;
+      const shapes = addPlainShapes(slide, 3);
+      helpers.selectShapes(shapes.map((shape) => shape.id));
 
-    tickRow(0);
-    // summarizeRevert() (src/ppt/revert.ts): "N reverted" when a previous
-    // revision exists, "N without a previous version" otherwise - the
-    // change-source press above put this row on its very first revision,
-    // so either wording is a legitimate answer; a bare host string or an
-    // empty toast is not.
-    expect(await pressStatic("revert-selected")).toMatch(
-      /^\d+ (reverted|without a previous version|failed)|^Nothing to revert$/,
-    );
-    tickRow(0);
-    // break-selected only arms on the first press (src/ui/confirm.ts); the
-    // second is what actually breaks it.
-    await pressStatic("break-selected");
-    expect(await pressStatic("break-selected")).toMatch(/^1 link broken\./);
+      for (const id of helpers.commandIds()) {
+        const before = toastText();
+        await helpers.runCommand(id);
+        await settle();
+        assertToastSanity(id, toastText());
+        // PLSFIX_PPT_TOOLS answers with "" (it only opens the pane); every
+        // other command over three consistent shapes has real work to do.
+        if (id !== "PLSFIX_PPT_TOOLS") {
+          expect(toastText(), `ribbon "${id}" produced no new toast`).not.toBe(
+            before,
+          );
+        }
+        helpers.selectShapes(shapes.map((shape) => shape.id));
+      }
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // State (d): paired, an inbox export inserted, its row ticked - and a
+  // second waiting export, so "Change source" has a real candidate.
+  // ---------------------------------------------------------------------------
+
+  describe("state (d): paired, an inserted link, its row ticked", () => {
+    it("updates, reverts, jumps, re-points and breaks a real linked row", async () => {
+      await bootPaired(transport);
+      await seedWaitingExport(transport);
+
+      const insertButton =
+        document.querySelector<HTMLButtonElement>(".inbox-insert");
+      expect(
+        insertButton,
+        "seed: expected an Insert button in the inbox",
+      ).toBeTruthy();
+      generatedCovered.add("insert-button");
+      await pressElement(insertButton!, "inbox-insert:first");
+
+      // A second export, left waiting, so change-source has something to
+      // re-point at.
+      await seedWaitingExport(transport);
+
+      expect(linkRows().length, "seed: expected one inserted link row").toBe(1);
+      tickRow(0);
+      generatedCovered.add("link-row-tick");
+
+      expect(await pressStatic("update-selected")).toMatch(
+        /up to date|updated/i,
+      );
+      expect(await pressStatic("update-slide")).toMatch(
+        /up to date|updated|Select a slide first\.|No links on this slide/,
+      );
+      expect(await pressStatic("update-all")).toMatch(/up to date|updated/i);
+      expect(await pressStatic("go-to-slide")).toMatch(/^Slide \d+\.$/);
+
+      tickRow(0);
+      expect(
+        findButton("change-source")!.disabled,
+        "exactly one row ticked: enabled",
+      ).toBe(false);
+      expect(await pressStatic("change-source")).toMatch(
+        /^Choose the export to point/,
+      );
+      expect(await pressStatic("change-source-cancel")).toBe(
+        "Change source cancelled. Nothing was re-pointed.",
+      );
+      await pressStatic("change-source");
+      // Both seeded items share SRC, so changeSource()'s own line
+      // (src/ppt/change-source.ts) names the same workbook on both sides.
+      expect(await pressStatic("change-source-confirm")).toMatch(
+        /^Source changed: Model_v4\.xlsx -> Model_v4\.xlsx$/,
+      );
+
+      tickRow(0);
+      // summarizeRevert() (src/ppt/revert.ts): "N reverted" when a previous
+      // revision exists, "N without a previous version" otherwise - the
+      // change-source press above put this row on its very first revision,
+      // so either wording is a legitimate answer; a bare host string or an
+      // empty toast is not.
+      expect(await pressStatic("revert-selected")).toMatch(
+        /^\d+ (reverted|without a previous version|failed)|^Nothing to revert$/,
+      );
+      tickRow(0);
+      // break-selected only arms on the first press (src/ui/confirm.ts); the
+      // second is what actually breaks it.
+      await pressStatic("break-selected");
+      expect(await pressStatic("break-selected")).toMatch(/^1 link broken\./);
+    });
   });
 });
 

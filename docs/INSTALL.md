@@ -97,6 +97,10 @@ anywhere. A linked object (a range picture, a table or a text sent to PowerPoint
 encrypted in the pane before it is uploaded; the relay at `dbautomatizacijas.com/modelis/`
 stores ciphertext only, for 30 days, and deletes it after. Details: [SECURITY.md](../SECURITY.md).
 
+A fresh install needs no relay for links: by default they move from Excel to PowerPoint by
+copy and paste on the same computer, and the relay above is a switch in each pane for anyone
+who wants it.
+
 ## Your own server, or the source
 
 [SELF-HOSTING.md](SELF-HOSTING.md): `docker compose up` on your machine; its

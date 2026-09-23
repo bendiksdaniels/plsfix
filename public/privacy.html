@@ -118,6 +118,23 @@
         </p>
       </div>
 
+      <h2>Local mode (no relay)</h2>
+      <p>
+        With <strong>Copy and paste on this computer</strong> chosen in
+        either pane, nothing is sent anywhere: Excel copies a link to the
+        clipboard instead of uploading it, and PowerPoint reads it back
+        from what you paste. Pasted links are kept in this browser's own
+        IndexedDB (<code>plsfix-links</code>) until you press
+        <strong>Clear pasted links</strong>, or the oldest ones are dropped
+        once that store passes 32 MB.
+      </p>
+      <div class="box">
+        <p style="margin: 0">
+          A copied bundle carries the same live link tokens as the picture
+          it came from: paste it into PowerPoint, do not forward it on.
+        </p>
+      </div>
+
       <h2>What Excel and PowerPoint save on the computer</h2>
       <p>
         A few settings ride with the workbook itself, in Excel's own
