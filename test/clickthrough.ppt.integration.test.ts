@@ -41,6 +41,7 @@ import {
 } from "./fakeppt";
 import { FakeRelay } from "./fakerelay";
 import { fakePng } from "./fakepng";
+import { settlePpt, trackPptBoot } from "./ppt-ready";
 
 enableStrictLoadSemantics();
 
@@ -83,23 +84,13 @@ function pane(): void {
   );
 }
 
-async function drain(rounds = 12): Promise<void> {
-  for (let i = 0; i < rounds; i += 1) {
-    await new Promise((resolve) => setTimeout(resolve, 0));
-  }
-}
-// Busy in either pane shows as every tab button disabled (the blanket
-// latch), and never otherwise: after the fixed rounds, keep draining while
-// that holds, bounded, so a press whose chain runs long under load is waited
-// out instead of misread as a latch that never released.
-function paneBusy(): boolean {
-  const tabs = document.querySelectorAll<HTMLButtonElement>("[role=tab]");
-  return tabs.length > 0 && [...tabs].every((tab) => tab.disabled);
-}
-
+// Waits for the work, not a count of turns: test/ppt-ready.ts's settlePpt
+// already drains the fixed rounds then keeps draining while every tab
+// button is disabled (the blanket busy latch), bounded, so a press whose
+// chain runs long under load is waited out instead of misread as a latch
+// that never released.
 async function settle(): Promise<void> {
-  await drain();
-  for (let i = 0; i < 200 && paneBusy(); i += 1) await drain(1);
+  await settlePpt();
 }
 
 interface BootOptions {
@@ -127,7 +118,9 @@ async function bootPpt(options: BootOptions = {}): Promise<void> {
   presentation = host.presentation;
   helpers = host.helpers;
   helpers.selectSlide(presentation.slides[0]!.id);
+  const booted = trackPptBoot();
   await import("../src/ppt/main");
+  await booted;
   await settle();
 }
 

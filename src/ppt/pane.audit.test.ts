@@ -32,6 +32,7 @@ import {
   type FakePptHelpers,
   type FakePresentation,
 } from "../../test/fakeppt";
+import { settlePpt, trackPptBoot } from "../../test/ppt-ready";
 import type * as RelayModule from "../link/relay";
 import { RelayError } from "../link/relay";
 
@@ -148,7 +149,9 @@ async function boot(
   helpers = host.helpers;
   helpers.selectSlide(presentation.slides[0]!.id);
   await prepare?.();
+  const booted = trackPptBoot();
   await import("./main");
+  await booted;
   await settle();
 }
 
@@ -161,9 +164,7 @@ function button(id: string): HTMLButtonElement {
 }
 
 async function settle(rounds = 12): Promise<void> {
-  for (let round = 0; round < rounds; round += 1) {
-    await new Promise((resolve) => setTimeout(resolve, 0));
-  }
+  await settlePpt(rounds);
 }
 
 function toastText(): string {
@@ -341,6 +342,54 @@ describe("the boot itself", () => {
     await settle();
     expect(toastText()).toBe("1 linked object.");
     expect(linkRows()).toHaveLength(1);
+  });
+
+  // Regression for the fixed-turn flake (root cause above): slowing the one
+  // WebCrypto call both the boot (loadWorkspace, inside Office.onReady) and a
+  // refresh (listLinks, deriving each row's key to read it) await proves the
+  // pane's own helpers wait for that work rather than guessing a turn count.
+  // Restoring only the two relay spies below - never vi.restoreAllMocks() -
+  // keeps the slow importKey live into the refresh-links press too, so both
+  // halves of this test run under it.
+  it("waits for a slow boot and a slow refresh, not for a count of turns", async () => {
+    const subtle = globalThis.crypto.subtle;
+    const realImportKey = subtle.importKey.bind(subtle) as unknown as (
+      ...args: unknown[]
+    ) => Promise<CryptoKey>;
+    vi.spyOn(subtle, "importKey").mockImplementation(
+      (...args: unknown[]) =>
+        new Promise<CryptoKey>((resolve, reject) => {
+          setTimeout(() => {
+            realImportKey(...args).then(resolve, reject);
+          }, 25);
+        }),
+    );
+
+    let status: ReturnType<typeof vi.spyOn> | undefined;
+    let listInbox: ReturnType<typeof vi.spyOn> | undefined;
+    await boot(true, () => {
+      status = vi
+        .spyOn(relay, "status")
+        .mockRejectedValue(
+          new RelayError(
+            "network",
+            "relay POST /api/links/status: network error",
+          ),
+        );
+      listInbox = vi
+        .spyOn(relay, "listInbox")
+        .mockRejectedValue(
+          new RelayError("network", "relay GET /api/inbox: network error"),
+        );
+      return plant();
+    });
+    expect(toastText()).toBe("relay GET /api/inbox: network error");
+
+    status?.mockRestore();
+    listInbox?.mockRestore();
+    click("refresh-links");
+    await settle();
+    expect(toastText()).toBe("1 linked object.");
   });
 
   it("says which host it needs when Office reports another one", async () => {

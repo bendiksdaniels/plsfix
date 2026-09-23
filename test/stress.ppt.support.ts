@@ -33,6 +33,7 @@ import {
   type FakePptHelpers,
   type FakePresentation,
 } from "./fakeppt";
+import { settlePpt, trackPptBoot } from "./ppt-ready";
 
 export const SRC = {
   workbook: "Model_v4.xlsx",
@@ -178,7 +179,9 @@ export async function bootPane(paired = true): Promise<void> {
   presentation = host.presentation;
   helpers = host.helpers;
   helpers.selectSlide(presentation.slides[0]!.id);
+  const booted = trackPptBoot();
   await import("../src/ppt/main");
+  await booted;
   await settle();
 }
 
@@ -189,9 +192,7 @@ export function click(id: string): void {
   button(id).click();
 }
 export async function settle(rounds = 12): Promise<void> {
-  for (let round = 0; round < rounds; round += 1) {
-    await new Promise((resolve) => setTimeout(resolve, 0));
-  }
+  await settlePpt(rounds);
 }
 export function toastText(): string {
   return document.querySelector("#toast .toast-text")?.textContent ?? "";

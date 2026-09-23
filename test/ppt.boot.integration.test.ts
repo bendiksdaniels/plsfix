@@ -8,6 +8,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { installFakePpt, uninstallFakePpt } from "./fakeppt";
+import { settlePpt, trackPptBoot } from "./ppt-ready";
 
 function pane(): void {
   document.body.innerHTML = readFileSync(
@@ -22,8 +23,9 @@ async function boot(supported: boolean): Promise<void> {
   uninstallFakePpt();
   pane();
   installFakePpt({ slides: 1, isSetSupported: () => supported });
+  const booted = trackPptBoot();
   await import("../src/ppt/main");
-  await new Promise((resolve) => setTimeout(resolve, 0));
+  await booted;
 }
 
 function click(id: string): void {
@@ -31,7 +33,7 @@ function click(id: string): void {
 }
 
 async function settle(): Promise<void> {
-  await new Promise((resolve) => setTimeout(resolve, 0));
+  await settlePpt(1);
 }
 
 function toastText(): string {
