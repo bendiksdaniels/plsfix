@@ -221,6 +221,11 @@ Export a range or a chart from Excel and keep it fresh in a deck without re-past
   linked picture for that long, so **break links before sending a deck outside**.
 - Every relay call gives up after 20 s on the client and 30 s on the server (v2.7): the pane
   says "The link relay did not answer in time." instead of hanging, and a retry is one press away.
+- **Local by default**: a new install moves links from Excel to PowerPoint by one copy and one
+  paste, no relay involved; an install that already used the relay keeps using it. The switch
+  (*Copy and paste on this computer* / *Through the relay*) sits at the bottom of Excel's Links
+  tab and the top of PowerPoint's Settings tab; switching never deletes a stored key, a relay
+  copy or a pasted link.
 
 ## Architecture
 

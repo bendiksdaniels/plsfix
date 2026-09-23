@@ -11,7 +11,7 @@ export const PPT_HELP: HelpCopy = {
       "Every pls,fix object in this deck, in a folder per project, with the workbook it comes from, plus the buttons that refresh or release them.",
     buttons: {
       "refresh-links":
-        "Scans the deck again and asks the relay which links have a newer picture waiting.",
+        "Scans the deck again and checks which links have a newer picture waiting.",
       "update-selected":
         "Repaints the ticked links with their latest picture. Slide and position do not move.",
       "update-slide": "Repaints every link on the slide you are on.",
@@ -35,7 +35,7 @@ export const PPT_HELP: HelpCopy = {
       "Exports from Excel not yet in this deck; they expire after 7 days. Pick a slide and spot below. A chart lands as shapes, else a picture.",
     buttons: {
       "refresh-inbox":
-        "Asks the relay for the exports waiting under your link key.",
+        "Reads what is waiting to insert: pushed to the relay, or pasted here in local mode.",
       "clear-pasted-links":
         "Deletes every pasted link and waiting item kept on this computer. The deck keeps its objects. Press twice.",
       "paste-latest-linked":
@@ -46,10 +46,10 @@ export const PPT_HELP: HelpCopy = {
   },
   "pairing-heading": {
     about:
-      "Paste the key from Excel once per computer. It stays here, and the relay never sees it.",
+      "How links arrive from Excel on this computer: pasted here with no relay, or through the relay once a key is paired.",
     buttons: {
       "save-key":
-        "Stores the pasted key on this computer and opens the inbox items pushed from Excel.",
+        "In relay mode, stores the pasted key on this computer and opens the inbox items pushed from Excel.",
       "forget-key":
         "Deletes the key from this computer. The deck's links stay, but the inbox closes. Press twice.",
     },

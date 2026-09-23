@@ -10,6 +10,7 @@ pub fn links() -> Chapter {
         sections: vec![
             how_it_works(),
             link_key(),
+            local_mode(),
             export(),
             list(),
             projects(),
@@ -65,6 +66,28 @@ fn link_key() -> Section {
                 file: "ppt-settings.png",
                 alt: r#"PowerPoint cilne "Settings" ar saites atslēgas lauku un pogām "Save key" un "Forget key"."#,
             },
+        ],
+    )
+}
+
+fn local_mode() -> Section {
+    section(
+        "Saites bez servera: kopēt un ielīmēt",
+        vec![
+            Block::Para(
+                r#"Saiti no Excel uz PowerPoint var nosūtīt arī bez releja: viss paliek uz viena datora, un saturs ceļo tikai caur starpliktuvi. Jauna instalācija sākas tieši šādi; dators, kas jau lietoja releju, pie tā arī paliek, kamēr izvēlni nemaina."#,
+            ),
+            Block::Steps(&[
+                r#"Excel pusē eksportējiet ierasti, piemēram, ar "Export selection", vai atzīmējiet vienu vai vairākas saites sarakstā un nospiediet "Copy selected" vai "Copy all"."#,
+                r#"PowerPoint pusē atveriet pls,fix paneli, sadaļu "Inbox", nospiediet ielīmēšanas laukā un tad Ctrl+V (Mac datorā Cmd+V)."#,
+                r#"Ielīmētās saites parādās sarakstā tāpat kā no releja saņemtās; ievietojiet tās ar "Insert" vai "Paste latest linked"."#,
+            ]),
+            Block::Para(
+                r#"Kuru ceļu saite izvēlas, nosaka izvēlne "Links travel" zem saišu saraksta Excel pusē un izvēlne "How links reach PowerPoint" PowerPoint pusē, sadaļā "Settings". "Copy and paste on this computer" saiti sūta tikai ar kopēšanu un ielīmēšanu; "Through the relay" izmanto releju kā līdz šim. Pārslēgšanās neizdzēš nedz saglabāto atslēgu, nedz relejā jau nosūtītās saites, nedz ielīmētās saites."#,
+            ),
+            Block::Para(
+                r#"Ielīmētās saites paliek šī datora PowerPoint pusē, sadaļā "Inbox", kamēr tās neizdzēš poga "Clear pasted links". Ielīmējot saiti citur, piemēram, slaidā vai e-pastā, tur nonāk tikai viens teikums, nevis saites saturs."#,
+            ),
         ],
     )
 }
