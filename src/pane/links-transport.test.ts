@@ -8,7 +8,12 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { BUNDLE_MAX_CHARS } from "../link/bundle";
 import { WORKSPACE_STORAGE_KEY, type KeyStore } from "../link/workspace";
 import type { Toast } from "../ui/toast";
-import { installLinksTransport, type LinksTransport } from "./links-transport";
+import {
+  exportCopyLines,
+  installLinksTransport,
+  pushCopyLines,
+  type LinksTransport,
+} from "./links-transport";
 
 const ID = "a".repeat(32);
 
@@ -345,5 +350,35 @@ describe("setMode: visibility and labels", () => {
     expect(await store.get("plsfix.link.transport.v1")).toBe("relay");
     const rebooted = await transportWith(store);
     expect(rebooted.mode()).toBe("relay");
+  });
+});
+
+describe("the copy lines", () => {
+  it("keep a chart's note beside its label, as relay mode does", () => {
+    const lines = exportCopyLines();
+    expect(
+      lines.copied({
+        label: "Model: Chart 1",
+        note: "Excel shipped no chart data",
+      }),
+    ).toBe(
+      "Copied for PowerPoint: Model: Chart 1 (Excel shipped no chart data). Paste it in PowerPoint: pls,fix, Inbox tab.",
+    );
+    expect(lines.ready({ label: "Model!B4:F12" })).toBe(
+      "Model!B4:F12 is linked and ready: press Copy for PowerPoint.",
+    );
+  });
+
+  it("say the push counts as copies", () => {
+    expect(
+      pushCopyLines().copied({
+        pushed: 3,
+        missing: 1,
+        failed: 0,
+        failures: [],
+      }),
+    ).toBe(
+      "3 copied, 1 missing, 0 failed. Paste it in PowerPoint: pls,fix, Inbox tab.",
+    );
   });
 });

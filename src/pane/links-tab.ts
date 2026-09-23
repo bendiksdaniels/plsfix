@@ -15,7 +15,6 @@ import {
   readProjectState,
   removeLink,
   setActiveProject,
-  setAutoPush,
   touchWorkbookLinks,
   type ExportKind,
   watchWorksheetEdits,
@@ -36,9 +35,16 @@ import { armConfirm, type ArmConfirmOptions } from "../ui/confirm";
 import type { Guard } from "../ui/guard";
 import type { Toast } from "../ui/toast";
 import { refreshChartPick, watchSheetChanges } from "./links-charts";
-import { installLinksTransport, type LinksTransport } from "./links-transport";
+import {
+  exportCopyLines,
+  installLinksTransport,
+  pendingLinksTransport,
+  pushCopyLines,
+  type LinksTransport,
+} from "./links-transport";
 import { messageRow, renderWorkbookLinks } from "./links-list";
 import {
+  autoPushOffForLocal,
   restoreToggles,
   setTogglesBusy,
   toggleAutoPush,
@@ -54,13 +60,6 @@ const NO_KEY_ERROR = "Generate a link key first (Links > Link key).";
 const NO_SELECTION_ERROR = "Select a link in the list first.";
 // Enough of the key to tell two apart, never enough to pair a deck with.
 const KEY_EDGE = 4;
-// The tab's own transport module loads after the tick that wires every
-// button (it needs its own async storage read); a press that lands in the
-// gap before boot() replaces this meets one clear sentence instead of a
-// crash. Never seen in practice - boot() sets the real one long before a
-// modeller can reach a button - so no test pins this string down.
-const TRANSPORT_LOADING_MESSAGE = "Still starting up: try again in a moment.";
-
 export interface LinksTabDeps {
   guard: Guard;
   toast: Toast;
@@ -118,7 +117,7 @@ export function installLinksTab(deps: LinksTabDeps): {
 function newTab(deps: LinksTabDeps): Tab {
   return {
     deps,
-    transport: pendingTransport(),
+    transport: pendingLinksTransport(),
     chartPick: element(deps.root, "export-chart-pick"),
     projectSelect: element(deps.root, "link-project"),
     list: element(deps.root, "workbook-links"),
@@ -216,41 +215,8 @@ async function boot(tab: Tab): Promise<void> {
   });
   // After restoreToggles, so the check below sees what the workbook really
   // saved, not the box's unchecked HTML default.
-  await syncAutoPushForTransport(tab);
+  if (tab.transport.mode() === "local") await autoPushOffForLocal(tab.toggles);
   await touchLinks(tab);
-}
-
-// Local mode cannot write the clipboard on an edit, so auto-push has to stay
-// off in it: switched off through the same toggle path a click would use,
-// only when it was actually on, so a local-mode boot that never had
-// auto-push never shows this toast.
-async function syncAutoPushForTransport(tab: Tab): Promise<void> {
-  if (tab.transport.mode() !== "local" || !tab.toggles.autopush.checked) {
-    return;
-  }
-  tab.toggles.autopush.checked = false;
-  try {
-    await setAutoPush(false, tab.deps.relay, () => undefined);
-  } catch {
-    // The box already reads off either way; the workbook flag is best effort.
-  }
-  tab.deps.toast.show(
-    "Auto-push needs the relay: it is off in copy and paste mode.",
-  );
-}
-
-// A LinksTransport that answers every call with one clear sentence: what
-// tab.transport holds from newTab() until boot() replaces it for real.
-function pendingTransport(): LinksTransport {
-  const notReady = (): never => {
-    throw new Error(TRANSPORT_LOADING_MESSAGE);
-  };
-  return {
-    mode: notReady,
-    setMode: () => Promise.reject(new Error(TRANSPORT_LOADING_MESSAGE)),
-    copy: () => Promise.reject(new Error(TRANSPORT_LOADING_MESSAGE)),
-    retryCopy: notReady,
-  };
 }
 
 // Last, and never in front of anything the tab shows: a relay behind a
@@ -381,7 +347,7 @@ async function exportRange(tab: Tab, kind: ExportKind): Promise<string> {
       const result = await sender(kind)(ws, relay);
       await refresh(tab);
       return result;
-    }, localExportLines());
+    }, exportCopyLines());
   }
   const result = await sender(kind)(requireWorkspace(tab), tab.deps.relay);
   await refresh(tab);
@@ -395,21 +361,6 @@ function sentLine(result: { label: string; note?: string }): string {
   return `Sent to PowerPoint: ${result.label}${note}`;
 }
 
-// copy()'s two lines for an export (a range, a table, a text link or a
-// chart): the same shape whichever one is being sent, so exportRange and
-// exportChart share it.
-function localExportLines(): {
-  copied: (result: { label: string }) => string;
-  ready: (result: { label: string }) => string;
-} {
-  return {
-    copied: (result) =>
-      `Copied for PowerPoint: ${result.label}. Paste it in PowerPoint: pls,fix, Inbox tab.`,
-    ready: (result) =>
-      `${result.label} is linked and ready: press Copy for PowerPoint.`,
-  };
-}
-
 async function exportChart(tab: Tab): Promise<string> {
   const pick = tab.chartPick.value || null;
   if (tab.transport.mode() === "local") {
@@ -417,7 +368,7 @@ async function exportChart(tab: Tab): Promise<string> {
       const result = await exportActiveChart(ws, relay, pick);
       await refresh(tab);
       return result;
-    }, localExportLines());
+    }, exportCopyLines());
   }
   const result = await exportActiveChart(
     requireWorkspace(tab),
@@ -436,7 +387,7 @@ async function changeTransport(tab: Tab): Promise<string> {
   const select = element<HTMLSelectElement>(tab.deps.root, "link-transport");
   const mode = select.value === "relay" ? "relay" : "local";
   await tab.transport.setMode(mode);
-  await syncAutoPushForTransport(tab);
+  if (mode === "local") await autoPushOffForLocal(tab.toggles);
   return mode === "local"
     ? "Links now travel by copy and paste on this computer."
     : "Links now travel through the relay.";
@@ -458,7 +409,7 @@ async function push(tab: Tab, action: string, all: boolean): Promise<void> {
         failures.push(...summary.failures);
         await refresh(tab);
         return summary;
-      }, localPushLines());
+      }, pushCopyLines());
       return line;
     }
     const summary = await pushLinks(ids, tab.deps.relay);
@@ -472,20 +423,8 @@ async function push(tab: Tab, action: string, all: boolean): Promise<void> {
   }
 }
 
-function summarize(summary: PushSummary, verb = "pushed"): string {
-  return `${summary.pushed} ${verb}, ${summary.missing} missing, ${summary.failed} failed`;
-}
-
-function localPushLines(): {
-  copied: (summary: PushSummary) => string;
-  ready: (summary: PushSummary) => string;
-} {
-  return {
-    copied: (summary) =>
-      `${summarize(summary, "copied")}. Paste it in PowerPoint: pls,fix, Inbox tab.`,
-    ready: (summary) =>
-      `${summarize(summary, "copied")}: press Copy for PowerPoint.`,
-  };
+function summarize(summary: PushSummary): string {
+  return `${summary.pushed} pushed, ${summary.missing} missing, ${summary.failed} failed`;
 }
 
 async function jumpToSource(tab: Tab): Promise<string> {

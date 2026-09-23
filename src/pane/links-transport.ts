@@ -11,6 +11,7 @@
 import { BUNDLE_MAX_CHARS, encodeBundle } from "../link/bundle";
 import { localWorkspace } from "../link/local";
 import { LocalCollector } from "../link/local-collector";
+import type { PushSummary } from "../excel";
 import type { RelayApi } from "../link/relay";
 import {
   loadTransport,
@@ -29,6 +30,11 @@ const COPY_FAILED_MESSAGE =
   "Copy failed: select the text below and copy it by hand (Ctrl+C, or ⌘C on a Mac).";
 const COPIED_MESSAGE =
   "Copied for PowerPoint. Paste it in the pls,fix pane, Inbox tab.";
+
+// A press that lands before boot() has read the setting meets one sentence,
+// never a crash. boot() replaces the placeholder long before a modeller can
+// reach a button, so no test pins the string down.
+const TRANSPORT_LOADING_MESSAGE = "Still starting up: try again in a moment.";
 
 export interface LinksTransportDeps {
   root: ParentNode;
@@ -203,4 +209,50 @@ function element<T extends Element>(root: ParentNode, id: string): T {
   const found = root.querySelector<T>(`#${id}`);
   if (!found) throw new Error(`Missing element #${id}`);
   return found;
+}
+
+// What the Links tab holds until boot() has read the setting: every call
+// answers TRANSPORT_LOADING_MESSAGE, so no call site has to null-check.
+export function pendingLinksTransport(): LinksTransport {
+  const notReady = (): never => {
+    throw new Error(TRANSPORT_LOADING_MESSAGE);
+  };
+  return {
+    mode: notReady,
+    setMode: () => Promise.reject(new Error(TRANSPORT_LOADING_MESSAGE)),
+    copy: () => Promise.reject(new Error(TRANSPORT_LOADING_MESSAGE)),
+    retryCopy: notReady,
+  };
+}
+
+// An export's two lines (a range, a table, a text link or a chart). A chart
+// Excel could not describe keeps the note relay mode shows beside its label.
+export function exportCopyLines(): {
+  copied: (result: { label: string; note?: string }) => string;
+  ready: (result: { label: string; note?: string }) => string;
+} {
+  const named = (result: { label: string; note?: string }): string =>
+    result.note === undefined
+      ? result.label
+      : `${result.label} (${result.note})`;
+  return {
+    copied: (result) =>
+      `Copied for PowerPoint: ${named(result)}. Paste it in PowerPoint: pls,fix, Inbox tab.`,
+    ready: (result) =>
+      `${named(result)} is linked and ready: press Copy for PowerPoint.`,
+  };
+}
+
+// Copy selected / Copy all: the push counts, said as copies.
+export function pushCopyLines(): {
+  copied: (summary: PushSummary) => string;
+  ready: (summary: PushSummary) => string;
+} {
+  const counts = (summary: PushSummary): string =>
+    `${summary.pushed} copied, ${summary.missing} missing, ${summary.failed} failed`;
+  return {
+    copied: (summary) =>
+      `${counts(summary)}. Paste it in PowerPoint: pls,fix, Inbox tab.`,
+    ready: (summary) => `${counts(summary)}: press Copy for PowerPoint.`,
+  };
 }
