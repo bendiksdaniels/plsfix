@@ -47,8 +47,12 @@ export class LocalCollector implements RelayApi {
   }
 
   // No relay copy to revoke: the deck keeps its object, and the next copy
-  // simply leaves the removed link out.
-  async deleteLink(_id: string, _auth: string): Promise<void> {}
+  // simply leaves the removed link out. Both arguments are the interface's,
+  // never this store's: nothing here reads them.
+  async deleteLink(id: string, auth: string): Promise<void> {
+    void id;
+    void auth;
+  }
 
   async touchLinks(items: TouchQuery[]): Promise<number> {
     return items.length;
@@ -62,30 +66,45 @@ export class LocalCollector implements RelayApi {
     return this.links.size === 0 && this.inbox.size === 0;
   }
 
+  // Everything below is a read: a programming error on this side, kept only
+  // to satisfy RelayApi. Every parameter is the interface's, unused by design.
   async getLink(
-    _id: string,
-    _auth: string,
-    _knownRev?: number,
+    id: string,
+    auth: string,
+    knownRev?: number,
   ): Promise<{ rev: number; blob: Uint8Array } | "unchanged"> {
+    void id;
+    void auth;
+    void knownRev;
     throw notHere("getLink");
   }
   async getLinkRev(
-    _id: string,
-    _auth: string,
-    _rev: number,
+    id: string,
+    auth: string,
+    rev: number,
   ): Promise<{ rev: number; blob: Uint8Array }> {
+    void id;
+    void auth;
+    void rev;
     throw notHere("getLinkRev");
   }
-  async status(_items: StatusQuery[]): Promise<RelayStatus[]> {
+  async status(items: StatusQuery[]): Promise<RelayStatus[]> {
+    void items;
     throw notHere("status");
   }
-  async fetchLinks(_items: FetchQuery[]): Promise<FetchResult> {
+  async fetchLinks(items: FetchQuery[]): Promise<FetchResult> {
+    void items;
     throw notHere("fetchLinks");
   }
-  async listInbox(_ws: string, _auth: string): Promise<InboxRow[]> {
+  async listInbox(ws: string, auth: string): Promise<InboxRow[]> {
+    void ws;
+    void auth;
     throw notHere("listInbox");
   }
-  async deleteInbox(_ws: string, _auth: string, _id: string): Promise<void> {
+  async deleteInbox(ws: string, auth: string, id: string): Promise<void> {
+    void ws;
+    void auth;
+    void id;
     throw notHere("deleteInbox");
   }
 }
