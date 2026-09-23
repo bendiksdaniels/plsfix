@@ -67,6 +67,8 @@ export interface UpdateSummary {
   current: number;
   missing: number;
   wrongKey: number;
+  // Local mode only: this computer holds no copy of the link at all.
+  notPasted: number;
   failed: number;
   sourceChanges: string[];
   failures: string[];
@@ -167,6 +169,7 @@ export async function updateLinks(
     current: 0,
     missing: 0,
     wrongKey: 0,
+    notPasted: 0,
     failed: 0,
     sourceChanges: [],
     failures: [],
@@ -183,6 +186,7 @@ export async function updateLinks(
   summary.current += fetched.current;
   summary.missing += fetched.missing;
   summary.wrongKey += fetched.wrongKey;
+  summary.notPasted += fetched.notPasted;
   for (const { found, error } of fetched.failures) {
     countFailure(summary, found, error);
   }
@@ -365,6 +369,7 @@ export function summarize(summary: UpdateSummary): string {
   const parts = [
     [summary.updated, "updated"],
     [summary.current, "up to date"],
+    [summary.notPasted, "not pasted yet"],
     [summary.missing, "missing"],
     [summary.wrongKey, "wrong key"],
     [summary.failed, "failed"],

@@ -66,8 +66,10 @@ export function isInboxJson(value: unknown): value is InboxJson {
 
 // Why a link the batch fetch was asked for carries no blob. The first three
 // are final answers; "deferred" only means "not in this response", and the
-// caller asks for that link on its own.
-export type OmittedReason = "unchanged" | "missing" | "auth" | "deferred";
+// caller asks for that link on its own. "notPasted" is local mode only: this
+// computer holds no copy of the link at all.
+export type OmittedReason =
+  "unchanged" | "missing" | "auth" | "deferred" | "notPasted";
 
 // The record keeps the union honest: a reason added to one and not the other
 // stops the build.
@@ -76,6 +78,7 @@ const OMITTED_REASONS: Record<OmittedReason, true> = {
   missing: true,
   auth: true,
   deferred: true,
+  notPasted: true,
 };
 
 export interface FetchJson {

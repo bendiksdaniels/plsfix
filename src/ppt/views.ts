@@ -28,6 +28,7 @@ const STATUS_LABELS: Record<LinkStatus, string> = {
   updateAvailable: "Update available",
   missing: "Source missing",
   wrongKey: "Wrong link key",
+  notPasted: "Not pasted yet",
 };
 
 // One badge class per status so the colour is CSS's business, not the renderer's.
@@ -36,6 +37,7 @@ const STATUS_CLASSES: Record<LinkStatus, string> = {
   updateAvailable: "badge update",
   missing: "badge missing",
   wrongKey: "badge wrong",
+  notPasted: "badge notpasted",
 };
 
 export function statusLabel(status: LinkStatus): string {

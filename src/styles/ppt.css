@@ -255,6 +255,10 @@
   color: var(--red);
   background: rgba(163, 63, 50, 0.12);
 }
+.badge.notpasted {
+  color: var(--muted);
+  background: var(--surface-sunken);
+}
 
 .inbox-list {
   display: grid;

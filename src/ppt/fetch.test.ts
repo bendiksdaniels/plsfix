@@ -115,8 +115,24 @@ describe("fetchUpdates", () => {
       current: 1,
       missing: 0,
       wrongKey: 0,
+      notPasted: 0,
       failures: [],
     });
+  });
+});
+
+describe("fetchUpdates in local mode", () => {
+  it("counts a link this computer holds no copy of as notPasted, not missing", async () => {
+    class NotPastedRelay extends FakeRelay {
+      override async fetchLinks(): Promise<FetchResult> {
+        return { items: [], omitted: [{ id: "link-a", reason: "notPasted" }] };
+      }
+    }
+    const relay = new NotPastedRelay();
+    const outcome = await fetchUpdates([row("link-a", newToken(), 0)], relay);
+
+    expect(outcome.notPasted).toBe(1);
+    expect(outcome.missing).toBe(0);
   });
 });
 
