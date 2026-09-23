@@ -20,6 +20,7 @@ import {
 } from "../excel";
 import type { RegistryEntry } from "../link/model";
 import type { RelayApi } from "../link/relay";
+import { TRANSPORT_STORAGE_KEY } from "../link/transport-setting";
 import type { KeyStore } from "../link/workspace";
 import { WORKSPACE_STORAGE_KEY } from "../link/workspace";
 import { CONFIRM_MS } from "../ui/confirm";
@@ -91,6 +92,13 @@ function harness(): Harness {
   const errors: string[] = [];
   const toasts: { message: string; kind?: ToastKind; details?: string }[] = [];
   const stored = new Map<string, string>();
+  // Every test below predates local mode and drives export/push expecting
+  // the relay: pin that transport here rather than at every call site, the
+  // way a device that already held a link key would read on its own
+  // (src/link/transport-setting.ts's default rule). Local mode itself is
+  // covered in its own describe block further down, against an unseeded
+  // harness.
+  stored.set(TRANSPORT_STORAGE_KEY, "relay");
   const pending: Promise<void>[] = [];
   const failRead = { on: false };
   return {
@@ -287,7 +295,9 @@ describe("installLinksTab", () => {
     click("forget-key");
     click("forget-key");
     await settle(h);
-    expect(h.stored.size).toBe(0);
+    // 1, not 0: the harness's own pinned transport setting (see harness())
+    // is a separate key forget-key never touches.
+    expect(h.stored.size).toBe(1);
     expect(keyDisplay()).toBe("No link key yet.");
     expect(button("reveal-key").disabled).toBe(true);
   });
@@ -309,12 +319,27 @@ describe("installLinksTab", () => {
 
     click("generate-key");
     await settle(h);
-    expect(h.stored.size).toBe(0);
+    // Still 1 (the harness's own pinned transport setting, see harness()):
+    // the disabled button never ran, so nothing else was ever stored.
+    expect(h.stored.size).toBe(1);
 
+    // A store this broken cannot even be asked which transport is chosen
+    // (that read fails too), so it defaults to local same as one that has
+    // never stored anything - and local mode needs no link key at all. The
+    // mock stands in for the real exportSelection, so it records into the
+    // collector itself the way the real one records a link and an inbox row.
+    vi.mocked(exportSelection).mockImplementation(async (ws, relay) => {
+      await relay.putLink(ID_A, "auth", new Uint8Array([1]));
+      await relay.postInbox(ws.id, "auth", ID_A, new Uint8Array([2]));
+      return { id: ID_A, label: "Model!B4:F12" };
+    });
     click("export-selection");
     await settle(h);
-    expect(h.errors).toEqual([unreadable]);
-    expect(exportSelection).not.toHaveBeenCalled();
+    expect(h.errors).toEqual([]);
+    expect(exportSelection).toHaveBeenCalledTimes(1);
+    expect(h.messages).toContain(
+      "Model!B4:F12 is linked and ready: press Copy for PowerPoint.",
+    );
 
     // Coming back to the tab reads the key again. The reload runs outside the
     // guard, so it is waited for rather than settled.
@@ -443,7 +468,9 @@ describe("two-click confirms", () => {
     // being confirmed.
     expect(removeLink).not.toHaveBeenCalled();
     expect(h.messages).toEqual(["Link key generated. Paste it in PowerPoint."]);
-    expect(h.stored.size).toBe(1);
+    // 2: the harness's own pinned transport setting (see harness()) plus the
+    // one link key generate-key's first press created.
+    expect(h.stored.size).toBe(2);
   });
 
   it("generate-key runs at once for a first key but arms for a replacement", async () => {
@@ -513,5 +540,112 @@ describe("chart export", () => {
     expect(h.messages).toContain(
       "Sent to PowerPoint: Model!Revenue chart (as a picture: 7 series; shapes draw up to 6)",
     );
+  });
+});
+
+// Every test above pins relay mode via harness()'s own seed. These undo it,
+// the way a device that has never stored a link key would read on its own.
+describe("local transport", () => {
+  function localHarness(): Harness {
+    const h = harness();
+    h.stored.delete(TRANSPORT_STORAGE_KEY);
+    return h;
+  }
+
+  // The adapter functions are mocked at this layer; a mock stands in for
+  // the real exportSelection/pushLinks by recording into the collector
+  // itself the way the real ones record a link and an inbox row.
+  function fakeExport(): void {
+    vi.mocked(exportSelection).mockImplementation(async (ws, relay) => {
+      await relay.putLink(ID_A, "auth", new Uint8Array([1]));
+      await relay.postInbox(ws.id, "auth", ID_A, new Uint8Array([2]));
+      return { id: ID_A, label: "Model!B4:F12" };
+    });
+  }
+
+  it("copies instead of pushing to the relay, with no link key needed", async () => {
+    fakeExport();
+    const h = localHarness();
+    install(h);
+    await settle(h);
+
+    click("export-selection");
+    await settle(h);
+
+    expect(h.errors).toEqual([]);
+    // The local workspace and a fresh collector, never the paired relay.
+    const [, relay] = vi.mocked(exportSelection).mock.calls[0]!;
+    expect(relay).not.toBe(h.relay);
+    expect(h.messages).toContain(
+      "Model!B4:F12 is linked and ready: press Copy for PowerPoint.",
+    );
+  });
+
+  it("copies a push instead of pushing to the relay, and announces every row", async () => {
+    vi.mocked(listWorkbookLinks).mockResolvedValue([row(ID_A)]);
+    vi.mocked(pushLinks).mockImplementation(async (ids, relay, options) => {
+      await relay.putLink(ID_A, "auth", new Uint8Array([1]));
+      if (options?.announce) {
+        await relay.postInbox(
+          options.announce.id,
+          "auth",
+          ID_A,
+          new Uint8Array([2]),
+        );
+      }
+      return { pushed: 1, missing: 0, failed: 0, failures: [] };
+    });
+    const h = localHarness();
+    install(h);
+    await settle(h);
+
+    click("push-all");
+    await settle(h);
+
+    const [ids, relay, options] = vi.mocked(pushLinks).mock.calls[0]!;
+    expect(ids).toBe("all");
+    expect(relay).not.toBe(h.relay);
+    expect(options?.announce).toBeDefined();
+    expect(h.messages).toContain(
+      "1 copied, 0 missing, 0 failed: press Copy for PowerPoint.",
+    );
+  });
+
+  it("retries the prepared copy through Copy for PowerPoint", async () => {
+    fakeExport();
+    const h = localHarness();
+    install(h);
+    await settle(h);
+
+    click("export-selection");
+    await settle(h);
+    expect(document.getElementById("copy-ready")?.hidden).toBe(false);
+
+    document.execCommand = vi.fn(() => {
+      const event = new Event("copy", { cancelable: true });
+      Object.defineProperty(event, "clipboardData", {
+        value: { setData: () => undefined },
+      });
+      document.dispatchEvent(event);
+      return true;
+    });
+    click("copy-for-powerpoint");
+    await settle(h);
+
+    expect(h.messages).toContain(
+      "Copied for PowerPoint. Paste it in the pls,fix pane, Inbox tab.",
+    );
+    expect(document.getElementById("copy-ready")?.hidden).toBe(true);
+  });
+
+  it("reports nothing waiting when Copy for PowerPoint is pressed with nothing prepared", async () => {
+    const h = localHarness();
+    install(h);
+    await settle(h);
+
+    click("copy-for-powerpoint");
+    await settle(h);
+
+    expect(h.errors).toEqual(["Nothing is waiting to be copied."]);
   });
 });

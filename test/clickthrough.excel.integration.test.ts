@@ -532,8 +532,14 @@ describe("state (a): fresh workbook, active cell A1, nothing seeded", () => {
     const linksTab = findButton("tab-links")!;
     linksTab.click();
     await settle();
+    // A fresh workbook has never stored a link key, so local mode is the
+    // default (src/link/transport-setting.ts): nothing is prepared to copy
+    // yet, and the export itself needs no key at all.
+    expect(await press("copy-for-powerpoint")).toBe(
+      "Nothing is waiting to be copied.",
+    );
     expect(await press("export-selection")).toBe(
-      "Generate a link key first (Links > Link key).",
+      "Model!A1:F13 is linked and ready: press Copy for PowerPoint.",
     );
     for (const id of ["push-selected", "go-to-source", "move-to-project"]) {
       expect(await press(id)).toBe("Select a link in the list first.");

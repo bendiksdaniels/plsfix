@@ -402,6 +402,40 @@
   grid-template-columns: repeat(4, 1fr);
 }
 
+/* The clipboard fallback under Export (src/pane/links-transport.ts): the
+   ready sentence, the retry button and, on a second failure, a selectable
+   box holding the copy itself. */
+.copy-ready {
+  display: grid;
+  gap: var(--gap-tight);
+}
+.copy-ready button {
+  display: grid;
+  place-items: center;
+  min-height: var(--control-h);
+  padding: 4px 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+  color: var(--ink);
+  background: var(--surface);
+  font-size: var(--fs-body);
+  font-weight: 700;
+  cursor: pointer;
+}
+.copy-manual {
+  width: 100%;
+  min-height: 88px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+  color: var(--ink);
+  background: var(--surface-sunken);
+  font-family: var(--mono);
+  font-size: var(--fs-micro);
+  line-height: 1.4;
+  resize: vertical;
+}
+
 /* The narrowest dock Office gives a pane: the format grid drops to two
    columns rather than squeezing six labels across three. */
 @media (max-width: 330px) {
