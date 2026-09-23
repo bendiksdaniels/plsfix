@@ -13,8 +13,17 @@ import {
 
 const ID = "0123456789abcdef0123456789abcdef";
 const sample: Bundle = {
-  links: [{ id: ID, rev: 2 ** 40 + 1, sentAt: 1_790_000_000_000, blob: new Uint8Array([1, 2, 3]) }],
-  inbox: [{ id: ID, createdAt: 1_790_000_000_000, blob: new Uint8Array([9, 8]) }],
+  links: [
+    {
+      id: ID,
+      rev: 2 ** 40 + 1,
+      sentAt: 1_790_000_000_000,
+      blob: new Uint8Array([1, 2, 3]),
+    },
+  ],
+  inbox: [
+    { id: ID, createdAt: 1_790_000_000_000, blob: new Uint8Array([9, 8]) },
+  ],
 };
 
 describe("encodeBundle / decodeBundle", () => {
@@ -37,8 +46,12 @@ describe("encodeBundle / decodeBundle", () => {
   it("refuses a bad id, a bad rev or a blob that is not base64url", () => {
     const text = encodeBundle(sample);
     expect(decodeBundle(text.replace(ID, "not-an-id")).ok).toBe(false);
-    expect(decodeBundle(text.replace(`"rev":${String(2 ** 40 + 1)}`, '"rev":-1')).ok).toBe(false);
-    expect(decodeBundle(text.replace('"blob":"AQID"', '"blob":"@@"')).ok).toBe(false);
+    expect(
+      decodeBundle(text.replace(`"rev":${String(2 ** 40 + 1)}`, '"rev":-1')).ok,
+    ).toBe(false);
+    expect(decodeBundle(text.replace('"blob":"AQID"', '"blob":"@@"')).ok).toBe(
+      false,
+    );
   });
 
   it("refuses an empty bundle", () => {
@@ -55,9 +68,18 @@ describe("the clipboard carrier", () => {
 
   it("reads the HTML flavor first, the plain text second", () => {
     const json = encodeBundle(sample);
-    expect(readPastedBundle(bundleHtml(json), BUNDLE_SENTENCE)).toEqual({ ok: true, bundle: sample });
-    expect(readPastedBundle("", `  ${json}\n`)).toEqual({ ok: true, bundle: sample });
-    expect(readPastedBundle("<b>hi</b>", "hi")).toEqual({ ok: false, reason: "notBundle" });
+    expect(readPastedBundle(bundleHtml(json), BUNDLE_SENTENCE)).toEqual({
+      ok: true,
+      bundle: sample,
+    });
+    expect(readPastedBundle("", `  ${json}\n`)).toEqual({
+      ok: true,
+      bundle: sample,
+    });
+    expect(readPastedBundle("<b>hi</b>", "hi")).toEqual({
+      ok: false,
+      reason: "notBundle",
+    });
   });
 
   it("survives a sanitizer that re-serialises the span around it", () => {

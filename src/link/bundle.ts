@@ -104,7 +104,10 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 // fromBase64Url throws on a bad blob; decodeBundle turns that into notBundle.
-function listOf<T>(value: unknown, read: (item: unknown) => T | null): T[] | null {
+function listOf<T>(
+  value: unknown,
+  read: (item: unknown) => T | null,
+): T[] | null {
   if (!Array.isArray(value)) return null;
   const out: T[] = [];
   for (const item of value) {
@@ -119,7 +122,8 @@ function readLink(item: unknown): BundleLink | null {
   if (!isRecord(item)) return null;
   const { id, rev, sentAt, blob } = item;
   if (typeof id !== "string" || !isLinkId(id)) return null;
-  if (typeof rev !== "number" || !Number.isSafeInteger(rev) || rev < 1) return null;
+  if (typeof rev !== "number" || !Number.isSafeInteger(rev) || rev < 1)
+    return null;
   if (typeof sentAt !== "number" || !Number.isFinite(sentAt)) return null;
   if (typeof blob !== "string" || blob === "") return null;
   return { id, rev, sentAt, blob: fromBase64Url(blob) };

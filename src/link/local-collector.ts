@@ -37,7 +37,12 @@ export class LocalCollector implements RelayApi {
     return { rev };
   }
 
-  async postInbox(_ws: string, _auth: string, id: string, blob: Uint8Array): Promise<void> {
+  async postInbox(
+    _ws: string,
+    _auth: string,
+    id: string,
+    blob: Uint8Array,
+  ): Promise<void> {
     this.inbox.set(id, { id, createdAt: this.now(), blob });
   }
 
@@ -57,10 +62,18 @@ export class LocalCollector implements RelayApi {
     return this.links.size === 0 && this.inbox.size === 0;
   }
 
-  async getLink(_id: string, _auth: string, _knownRev?: number): Promise<{ rev: number; blob: Uint8Array } | "unchanged"> {
+  async getLink(
+    _id: string,
+    _auth: string,
+    _knownRev?: number,
+  ): Promise<{ rev: number; blob: Uint8Array } | "unchanged"> {
     throw notHere("getLink");
   }
-  async getLinkRev(_id: string, _auth: string, _rev: number): Promise<{ rev: number; blob: Uint8Array }> {
+  async getLinkRev(
+    _id: string,
+    _auth: string,
+    _rev: number,
+  ): Promise<{ rev: number; blob: Uint8Array }> {
     throw notHere("getLinkRev");
   }
   async status(_items: StatusQuery[]): Promise<RelayStatus[]> {

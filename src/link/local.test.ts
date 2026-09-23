@@ -1,7 +1,13 @@
 // src/link/local.test.ts
 // The local revision space and the fixed workspace every device derives.
 import { describe, expect, it } from "vitest";
-import { isLocalRev, LOCAL_REV_BASE, localWorkspace, nextLocalRev, previousRevOf } from "./local";
+import {
+  isLocalRev,
+  LOCAL_REV_BASE,
+  localWorkspace,
+  nextLocalRev,
+  previousRevOf,
+} from "./local";
 
 describe("local revisions", () => {
   it("start above the relay's space and count up from there", () => {
