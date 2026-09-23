@@ -5,13 +5,16 @@
 
 import type { Source } from "./model";
 
-export type LinkStatus = "current" | "updateAvailable" | "missing" | "wrongKey";
+export type LinkStatus =
+  "current" | "updateAvailable" | "missing" | "wrongKey" | "notPasted";
 
 export interface RelayStatus {
   id: string;
   rev: number | null;
   pushedAt: number | null;
   error?: "auth";
+  // Answered by this computer's LocalStore, not a relay (local mode).
+  local?: true;
 }
 
 export function deriveStatus(
@@ -20,7 +23,9 @@ export function deriveStatus(
 ): LinkStatus {
   if (relay === undefined) return "missing";
   if (relay.error === "auth") return "wrongKey";
-  if (relay.rev === null) return "missing";
+  if (relay.rev === null) return relay.local ? "notPasted" : "missing";
+  // This computer's copy is older than what the deck holds: nothing newer here.
+  if (relay.local && relay.rev < tagRev) return "current";
   // Any inequality, not just a higher rev: a link swept at its 7-day TTL comes
   // back from the next push as rev 1, so a relay rev *below* the tag's is the
   // ordinary "the deck is stale" case, not an impossibility.
@@ -34,7 +39,7 @@ export function deriveStatus(
 // for a named older rev on purpose and never calls this.
 export class StaleRelayError extends Error {
   constructor() {
-    super("The relay sent an older picture than this deck already holds.");
+    super("The update is older than the picture this deck already holds.");
     this.name = "StaleRelayError";
   }
 }

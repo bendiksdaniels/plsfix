@@ -41,7 +41,7 @@ export async function pushPayload(
   const payload = await payloadOf(src, render);
   const keys = await deriveLinkKeys(entry.token);
   const blob = await seal(keys.enc, entry.id, encodePayload(payload));
-  return (await relay.putLink(entry.id, keys.auth, blob)).rev;
+  return (await relay.putLink(entry.id, keys.auth, blob, entry.rev)).rev;
 }
 
 // The hash is what tells one push from the next: the picture itself, the cells

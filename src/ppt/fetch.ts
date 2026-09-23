@@ -42,6 +42,8 @@ export interface FetchOutcome {
   current: number;
   missing: number;
   wrongKey: number;
+  // Local mode only: this computer holds no copy of the link at all.
+  notPasted: number;
   failures: { found: FoundLink; error: unknown }[];
 }
 
@@ -58,7 +60,14 @@ interface Group {
 }
 
 function emptyOutcome(): FetchOutcome {
-  return { batch: [], current: 0, missing: 0, wrongKey: 0, failures: [] };
+  return {
+    batch: [],
+    current: 0,
+    missing: 0,
+    wrongKey: 0,
+    notPasted: 0,
+    failures: [],
+  };
 }
 
 // One derivation per distinct token: a deck can hold the same link on twenty
@@ -173,6 +182,7 @@ function countOmitted(
   if (reason === "deferred") deferred.push(group);
   else if (reason === "unchanged") outcome.current += group.rows.length;
   else if (reason === "missing") outcome.missing += group.rows.length;
+  else if (reason === "notPasted") outcome.notPasted += group.rows.length;
   else outcome.wrongKey += group.rows.length;
 }
 

@@ -57,6 +57,7 @@ const emptySummary: UpdateSummary = {
   current: 0,
   missing: 0,
   wrongKey: 0,
+  notPasted: 0,
   failed: 0,
   sourceChanges: [],
   failures: [],

@@ -5,6 +5,7 @@
 // semantics are on.
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { LOCAL_REV_BASE } from "../src/link/local";
 import { TAG_LINK } from "../src/link/model";
 import { createWorkspace } from "../src/link/workspace";
 import type { FakeRelay } from "./fakerelay";
@@ -111,7 +112,7 @@ describe("revert", () => {
 
     expect(summary).toMatchObject({ reverted: 0, noPrevious: 0, failed: 1 });
     expect(summary.failures).toEqual([
-      "revert Model!B4:F12: the relay no longer holds version 1.",
+      "revert Model!B4:F12: the previous version is no longer available.",
     ]);
     // Nothing was repainted, so the deck still shows what it did before.
     expect([shape().fillImage, tagRev()]).toEqual([AFTER, 2]);
@@ -121,5 +122,19 @@ describe("revert", () => {
   it("says so when there is nothing to revert at all", async () => {
     const summary = await revert.revertLinks([], relay);
     expect(revert.summarizeRevert(summary)).toBe("Nothing to revert");
+  });
+
+  it("counts the first local revision as having no previous version", async () => {
+    const { rows } = await updatedLink();
+    rows[0]!.found.tag.rev = LOCAL_REV_BASE + 1;
+
+    const summary = await revert.revertLinks(rows, relay);
+
+    expect(summary).toEqual({
+      reverted: 0,
+      noPrevious: 1,
+      failed: 0,
+      failures: [],
+    });
   });
 });

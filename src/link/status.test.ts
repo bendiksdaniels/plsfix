@@ -34,6 +34,32 @@ describe("deriveStatus", () => {
   });
 });
 
+describe("deriveStatus in local mode", () => {
+  it("says notPasted when this computer holds no copy", () => {
+    expect(
+      deriveStatus(5, { id: "x", rev: null, pushedAt: null, local: true }),
+    ).toBe("notPasted");
+  });
+  it("says current when the deck already holds something newer than this computer", () => {
+    expect(
+      deriveStatus(2 ** 40 + 5, {
+        id: "x",
+        rev: 2 ** 40 + 3,
+        pushedAt: 1,
+        local: true,
+      }),
+    ).toBe("current");
+  });
+  it("keeps the relay's rules: missing without a rev, any inequality is an update", () => {
+    expect(deriveStatus(5, { id: "x", rev: null, pushedAt: null })).toBe(
+      "missing",
+    );
+    expect(deriveStatus(5, { id: "x", rev: 1, pushedAt: 1 })).toBe(
+      "updateAvailable",
+    );
+  });
+});
+
 describe("assertFresh", () => {
   it("accepts a payload as new as the tag, or newer", () => {
     expect(() =>

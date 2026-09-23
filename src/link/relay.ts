@@ -77,7 +77,14 @@ export interface InboxRow {
 }
 
 export interface RelayApi {
-  putLink(id: string, auth: string, blob: Uint8Array): Promise<{ rev: number }>;
+  putLink(
+    id: string,
+    auth: string,
+    blob: Uint8Array,
+    // The registry's rev before this push. The relay counts its own and ignores
+    // it; the local collector counts on from it (src/link/local.ts).
+    currentRev?: number,
+  ): Promise<{ rev: number }>;
   getLink(
     id: string,
     auth: string,
