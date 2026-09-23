@@ -469,3 +469,16 @@ controller's (12 files, mechanical) and cheaper than a resume.
   `button.innerHTML` paints a detached node from then on: the second arming of "Clean past the data"
   showed no "Click again to confirm". Look the target up at every paint, and test arm -> run -> arm, not
   only arm -> disarm.
+
+## 2026-09-23: a test that waits a fixed number of turns is a flake waiting for load
+
+`src/ppt/pane.audit.test.ts` "reports a relay that is down" passed alone and failed under `npm run check`
+with the toast still empty. Every PowerPoint pane helper waited 12 `setTimeout(0)` turns, while the pane's
+boot (inside `Office.onReady`) and every action await WebCrypto (`hkdf`, `importKey`), which completes on
+Node's thread pool; under the full suite the pool is busy and 12 turns are not enough. Proof before the fix:
+slowing `crypto.subtle.importKey` by 25 ms fails the test every time with the same empty toast. Rules: wait
+for the work itself (`test/ppt-ready.ts`: `trackPptBoot` follows the onReady callback to its end,
+`settlePpt` keeps turning while the busy latch holds, bounded); a flake that "passes in isolation" is a
+timing dependency to reproduce by slowing the slow thing, never a rerun. The Excel pane helpers
+(`test/I.audit.integration.test.ts`, the Excel click-through) still count turns for the boot's key load:
+same shape, not yet seen failing.
