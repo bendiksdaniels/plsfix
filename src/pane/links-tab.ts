@@ -35,8 +35,16 @@ import { armConfirm, type ArmConfirmOptions } from "../ui/confirm";
 import type { Guard } from "../ui/guard";
 import type { Toast } from "../ui/toast";
 import { refreshChartPick, watchSheetChanges } from "./links-charts";
+import {
+  exportCopyLines,
+  installLinksTransport,
+  pendingLinksTransport,
+  pushCopyLines,
+  type LinksTransport,
+} from "./links-transport";
 import { messageRow, renderWorkbookLinks } from "./links-list";
 import {
+  autoPushOffForLocal,
   restoreToggles,
   setTogglesBusy,
   toggleAutoPush,
@@ -52,7 +60,6 @@ const NO_KEY_ERROR = "Generate a link key first (Links > Link key).";
 const NO_SELECTION_ERROR = "Select a link in the list first.";
 // Enough of the key to tell two apart, never enough to pair a deck with.
 const KEY_EDGE = 4;
-
 export interface LinksTabDeps {
   guard: Guard;
   toast: Toast;
@@ -67,6 +74,9 @@ export interface LinksTabDeps {
 // the same state instead of a closure inside a long install().
 interface Tab {
   deps: LinksTabDeps;
+  // Set for real by boot(); every method throws TRANSPORT_LOADING_MESSAGE
+  // until then, so a call site never has to null-check it.
+  transport: LinksTransport;
   list: HTMLTableSectionElement;
   // The two tick boxes and what they need, in the shape links-toggles.ts takes.
   toggles: Toggles;
@@ -107,6 +117,7 @@ export function installLinksTab(deps: LinksTabDeps): {
 function newTab(deps: LinksTabDeps): Tab {
   return {
     deps,
+    transport: pendingLinksTransport(),
     chartPick: element(deps.root, "export-chart-pick"),
     projectSelect: element(deps.root, "link-project"),
     list: element(deps.root, "workbook-links"),
@@ -151,6 +162,7 @@ function wireActions(tab: Tab): void {
   wire(tab, "export-table", () => exportRange(tab, "table"));
   wire(tab, "export-text", () => exportRange(tab, "text"));
   wire(tab, "export-chart", () => exportChart(tab));
+  wire(tab, "copy-for-powerpoint", () => copyForPowerPoint(tab));
   wire(tab, "go-to-source", () => jumpToSource(tab));
   wireConfirm(tab, "remove-link", () => removeSelected(tab));
   // A first key needs no confirming; replacing one that already pairs a
@@ -169,6 +181,12 @@ function wireActions(tab: Tab): void {
   tab.projectSelect.addEventListener("change", () => {
     void guarded(tab, "link-project", () => chooseProject(tab));
   });
+  element<HTMLSelectElement>(tab.deps.root, "link-transport").addEventListener(
+    "change",
+    () => {
+      void guarded(tab, "link-transport", () => changeTransport(tab));
+    },
+  );
 
   // Links are added and sources deleted without the pane hearing about it, so
   // the list is read again whenever the tab comes into view - and a key read
@@ -190,6 +208,14 @@ async function boot(tab: Tab): Promise<void> {
   // Both boxes are told by the workbook, never by what they last showed. The
   // refresh above tells the same story in the table.
   await restoreToggles(tab.toggles);
+  tab.transport = await installLinksTransport({
+    root: tab.deps.root,
+    keyStore: tab.deps.keyStore,
+    toast: tab.deps.toast,
+  });
+  // After restoreToggles, so the check below sees what the workbook really
+  // saved, not the box's unchecked HTML default.
+  if (tab.transport.mode() === "local") await autoPushOffForLocal(tab.toggles);
   await touchLinks(tab);
 }
 
@@ -316,6 +342,13 @@ function sender(kind: ExportKind): typeof exportSelection {
 }
 
 async function exportRange(tab: Tab, kind: ExportKind): Promise<string> {
+  if (tab.transport.mode() === "local") {
+    return tab.transport.copy(async (ws, relay) => {
+      const result = await sender(kind)(ws, relay);
+      await refresh(tab);
+      return result;
+    }, exportCopyLines());
+  }
   const result = await sender(kind)(requireWorkspace(tab), tab.deps.relay);
   await refresh(tab);
   return sentLine(result);
@@ -330,6 +363,13 @@ function sentLine(result: { label: string; note?: string }): string {
 
 async function exportChart(tab: Tab): Promise<string> {
   const pick = tab.chartPick.value || null;
+  if (tab.transport.mode() === "local") {
+    return tab.transport.copy(async (ws, relay) => {
+      const result = await exportActiveChart(ws, relay, pick);
+      await refresh(tab);
+      return result;
+    }, exportCopyLines());
+  }
   const result = await exportActiveChart(
     requireWorkspace(tab),
     tab.deps.relay,
@@ -339,6 +379,20 @@ async function exportChart(tab: Tab): Promise<string> {
   return sentLine(result);
 }
 
+async function copyForPowerPoint(tab: Tab): Promise<string> {
+  return tab.transport.retryCopy();
+}
+
+async function changeTransport(tab: Tab): Promise<string> {
+  const select = element<HTMLSelectElement>(tab.deps.root, "link-transport");
+  const mode = select.value === "relay" ? "relay" : "local";
+  await tab.transport.setMode(mode);
+  if (mode === "local") await autoPushOffForLocal(tab.toggles);
+  return mode === "local"
+    ? "Links now travel by copy and paste on this computer."
+    : "Links now travel through the relay.";
+}
+
 // pushLinks reports rather than throws, so a partial failure arrives as a
 // summary: the guard toasts the counts, and the reasons are re-shown here with
 // a "Copy details" button. Both happen before a paint, so only one is seen.
@@ -346,7 +400,18 @@ async function push(tab: Tab, action: string, all: boolean): Promise<void> {
   const failures: string[] = [];
   let line = "";
   await guarded(tab, action, async () => {
+    // Computed before copy() starts the clipboard write, never after: a
+    // throw once that write is under way would leave it unresolved.
     const ids = all ? shownPushIds(tab) : [...requireSelection(tab)];
+    if (tab.transport.mode() === "local") {
+      line = await tab.transport.copy(async (ws, relay) => {
+        const summary = await pushLinks(ids, relay, { announce: ws });
+        failures.push(...summary.failures);
+        await refresh(tab);
+        return summary;
+      }, pushCopyLines());
+      return line;
+    }
     const summary = await pushLinks(ids, tab.deps.relay);
     failures.push(...summary.failures);
     line = summarize(summary);

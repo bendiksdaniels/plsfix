@@ -319,7 +319,14 @@ const links: HelpCopy = {
         "Sends the selected range as a table that stays editable in PowerPoint.",
       "export-text":
         "Sends one cell's text as a text box that keeps its place, size and font when it refreshes. Up to 500 characters; the slide decides the look.",
+      "copy-for-powerpoint":
+        "Copies what the last export or copy prepared, when the first try could not reach the clipboard.",
     },
+  },
+  "link-transport": {
+    about:
+      "How links reach PowerPoint on this computer: copy and paste with no relay, or through the relay as before.",
+    buttons: {},
   },
   "links-heading": {
     about:

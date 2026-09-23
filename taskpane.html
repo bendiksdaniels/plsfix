@@ -1655,6 +1655,19 @@
               >
             </button>
           </div>
+          <div id="copy-ready" class="copy-ready" hidden>
+            <p id="copy-ready-text" class="hint"></p>
+            <button id="copy-for-powerpoint" type="button">
+              Copy for PowerPoint
+            </button>
+            <textarea
+              id="copy-manual"
+              class="copy-manual"
+              readonly
+              hidden
+              aria-label="The copy for PowerPoint, to select and copy by hand"
+            ></textarea>
+          </div>
         </section>
 
         <section aria-labelledby="links-heading">
@@ -1701,7 +1714,11 @@
             <button id="go-to-source" type="button">Go to source</button>
             <button id="remove-link" type="button">Remove link</button>
           </div>
-          <label class="toggle-row" for="links-autopush">
+          <label
+            id="links-autopush-row"
+            class="toggle-row"
+            for="links-autopush"
+          >
             <input type="checkbox" id="links-autopush" />
             <span
               ><strong>Auto-push on edit</strong
@@ -1727,7 +1744,31 @@
           </p>
         </section>
 
-        <section aria-labelledby="linkkey-heading">
+        <section aria-labelledby="transport-heading" data-help="link-transport">
+          <div class="section-heading compact">
+            <div>
+              <p class="kicker">HOW LINKS REACH POWERPOINT</p>
+              <h2 id="transport-heading">Transport</h2>
+            </div>
+          </div>
+          <label class="key-label" for="link-transport"
+            >Links travel
+            <select id="link-transport">
+              <option value="local">Copy and paste on this computer</option>
+              <option value="relay">Through the relay</option>
+            </select>
+          </label>
+          <p class="hint" id="transport-local-hint">
+            Nothing leaves this computer: export or copy here, then paste in
+            PowerPoint's pls,fix pane, Inbox tab.
+          </p>
+          <p class="hint" id="transport-relay-hint" hidden>
+            Pushes go to the relay beside this pane; PowerPoint updates with one
+            click once the link key is pasted there.
+          </p>
+        </section>
+
+        <section id="link-key-section" aria-labelledby="linkkey-heading">
           <div class="section-heading">
             <div>
               <p class="kicker">PAIRING</p>

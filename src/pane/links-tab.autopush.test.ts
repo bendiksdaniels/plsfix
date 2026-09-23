@@ -8,6 +8,7 @@ import { join } from "node:path";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { listWorkbookLinks, restoreAutoPush, setAutoPush } from "../excel";
 import type { RelayApi } from "../link/relay";
+import { TRANSPORT_STORAGE_KEY } from "../link/transport-setting";
 import type { KeyStore } from "../link/workspace";
 import type { Guard } from "../ui/guard";
 import type { Toast, ToastKind } from "../ui/toast";
@@ -48,6 +49,12 @@ function harness(): Harness {
   const toasts: { message: string; kind?: ToastKind }[] = [];
   const pending: Promise<void>[] = [];
   const stored = new Map<string, string>();
+  // This whole file predates local mode, where auto-push cannot stay on
+  // (it would need the relay to write the clipboard on an edit): pin the
+  // transport the way a device already holding a link key would read it on
+  // its own (src/link/transport-setting.ts), so every test here keeps
+  // exercising the watcher itself, not the local-mode switch-off.
+  stored.set(TRANSPORT_STORAGE_KEY, "relay");
   return {
     messages,
     errors,

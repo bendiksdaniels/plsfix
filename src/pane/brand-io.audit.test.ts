@@ -131,7 +131,7 @@ describe("palette export", () => {
 
     expect(copy).toHaveBeenCalledWith("copy");
     expect(toastText()).toBe("Palette JSON copied");
-    expect(document.querySelector("textarea")).toBeNull();
+    expect(document.querySelector("textarea:not(#copy-manual)")).toBeNull();
   });
 
   it("says the copy failed rather than throwing out of the handler", async () => {
@@ -148,7 +148,7 @@ describe("palette export", () => {
     await settle();
 
     expect(toastText()).toBe("Copy failed");
-    expect(document.querySelector("textarea")).toBeNull();
+    expect(document.querySelector("textarea:not(#copy-manual)")).toBeNull();
   });
 });
 

@@ -19,6 +19,7 @@ import {
   type WorkbookLinkRow,
 } from "../excel";
 import type { RelayApi } from "../link/relay";
+import { TRANSPORT_STORAGE_KEY } from "../link/transport-setting";
 import type { KeyStore } from "../link/workspace";
 import type { Guard } from "../ui/guard";
 import type { Toast, ToastKind } from "../ui/toast";
@@ -63,6 +64,10 @@ function harness(): Harness {
   const toasts: { message: string; kind?: ToastKind }[] = [];
   const pending: Promise<void>[] = [];
   const stored = new Map<string, string>();
+  // Every test in this file predates local mode and expects push/export to
+  // reach h.relay: pin that transport the way a device already holding a
+  // link key would read it on its own (src/link/transport-setting.ts).
+  stored.set(TRANSPORT_STORAGE_KEY, "relay");
   return {
     messages,
     errors,

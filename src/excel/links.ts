@@ -34,7 +34,7 @@ import {
 import type { ExportResult } from "./link-export";
 import { renderAnchored, renderSource } from "./link-render";
 import { exclusive } from "./link-lock";
-import { publish, pushPayload, type NewLink } from "./link-record";
+import { announce, publish, pushPayload, type NewLink } from "./link-record";
 
 // The one relay refusal a modeller can act on: the sealed export is past the
 // relay's body limit (413), so a smaller range is the way out.
@@ -56,6 +56,12 @@ export interface PushSummary {
   // One "<label>: <reason>" per failed push, so the pane can say why rather
   // than only how many.
   failures: string[];
+}
+
+export interface PushOptions {
+  // Local mode: also post each pushed link's inbox row, sealed with this
+  // workspace, so a deck that does not hold the link yet can insert it.
+  announce?: Workspace;
 }
 
 // The same guard formatSelectedChart uses: the hosted office.js always defines
@@ -196,8 +202,9 @@ export async function listWorkbookLinks(): Promise<WorkbookLinkRow[]> {
 export async function pushLinks(
   ids: string[] | "all",
   relay: RelayApi,
+  options: PushOptions = {},
 ): Promise<PushSummary> {
-  return exclusive("push", () => pushRegistry(ids, relay));
+  return exclusive("push", () => pushRegistry(ids, relay, options));
 }
 
 // A push is a report, not an assertion: a source that is gone and a relay that
@@ -207,6 +214,7 @@ export async function pushLinks(
 export async function pushRegistry(
   ids: string[] | "all",
   relay: RelayApi,
+  options: PushOptions = {},
 ): Promise<PushSummary> {
   const workbook = await workbookName();
   return Excel.run(async (context) => {
@@ -230,7 +238,15 @@ export async function pushRegistry(
         summary.missing += 1;
         continue;
       }
-      await pushOne(context, entry, resolved, workbook, relay, summary);
+      await pushOne(
+        context,
+        entry,
+        resolved,
+        workbook,
+        relay,
+        summary,
+        options,
+      );
     }
     writeRegistry(context, registry);
     await context.sync();
@@ -247,12 +263,14 @@ async function pushOne(
   workbook: string,
   relay: RelayApi,
   summary: PushSummary,
+  options: PushOptions,
 ): Promise<void> {
   try {
     const render = await renderSource(context, resolved);
     const src = sourceOf(workbook, entry.anchor, resolved);
     entry.rev = await pushPayload(entry, src, render, relay);
     entry.lastPushedAt = new Date().toISOString();
+    if (options.announce) await announce(entry, src, options.announce, relay);
     summary.pushed += 1;
   } catch (error) {
     // A 413 is the one relay refusal a modeller can act on: the sealed

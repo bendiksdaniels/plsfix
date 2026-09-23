@@ -67,6 +67,22 @@ export function notify(toggles: Toggles): (message: string) => void {
   };
 }
 
+// Local mode cannot write the clipboard on an edit, so auto-push stays off in
+// it: switched off through the same adapter a click uses, and said only when it
+// was on, so a local boot that never had auto-push says nothing.
+export async function autoPushOffForLocal(toggles: Toggles): Promise<void> {
+  if (!toggles.autopush.checked) return;
+  toggles.autopush.checked = false;
+  try {
+    await setAutoPush(false, toggles.relay, () => undefined);
+  } catch {
+    // The box reads off either way; the workbook flag is best effort.
+  }
+  toggles.toast.show(
+    "Auto-push needs the relay: it is off in copy and paste mode.",
+  );
+}
+
 export async function toggleAutoPush(toggles: Toggles): Promise<string> {
   const on = toggles.autopush.checked;
   try {
