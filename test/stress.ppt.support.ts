@@ -164,7 +164,12 @@ export async function waiting(): Promise<InboxItem> {
 // selected, new relay, and the link key already paired unless told
 // otherwise (an unpaired boot still builds a workspace of its own, for a
 // test that pairs partway through - it is just never handed to the pane).
-export async function bootPane(paired = true): Promise<void> {
+// prepare runs once the fake deck and relay exist and before the pane boots:
+// the place to spy on the relay or plant a link a boot must meet.
+export async function bootPane(
+  paired = true,
+  prepare?: () => Promise<void> | void,
+): Promise<void> {
   vi.resetModules();
   uninstallFakePpt();
   relay = new FakeRelay();
@@ -179,6 +184,7 @@ export async function bootPane(paired = true): Promise<void> {
   presentation = host.presentation;
   helpers = host.helpers;
   helpers.selectSlide(presentation.slides[0]!.id);
+  await prepare?.();
   const booted = trackPptBoot();
   await import("../src/ppt/main");
   await booted;
