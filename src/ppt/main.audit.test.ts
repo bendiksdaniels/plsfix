@@ -30,6 +30,7 @@ import {
   type FakePptHelpers,
   type FakePresentation,
 } from "../../test/fakeppt";
+import { settlePpt, trackPptBoot } from "../../test/ppt-ready";
 import type * as RelayModule from "../link/relay";
 
 enableStrictLoadSemantics();
@@ -137,7 +138,9 @@ async function boot(): Promise<void> {
   presentation = host.presentation;
   helpers = host.helpers;
   helpers.selectSlide(presentation.slides[0]!.id);
+  const booted = trackPptBoot();
   await import("./main");
+  await booted;
   await settle();
 }
 
@@ -154,9 +157,7 @@ function select(id: string): HTMLSelectElement {
 }
 
 async function settle(rounds = 12): Promise<void> {
-  for (let round = 0; round < rounds; round += 1) {
-    await new Promise((resolve) => setTimeout(resolve, 0));
-  }
+  await settlePpt(rounds);
 }
 
 function toastText(): string {
