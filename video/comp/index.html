@@ -1,0 +1,42 @@
+<!doctype html>
+<!-- index.html: the video's stage, 1920 x 1080 CSS px. Scripts load in order: the clock, the
+     motion helpers, the manifest, the components, then the scenes bottom layer first. Every
+     visible property is set by __seek(t); nothing moves on its own. -->
+<html lang="lv">
+<head>
+<meta charset="utf-8">
+<title>pls,fix video</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="stage.css">
+</head>
+<body>
+<div id="stage"></div>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+<filter id="mb0" x="-8%" y="-8%" width="116%" height="116%"><feGaussianBlur stdDeviation="0 0"/></filter>
+<filter id="mb1" x="-8%" y="-8%" width="116%" height="116%"><feGaussianBlur stdDeviation="0 0"/></filter>
+<filter id="mb2" x="-8%" y="-8%" width="116%" height="116%"><feGaussianBlur stdDeviation="0 0"/></filter>
+</defs></svg>
+<script src="js/clock.js"></script>
+<script src="js/ease.js"></script>
+<script src="js/el.js"></script>
+<script src="js/timing.js"></script>
+<script src="js/shots.js"></script>
+<script src="js/ui-window.js"></script>
+<script src="js/ui-pointer.js"></script>
+<script src="js/ui-type.js"></script>
+<script src="js/ui-mark.js"></script>
+<script src="js/ui-mail.js"></script>
+<script src="js/cam.js"></script>
+<script src="js/scenes/backdrop.js"></script>
+<script src="js/scenes/intro.js"></script>
+<script src="js/scenes/hero-beats.js"></script>
+<script src="js/scenes/hero.js"></script>
+<script src="js/scenes/tools-beats.js"></script>
+<script src="js/scenes/tools.js"></script>
+<script src="js/scenes/ppt-beats.js"></script>
+<script src="js/scenes/ppt.js"></script>
+<script src="js/scenes/outro.js"></script>
+<script src="js/scenes/curtain.js"></script>
+<script>Stage.boot();</script>
+</body>
+</html>

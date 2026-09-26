@@ -25,3 +25,6 @@ manual/target/
 
 # self-hosting env (deploy/.env.example is the template)
 deploy/.env
+# video/: the motion-graphic video builder
+video/build
+video/target
