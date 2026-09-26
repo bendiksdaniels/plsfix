@@ -1,10 +1,7 @@
-// Attacks: Excel for the web's UnsupportedOperation refusal of a chart's
-// cosmetic surface (chart.format.font, roundedCorners) on the tornado and
-// football-field paths (ledger item 9, found 26.09 capturing the product
-// video: "This operation is not permitted for the current object.", the
-// chart landed over the data with overlapping labels). Reproduced with the
-// existing chartSurfaceUnsupported fake option, the same one the waterfall's
-// tolerated batch is already proven against in test/slice-c.audit.
+// Attacks: Excel for the web's refusal of a chart's cosmetic surface
+// (chart.format.font, roundedCorners) on the tornado and football-field
+// paths - both UnsupportedOperation (chartex charts) and InvalidOperation
+// ("...not permitted for the current object.", the code public traces show).
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
@@ -82,18 +79,18 @@ describe("the tornado when Excel for the web refuses the chart surface", () => {
     const refused = workbook.charts[0];
 
     expect({ left: refused?.left, top: refused?.top }).toEqual(cleanCorner);
-    // Never left at Excel's own drop point, which sits over the model.
-    expect(refused?.left).not.toBe(0);
+    // The measured corner right of the helper block, never Excel's own drop
+    // point at the origin, which sits over the model.
+    expect(refused).toMatchObject({ left: 7 * 64, top: 0 });
   });
 
-  it("answers the normal sentence and tells the user styling could not land", async () => {
+  it("answers the normal sentence with no trace of the tolerated refusal", async () => {
     await boot({ chartSurfaceUnsupported: true });
     seedDrivers();
 
     const message = await smt.insertTornado();
 
-    expect(message).toContain("Tornado added: 2 drivers, base 101.3");
-    expect(message).toMatch(/styl/i);
+    expect(message).toBe("Tornado added: 2 drivers, base 101.3");
   });
 
   it("keeps every branding step that is not the refused surface", async () => {
@@ -131,7 +128,7 @@ describe("the tornado when Excel for the web refuses the chart surface", () => {
       "tornado: cells to the right of the selection are not empty",
     );
     expect(workbook.charts).toHaveLength(1);
-    expect(workbook.charts[0]?.left).not.toBe(0);
+    expect(workbook.charts[0]).toMatchObject({ left: 7 * 64, top: 0 });
   });
 });
 
@@ -149,17 +146,16 @@ describe("the football field when Excel for the web refuses the chart surface", 
     const refused = workbook.charts[0];
 
     expect({ left: refused?.left, top: refused?.top }).toEqual(cleanCorner);
-    expect(refused?.left).not.toBe(0);
+    expect(refused).toMatchObject({ left: 7 * 64, top: 0 });
   });
 
-  it("answers the normal sentence and tells the user styling could not land", async () => {
+  it("answers the normal sentence with no trace of the tolerated refusal", async () => {
     await boot({ chartSurfaceUnsupported: true });
     seedMethods();
 
     const message = await smt.insertFootballField();
 
-    expect(message).toContain("Football field added: 2 ranges");
-    expect(message).toMatch(/styl/i);
+    expect(message).toBe("Football field added: 2 ranges");
   });
 
   it("keeps every branding step that is not the refused surface", async () => {
@@ -192,6 +188,46 @@ describe("the football field when Excel for the web refuses the chart surface", 
       "Football field: cells to the right of the selection are not empty",
     );
     expect(workbook.charts).toHaveLength(1);
-    expect(workbook.charts[0]?.left).not.toBe(0);
+    expect(workbook.charts[0]).toMatchObject({ left: 7 * 64, top: 0 });
+  });
+});
+
+// The ledger's own capture showed the web naming a different code than the
+// chartex refusal the fake defaults to: InvalidOperation and "This operation
+// is not permitted for the current object.", via the opt-in override.
+describe("a surface refusal coded InvalidOperation instead of UnsupportedOperation", () => {
+  function bootInvalidOperation(): Promise<void> {
+    return boot({
+      chartSurfaceUnsupported: true,
+      chartSurfaceRefusal: {
+        code: Excel.ErrorCodes.invalidOperation,
+        message: "This operation is not permitted for the current object.",
+      },
+    });
+  }
+
+  it("still places the tornado beside the data with a clean toast", async () => {
+    await bootInvalidOperation();
+    seedDrivers();
+
+    const message = await smt.insertTornado();
+
+    expect(message).toBe("Tornado added: 2 drivers, base 101.3");
+    expect(workbook.charts[0]).toMatchObject({ left: 7 * 64, top: 0 });
+  });
+
+  it("still brands a bar chart through the chart-format restyle", async () => {
+    await bootInvalidOperation();
+    seedDrivers();
+    await smt.insertTornado();
+    const chart = workbook.charts[0];
+    if (!chart) throw new Error("no chart");
+    helpers.setActiveChart(chart);
+
+    await smt.formatSelectedChart();
+
+    expect(chart.legend.position).toBe("Bottom");
+    expect(chart.font).toEqual({});
+    expect(chart.roundedCorners).toBeUndefined();
   });
 });

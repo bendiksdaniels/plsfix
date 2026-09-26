@@ -739,6 +739,14 @@ export interface FakeHostOptions {
   strictLoad?: boolean;
   /** Excel for the web: chart font and corners rejected on chartex charts. */
   chartSurfaceUnsupported?: boolean;
+  /**
+   * Overrides the code/message chartSurfaceUnsupported's refusal queues.
+   * Default: UnsupportedOperation / "This operation is not implemented."
+   * (chartex charts). Public web traces show InvalidOperation / "This
+   * operation is not permitted for the current object." on a bar chart's
+   * surface instead.
+   */
+  chartSurfaceRefusal?: { code: string; message: string };
   /** Excel's application-level number separators (ExcelApi 1.11). */
   separators?: { decimal: string; thousands: string };
 }
@@ -1528,6 +1536,7 @@ class FakeRuntime {
   maxCells: number;
   strict: StrictLoads | null;
   chartSurfaceUnsupported: boolean;
+  chartSurfaceRefusal: { code: string; message: string };
   separators: { decimal: string; thousands: string };
 
   constructor(
@@ -1536,6 +1545,10 @@ class FakeRuntime {
   ) {
     this.rewriteCurrencyFormats = options.rewriteCurrencyFormats ?? false;
     this.chartSurfaceUnsupported = options.chartSurfaceUnsupported ?? false;
+    this.chartSurfaceRefusal = options.chartSurfaceRefusal ?? {
+      code: ErrorCodes.unsupportedOperation,
+      message: "This operation is not implemented.",
+    };
     this.separators = options.separators ?? { decimal: ".", thousands: "," };
     this.maxCells = options.maxCells ?? 250_000;
     this.supported = options.isSetSupported ?? (() => true);
@@ -2818,17 +2831,16 @@ class ChartProxy {
 
   // With chartSurfaceUnsupported the font and the corners are refused the way
   // Excel for the web refuses them on chartex charts: queued, and rejecting
-  // the sync that carries them with UnsupportedOperation.
+  // the sync that carries them with the runtime's chartSurfaceRefusal code
+  // and message (UnsupportedOperation / "This operation is not implemented."
+  // unless a test overrides it).
   get format() {
     const record = this.record;
     const refuse = this.runtime.chartSurfaceUnsupported
-      ? () =>
-          this.ctx.queueError(
-            hostError(
-              ErrorCodes.unsupportedOperation,
-              "This operation is not implemented.",
-            ),
-          )
+      ? () => {
+          const { code, message } = this.runtime.chartSurfaceRefusal;
+          this.ctx.queueError(hostError(code, message));
+        }
       : null;
     return {
       font: refuse

@@ -1,14 +1,7 @@
-// Attacks: a chart insert whose helper block just barely fits beside the
-// selection (requireRoomBeside passes) but whose OWN width leaves no
-// candidate at all for placeChartBeside - not "blocked by another chart"
-// (already covered: "a sheet with no free block at all" in
-// slice-c.audit.integration.test.ts, which still finds a spot via
-// dropBelow) but every one of candidateCorners's three slots filtered out
-// by SHEET_COLUMNS before readSlots ever runs. The pass-1 lens's sheet-edge
-// case (column XFD) for the placement side of the tornado and the football
-// field, plus the pass-1 "empty sheet" case: readPlan's own used-range
-// fallback (chart-place.ts line ~108), which every OTHER placement test
-// leaves untouched because they all seed a table before placing a chart.
+// Attacks: a chart insert whose helper block sits at the sheet's right edge
+// (column XFD), where the "below" placement corners must pull back to fit
+// the grid instead of leaving the chart on the data; and placeChartBeside's
+// own empty-sheet fallback, which every other placement test leaves untouched.
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
@@ -19,6 +12,7 @@ import {
   uninstallFakeHost,
 } from "../fakehost";
 import type * as ExcelModule from "../../src/excel";
+import { overlaps } from "../../src/layout";
 
 enableStrictLoadSemantics();
 
@@ -38,11 +32,19 @@ beforeEach(async () => {
 // Columns XEY, XEZ, XFA (0-indexed 16378-16380): requireRoomBeside allows the
 // three-column helper block right after them (XFB:XFD, 0-indexed
 // 16381-16383, the sheet's last three columns) with room to spare of exactly
-// zero. The default chart is 480pt wide over 64pt columns, 8 columns, so
-// none of the three placement candidates - right of the block, below it, or
-// below the sheet - has room for it from column XFB onward.
+// zero. The default chart is 480pt wide over 64pt columns, 8 columns, so the
+// right-of-anchor corner still has no room from column XFB onward - but the
+// below-anchor corner now pulls its column back to 16376 (16384 - 8) to fit,
+// landing at row 4 (below the 3-row block), left 16376*64, top 4*15.
+const SELECTION_BOX = {
+  left: 16378 * 64,
+  top: 0,
+  width: 3 * 64,
+  height: 2 * 15,
+};
+
 describe("a helper block that fills to the sheet's last column", () => {
-  it("tornado: says Excel placed it instead of throwing or misplacing", async () => {
+  it("tornado: pulls the placement back to fit, clear of the selection", async () => {
     helpers.seed("Model!XEY1", [
       ["Volume", 80, 120],
       ["Price", 90, 110],
@@ -51,17 +53,26 @@ describe("a helper block that fills to the sheet's last column", () => {
 
     const message = await smt.insertTornado();
 
-    expect(message).toBe("Tornado added: 2 drivers, base 100; Excel placed it");
+    expect(message).toBe("Tornado added: 2 drivers, base 100");
     expect(workbook.charts).toHaveLength(1);
-    // Never moved: chart.left/top are only ever written on a successful
-    // placement, so an unplaced chart still reads the fake's own default.
-    expect(workbook.charts[0]?.left).toBeUndefined();
-    // The helper block itself still landed: only the CHART's placement was
-    // impossible, not the write beside the selection.
+    const chart = workbook.charts[0]!;
+    expect(chart).toMatchObject({ left: 16376 * 64, top: 4 * 15 });
+    expect(
+      overlaps(
+        {
+          left: chart.left ?? 0,
+          top: chart.top ?? 0,
+          width: chart.width,
+          height: chart.height,
+        },
+        SELECTION_BOX,
+      ),
+    ).toBe(false);
+    // The helper block itself still landed right of the selection.
     expect(helpers.value("Model!XFB1")).toBe("Driver");
   });
 
-  it("football field: says Excel placed it instead of throwing or misplacing", async () => {
+  it("football field: pulls the placement back to fit, clear of the selection", async () => {
     helpers.seed("Model!XEY1", [
       ["DCF", 90, 130],
       ["Comps", 100, 120],
@@ -70,9 +81,21 @@ describe("a helper block that fills to the sheet's last column", () => {
 
     const message = await smt.insertFootballField();
 
-    expect(message).toBe("Football field added: 2 ranges; Excel placed it");
+    expect(message).toBe("Football field added: 2 ranges");
     expect(workbook.charts).toHaveLength(1);
-    expect(workbook.charts[0]?.left).toBeUndefined();
+    const chart = workbook.charts[0]!;
+    expect(chart).toMatchObject({ left: 16376 * 64, top: 4 * 15 });
+    expect(
+      overlaps(
+        {
+          left: chart.left ?? 0,
+          top: chart.top ?? 0,
+          width: chart.width,
+          height: chart.height,
+        },
+        SELECTION_BOX,
+      ),
+    ).toBe(false);
     expect(helpers.value("Model!XFB1")).toBe("Method");
   });
 });

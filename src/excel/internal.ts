@@ -363,17 +363,18 @@ export function styleChartLabels(
   labels.format.font.color = activeTheme().formulaFont;
 }
 
-// Runs the queued batch; a rejection carrying the given error code is
+// Runs the queued batch; a rejection carrying one of the given error codes is
 // swallowed and reported as false, anything else is rethrown.
 export async function syncTolerating(
   context: Excel.RequestContext,
-  code: string,
+  ...codes: string[]
 ): Promise<boolean> {
   try {
     await context.sync();
     return true;
   } catch (error) {
-    if ((error as { code?: string }).code === code) return false;
+    const code = (error as { code?: string }).code;
+    if (typeof code === "string" && codes.includes(code)) return false;
     throw error;
   }
 }

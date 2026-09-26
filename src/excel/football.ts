@@ -23,7 +23,6 @@ import {
   hostSupports,
   selectedSingleRange,
   styleChartShell,
-  styleChartSurface,
   syncTolerating,
   withinCap,
 } from "./internal";
@@ -45,11 +44,12 @@ const EXTRA_COLUMNS_NOTE = "; only label, low and high are used";
 // them the chart is still a football field, drawn in Excel's own row order
 // with the host's own axis labels, which is worth saying out loud.
 const BASIC_AXES_NOTE = "; plain axes on this build";
-// Excel for the web refuses chart.format.font and roundedCorners on this
-// chart the same way it refuses them on a chartex chart (lessons 29.08); the
-// tolerated batch below keeps the chart and its placement when that happens,
-// and this is the only visible trace left for the modeller.
-const SURFACE_NOTE = "; some styling could not be applied";
+// Excel for the web refuses chart.format.font and roundedCorners outright on
+// a chartex chart (the waterfall), and possibly on this one too under a
+// different code: public traces show InvalidOperation and "This operation is
+// not permitted for the current object." on a bar chart's surface. Either way
+// it is cosmetic, so the tolerated batch below keeps the chart, its placement
+// and its title when that happens, and stays silent about it.
 
 const FOOTBALL_RULES: TripleRules = {
   minRows: FOOTBALL_MIN_ROWS,
@@ -62,10 +62,11 @@ const FOOTBALL_RULES: TripleRules = {
 };
 
 function styleFootball(chart: Excel.Chart, format: string): void {
-  // The surface stays out of this batch: Excel for the web refuses the font
-  // and the corners on this chart, and that refusal must not take the rest
-  // of the styling, the chart itself or its placement down with it. Applied
-  // afterwards, in its own tolerated batch (runFootballField).
+  // The surface stays out of this batch: Excel for the web may refuse the
+  // font and the corners on this chart the way it refuses them outright on a
+  // chartex chart, and that refusal must not take the rest of the styling,
+  // the chart itself or its placement down with it. Applied afterwards,
+  // alongside the title again, in its own tolerated batch (runFootballField).
   styleChartShell(chart, FOOTBALL_TITLE, true, false);
   chart.legend.visible = false;
 
@@ -90,18 +91,12 @@ function swapNote(swaps: number): string {
   return `; ${String(swaps)} ${rows} had low above high, swapped`;
 }
 
-function notes(
-  swaps: number,
-  columnCount: number,
-  placed: boolean,
-  surfaced: boolean,
-): string {
+function notes(swaps: number, columnCount: number, placed: boolean): string {
   return [
     swapNote(swaps),
     columnCount > CHART_BLOCK_COLUMNS ? EXTRA_COLUMNS_NOTE : "",
     hostSupports("1.7") && hostSupports("1.8") ? "" : BASIC_AXES_NOTE,
     placed ? "" : UNPLACED_NOTE,
-    surfaced ? "" : SURFACE_NOTE,
   ].join("");
 }
 
@@ -151,14 +146,19 @@ async function runFootballField(
   await context.sync();
 
   // Its own batch, tolerated the way the waterfall's own surface is: a
-  // refusal here must never undo the placement that already landed.
-  styleChartSurface(chart);
-  const surfaced = await syncTolerating(
+  // refusal here must never undo the placement that already landed, and
+  // stays silent - the surface is cosmetic. The title rides in the same
+  // batch, written after the surface (styleChartShell's own order), so a
+  // host that spreads the chart-area font to every text element cannot
+  // leave the title behind it.
+  styleChartShell(chart, FOOTBALL_TITLE, true);
+  await syncTolerating(
     context,
     Excel.ErrorCodes.unsupportedOperation,
+    Excel.ErrorCodes.invalidOperation,
   );
 
-  const tail = notes(field.swaps, range.columnCount, placed, surfaced);
+  const tail = notes(field.swaps, range.columnCount, placed);
   return `${STAGE} added: ${String(rows.length)} ranges${tail}`;
 }
 

@@ -58,14 +58,23 @@ function boxOf(range: Excel.Range): Box {
 }
 
 // Right of the anchor, below the anchor, below everything the sheet uses - each
-// one cell clear of what it sits beside, and dropped when it would run off the
-// grid.
+// one cell clear of what it sits beside. The right-of corner is dropped when
+// it would run off the grid; the two below corners keep the anchor's own
+// column, pulled left just enough for the chart's own width to still fit
+// before the sheet's last column - never past 0 - so a selection against the
+// right edge still gets a spot below it instead of every corner filtering out
+// and the chart staying wherever Excel dropped it, over the very cells just
+// selected.
 function candidateCorners(
   anchor: Excel.Range,
   sheetBottom: number,
   rows: number,
   columns: number,
 ): Corner[] {
+  const belowColumn = Math.max(
+    0,
+    Math.min(anchor.columnIndex, SHEET_COLUMNS - columns),
+  );
   return [
     {
       row: anchor.rowIndex,
@@ -73,9 +82,9 @@ function candidateCorners(
     },
     {
       row: anchor.rowIndex + anchor.rowCount + GAP_ROWS,
-      column: anchor.columnIndex,
+      column: belowColumn,
     },
-    { row: sheetBottom + GAP_ROWS, column: anchor.columnIndex },
+    { row: sheetBottom + GAP_ROWS, column: belowColumn },
   ].filter(
     (corner) =>
       corner.row + rows <= SHEET_ROWS &&

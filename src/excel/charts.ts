@@ -146,7 +146,11 @@ export async function insertWaterfall(): Promise<string> {
     // value alone, so losing the batch loses nothing that shows.
     styleChartSurface(chart);
     styleChartLabels(chart.dataLabels, null);
-    await syncTolerating(context, Excel.ErrorCodes.unsupportedOperation);
+    await syncTolerating(
+      context,
+      Excel.ErrorCodes.unsupportedOperation,
+      Excel.ErrorCodes.invalidOperation,
+    );
 
     // Totals, rises and falls branded by position and sign (chart-colors.ts),
     // the same rule a slide follows when it draws this bridge as shapes.
@@ -231,7 +235,11 @@ export async function formatSelectedChart(): Promise<void> {
     // Its own batch, tolerated the way the waterfall's own surface is.
     styleChartSurface(chart);
     applySeriesLeaderLines(chart, type);
-    await syncTolerating(context, Excel.ErrorCodes.unsupportedOperation);
+    await syncTolerating(
+      context,
+      Excel.ErrorCodes.unsupportedOperation,
+      Excel.ErrorCodes.invalidOperation,
+    );
   });
 }
 
