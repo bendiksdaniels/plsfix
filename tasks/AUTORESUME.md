@@ -8,6 +8,12 @@ green for v2.8.24 and v2.9.0 and running for v2.9.1 at hand-over, manual docx v2
 vitest, zero skipped, cargo green, sweep 0/193, ux 0/72, `npm run ux:clipboard` PASS), no worktree, no branch.
 The 23.09 sections below: local links (this evening) and the click-through (this morning).
 
+9. **Tornado from selection fails on Excel for the web** (found 26.09 while capturing the video, pane
+   v2.9.001, demo workbook): the toast read "This operation is not permitted for the current object.", the
+   chart that did land sat over the data with overlapping labels. The video shows the waterfall instead.
+   Reproduce in the web rig, then on the desktop with his grant.
+10. **Video 26.09**: `video/` builds `~/Desktop/pls,fix video.mp4` (87,5 s, every frame real Office for the
+   web on the demo files); `cd video && cargo run --release -- all`, see `video/README.md`.
 8. **Real-Office pass of local links** (Daniel's grant, or his own two minutes on the Mac): the rows in
    `tasks/launch-check.md` "local links": export one range, paste in PowerPoint's Inbox box, insert; change it,
    Copy all, paste, the deck updates; paste onto a slide gives the one sentence; note whether the Copy for
