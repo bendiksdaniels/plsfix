@@ -54,11 +54,10 @@ async fn a_push_past_i64_max_revisions_is_refused_not_a_panic() {
     let app = routes(state);
 
     let (status, body) = call(&app, "PUT", &format!("/api/links/{ID}"), Some(AUTH), b"new").await;
-    assert_ne!(
-        status,
-        StatusCode::INTERNAL_SERVER_ERROR,
-        "a revision at i64::MAX must be a clean refusal, not the generic store error a panic leaves behind: {body}"
-    );
+    // The same refusal shape a full store already answers with - never the
+    // generic store error a caught panic would have left behind.
+    assert_eq!(status, StatusCode::INSUFFICIENT_STORAGE, "{body}");
+    assert_eq!(body, r#"{"error":"storage full"}"#);
 
     let _ = std::fs::remove_file(&path);
     let _ = std::fs::remove_file(format!("{}-wal", path.display()));
