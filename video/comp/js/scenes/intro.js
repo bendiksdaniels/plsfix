@@ -37,6 +37,8 @@
     },
     cues() {
       Stage.cue(0, 'section', { name: 'intro' });
+      Stage.voice('vo.intro.hook', 0.45, 2.3);
+      Stage.voice('vo.intro.claim', 4.55, 6.85);
       Stage.cue(K.card[0], 'whoosh', { dur: 0.6, pan: -0.2, gain: -12 });
       Stage.cue(K.card[0] + 0.45, 'pop', { pitch: 76, gain: -6 });
       Stage.cue(K.drop[1] - 0.05, 'tap', { gain: -2 });

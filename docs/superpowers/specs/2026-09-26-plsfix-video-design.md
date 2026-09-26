@@ -91,3 +91,17 @@ picture and sound with `comp/copy.en.json` (plain spoken English, the add-in's o
 carries `-en` in its name, so the two cuts never overwrite each other. Both cuts are rendered
 from one capture of a byte-reproducible demo build (the generator's creation time is fixed), so
 any later rebuild of the demo still passes the provenance check.
+
+## Voice-over (26.09.2026)
+
+Daniel, after both cuts: "change the sound ... like a voice over speaking". Each cut now has a
+narrator: 22 short lines, one per beat, in the slots the scenes declare beside their captions
+(`Stage.voice`), spoken by Microsoft's neural voices through edge-tts (Latvian lv-LV-NilsNeural,
+English en-US-AndrewMultilingualNeural; `--voice` names another). The Latvian script says the
+tools in plain Latvian (the captions keep the English UI names) and spells loanwords the way a
+Latvian says them ("plīz fiks", "Ekselī", "Pauerpoint"). The score stays as a bed, 6 dB down
+between lines and 17 dB down under them, held down through gaps under 1,6 s. A line that
+outruns its slot is spoken up to 20 % faster, else the build stops and names it. The audit
+checks every line inside its slot and at least 12 dB over the music; the English narration was
+also transcribed back with whisper.cpp and matched its script. `--no-voice` renders the music alone.
+

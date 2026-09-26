@@ -6,6 +6,8 @@
 // reports any whose text is not visible then, paints outside the title-safe area, or is
 // covered by something else on screen. Stage.cue(t, kind, opts) registers a sound for the
 // soundtrack at t (read back by __cues()), so the audio follows the same timing tables.
+// Stage.voice(key, from, to) registers a voice-over line's slot (read back by __voice()): the
+// narrator's words come from voice.<lang>.json, the time from the scene's own table.
 window.Stage = (() => {
   const FPS = 60;
   const W = 1920;
@@ -14,6 +16,7 @@ window.Stage = (() => {
   const loaders = [];
   const copies = [];
   const cues = [];
+  const voices = [];
   let duration = 0;
 
   function scene(def) {
@@ -34,6 +37,10 @@ window.Stage = (() => {
   }
 
   // kind: section | whoosh | click | tap | pop | impact | riser; opts: dur, pan, pitch, gain, name
+  function voice(key, from, to) {
+    voices.push({ key, from: Math.round(from * 1000) / 1000, to: Math.round(to * 1000) / 1000 });
+  }
+
   function cue(t, kind, opts = {}) {
     cues.push({ t: Math.round(t * 1000) / 1000, kind, ...opts });
   }
@@ -142,7 +149,8 @@ window.Stage = (() => {
     window.__seek = seek;
     window.__layoutCheck = layoutCheck;
     window.__cues = () => cues.slice().sort((a, b) => a.t - b.t);
+    window.__voice = () => voices.slice().sort((a, b) => a.from - b.from);
   }
 
-  return { scene, preload, seek, copy, cue, boot, FPS, W, H };
+  return { scene, preload, seek, copy, cue, voice, boot, FPS, W, H };
 })();

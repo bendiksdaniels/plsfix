@@ -22,6 +22,25 @@ impl Lang {
         format!("copy.{}.json", self.code())
     }
 
+    /// comp/<file>: the narrator's words, one per voice-over slot.
+    pub fn voice_file(self) -> String {
+        format!("voice.{}.json", self.code())
+    }
+
+    /// build/<file>: the cut's soundtrack as muxed (the voice over the ducked music, or the music).
+    pub fn audio(self) -> String {
+        format!("audio{}.wav", self.tag())
+    }
+
+    /// build/<file>: the narrator alone, and what each line did (for the audit).
+    pub fn voice_stem(self) -> String {
+        format!("voice{}.wav", self.tag())
+    }
+
+    pub fn voice_report(self) -> String {
+        format!("voice{}.json", self.tag())
+    }
+
     /// build/<file>: the full render, or the draft.
     pub fn mp4(self, draft: bool) -> String {
         format!("plsfix-video{}{}.mp4", self.tag(), if draft { "-draft" } else { "" })

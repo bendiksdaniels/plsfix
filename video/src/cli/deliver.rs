@@ -63,8 +63,8 @@ fn guard(dst: &Path, last: Option<&str>) -> Result<()> {
     bail!("deliver: {} was not the last delivery (changed by hand?); moved to {}; ask before delivering over it", dst.display(), moved.display())
 }
 
-pub fn all(workers: u32, track: Option<&Path>, lang: Lang) -> Result<()> {
+pub fn all(workers: u32, track: Option<&Path>, lang: Lang, narrator: render::Narrator) -> Result<()> {
     capture::run()?;
-    render::run(false, workers, track, lang)?;
+    render::run(false, workers, track, lang, narrator)?;
     run(lang)
 }
