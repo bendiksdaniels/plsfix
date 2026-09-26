@@ -8,6 +8,7 @@
 use crate::cli::{build_dir, music, video_dir, voice};
 use crate::core::frames::{chunks, Timeline};
 use crate::core::lang::Lang;
+use crate::core::sound::score::Style;
 use crate::core::viewport::Viewport;
 use crate::io::comp_page::{write_file, CompPage};
 use crate::io::ffmpeg;
@@ -30,9 +31,19 @@ pub struct Narrator<'a> {
     pub voice: Option<&'a str>,
 }
 
-pub fn run(draft: bool, workers: u32, track: Option<&Path>, lang: Lang, narrator: Narrator) -> Result<()> {
+/// What a cut sounds like: the music (a picked track, else the bed or the groove score) and the
+/// narrator over it.
+#[derive(Clone, Copy)]
+pub struct Sound<'a> {
+    pub track: Option<&'a Path>,
+    pub style: Style,
+    pub narrator: Narrator<'a>,
+}
+
+pub fn run(draft: bool, workers: u32, sound: Sound, lang: Lang) -> Result<()> {
+    let (track, narrator) = (sound.track, sound.narrator);
     let started = Instant::now();
-    music::run(track)?;
+    music::run(track, sound.style)?;
     let audio = build_dir().join(lang.audio());
     if narrator.on {
         voice::run(lang, narrator.voice)?;

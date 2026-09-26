@@ -16,6 +16,7 @@ mod voice;
 
 use anyhow::Result;
 use crate::core::lang::Lang;
+use crate::core::sound::score::Style;
 use clap::{Parser, Subcommand};
 use std::path::PathBuf;
 use std::process::ExitCode;
@@ -39,6 +40,9 @@ enum Cmd {
         /// Use this audio file (mp3, m4a, wav...) instead of the score: cut to length, faded, levelled.
         #[arg(long)]
         track: Option<PathBuf>,
+        /// bed (calm, under a narrator; the default) or groove (the upbeat score, for no voice).
+        #[arg(long, default_value = "bed")]
+        music: Style,
     },
     /// Speak the voice-over over the ducked music into the cut's soundtrack (needs music first).
     Voice {
@@ -61,6 +65,9 @@ enum Cmd {
         /// Use this audio file instead of the score (see `music --track`).
         #[arg(long)]
         track: Option<PathBuf>,
+        /// bed (the default) or groove (see `music --music`).
+        #[arg(long, default_value = "bed")]
+        music: Style,
     },
     /// Check the full render: format, motion, colour, determinism, sound, layout, copy, provenance (exit 1 on any).
     Audit,
@@ -79,6 +86,9 @@ enum Cmd {
         /// Use this audio file instead of the score (see `music --track`).
         #[arg(long)]
         track: Option<PathBuf>,
+        /// bed (the default) or groove (see `music --music`).
+        #[arg(long, default_value = "bed")]
+        music: Style,
     },
     /// Render single frames at the given times (seconds) to video/build/stills/.
     Still {
@@ -105,12 +115,12 @@ pub fn run() -> ExitCode {
     let cli = Cli::parse();
     let result: Result<()> = match cli.cmd {
         Cmd::Capture => capture::run(),
-        Cmd::Music { track } => music::run(track.as_deref()),
+        Cmd::Music { track, music: m } => music::run(track.as_deref(), m),
         Cmd::Voice { voice: v } => voice::run(cli.lang, v.as_deref()),
-        Cmd::Render { draft, no_voice, voice: v, workers, track } => render::run(draft, workers, track.as_deref(), cli.lang, render::Narrator { on: !no_voice, voice: v.as_deref() }),
+        Cmd::Render { draft, no_voice, voice: v, workers, track, music: m } => render::run(draft, workers, render::Sound { track: track.as_deref(), style: m, narrator: render::Narrator { on: !no_voice, voice: v.as_deref() } }, cli.lang),
         Cmd::Audit => audit::run(cli.lang),
         Cmd::Deliver => deliver::run(cli.lang),
-        Cmd::All { workers, no_voice, voice: v, track } => deliver::all(workers, track.as_deref(), cli.lang, render::Narrator { on: !no_voice, voice: v.as_deref() }),
+        Cmd::All { workers, no_voice, voice: v, track, music: m } => deliver::all(workers, render::Sound { track: track.as_deref(), style: m, narrator: render::Narrator { on: !no_voice, voice: v.as_deref() } }, cli.lang),
         Cmd::Still { times } => still::run(&times, cli.lang),
     };
     match result {

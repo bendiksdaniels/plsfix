@@ -1,5 +1,5 @@
-//! music.rs: `plsfix-video music [--track <file>]`: the soundtrack. By default the score and
-//! the sound design, written from the picture's cues; with --track, that audio file instead (cut
+//! music.rs: `plsfix-video music [--music bed|groove] [--track <file>]`: the soundtrack. By
+//! default the calm bed (or the groove score) and the sound design, written from the picture's cues; with --track, that audio file instead (cut
 //! to length, faded). Either way the level is set to -16 LUFS with peaks under -2 dBFS and the
 //! result is video/build/music.wav. `render` calls it first, so sound follows picture.
 
@@ -8,6 +8,7 @@ use crate::cli::{build_dir, video_dir};
 use crate::core::dsp::dynamics::{db_to_gain, gain, limit};
 use crate::core::dsp::SR;
 use crate::core::sound::bus::Bus;
+use crate::core::sound::score::Style;
 use crate::core::sound::{cues, mixdown, score, track};
 use crate::core::viewport::Viewport;
 use crate::io::comp_page::CompPage;
@@ -24,7 +25,7 @@ pub fn path() -> PathBuf {
     build_dir().join("music.wav")
 }
 
-pub fn run(own: Option<&Path>) -> Result<()> {
+pub fn run(own: Option<&Path>, style: Style) -> Result<()> {
     let port = static_server::serve(video_dir())?;
     // the cues come from the timing tables, the same in every cut
     let mut page = CompPage::open(port, Viewport::STAGE, Lang::Lv)?;
@@ -34,10 +35,10 @@ pub fn run(own: Option<&Path>) -> Result<()> {
         None => {
             let cues = cues::parse(&page.cdp.eval("window.__cues()")?, seconds).map_err(anyhow::Error::msg)?;
             let sections = score::sections(&cues).map_err(anyhow::Error::msg)?;
-            let notes = score::notes(&sections, seconds);
+            let notes = score::arrange(style, &sections, seconds);
             let sfx = cues.iter().filter(|c| c.kind != cues::Kind::Section).count();
-            println!("music: {} notes, {sfx} sound cues, sections at bars {:?}", notes.len(), sections.iter().map(|(b, _)| b).collect::<Vec<_>>());
-            mixdown::render(&notes, &cues, seconds)
+            println!("music: {style:?}, {} notes, {sfx} sound cues, sections at bars {:?}", notes.len(), sections.iter().map(|(b, _)| b).collect::<Vec<_>>());
+            mixdown::render(&notes, &cues, seconds, style)
         }
     };
     let l = level(master, &path(), "music")?;

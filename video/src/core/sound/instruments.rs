@@ -1,6 +1,7 @@
 //! instruments.rs: the band. A warm pad (three detuned saws through a low-pass that opens with
-//! the note), a round sub bass, a soft kick, hats, a clap and a plucked melody, each rendering
-//! one note into the buses. Levels live in LEVELS; the master is normalised afterwards.
+//! the note), a round sub bass, a soft kick, hats, a clap, a plucked melody and soft keys (the
+//! calm bed's voice: a sine with fading overtones), each rendering one note into the buses.
+//! Levels live in LEVELS; the master is normalised afterwards.
 
 use crate::core::dsp::env::{adsr, decay};
 use crate::core::dsp::filter::{Biquad, Svf};
@@ -10,8 +11,8 @@ use crate::core::sound::bus::{at, pan_gains, Bus};
 use crate::core::sound::score::Note;
 use std::f64::consts::TAU;
 
-/// Relative levels, one place: pad (per voice), bass, kick, hat, clap, pluck.
-pub const LEVELS: [f32; 6] = [0.05, 0.12, 0.3, 0.19, 0.2, 0.17];
+/// Relative levels, one place: pad (per voice), bass, kick, hat, clap, pluck, keys.
+pub const LEVELS: [f32; 7] = [0.05, 0.12, 0.3, 0.19, 0.2, 0.17, 0.2];
 const PAD_RELEASE: f64 = 1.1;
 
 pub fn pad(music: &mut Bus, send: &mut Bus, n: &Note) {
@@ -103,3 +104,23 @@ pub fn pluck(music: &mut Bus, send: &mut Bus, echo: &mut [f32], n: &Note) {
         }
     }
 }
+
+/// A soft electric-piano note: the sine rings for about a second and a half, its second and third
+/// harmonics fade within a few tenths, and an 8 ms attack keeps the onset round (no click).
+pub fn keys(music: &mut Bus, send: &mut Bus, echo: &mut [f32], n: &Note) {
+    let f = midi_hz(n.midi);
+    let (gl, gr) = pan_gains(n.pan);
+    let i0 = at(n.t, SR);
+    for k in 0..at(n.len, SR) {
+        let t = k as f64 / SR;
+        let x = (TAU * f * t).sin() + 0.22 * (TAU * 2.0 * f * t).sin() * decay(t, 0.35) + 0.06 * (TAU * 3.0 * f * t).sin() * decay(t, 0.15);
+        let env = (1.0 - decay(t, 0.008)) * decay(t, 0.9) * (1.0 - (t / n.len).powi(8));
+        let y = (x * env * n.vel) as f32 * LEVELS[6];
+        music.add(i0 + k, y * gl, y * gr);
+        send.add(i0 + k, y * 0.3, y * 0.3);
+        if let Some(e) = echo.get_mut(i0 + k) {
+            *e += y * 0.2;
+        }
+    }
+}
+

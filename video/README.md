@@ -1,7 +1,8 @@
 # pls,fix video: the 87,5 s motion graphic
 
-Builds `~/Desktop/pls,fix video.mp4`: 1920x1080, 60 fps, H.264, a narrator over an original score
-(AAC stereo, -16 LUFS; the music ducks under every spoken line), Latvian captions; the English cut (`--lang en`) is `~/Desktop/pls,fix video EN.mp4`,
+Builds `~/Desktop/pls,fix video.mp4`: 1920x1080, 60 fps, H.264, a narrator over a calm original
+music bed (AAC stereo, -16 LUFS; the music ducks under every spoken line; `--music groove` = the
+upbeat score the video first shipped with), Latvian captions; the English cut (`--lang en`) is `~/Desktop/pls,fix video EN.mp4`,
 the same picture and sound with `comp/copy.en.json`. The intro's "pls fix" mail, the Excel hero (Autocolor, Audit
 overlay, Precedents, Model check), six toolbox chapters (formats, charts, templates, Find a
 combination, Super Find, brand), the Excel to PowerPoint link (export, insert, a changed number,
@@ -50,7 +51,9 @@ PowerPoint with it, so the Inbox holds only that run's export.
 - A timing: the `K` table at the top of each scene in `comp/js/scenes/`; spans in `comp/js/timing.js`.
 - A screen: `capture/excel-shots.mjs` or `capture/ppt-shots.mjs` (what to press, which
   rectangles to record), then `capture` again. A selector that stops matching fails by name.
-- The music: `src/core/sound/` as in the Planner engine; `--track <file>` swaps in any song.
+- The music: `src/core/sound/bed.rs` (the calm bed: a chord every 4 s, soft keys, no hats or
+  arpeggio) or `score.rs` (the groove score, `--music groove`), mixed per style in `mixdown.rs`;
+  `--track <file>` swaps in any song.
 - A spoken line: `comp/voice.lv.json` / `comp/voice.en.json` (same keys, a test holds them
   together); its slot is the `Stage.voice(key, from, to)` beside the scene's captions. A line
   longer than its slot is spoken up to 20 % faster; past that the build stops and names it.
