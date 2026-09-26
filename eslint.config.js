@@ -13,6 +13,10 @@ export default tseslint.config(
       ".superpowers/**",
       // Eval'd Playwright fragments for the web rig, not modules.
       "scripts/rig/snippets/**",
+      // The video tool (Rust + its HTML composition and Playwright capture,
+      // shared with the Planner video engine) keeps its own style and gate:
+      // `cd video && cargo test`.
+      "video/**",
     ],
   },
   ...tseslint.configs.strict,
