@@ -14,7 +14,7 @@ The 23.09 sections below: local links (this evening) and the click-through (this
    Reproduce in the web rig, then on the desktop with his grant.
 10. **Video 26.09**: `video/` builds `~/Desktop/pls,fix video.mp4` (87,5 s, every frame real Office for the
    web on the demo files) and the English cut `~/Desktop/pls,fix video EN.mp4` (`--lang en`), both with a narrator
-   (edge-tts, `--no-voice` for the music alone);
+   (edge-tts, `--no-voice` for the music alone) over a calm music bed (`--music groove` = the first score);
    `cd video && cargo run --release -- all [--lang en]`, see `video/README.md`.
 8. **Real-Office pass of local links** (Daniel's grant, or his own two minutes on the Mac): the rows in
    `tasks/launch-check.md` "local links": export one range, paste in PowerPoint's Inbox box, insert; change it,

@@ -105,3 +105,16 @@ outruns its slot is spoken up to 20 % faster, else the build stops and names it.
 checks every line inside its slot and at least 12 dB over the music; the English narration was
 also transcribed back with whisper.cpp and matched its script. `--no-voice` renders the music alone.
 
+## The calm bed (26.09.2026)
+
+Daniel, on the narrated cuts: "change the background music, it feels irritating". The groove
+score was made for a video with no voice: an 8-note plucked arpeggio every bar with echo,
+off-beat hats, a four-on-the-floor kick pumping the mix, one 8-second loop eleven times, +4 dB of
+top end. Under a narrator that is clutter. The default is now a calm bed (`bed.rs`): the same four
+chords one every two bars under a dark pad, a sustained soft bass, two to four soft keys notes
+(a sine with fading overtones) per chord, a quiet kick on beat one only in the two lifts, no
+pump, little air, the UI sounds 6 dB down. Measured against the groove score: onsets 0,21/s
+against 1,69/s, energy above 2 kHz 0,5 % against 3,2 %, and under the narrator the voice stands
+16,8-19,9 dB over the music at 1-4 kHz (speech's consonants) against 11,4-14,8 dB. `--music
+groove` keeps the first score.
+
