@@ -67,7 +67,7 @@ heard; `--track <file>` swaps in any song.
 
 ## Out of scope
 
-An English cut (one copy file away), desktop Office captures (his Office stays hands-off), a
+Desktop Office captures (his Office stays hands-off), a
 release asset or any upload of the video.
 
 ## Review (26.09.2026)
@@ -81,3 +81,13 @@ waterfall upstaged by the demo's Revenue chart (moved aside), the intro card fla
 tagline overlapping the claim, a too-short end card (+1,5 s), empty ground beside push-ins
 (leans now keep the frame filled), four captions. The determinism gate now tells renderer noise
 (at most 18 levels, measured) from a leaked state (more than 32).
+
+## English cut (26.09.2026)
+
+Daniel, after the Latvian delivery: "make it in english also". `--lang en` renders the same
+picture and sound with `comp/copy.en.json` (plain spoken English, the add-in's own US spelling
+"colors"), delivered as `~/Desktop/pls,fix video EN.mp4` with its own record
+`video/delivered.en.sha256`. The page reads `?lang=` for its copy file; every file of the cut
+carries `-en` in its name, so the two cuts never overwrite each other. Both cuts are rendered
+from one capture of a byte-reproducible demo build (the generator's creation time is fixed), so
+any later rebuild of the demo still passes the provenance check.
