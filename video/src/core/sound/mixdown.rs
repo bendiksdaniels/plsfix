@@ -11,18 +11,31 @@ use crate::core::dsp::SR;
 use crate::core::sound::bus::{at, Bus};
 use crate::core::sound::cues::Cue;
 use crate::core::sound::instruments as band;
-use crate::core::sound::score::{Inst, Note, BEAT};
+use crate::core::sound::score::{Inst, Note, Style, BEAT};
 use crate::core::sound::sfx;
 
-/// How deep the music ducks under each kick (0..1).
-const DUCK: f32 = 0.32;
-const REVERB_WET: f32 = 0.9;
-const ECHO_WET: f32 = 0.5;
-/// The master's high shelf: this much of everything above ~2,5 kHz is added back (+4 dB of air).
-const AIR: f32 = 0.6;
+/// How each music is mixed: `duck` = how deep the music dips under each kick (0..1), the reverb
+/// and echo returns, `air` = how much of everything above ~2,5 kHz is added back (0,6 = +4 dB),
+/// `fx` = the sound design's gain. The bed sits under a voice: no pump, little air, UI sounds
+/// 6 dB down.
+struct Mix {
+    duck: f32,
+    reverb_wet: f32,
+    echo_wet: f32,
+    air: f32,
+    fx: f32,
+}
+
+fn mix_of(style: Style) -> Mix {
+    match style {
+        Style::Groove => Mix { duck: 0.32, reverb_wet: 0.9, echo_wet: 0.5, air: 0.6, fx: 1.0 },
+        Style::Bed => Mix { duck: 0.0, reverb_wet: 0.8, echo_wet: 0.3, air: 0.15, fx: 0.5 },
+    }
+}
 
 /// The master for a video of `seconds`: notes (the music) plus cues (the sound design).
-pub fn render(notes: &[Note], cues: &[Cue], seconds: f64) -> Bus {
+pub fn render(notes: &[Note], cues: &[Cue], seconds: f64, style: Style) -> Bus {
+    let mix = mix_of(style);
     let n = at(seconds, SR);
     let (mut music, mut drums, mut fx, mut send) = (Bus::new(n), Bus::new(n), Bus::new(n), Bus::new(n));
     let mut echo = vec![0.0f32; n];
@@ -35,12 +48,13 @@ pub fn render(notes: &[Note], cues: &[Cue], seconds: f64) -> Bus {
             Inst::Hat => band::hat(&mut drums, note, &mut noise),
             Inst::Clap => band::clap(&mut drums, &mut send, note, &mut noise),
             Inst::Pluck => band::pluck(&mut music, &mut send, &mut echo, note),
+            Inst::Keys => band::keys(&mut music, &mut send, &mut echo, note),
         }
     }
     for c in cues {
         sfx::render(&mut fx, &mut send, c, &mut noise);
     }
-    duck(&mut music, notes);
+    duck(&mut music, notes, mix.duck);
     let mut out = Bus::new(n);
     let mut room = Reverb::new(SR, 0.82, 0.45);
     let (mut hl, mut hr) = (Biquad::highpass(SR, 250.0, 0.7), Biquad::highpass(SR, 250.0, 0.7));
@@ -48,25 +62,25 @@ pub fn render(notes: &[Note], cues: &[Cue], seconds: f64) -> Bus {
     for i in 0..n {
         let (el, er) = delay.tick(echo[i]);
         let (wl, wr) = room.tick(hl.tick(send.l[i] + el * 0.3), hr.tick(send.r[i] + er * 0.3));
-        out.l[i] = music.l[i] + drums.l[i] + fx.l[i] + el * ECHO_WET + wl * REVERB_WET;
-        out.r[i] = music.r[i] + drums.r[i] + fx.r[i] + er * ECHO_WET + wr * REVERB_WET;
+        out.l[i] = music.l[i] + drums.l[i] + fx.l[i] * mix.fx + el * mix.echo_wet + wl * mix.reverb_wet;
+        out.r[i] = music.r[i] + drums.r[i] + fx.r[i] * mix.fx + er * mix.echo_wet + wr * mix.reverb_wet;
     }
-    air(&mut out);
+    air(&mut out, mix.air);
     fade(&mut out, seconds);
     out
 }
 
 /// A gentle high shelf: the top end a laptop speaker needs to sound open, not muffled.
-fn air(out: &mut Bus) {
+fn air(out: &mut Bus, amount: f32) {
     let (mut hl, mut hr) = (Biquad::highpass(SR, 2500.0, 0.7), Biquad::highpass(SR, 2500.0, 0.7));
     for i in 0..out.len() {
-        out.l[i] += AIR * hl.tick(out.l[i]);
-        out.r[i] += AIR * hr.tick(out.r[i]);
+        out.l[i] += amount * hl.tick(out.l[i]);
+        out.r[i] += amount * hr.tick(out.r[i]);
     }
 }
 
 /// The music bus dips under every kick and comes back over ~0.15 s.
-fn duck(music: &mut Bus, notes: &[Note]) {
+fn duck(music: &mut Bus, notes: &[Note], depth: f32) {
     let mut env = vec![0.0f32; music.len()];
     for k in notes.iter().filter(|x| x.inst == Inst::Kick) {
         let i0 = at(k.t, SR);
@@ -77,7 +91,7 @@ fn duck(music: &mut Bus, notes: &[Note]) {
         }
     }
     for (i, e) in env.iter().enumerate() {
-        let g = 1.0 - DUCK * e.min(1.0);
+        let g = 1.0 - depth * e.min(1.0);
         music.l[i] *= g;
         music.r[i] *= g;
     }

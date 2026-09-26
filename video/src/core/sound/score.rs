@@ -26,6 +26,35 @@ pub enum Inst {
     Hat,
     Clap,
     Pluck,
+    Keys,
+}
+
+/// Which music plays: the calm bed (the default, under a narrator: `bed.rs`) or the groove score
+/// (the Planner's, for a video with no voice).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Style {
+    Bed,
+    Groove,
+}
+
+impl std::str::FromStr for Style {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Style, String> {
+        match s.to_ascii_lowercase().as_str() {
+            "bed" => Ok(Style::Bed),
+            "groove" => Ok(Style::Groove),
+            other => Err(format!("no music called {other:?}: bed or groove")),
+        }
+    }
+}
+
+/// Every note of the chosen music for a video of `seconds`.
+pub fn arrange(style: Style, sections: &[(u32, Section)], seconds: f64) -> Vec<Note> {
+    match style {
+        Style::Bed => crate::core::sound::bed::notes(sections, seconds),
+        Style::Groove => notes(sections, seconds),
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
