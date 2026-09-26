@@ -24,6 +24,8 @@ import {
   selectedSingleRange,
   styleChartLabels,
   styleChartShell,
+  styleChartSurface,
+  syncTolerating,
   withinCap,
 } from "./internal";
 import { tornadoSeries } from "../chartmath";
@@ -42,6 +44,11 @@ const TORNADO_SHAPE_ERROR =
 // Bar overlap and gap width arrived in ExcelApi 1.8; without them the tornado
 // is drawn as a plain clustered bar chart, which is worth saying out loud.
 const BASIC_BARS_NOTE = "; plain bars on this build";
+// Excel for the web refuses chart.format.font and roundedCorners on this
+// chart the same way it refuses them on a chartex chart (lessons 29.08); the
+// tolerated batch below keeps the chart and its placement when that happens,
+// and this is the only visible trace left for the modeller.
+const SURFACE_NOTE = "; some styling could not be applied";
 
 // The row cap is counted off the selection before the grid is read, so the
 // reader itself carries none.
@@ -85,7 +92,11 @@ async function readTornadoHeader(
 }
 
 function styleTornado(chart: Excel.Chart, heading: string): void {
-  styleChartShell(chart, heading, true);
+  // The surface stays out of this batch: Excel for the web refuses the font
+  // and the corners on this chart, and that refusal must not take the rest
+  // of the styling, the chart itself or its placement down with it. Applied
+  // afterwards, in its own tolerated batch (runTornado).
+  styleChartShell(chart, heading, true, false);
   styleChartLabels(chart.dataLabels, "OutsideEnd");
   // A bar chart plots the first category at the bottom; reversing the order
   // puts the widest swing on top, which is the shape a tornado is read by.
@@ -115,9 +126,10 @@ function requireTornadoShape(range: Excel.Range): void {
   requireRoomBeside(range, STAGE);
 }
 
-function notes(placed: boolean): string {
+function notes(placed: boolean, surfaced: boolean): string {
   return [
     placed ? "" : UNPLACED_NOTE,
+    surfaced ? "" : SURFACE_NOTE,
     hostSupports("1.7") && hostSupports("1.8") ? "" : BASIC_BARS_NOTE,
   ].join("");
 }
@@ -163,8 +175,16 @@ async function runTornado(context: Excel.RequestContext): Promise<string> {
   const placed = await placeChartBeside(context, sheet, chart, block);
   await context.sync();
 
+  // Its own batch, tolerated the way the waterfall's own surface is: a
+  // refusal here must never undo the placement that already landed.
+  styleChartSurface(chart);
+  const surfaced = await syncTolerating(
+    context,
+    Excel.ErrorCodes.unsupportedOperation,
+  );
+
   const count = series.labels.length;
-  const tail = notes(placed);
+  const tail = notes(placed, surfaced);
   return `Tornado added: ${count} drivers, base ${formatChartAmount(series.base)}${tail}`;
 }
 
