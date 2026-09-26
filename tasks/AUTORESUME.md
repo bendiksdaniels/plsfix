@@ -1,5 +1,26 @@
 # AUTORESUME - pls,fix (v2.9.1 live 23.09: local links; in-house deployment package 21.09, PUBLIC on GitHub, MIT)
 
+## HUNT LOOP (26.09 night, IN PROGRESS): find bugs until nothing breaks
+
+Daniel 26.09 ~23:00: "start a loop where we check it for bugs and keep iterating untill it runs
+perfeclty create multiple test files ... go through each feuter multiple times", then "go" on a 20M
+token cap. Shape: 9 areas x 3 passes (1 edges + repeats, 2 failures + properties, 3 the real-Office
+web-rig tour), 5 sonnet hunters in `~/.worktrees/plsfix/hunt-<area>` (node_modules = an APFS clone
+of main's, `cp -cR`, because the disk is 98 % full), opus review per branch, full gates, each merge =
+patch release + `deploy.sh modelis` + a `docs/VERSIONS.md` line. New tests live in `test/hunt/` and
+`server/tests/hunt_*.rs`. Stop: Daniel's word, two clean passes in a row, or the cap.
+
+- Phase 0 (1b21fa7): `npm run check` was red on main since the video merges (5 eslint errors, 28
+  prettier files, all in `video/`); eslint and prettier now leave `video/` out. Baseline green: 3051
+  vitest, 111 cargo. Coverage lines 98.6 %, branches 92.9 %; the gaps are the v2.9 local links
+  (`local-collector` 58 % lines, `local-store` 78 %, `local-persist` 45 % branches, `ppt/transport` 84 %).
+- Pass 1 wave 1 (base 1b21fa7, ports 3141/3142 .. 3171/3172): hunt-charts (open bug 9: tornado on
+  the web), hunt-links (Excel side + local links), hunt-ppt, hunt-paste (+ custom functions),
+  hunt-relay (Rust). Queued: format (+ AutoColor), audit (+ cleanup), model (+ templates), shell
+  (brand, settings, help, number styles). Brief: `~/.worktrees/plsfix/hunt-brief-pass1.md`.
+- Resume after a stop: `git worktree list`; per worktree `git -C <wt> log --oneline 1b21fa7..` and
+  `git -C <wt> status`; an agent with commits resumes by SendMessage, one without is re-dispatched.
+
 ## NEXT SESSION (from 23.09 evening): the real-Office pass of local links and the click-through
 
 State at hand-over: **v2.9.1 LIVE 23.09** (main = origin, `deploy.sh modelis`: modelis clean, live
