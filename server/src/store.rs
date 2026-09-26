@@ -216,6 +216,12 @@ impl Store {
                 Put::Created(1)
             }
             Some(head) if head.auth != auth_hash.as_slice() => Put::Forbidden,
+            // A real link is nowhere near this: reaching it takes 2^63
+            // pushes. But `rev` is a plain i64 column, so a row restored or
+            // hand-seeded at the top of its range is possible, and the store
+            // must answer it the way it answers any other kind of "no room
+            // for this push" - never an unchecked add panicking a worker.
+            Some(head) if head.rev == i64::MAX => Put::Full,
             Some(head) => {
                 let rev = head.rev + 1;
                 tx.execute(
