@@ -3,6 +3,21 @@
 One entry per reviewed merge of the hunt loop (26.09.2026 on), newest first: what changed for a
 user, the proof, and what is still open. The GitHub Release of each tag lists the commits.
 
+## v2.9.3 (27.09.2026): charts on Excel for the web, and at the sheet's edge
+
+- Fixed: Tornado and Football field on Excel for the web. The chart styling Excel for the web
+  refuses (the chart-wide font and rounded corners) ran before the chart was placed, so the
+  refusal left the chart over the data and put Office's raw sentence in the toast. The chart is
+  now placed first and that styling runs in its own tolerated batch, silently, like the
+  waterfall's; Chart Smart Format and the waterfall tolerate the same two refusal codes.
+- Fixed: a chart made from a selection against the sheet's right edge found no free spot and was
+  left over the cells just selected; it now lands below them.
+- Tests: 19 chart tests in `test/hunt/charts.*`: the refusal under both codes, three presses in a
+  row, two chart tools racing, the sheet edge, an empty sheet.
+- Proof: vitest 3070 passed; the web-refusal pins fail on the old tornado code, the double-press
+  pin fails with the press queue removed (both shown in review).
+- Open: ledger item 9 stays open until the web rig reads the real error code on a tornado.
+
 ## v2.9.2 (27.09.2026): the relay's revision overflow, 19 relay tests
 
 - Fixed: a push to a link whose revision counter sits at the top of its range (only a restored or
