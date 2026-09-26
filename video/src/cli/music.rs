@@ -40,7 +40,7 @@ pub fn run(own: Option<&Path>) -> Result<()> {
             mixdown::render(&notes, &cues, seconds)
         }
     };
-    let l = level(master)?;
+    let l = level(master, &path(), "music")?;
     println!("music: {:.1} LUFS, true peak {:.1} dBTP -> {}", l.integrated, l.true_peak, path().display());
     Ok(())
 }
@@ -62,19 +62,19 @@ fn picked(file: &Path, seconds: f64) -> Result<Bus> {
     Ok(track::fit(&l, &r, seconds))
 }
 
-/// Writes the master to music.wav at the target loudness: measure, correct, limit, again.
-fn level(mut master: Bus) -> Result<Loudness> {
-    let out = path();
+/// Writes `master` to `out` at the target loudness: measure, correct, limit, again (`what`
+/// names the stage in the log: the music, or a cut's final mix).
+pub fn level(mut master: Bus, out: &Path, what: &str) -> Result<Loudness> {
     for round in 1..=3 {
-        wav::write(&out, &master, SR as u32)?;
-        let l = loudness::measure(&out)?;
+        wav::write(out, &master, SR as u32)?;
+        let l = loudness::measure(out)?;
         if (l.integrated - TARGET_LUFS).abs() <= 0.3 && l.true_peak <= CEILING_DBFS + 0.6 {
             return Ok(l);
         }
         let over = l.true_peak + TARGET_LUFS - l.integrated - CEILING_DBFS;
-        println!("music: round {round}: {:.1} LUFS, true peak {:.1} dBTP; the limiter takes up to {:.1} dB", l.integrated, l.true_peak, over.max(0.0));
+        println!("{what}: round {round}: {:.1} LUFS, true peak {:.1} dBTP; the limiter takes up to {:.1} dB", l.integrated, l.true_peak, over.max(0.0));
         if round == 3 {
-            bail!("music: {:.1} LUFS, true peak {:.1} dBTP after 3 rounds (target {TARGET_LUFS} LUFS, peak under {CEILING_DBFS} dBFS)", l.integrated, l.true_peak);
+            bail!("{what}: {:.1} LUFS, true peak {:.1} dBTP after 3 rounds (target {TARGET_LUFS} LUFS, peak under {CEILING_DBFS} dBFS)", l.integrated, l.true_peak);
         }
         gain(&mut master.l, &mut master.r, db_to_gain(TARGET_LUFS - l.integrated));
         limit(&mut master.l, &mut master.r, db_to_gain(CEILING_DBFS) as f32, SR, 0.002, 0.08);

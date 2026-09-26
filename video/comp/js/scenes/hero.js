@@ -31,6 +31,8 @@
       });
       Stage.copy(this.title.el, 7.9, 'hero.title');
       Stage.cue(K.mint[0], 'section', { name: 'groove' });
+      [['title', 6.9, 9.3], ['autocolor', 9.4, 12.65], ['audit', 12.9, 16.85], ['trace', 17.1, 21.2], ['check', 21.5, 25.3]]
+        .forEach(([k, a, b]) => Stage.voice(`vo.hero.${k}`, a, b));
       Stage.cue(K.mint[0], 'whoosh', { dur: 0.55, gain: -5 });
       Stage.cue(K.rise[0], 'whoosh', { dur: 0.75, gain: -12 });
       Stage.cue(K.handoff[0], 'whoosh', { dur: 1.1, pan: -0.4, gain: -7 });

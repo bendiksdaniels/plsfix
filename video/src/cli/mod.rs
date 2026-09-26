@@ -1,5 +1,6 @@
 //! cli: the `plsfix-video` commands and the folders they share.
-//! capture = real screens from Excel and PowerPoint for the web; music = the soundtrack (or a picked track); render = the MP4
+//! capture = real screens from Excel and PowerPoint for the web; music = the soundtrack (or a picked track); voice = the
+//! narrator over the ducked music; render = the MP4
 //! (music first); audit = the gate; deliver = to the Desktop after a green audit; all = capture,
 //! render, deliver in a row; still = single frames for QA. `--lang en` picks the English cut
 //! (the same picture and sound, the English copy file) for render, audit, deliver, all, still.
@@ -11,6 +12,7 @@ mod deliver;
 mod music;
 mod render;
 mod still;
+mod voice;
 
 use anyhow::Result;
 use crate::core::lang::Lang;
@@ -38,10 +40,22 @@ enum Cmd {
         #[arg(long)]
         track: Option<PathBuf>,
     },
+    /// Speak the voice-over over the ducked music into the cut's soundtrack (needs music first).
+    Voice {
+        /// Another Microsoft neural voice, e.g. lv-LV-EveritaNeural or en-US-AvaMultilingualNeural.
+        #[arg(long)]
+        voice: Option<String>,
+    },
     /// Render the composition to video/build/plsfix-video.mp4 (draft: 960x540 at 30 fps).
     Render {
         #[arg(long)]
         draft: bool,
+        /// The music alone, no narrator.
+        #[arg(long)]
+        no_voice: bool,
+        /// Another narrator (see `voice --voice`).
+        #[arg(long)]
+        voice: Option<String>,
         #[arg(long, default_value_t = 5)]
         workers: u32,
         /// Use this audio file instead of the score (see `music --track`).
@@ -56,6 +70,12 @@ enum Cmd {
     All {
         #[arg(long, default_value_t = 5)]
         workers: u32,
+        /// The music alone, no narrator.
+        #[arg(long)]
+        no_voice: bool,
+        /// Another narrator (see `voice --voice`).
+        #[arg(long)]
+        voice: Option<String>,
         /// Use this audio file instead of the score (see `music --track`).
         #[arg(long)]
         track: Option<PathBuf>,
@@ -86,10 +106,11 @@ pub fn run() -> ExitCode {
     let result: Result<()> = match cli.cmd {
         Cmd::Capture => capture::run(),
         Cmd::Music { track } => music::run(track.as_deref()),
-        Cmd::Render { draft, workers, track } => render::run(draft, workers, track.as_deref(), cli.lang),
+        Cmd::Voice { voice: v } => voice::run(cli.lang, v.as_deref()),
+        Cmd::Render { draft, no_voice, voice: v, workers, track } => render::run(draft, workers, track.as_deref(), cli.lang, render::Narrator { on: !no_voice, voice: v.as_deref() }),
         Cmd::Audit => audit::run(cli.lang),
         Cmd::Deliver => deliver::run(cli.lang),
-        Cmd::All { workers, track } => deliver::all(workers, track.as_deref(), cli.lang),
+        Cmd::All { workers, no_voice, voice: v, track } => deliver::all(workers, track.as_deref(), cli.lang, render::Narrator { on: !no_voice, voice: v.as_deref() }),
         Cmd::Still { times } => still::run(&times, cli.lang),
     };
     match result {

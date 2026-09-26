@@ -1,10 +1,11 @@
-//! render.rs: `plsfix-video render [--draft] [--workers N] [--track <file>]`: the composition,
-//! frame by frame, in N parallel Chromes into ffmpeg parts, joined, then the soundtrack (written
-//! first, from the same page's cues, or the picked track) muxed under it:
+//! render.rs: `plsfix-video render [--draft] [--workers N] [--track <file>] [--no-voice]`: the
+//! composition, frame by frame, in N parallel Chromes into ffmpeg parts, joined, then the cut's
+//! soundtrack (the music from the same page's cues or the picked track, with the narrator over it
+//! unless --no-voice) muxed under it:
 //! video/build/plsfix-video.mp4 (draft: 960x540 at 30 fps, plsfix-video-draft.mp4; the English
 //! cut plsfix-video-en.mp4). Also writes the page's layout report.
 
-use crate::cli::{build_dir, music, video_dir};
+use crate::cli::{build_dir, music, video_dir, voice};
 use crate::core::frames::{chunks, Timeline};
 use crate::core::lang::Lang;
 use crate::core::viewport::Viewport;
@@ -22,9 +23,24 @@ pub fn output(draft: bool, lang: Lang) -> PathBuf {
     build_dir().join(lang.mp4(draft))
 }
 
-pub fn run(draft: bool, workers: u32, track: Option<&Path>, lang: Lang) -> Result<()> {
+/// The voice-over for a render: on (the default) and which narrator, or off (the music alone).
+#[derive(Clone, Copy)]
+pub struct Narrator<'a> {
+    pub on: bool,
+    pub voice: Option<&'a str>,
+}
+
+pub fn run(draft: bool, workers: u32, track: Option<&Path>, lang: Lang, narrator: Narrator) -> Result<()> {
     let started = Instant::now();
     music::run(track)?;
+    let audio = build_dir().join(lang.audio());
+    if narrator.on {
+        voice::run(lang, narrator.voice)?;
+    } else {
+        std::fs::copy(music::path(), &audio)?;
+        std::fs::remove_file(build_dir().join(lang.voice_report())).ok();
+        println!("render: no voice-over: the music alone");
+    }
     let port = static_server::serve(video_dir())?;
     let (meta, layout) = {
         let mut probe = CompPage::open(port, Viewport::STAGE, lang)?;
@@ -60,7 +76,7 @@ pub fn run(draft: bool, workers: u32, track: Option<&Path>, lang: Lang) -> Resul
     let out = output(draft, lang);
     let silent = out.with_extension("silent.mp4");
     ffmpeg::concat(&parts, &silent)?;
-    ffmpeg::mux(&silent, &music::path(), &out)?;
+    ffmpeg::mux(&silent, &audio, &out)?;
     std::fs::remove_file(&silent).ok();
     println!("render: {} ({written} frames) in {:.1}s", out.display(), started.elapsed().as_secs_f64());
     Ok(())

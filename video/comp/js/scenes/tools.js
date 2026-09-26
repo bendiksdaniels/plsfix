@@ -20,6 +20,8 @@
       this.title = UiType.headline(root, Copy.t('tools.title'), { left: '0px', right: '0px', top: '96px', textAlign: 'center', fontSize: '80px' });
       Stage.copy(this.title.el, 27.6, 'tools.title');
       Stage.cue(26.0, 'section', { name: 'lift' });
+      Stage.voice('vo.tools.title', 26.3, 28.6);
+      CH.forEach((ch, i) => Stage.voice(`vo.tools.${ch.key}`, turn(i) + 0.5, turn(i) + 4.9));
       this.items = CH.map((ch, i) => this.item(root, ch, i));
       CH.forEach((_, i) => i > 0 && Stage.cue(K.fly + i * 0.12, 'whoosh', { dur: 0.9, pan: i % 3 === 0 ? -0.6 : 0.6, gain: -14 }));
       CH.forEach((_, i) => Stage.cue(K.chips + i * 0.1 + 0.08, 'pop', { pitch: 72 + i * 2, gain: -11 }));

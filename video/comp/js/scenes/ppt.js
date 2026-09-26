@@ -36,6 +36,8 @@
         return { c, a, b };
       });
       Stage.cue(60.0, 'section', { name: 'break' });
+      [['title', 60.3, 62.5], ['export', 62.6, 66.0], ['native', 66.2, 68.9], ['edit', 69.2, 73.2], ['update', 73.4, 76.8], ['tools', 77.0, 80.2]]
+        .forEach(([k, a, b]) => Stage.voice(`vo.ppt.${k}`, a, b));
       Stage.cue(64.0, 'section', { name: 'launch' });
       Stage.cue(60.2, 'whoosh', { dur: 0.9, pan: -0.6, gain: -8 });
       Stage.cue(60.3, 'whoosh', { dur: 0.9, pan: 0.6, gain: -8 });

@@ -26,6 +26,8 @@
       Stage.copy(this.open, 85.0, 'outro.open');
       Stage.copy(this.url, 85.0, 'outro.url');
       Stage.cue(80.0, 'section', { name: 'outro' });
+      Stage.voice('vo.outro.claim', 80.8, 83.3);
+      Stage.voice('vo.outro.open', 83.5, 86.9);
       Stage.cue(K.pop + 0.05, 'pop', { pitch: 72, gain: -3 });
       Stage.cue(K.slide[0], 'whoosh', { dur: 0.55, pan: 0.35, gain: -10 });
       Stage.cue(K.slide[0] + 0.05, 'impact', { gain: -9 });
