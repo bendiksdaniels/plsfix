@@ -6,7 +6,9 @@
 // dropBelow) but every one of candidateCorners's three slots filtered out
 // by SHEET_COLUMNS before readSlots ever runs. The pass-1 lens's sheet-edge
 // case (column XFD) for the placement side of the tornado and the football
-// field.
+// field, plus the pass-1 "empty sheet" case: readPlan's own used-range
+// fallback (chart-place.ts line ~108), which every OTHER placement test
+// leaves untouched because they all seed a table before placing a chart.
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
@@ -72,5 +74,33 @@ describe("a helper block that fills to the sheet's last column", () => {
     expect(workbook.charts).toHaveLength(1);
     expect(workbook.charts[0]?.left).toBeUndefined();
     expect(helpers.value("Model!XFB1")).toBe("Method");
+  });
+});
+
+// readPlan's own bottom falls back to the anchor's own rowIndex + rowCount
+// when the sheet's used range is a null object; every other placement test
+// seeds a table first, so the sheet always has something and this fallback
+// never runs. A genuinely blank sheet is the one way to reach it.
+describe("placeChartBeside on a genuinely empty sheet", () => {
+  it("still lands right of the anchor, not over nothing that is not there", async () => {
+    const place = await import("../../src/excel/chart-place");
+    await Excel.run(async (context) => {
+      const sheet = context.workbook.worksheets.getItem("Model");
+      const anchor = sheet.getRange("A1:B4");
+      const chart = sheet.charts.add(
+        Excel.ChartType.columnClustered,
+        anchor,
+        Excel.ChartSeriesBy.auto,
+      );
+      await context.sync();
+
+      expect(await place.placeChartBeside(context, sheet, chart, anchor)).toBe(
+        true,
+      );
+    });
+
+    // Right of the anchor (2 columns + the gap column), same row: the sheet
+    // has nothing else on it at all, so the very first candidate is free.
+    expect(workbook.charts[0]).toMatchObject({ left: 3 * 64, top: 0 });
   });
 });
