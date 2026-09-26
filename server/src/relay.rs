@@ -257,6 +257,13 @@ async fn put_link(
         }
         Put::Forbidden => Err(Refused::Forbidden),
         Put::Full => Err(full("put_link", &id, &state)),
+        Put::Exhausted => {
+            eprintln!(
+                "store put_link {}: head at i64::MAX, no next rev",
+                short(&id)
+            );
+            Err(Refused::Full)
+        }
     }
 }
 

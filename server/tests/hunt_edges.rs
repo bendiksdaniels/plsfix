@@ -49,13 +49,11 @@ async fn an_empty_inbox_item_is_stored_and_listed_with_an_empty_blob() {
     assert_eq!(json(&body)[0]["blob"], "");
 }
 
-/// None of the body-consuming routes look at Content-Type at all: PUT and the
-/// inbox POST take raw `Bytes`, and the three batches parse the body as JSON
-/// by hand rather than through axum's `Json` extractor. A route that started
-/// enforcing the header would silently break a client that a proxy stripped
-/// it from - this pins that no route does, one way or the other.
+/// PUT takes raw `Bytes` and `/api/links/status` parses its JSON by hand, not
+/// through axum's `Json` extractor, so neither looks at Content-Type: a proxy
+/// that strips or rewrites the header must not break a push or a status call.
 #[tokio::test]
-async fn every_route_ignores_content_type_entirely() {
+async fn put_and_status_ignore_content_type() {
     let app = relay_app();
     let put_no_type = Request::builder()
         .method("PUT")

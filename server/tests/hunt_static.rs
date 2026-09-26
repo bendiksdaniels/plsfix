@@ -1,10 +1,7 @@
-//! Hunt pass 1 (edges + repeats): static-host path forms the existing suite
-//! (audit_e2.rs) does not try - double percent-encoding, a backslash, and a
-//! doubled slash around a dotfile or a `..` segment. The invariant is the one
-//! in CLAUDE.md: this path carries a Cloudflare Access bypass, so it may never
-//! hand back a dotfile or anything above `dist/`, encoded or not.
-//! Each test gets its own `static_dir` name: these run on separate threads,
-//! and two tests writing the same tree race each other's ServeDir reads.
+//! Hunt pass 1 (edges + repeats): static-host paths audit_e2.rs does not try
+//! (%252e, a backslash, a doubled slash around a dotfile or `..`). The path is
+//! Access-bypassed, so it never serves a dotfile or anything above `dist/`.
+//! Each test has its own `static_dir`: tests on separate threads would race.
 
 mod common;
 

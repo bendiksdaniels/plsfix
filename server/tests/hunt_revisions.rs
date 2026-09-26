@@ -14,10 +14,9 @@ use plsfix_server::{
     store::{auth_hash, Get, Store, INBOX_TTL, LINK_TTL},
 };
 
-/// `head.rev + 1` in `Store::put_link` is unchecked. A link cannot reach
-/// `i64::MAX` through the API (that is 2^63 pushes), so the only way to prove
-/// what happens at the edge is to seed a row directly, the way a restored
-/// backup or a hand-edited row could.
+/// A link cannot reach `i64::MAX` through the API (that is 2^63 pushes), so
+/// the only way to prove what happens at the edge is to seed a row directly,
+/// the way a restored backup or a hand-edited row could.
 fn seed_row_at_rev(path: &std::path::Path, id: &str, auth: &[u8; 32], rev: i64, now: i64) {
     let conn = rusqlite::Connection::open(path).unwrap();
     conn.execute(
@@ -36,9 +35,10 @@ fn temp_db(name: &str) -> std::path::PathBuf {
     path
 }
 
-/// A link already sitting at the highest revision `i64` can hold must not
-/// crash the request that tries to push past it: it has to come back as an
-/// ordinary refusal, the same shape a full store already answers with.
+/// A link already sitting at the highest revision `i64` can hold must refuse
+/// the push past it and keep what it has. Before the guard, a debug build
+/// panicked (500) and a release build wrapped the rev to `i64::MIN`, dropped
+/// the push and still answered 200, so Excel counted it as pushed.
 #[tokio::test]
 async fn a_push_past_i64_max_revisions_is_refused_not_a_panic() {
     let path = temp_db("i64-max");
@@ -51,13 +51,18 @@ async fn a_push_past_i64_max_revisions_is_refused_not_a_panic() {
 
     let store = Store::open(&path).unwrap();
     let state = Arc::new(AppState::new(store));
-    let app = routes(state);
+    let app = routes(state.clone());
 
     let (status, body) = call(&app, "PUT", &format!("/api/links/{ID}"), Some(AUTH), b"new").await;
     // The same refusal shape a full store already answers with - never the
     // generic store error a caught panic would have left behind.
     assert_eq!(status, StatusCode::INSUFFICIENT_STORAGE, "{body}");
     assert_eq!(body, r#"{"error":"storage full"}"#);
+    // Refused, not half-written: the seeded head is still the only revision.
+    let (status, body) = call(&app, "GET", &format!("/api/links/{ID}"), Some(AUTH), b"").await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(body, "seeded");
+    assert_eq!(state.store.rev_count(ID), 1);
 
     let _ = std::fs::remove_file(&path);
     let _ = std::fs::remove_file(format!("{}-wal", path.display()));
@@ -90,20 +95,23 @@ async fn a_revision_query_at_2_40_or_near_i64_max_is_missing_not_an_error() {
     assert_eq!(body, r#"{"error":"bad rev"}"#);
 }
 
-/// Two pushes to the same link from the same key, released at once: the
-/// store's one connection mutex spans the whole read-then-write, so they
-/// cannot both read rev 1 as the head and both try to write rev 2. Both must
-/// land, in some order, as sequential revisions - never a lost update, never
-/// a duplicate revision number.
+/// Pushes to the same link from the same key, released at once: the store's
+/// one connection mutex spans the whole read-then-write, so no two can read
+/// the same head and write the same next rev. They must land as sequential
+/// revisions. With 32 writers a split lock (read the head, drop the lock,
+/// re-take it to write) fails about half the runs; with 2 it never did.
+const WRITERS: usize = 32;
+
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-async fn two_concurrent_pushes_to_the_same_link_land_as_sequential_revisions() {
+async fn concurrent_pushes_to_the_same_link_land_as_sequential_revisions() {
     let state = Arc::new(AppState::new(Store::in_memory().unwrap()));
     push(&routes(state.clone()), b"first").await;
 
     let app = routes(state.clone());
-    let gate = Arc::new(tokio::sync::Barrier::new(2));
+    let gate = Arc::new(tokio::sync::Barrier::new(WRITERS));
     let mut racing = Vec::new();
-    for blob in [b"second".to_vec(), b"third".to_vec()] {
+    for index in 0..WRITERS {
+        let blob = format!("writer {index}").into_bytes();
         let (app, gate) = (app.clone(), Arc::clone(&gate));
         racing.push(tokio::spawn(async move {
             gate.wait().await;
@@ -117,11 +125,8 @@ async fn two_concurrent_pushes_to_the_same_link_land_as_sequential_revisions() {
         revs.push(json(&body)["rev"].as_i64().unwrap());
     }
     revs.sort_unstable();
-    assert_eq!(
-        revs,
-        vec![2, 3],
-        "two racing writers must not both become rev 2"
-    );
+    let expected: Vec<i64> = (2..=WRITERS as i64 + 1).collect();
+    assert_eq!(revs, expected, "racing writers must never share a rev");
     // Retention still holds to exactly two revisions after the race.
     assert_eq!(state.store.rev_count(ID), 2);
 }

@@ -44,14 +44,15 @@ pub struct Store {
     caps: Caps,
 }
 
-/// Outcome of a push: a new link, a new revision, a foreign owner, or a store
-/// that has no room for the blob.
+/// Outcome of a push: a new link, a new revision, a foreign owner, a store
+/// that has no room for the blob, or a link whose revision counter is spent.
 #[derive(Debug)]
 pub enum Put {
     Created(i64),
     Updated(i64),
     Forbidden,
     Full,
+    Exhausted,
 }
 
 /// The newest live revision of a link.
@@ -216,12 +217,9 @@ impl Store {
                 Put::Created(1)
             }
             Some(head) if head.auth != auth_hash.as_slice() => Put::Forbidden,
-            // A real link is nowhere near this: reaching it takes 2^63
-            // pushes. But `rev` is a plain i64 column, so a row restored or
-            // hand-seeded at the top of its range is possible, and the store
-            // must answer it the way it answers any other kind of "no room
-            // for this push" - never an unchecked add panicking a worker.
-            Some(head) if head.rev == i64::MAX => Put::Full,
+            // Only a restored or hand-seeded row gets here (2^63 pushes); an
+            // unchecked add panics in debug and wraps to i64::MIN in release.
+            Some(head) if head.rev == i64::MAX => Put::Exhausted,
             Some(head) => {
                 let rev = head.rev + 1;
                 tx.execute(

@@ -1,47 +1,82 @@
-//! Hunt pass 1 (edges + repeats): the production rate defaults, wired end to
-//! end through `AppState::new` and the real router. Every existing HTTP test
-//! for the write limiter overrides it with a small number (1, 2, 3...) to
-//! keep the test fast; none of them exercises the literal
-//! `DEFAULT_WRITE_PER_MIN` (100) a real deployment starts with, so a typo
-//! that changed the constant without touching its unit test would not be
-//! caught at the layer that actually matters: the router.
+//! Hunt pass 1 (edges + repeats): the production write allowance
+//! (`DEFAULT_WRITE_PER_MIN`, 100) through `AppState::new` and the real router.
+//! `main.rs` builds its own limiter from the environment (`state_from_env`):
+//! this pins the library default, not that wiring.
 
 mod common;
 
-use axum::http::{header, StatusCode};
+use axum::{
+    http::{header, HeaderValue, StatusCode},
+    Router,
+};
 use common::*;
+use http_body_util::BodyExt;
 use plsfix_server::relay::*;
 use tower::ServiceExt;
 
-#[tokio::test]
-async fn the_hundredth_write_succeeds_and_the_hundred_and_first_waits() {
+/// A router that has spent its whole write allowance, and its answer to one
+/// write more.
+struct Refusal {
+    app: Router,
+    status: StatusCode,
+    retry_after: Option<HeaderValue>,
+    body: String,
+}
+
+/// One attempt on a fresh router. `None` when the wall clock reached the next
+/// second meanwhile: the limiter refills by whole seconds (1.67 tokens each),
+/// so such an attempt may have earned a token and proves nothing either way.
+async fn spend_all_then_one_more() -> Option<Refusal> {
     let app = relay_app();
+    let started = now();
     for index in 0..DEFAULT_WRITE_PER_MIN {
-        let id = format!("{index:032x}");
-        let (status, body) = call(&app, "PUT", &format!("/api/links/{id}"), Some(AUTH), b"x").await;
+        let path = format!("/api/links/{index:032x}");
+        let (status, body) = call(&app, "PUT", &path, Some(AUTH), b"x").await;
         assert_eq!(status, StatusCode::OK, "write {index}: {body}");
     }
-    let (status, body) = call(
-        &app,
-        "PUT",
-        &format!("/api/links/{:032x}", DEFAULT_WRITE_PER_MIN),
-        Some(AUTH),
-        b"x",
-    )
-    .await;
-    assert_eq!(status, StatusCode::TOO_MANY_REQUESTS, "{body}");
-    assert_eq!(body, r#"{"error":"too many requests"}"#);
+    let path = format!("/api/links/{:032x}", DEFAULT_WRITE_PER_MIN);
+    let request = req("PUT", &path, Some(AUTH), b"x".to_vec());
+    let response = app.clone().oneshot(request).await.unwrap();
+    let (status, retry_after) = (
+        response.status(),
+        response.headers().get(header::RETRY_AFTER).cloned(),
+    );
+    let bytes = response.into_body().collect().await.unwrap().to_bytes();
+    let body = String::from_utf8_lossy(&bytes).to_string();
+    (now() == started).then_some(Refusal {
+        app,
+        status,
+        retry_after,
+        body,
+    })
+}
+
+/// Five attempts in a row crossing a second boundary means a machine too slow
+/// for this test to mean anything, and the test says so instead of passing.
+async fn refused_extra_write() -> Refusal {
+    for _ in 0..5 {
+        if let Some(refusal) = spend_all_then_one_more().await {
+            return refusal;
+        }
+    }
+    panic!("five attempts in a row crossed a second boundary");
+}
+
+#[tokio::test]
+async fn the_hundredth_write_succeeds_and_the_hundred_and_first_waits() {
+    let refusal = refused_extra_write().await;
+    assert_eq!(
+        refusal.status,
+        StatusCode::TOO_MANY_REQUESTS,
+        "{}",
+        refusal.body
+    );
+    assert_eq!(refusal.body, r#"{"error":"too many requests"}"#);
 
     // A read is a different allowance (DEFAULT_READ_PER_MIN, 1200) and is
     // untouched by a client that has just spent its whole write budget.
-    let (status, _) = call(
-        &app,
-        "GET",
-        &format!("/api/links/{:032x}", DEFAULT_WRITE_PER_MIN - 1),
-        Some(AUTH),
-        b"",
-    )
-    .await;
+    let path = format!("/api/links/{:032x}", DEFAULT_WRITE_PER_MIN - 1);
+    let (status, _) = call(&refusal.app, "GET", &path, Some(AUTH), b"").await;
     assert_eq!(status, StatusCode::OK);
 }
 
@@ -50,23 +85,11 @@ async fn the_hundredth_write_succeeds_and_the_hundred_and_first_waits() {
 /// seconds like every other refusal.
 #[tokio::test]
 async fn the_production_write_limit_answers_with_a_retry_after() {
-    let app = relay_app();
-    for index in 0..DEFAULT_WRITE_PER_MIN {
-        let id = format!("{index:032x}");
-        call(&app, "PUT", &format!("/api/links/{id}"), Some(AUTH), b"x").await;
-    }
-    let request = req(
-        "PUT",
-        &format!("/api/links/{:032x}", DEFAULT_WRITE_PER_MIN),
-        Some(AUTH),
-        b"x".to_vec(),
-    );
-    let response = app.oneshot(request).await.unwrap();
-    assert_eq!(response.status(), StatusCode::TOO_MANY_REQUESTS);
-    let retry_after: u64 = response
-        .headers()
-        .get(header::RETRY_AFTER)
-        .unwrap()
+    let refusal = refused_extra_write().await;
+    assert_eq!(refusal.status, StatusCode::TOO_MANY_REQUESTS);
+    let retry_after: u64 = refusal
+        .retry_after
+        .expect("a refusal carries Retry-After")
         .to_str()
         .unwrap()
         .parse()
