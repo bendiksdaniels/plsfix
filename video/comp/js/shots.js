@@ -1,5 +1,5 @@
 // shots.js: the capture manifest (video/build/shots/shots.json) and the on-screen text
-// (copy.lv.json), loaded before any scene builds; shots come only from the demo build. Shots.rect(name, key) gives a capture's
+// (copy.<lang>.json: Latvian, or English with ?lang=en), loaded before any scene builds; shots come only from the demo build. Shots.rect(name, key) gives a capture's
 // rectangle in CSS px; Copy.t(key) gives a caption. A missing name fails loudly.
 window.Shots = (() => {
   const BASE = '../build/shots/';
@@ -45,8 +45,12 @@ window.Shots = (() => {
 window.Copy = (() => {
   let text = null;
   async function load() {
-    const r = await fetch('copy.lv.json');
-    if (!r.ok) throw new Error('copy.lv.json missing');
+    // the cut: ?lang=en on the page's URL loads the English captions, Latvian by default
+    const lang = new URLSearchParams(location.search).get('lang') || 'lv';
+    if (!/^(lv|en)$/.test(lang)) throw new Error(`no cut in ${lang}`);
+    document.documentElement.lang = lang;
+    const r = await fetch(`copy.${lang}.json`);
+    if (!r.ok) throw new Error(`copy.${lang}.json missing`);
     text = await r.json();
   }
   function t(key) {

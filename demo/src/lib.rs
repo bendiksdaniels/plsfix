@@ -1,7 +1,9 @@
 // pls,fix demo workbook: a small DemoCo model whose every sheet gives
 // one of the add-in's tools something to act on. `build` returns the workbook
 // and a per-sheet tally of what was written, so main.rs can log it and the
-// test can reconcile the saved file against it, cell for cell.
+// test can reconcile the saved file against it, cell for cell. The creation time is fixed,
+// so the same source always saves the same bytes (the video's provenance check compares the
+// demo's sha256 with the file its screens were taken on).
 
 pub mod layout;
 pub mod pen;
@@ -9,15 +11,20 @@ pub mod sheets;
 pub mod style;
 pub mod tally;
 
-use rust_xlsxwriter::{Workbook, XlsxError};
+use rust_xlsxwriter::{DocProperties, ExcelDateTime, Workbook, XlsxError};
 
 use crate::style::Styles;
 use crate::tally::Tally;
+
+/// The document's creation time, fixed (a clock here would make every build a new file).
+const CREATED: (u16, u8, u8) = (2026, 9, 1);
 
 /// Builds the whole workbook; sheets in `sheets::SHEETS` order.
 pub fn build() -> Result<(Workbook, Vec<(&'static str, Tally)>), XlsxError> {
     let styles = Styles::new();
     let mut workbook = Workbook::new();
+    let created = ExcelDateTime::from_ymd(CREATED.0, CREATED.1, CREATED.2)?;
+    workbook.set_properties(&DocProperties::new().set_creation_datetime(&created));
     let mut tallies = Vec::with_capacity(sheets::SHEETS.len());
     for (name, builder) in sheets::SHEETS {
         let sheet = workbook.add_worksheet();

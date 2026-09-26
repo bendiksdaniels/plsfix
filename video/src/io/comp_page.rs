@@ -2,6 +2,7 @@
 //! Owns the page contract: `__ready` resolves to {duration, fps} once every image and font is in;
 //! `__seek(t)` sets the frame for time t. Any page error seen here fails with the time it showed.
 
+use crate::core::lang::Lang;
 use crate::core::viewport::Viewport;
 use crate::io::cdp::Cdp;
 use crate::io::chrome::Chrome;
@@ -23,10 +24,11 @@ pub struct CompPage {
 }
 
 impl CompPage {
-    /// Opens the composition served on `port` in a fresh Chrome of size `vp` and waits for it.
-    pub fn open(port: u16, vp: Viewport) -> Result<CompPage> {
+    /// Opens the composition served on `port` in a fresh Chrome of size `vp`, with the captions of
+    /// cut `lang`, and waits for it.
+    pub fn open(port: u16, vp: Viewport, lang: Lang) -> Result<CompPage> {
         let (chrome, mut cdp) = Chrome::launch(vp)?;
-        cdp.navigate(&format!("http://127.0.0.1:{port}/comp/index.html"))?;
+        cdp.navigate(&format!("http://127.0.0.1:{port}/comp/index.html?lang={}", lang.code()))?;
         let meta = cdp.eval_async("window.__ready").context("comp page: __ready")?;
         let errors = cdp.take_errors();
         if !errors.is_empty() {
