@@ -1,6 +1,7 @@
 //! render_worker.rs: one render worker: its own Chrome on the composition and its own ffmpeg,
 //! stepping through a contiguous range of frames. A page error fails the worker with the time.
 
+use crate::core::lang::Lang;
 use crate::core::viewport::Viewport;
 use crate::io::comp_page::CompPage;
 use crate::io::ffmpeg::Encoder;
@@ -15,13 +16,14 @@ pub struct Job {
     pub fps: u32,
     pub vp: Viewport,
     pub port: u16,
+    pub lang: Lang,
     pub out: PathBuf,
 }
 
 /// Renders the job's frames into its part file; returns the frames written.
 pub fn run(job: &Job) -> Result<u32> {
     let started = Instant::now();
-    let mut page = CompPage::open(job.port, job.vp).with_context(|| format!("render worker {}", job.index))?;
+    let mut page = CompPage::open(job.port, job.vp, job.lang).with_context(|| format!("render worker {}", job.index))?;
     let mut enc = Encoder::start(job.fps, &job.out)?;
     for f in job.frames.clone() {
         let png = page.frame_png(f as f64 / job.fps as f64).with_context(|| format!("render worker {}: frame {f}", job.index))?;

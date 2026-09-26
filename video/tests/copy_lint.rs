@@ -19,11 +19,24 @@ fn plain_latvian_and_ranges_pass() {
     assert!(lint("k", "2026–2027").is_empty(), "an en dash in a range is fine");
 }
 
+fn copy_of(lang: &str) -> serde_json::Map<String, serde_json::Value> {
+    let path = format!("{}/comp/copy.{lang}.json", env!("CARGO_MANIFEST_DIR"));
+    let text = std::fs::read_to_string(&path).unwrap();
+    serde_json::from_str::<serde_json::Value>(&text).unwrap().as_object().unwrap().clone()
+}
+
 #[test]
-fn the_real_copy_file_passes() {
-    let text = std::fs::read_to_string(concat!(env!("CARGO_MANIFEST_DIR"), "/comp/copy.lv.json")).unwrap();
-    let copy: serde_json::Value = serde_json::from_str(&text).unwrap();
-    for (key, v) in copy.as_object().unwrap() {
-        assert!(lint(key, v.as_str().unwrap()).is_empty(), "{key}");
+fn both_real_copy_files_pass() {
+    for lang in ["lv", "en"] {
+        for (key, v) in copy_of(lang) {
+            assert!(lint(&key, v.as_str().unwrap()).is_empty(), "{lang} {key}");
+        }
     }
+}
+
+#[test]
+fn the_cuts_carry_the_same_keys() {
+    let (lv, en) = (copy_of("lv"), copy_of("en"));
+    let missing: Vec<_> = lv.keys().filter(|k| !en.contains_key(*k)).chain(en.keys().filter(|k| !lv.contains_key(*k))).collect();
+    assert!(missing.is_empty(), "keys in one cut only: {missing:?}");
 }

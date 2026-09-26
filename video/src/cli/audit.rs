@@ -1,4 +1,4 @@
-//! audit.rs: `plsfix-video audit`: the gate on video/build/plsfix-video.mp4. The file's
+//! audit.rs: `plsfix-video audit [--lang en]`: the gate on a cut's full render. The file's
 //! format (probe_check), motion (no freeze over 1,5 s, no black), colour (the browser's frame
 //! and the decoded video agree at fixed points), determinism (a frame never depends on the
 //! frames drawn before it), sound (loudness, and the track in sync with its master), layout,
@@ -9,6 +9,7 @@ use crate::cli::{build_dir, music, repo_dir, video_dir};
 use crate::io::sha::sha256;
 use crate::core::colour::{max_diff, patch_mean, pixels_differing, MAX_CONTENT_PIXELS, NOISE_LEVEL, PROBES, TOLERANCE};
 use crate::core::copy_lint::lint;
+use crate::core::lang::Lang;
 use crate::core::shots::validate;
 use crate::core::frames::Timeline;
 use crate::core::probe_check;
@@ -20,8 +21,8 @@ use anyhow::{bail, Context, Result};
 use serde_json::Value;
 use std::path::Path;
 
-pub fn run() -> Result<()> {
-    let found = findings()?;
+pub fn run(lang: Lang) -> Result<()> {
+    let found = findings(lang)?;
     for f in &found {
         println!("audit: FINDING {f}");
     }
@@ -32,22 +33,22 @@ pub fn run() -> Result<()> {
     Ok(())
 }
 
-/// Every finding on the current full render; empty means green.
-pub fn findings() -> Result<Vec<String>> {
-    let out = output(false);
+/// Every finding on the current full render of cut `lang`; empty means green.
+pub fn findings(lang: Lang) -> Result<Vec<String>> {
+    let out = output(false, lang);
     if !out.exists() {
         bail!("audit: {} is missing; run render first", out.display());
     }
     let port = static_server::serve(video_dir())?;
-    let mut page = CompPage::open(port, Viewport::STAGE)?;
+    let mut page = CompPage::open(port, Viewport::STAGE, lang)?;
     let tl = Timeline::new(page.meta.duration, page.meta.fps);
     let mut f = probe_check::check(&ffmpeg::probe(&out)?, tl.frames as u64);
     f.extend(motion(&out, tl.seconds())?);
     f.extend(colours(&out, &mut page)?);
-    f.extend(determinism(port, tl.seconds())?);
+    f.extend(determinism(port, tl.seconds(), lang)?);
     f.extend(sound(&out)?);
-    f.extend(layout()?);
-    f.extend(copy()?);
+    f.extend(layout(lang)?);
+    f.extend(copy(lang)?);
     f.extend(provenance()?);
     println!("audit: checked {} ({} frames, {:.2}s)", out.display(), tl.frames, tl.seconds());
     Ok(f)
@@ -94,9 +95,9 @@ const TWICE: &[f64] = &[2.5, 5.0, 11.0, 21.0, 33.0, 52.0, 66.0, 75.0, 82.0, 85.0
 /// Two fresh pages draw the same frames, one forward and one backward after visiting the end;
 /// every frame must match its twin up to Chrome's own dithering (a render worker only ever sees
 /// its own slice, so a frame that depends on earlier frames differs between workers).
-fn determinism(port: u16, seconds: f64) -> Result<Vec<String>> {
-    let mut fwd = CompPage::open(port, Viewport::STAGE)?;
-    let mut back = CompPage::open(port, Viewport::STAGE)?;
+fn determinism(port: u16, seconds: f64, lang: Lang) -> Result<Vec<String>> {
+    let mut fwd = CompPage::open(port, Viewport::STAGE, lang)?;
+    let mut back = CompPage::open(port, Viewport::STAGE, lang)?;
     back.frame_png(seconds - 0.05)?;
     let first: Vec<Vec<u8>> = TWICE.iter().map(|&t| fwd.frame_png(t)).collect::<Result<_>>()?;
     let mut f = Vec::new();
@@ -150,16 +151,16 @@ fn read_json(path: &Path) -> Result<Value> {
     serde_json::from_str(&text).with_context(|| format!("parse {}", path.display()))
 }
 
-/// The page's own layout report from the last render must be empty.
-fn layout() -> Result<Vec<String>> {
-    let report = read_json(&build_dir().join("layout.json"))?;
+/// The page's own layout report from the cut's last render must be empty.
+fn layout(lang: Lang) -> Result<Vec<String>> {
+    let report = read_json(&build_dir().join(lang.layout()))?;
     Ok(report.as_array().into_iter().flatten().map(|p| format!("layout at {}s {}: {}", p["time"], p["id"].as_str().unwrap_or("?"), p["problem"].as_str().unwrap_or("?"))).collect())
 }
 
-/// Every caption on screen: the copy file.
-fn copy() -> Result<Vec<String>> {
+/// Every caption on screen: the cut's copy file.
+fn copy(lang: Lang) -> Result<Vec<String>> {
     let mut f = Vec::new();
-    let copy = read_json(&video_dir().join("comp/copy.lv.json"))?;
+    let copy = read_json(&video_dir().join("comp").join(lang.copy_file()))?;
     for (key, v) in copy.as_object().into_iter().flatten() {
         f.extend(lint(key, v.as_str().unwrap_or("")));
     }

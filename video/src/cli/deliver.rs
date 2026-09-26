@@ -1,47 +1,48 @@
-//! deliver.rs: `plsfix-video deliver` copies the full render to the Desktop as
-//! "pls,fix video.mp4", only after the audit comes back green on that file, and never over a
-//! copy Daniel changed: an existing copy must match video/delivered.sha256 (the last delivery's
-//! hash), else it moves to video/build/backup/<date>/ and the delivery stops to ask.
+//! deliver.rs: `plsfix-video deliver [--lang en]` copies a cut's full render to the Desktop as
+//! "pls,fix video.mp4" (English: "pls,fix video EN.mp4"), only after the audit comes back green
+//! on that file, and never over a copy Daniel changed: an existing copy must match the cut's
+//! record (video/delivered.sha256, delivered.en.sha256: the last delivery's hash), else it moves
+//! to video/build/backup/<date>/ and the delivery stops to ask.
 //! `all` = capture, render, deliver: the whole build in one command.
 
 use crate::cli::render::output;
 use crate::cli::{audit, build_dir, capture, render, video_dir};
+use crate::core::lang::Lang;
 use crate::io::sha::sha256;
 use anyhow::{bail, Context, Result};
 use std::path::{Path, PathBuf};
 
-pub const FILE_NAME: &str = "pls,fix video.mp4";
-
-/// Where copies go: the Desktop (the playbook's default; pls,fix has no presentation folder).
-pub fn targets() -> Result<Vec<PathBuf>> {
+/// Where copies of cut `lang` go: the Desktop (the playbook's default; pls,fix has no
+/// presentation folder).
+pub fn targets(lang: Lang) -> Result<Vec<PathBuf>> {
     let home = PathBuf::from(std::env::var("HOME").context("deliver: HOME unset")?);
-    Ok(vec![home.join("Desktop").join(FILE_NAME)])
+    Ok(vec![home.join("Desktop").join(lang.desktop_name())])
 }
 
-fn record() -> PathBuf {
-    video_dir().join("delivered.sha256")
+fn record(lang: Lang) -> PathBuf {
+    video_dir().join(lang.record())
 }
 
-pub fn run() -> Result<()> {
-    let found = audit::findings()?;
+pub fn run(lang: Lang) -> Result<()> {
+    let found = audit::findings(lang)?;
     if !found.is_empty() {
         for f in &found {
             println!("audit: FINDING {f}");
         }
         bail!("deliver: the audit has {} finding(s); nothing copied", found.len());
     }
-    let last = std::fs::read_to_string(record()).ok().map(|s| s.trim().to_string());
-    for dst in targets()? {
+    let last = std::fs::read_to_string(record(lang)).ok().map(|s| s.trim().to_string());
+    for dst in targets(lang)? {
         guard(&dst, last.as_deref())?;
     }
-    for dst in targets()? {
-        std::fs::copy(output(false), &dst).with_context(|| format!("deliver: copy to {}", dst.display()))?;
+    for dst in targets(lang)? {
+        std::fs::copy(output(false, lang), &dst).with_context(|| format!("deliver: copy to {}", dst.display()))?;
         let mb = std::fs::metadata(&dst)?.len() as f64 / 1_048_576.0;
         println!("deliver: audit green; {} ({mb:.1} MB)", dst.display());
     }
-    let hash = sha256(&output(false))?;
-    std::fs::write(record(), format!("{hash}\n"))?;
-    println!("deliver: recorded {} in {}", &hash[..12], record().display());
+    let hash = sha256(&output(false, lang))?;
+    std::fs::write(record(lang), format!("{hash}\n"))?;
+    println!("deliver: recorded {} in {}", &hash[..12], record(lang).display());
     Ok(())
 }
 
@@ -62,8 +63,8 @@ fn guard(dst: &Path, last: Option<&str>) -> Result<()> {
     bail!("deliver: {} was not the last delivery (changed by hand?); moved to {}; ask before delivering over it", dst.display(), moved.display())
 }
 
-pub fn all(workers: u32, track: Option<&Path>) -> Result<()> {
+pub fn all(workers: u32, track: Option<&Path>, lang: Lang) -> Result<()> {
     capture::run()?;
-    render::run(false, workers, track)?;
-    run()
+    render::run(false, workers, track, lang)?;
+    run(lang)
 }

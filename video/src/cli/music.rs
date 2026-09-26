@@ -3,6 +3,7 @@
 //! to length, faded). Either way the level is set to -16 LUFS with peaks under -2 dBFS and the
 //! result is video/build/music.wav. `render` calls it first, so sound follows picture.
 
+use crate::core::lang::Lang;
 use crate::cli::{build_dir, video_dir};
 use crate::core::dsp::dynamics::{db_to_gain, gain, limit};
 use crate::core::dsp::SR;
@@ -25,7 +26,8 @@ pub fn path() -> PathBuf {
 
 pub fn run(own: Option<&Path>) -> Result<()> {
     let port = static_server::serve(video_dir())?;
-    let mut page = CompPage::open(port, Viewport::STAGE)?;
+    // the cues come from the timing tables, the same in every cut
+    let mut page = CompPage::open(port, Viewport::STAGE, Lang::Lv)?;
     let seconds = page.meta.duration;
     let master = match own {
         Some(file) => picked(file, seconds)?,

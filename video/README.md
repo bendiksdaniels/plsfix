@@ -1,7 +1,8 @@
 # pls,fix video: the 87,5 s motion graphic
 
 Builds `~/Desktop/pls,fix video.mp4`: 1920x1080, 60 fps, H.264, an original soundtrack (AAC
-stereo, -16 LUFS), Latvian captions. The intro's "pls fix" mail, the Excel hero (Autocolor, Audit
+stereo, -16 LUFS), Latvian captions; the English cut (`--lang en`) is `~/Desktop/pls,fix video EN.mp4`,
+the same picture and sound with `comp/copy.en.json`. The intro's "pls fix" mail, the Excel hero (Autocolor, Audit
 overlay, Precedents, Model check), six toolbox chapters (formats, charts, templates, Find a
 combination, Super Find, brand), the Excel to PowerPoint link (export, insert, a changed number,
 Push all, Update all, the object tools), the end card with the GitHub address. Every app frame is
@@ -25,6 +26,7 @@ cargo run --release -- audit        # the gate, exit 1 on any finding
 cargo run --release -- deliver      # audit, then copy to the Desktop (never over a changed copy)
 cargo run --release -- all --track ~/Music/song.mp3   # any song in place of the score
 cargo run --release -- still 9.9 44.2   # single frames to build/stills/ for QA
+cargo run --release -- render --lang en  # the English cut (render, audit, deliver, all, still take it)
 cargo test
 ```
 
@@ -39,7 +41,8 @@ PowerPoint with it, so the Inbox holds only that run's export.
 
 ## Change something
 
-- A caption: `comp/copy.lv.json` (the audit lints it: no em dash, no rejected words).
+- A caption: `comp/copy.lv.json`, and its English twin in `comp/copy.en.json` (same keys, a test
+  holds them together; the audit lints the cut it checks: no em dash, no rejected words).
 - A timing: the `K` table at the top of each scene in `comp/js/scenes/`; spans in `comp/js/timing.js`.
 - A screen: `capture/excel-shots.mjs` or `capture/ppt-shots.mjs` (what to press, which
   rectangles to record), then `capture` again. A selector that stops matching fails by name.
