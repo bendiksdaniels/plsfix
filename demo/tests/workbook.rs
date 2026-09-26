@@ -342,3 +342,9 @@ fn cagr_formula_is_saved_in_excels_own_stored_form() {
         "CAGR formula must be Excel's stored form, not the un-prefixed name: {xml}"
     );
 }
+
+#[test]
+fn the_same_source_saves_the_same_bytes() {
+    let save = || smt_demo::build().expect("build").0.save_to_buffer().expect("save");
+    assert!(save() == save(), "two builds differ: a clock or a random order leaked into the file");
+}
