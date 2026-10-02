@@ -1,0 +1,427 @@
+// The Excel links adapter end to end against the strict fake host: a hidden
+// name anchors the source, the registry lives in workbook settings, the picture
+// is sealed onto the relay and announced to the inbox. Anchors, not addresses,
+// are what a later push re-renders.
+
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type * as LinksModule from "../src/excel/links";
+import { deriveLinkKeys, open } from "../src/link/crypto";
+import {
+  anchorName,
+  decodeInboxItem,
+  decodePayload,
+  REGISTRY_SETTING,
+} from "../src/link/model";
+import {
+  createWorkspace,
+  type KeyStore,
+  type Workspace,
+} from "../src/link/workspace";
+import { RelayError } from "../src/link/relay";
+import { FakeRelay } from "./fakerelay";
+import { fakePng } from "./fakepng";
+import {
+  enableStrictLoadSemantics,
+  installFakeHost,
+  uninstallFakeHost,
+  type FakeHelpers,
+  type FakeWorkbook,
+} from "./fakehost";
+
+enableStrictLoadSemantics();
+
+let links: typeof LinksModule;
+let helpers: FakeHelpers;
+let workbook: FakeWorkbook;
+let relay: FakeRelay;
+let ws: Workspace;
+
+function memoryStore(): KeyStore {
+  const map = new Map<string, string>();
+  return {
+    get: async (k) => map.get(k) ?? null,
+    set: async (k, v) => {
+      map.set(k, v);
+    },
+    remove: async (k) => {
+      map.delete(k);
+    },
+  };
+}
+
+beforeEach(async () => {
+  vi.resetModules();
+  uninstallFakeHost();
+  const host = installFakeHost({ sheets: ["Model", "Data"] });
+  helpers = host.helpers;
+  workbook = host.workbook;
+  workbook.fileUrl = "/Users/daniel/Models/Model_v4.xlsx";
+  relay = new FakeRelay();
+  ws = await createWorkspace(memoryStore());
+  links = await import("../src/excel/links");
+  helpers.seed("Model!B4", [
+    [1, 2, 3, 4, 5],
+    [6, 7, 8, 9, 10],
+  ]);
+  helpers.select("Model!B4:F5");
+});
+afterEach(() => uninstallFakeHost());
+
+// Every export in this file is a picture; the table export has its own suite.
+async function payloadOf(id: string, token: string) {
+  const keys = await deriveLinkKeys(token);
+  const stored = relay.links.get(id)!;
+  const payload = decodePayload(await open(keys.enc, id, stored.blob));
+  if (payload.kind !== "picture") throw new Error(`${id}: not a picture`);
+  return payload;
+}
+
+// A chart the slide can draw as shapes, so its export carries chart data
+// beside the picture: the values are the cells the suite already seeded.
+function addChartWithData(): void {
+  helpers.addChart("Model", {
+    name: "Revenue bridge",
+    width: 400,
+    height: 200,
+    chartType: "ColumnClustered",
+    title: "Revenue",
+    series: [
+      {
+        name: "Revenue",
+        categories: ["2024A", "2025E", "2026E"],
+        values: [1, 2, 3],
+        valuesSource: "Model!$B$4:$D$4",
+      },
+    ],
+  });
+  helpers.setActiveChart(workbook.charts[0]!);
+}
+
+function registryToken(): string {
+  return JSON.parse(String(helpers.setting(REGISTRY_SETTING))).links[0].token;
+}
+
+describe("exportSelection", () => {
+  it("anchors a hidden name, records the registry, pushes a sealed picture and posts to the inbox", async () => {
+    const result = await links.exportSelection(ws, relay);
+    expect(result.label).toBe("Model!B4:F5");
+    const name = workbook.names.find((n) => n.name === anchorName(result.id))!;
+    expect(name.visible).toBe(false);
+    expect(name.formula).toBe("=Model!$B$4:$F$5");
+    const registry = JSON.parse(String(helpers.setting(REGISTRY_SETTING)));
+    expect(registry.links[0]).toMatchObject({
+      id: result.id,
+      kind: "range",
+      anchor: anchorName(result.id),
+      rev: 1,
+    });
+    const payload = await payloadOf(result.id, registry.links[0].token);
+    expect(payload.src).toEqual({
+      workbook: "Model_v4.xlsx",
+      sheet: "Model",
+      ref: "B4:F5",
+      anchor: anchorName(result.id),
+    });
+    expect(payload.png).toBe(fakePng(5 * 64, 2 * 15));
+    expect(payload.width).toBe(320);
+    const inbox = await relay.listInbox(ws.id, ws.auth);
+    expect(
+      decodeInboxItem(await open(ws.enc, ws.id, inbox[0]!.blob)),
+    ).toMatchObject({ id: result.id, label: "Model!B4:F5" });
+  });
+  it("needs a host that can render a picture", async () => {
+    helpers.setSupported(() => false);
+    await expect(links.exportSelection(ws, relay)).rejects.toThrow(
+      /Excel 2021/,
+    );
+    expect(workbook.names).toEqual([]);
+  });
+  it("binds the anchor before the upload and unbinds it when that fails", async () => {
+    relay.putLink = () => Promise.reject(new RelayError("server", "boom", 500));
+    // A 5xx gets relay-reason.ts's plain sentence, not the relay's own
+    // "boom" - the same wording a manual Push failure already showed
+    // (test/hunt/excel.link-relay-reasons.hunt.test.ts).
+    await expect(links.exportSelection(ws, relay)).rejects.toThrow(
+      "export Model!B4:F5: The relay had a problem. Try again in a minute.",
+    );
+    expect(workbook.names).toEqual([]);
+    expect(helpers.setting(REGISTRY_SETTING)).toBeNull();
+  });
+  it("refuses selections over the cap", async () => {
+    helpers.select("Model!A:A");
+    await expect(links.exportSelection(ws, relay)).rejects.toThrow(
+      /selected cells/,
+    );
+  });
+  // The anchor is committed by the very sync that asks for the picture, so a
+  // render that fails leaves a hidden name no registry entry claims.
+  it("takes the hidden name back when the picture never renders", async () => {
+    helpers.failNextImage();
+    await expect(links.exportSelection(ws, relay)).rejects.toThrow(
+      /export Model!B4:F5: The image failed to render/,
+    );
+    expect(workbook.names).toEqual([]);
+    expect(helpers.setting(REGISTRY_SETTING)).toBeNull();
+    expect(relay.links.size).toBe(0);
+  });
+  it("refuses a multi-area selection before it anchors anything", async () => {
+    helpers.selectAreas(["Model!B4:F5", "Model!B8:F9"]);
+    await expect(links.exportSelection(ws, relay)).rejects.toThrow(
+      "export: select a single range",
+    );
+    expect(workbook.names).toEqual([]);
+  });
+});
+
+describe("pushLinks", () => {
+  it("renders through the anchor name, not the original address", async () => {
+    const { id } = await links.exportSelection(ws, relay);
+    helpers.setNameFormula(anchorName(id), "=Model!$B$10:$F$18");
+    const summary = await links.pushLinks("all", relay);
+    expect(summary).toEqual({
+      pushed: 1,
+      missing: 0,
+      failed: 0,
+      failures: [],
+    });
+    const token = JSON.parse(String(helpers.setting(REGISTRY_SETTING))).links[0]
+      .token;
+    const payload = await payloadOf(id, token);
+    expect(payload.src.ref).toBe("B10:F18");
+    expect(payload.png).toBe(fakePng(5 * 64, 9 * 15));
+    expect(relay.links.get(id)!.rev).toBe(2);
+  });
+  it("reports a broken anchor as missing and lists it as such", async () => {
+    const { id } = await links.exportSelection(ws, relay);
+    helpers.breakName(anchorName(id));
+    expect(await links.pushLinks([id], relay)).toEqual({
+      pushed: 0,
+      missing: 1,
+      failed: 0,
+      failures: [],
+    });
+    expect((await links.listWorkbookLinks())[0]!.source).toBe("missing");
+  });
+});
+
+describe("charts", () => {
+  // The sizing arguments are a call a host can refuse on its own. The fallback
+  // asks the same chart for its own picture in the same context, so the link
+  // still lands - at the chart's rendered size instead of twice it.
+  it("falls back to the chart's own picture when the sharp export is refused", async () => {
+    addChartWithData();
+    helpers.failNextImage();
+    const result = await links.exportActiveChart(ws, relay);
+    const payload = await payloadOf(result.id, registryToken());
+    expect(payload.png).toBe(fakePng(400, 200));
+    expect(payload.chart).toMatchObject({ kind: "column", title: "Revenue" });
+    expect(workbook.charts[0]!.name).toBe(anchorName(result.id));
+  });
+
+  // The head reads ride the picture's batch, so a chart office.js will not
+  // describe fails the sync the picture was in: the retry has to land the
+  // picture anyway.
+  it("still lands the picture when the chart head read fails beside it", async () => {
+    addChartWithData();
+    helpers.failNextChartRead();
+    const result = await links.exportActiveChart(ws, relay);
+    const payload = await payloadOf(result.id, registryToken());
+    expect(payload.png).toBe(fakePng(400, 200));
+    expect(payload.chart).toMatchObject({ kind: "column" });
+  });
+
+  it("ships the picture alone when the chart data fails on the retry too", async () => {
+    addChartWithData();
+    helpers.failNextChartRead();
+    helpers.failNextChartRead();
+    const result = await links.exportActiveChart(ws, relay);
+    const payload = await payloadOf(result.id, registryToken());
+    expect(payload.png).toBe(fakePng(400, 200));
+    expect(payload.chart).toBeUndefined();
+  });
+
+  it("exports the active chart by renaming it to the anchor and finds it on another sheet later", async () => {
+    helpers.addChart("Model", {
+      name: "Revenue bridge",
+      width: 400,
+      height: 200,
+    });
+    helpers.setActiveChart(workbook.charts[0]!);
+    const result = await links.exportActiveChart(ws, relay);
+    expect(result.label).toBe("Model: Revenue bridge");
+    expect(workbook.charts[0]!.name).toBe(anchorName(result.id));
+    const token = JSON.parse(String(helpers.setting(REGISTRY_SETTING))).links[0]
+      .token;
+    expect((await payloadOf(result.id, token)).png).toBe(fakePng(800, 400));
+    helpers.moveChart(anchorName(result.id), "Data");
+    expect(await links.pushLinks("all", relay)).toEqual({
+      pushed: 1,
+      missing: 0,
+      failed: 0,
+      failures: [],
+    });
+    expect((await payloadOf(result.id, token)).src.sheet).toBe("Data");
+  });
+  it("exports the sheet's only chart when nothing is selected", async () => {
+    helpers.addChart("Model", {
+      name: "Revenue bridge",
+      width: 400,
+      height: 200,
+    });
+    const result = await links.exportActiveChart(ws, relay);
+    expect(result.label).toBe("Model: Revenue bridge");
+  });
+  it("needs a pick when nothing is selected and the sheet has several charts", async () => {
+    helpers.addChart("Model", { name: "Revenue bridge" });
+    helpers.addChart("Model", { name: "Segment pie" });
+    await expect(links.exportActiveChart(ws, relay)).rejects.toThrow(
+      "Select a chart first, or pick one from the list.",
+    );
+    const picked = await links.exportActiveChart(ws, relay, "Segment pie");
+    expect(picked.label).toBe("Model: Segment pie");
+    expect(await links.listActiveSheetCharts()).toEqual([
+      "Revenue bridge",
+      anchorName(picked.id),
+    ]);
+  });
+  it("refuses to re-anchor a chart that is already linked", async () => {
+    helpers.addChart("Model", { name: "Revenue bridge" });
+    helpers.setActiveChart(workbook.charts[0]!);
+    const first = await links.exportActiveChart(ws, relay);
+    await expect(links.exportActiveChart(ws, relay)).rejects.toThrow(
+      /already linked as Model: Revenue bridge; push it instead/,
+    );
+    expect(workbook.charts[0]!.name).toBe(anchorName(first.id));
+  });
+  it("gives a chart its name back when the upload fails", async () => {
+    helpers.addChart("Model", { name: "Revenue bridge" });
+    helpers.setActiveChart(workbook.charts[0]!);
+    relay.putLink = () => Promise.reject(new RelayError("server", "boom", 500));
+    // Same 5xx wording as the plain-range case above.
+    await expect(links.exportActiveChart(ws, relay)).rejects.toThrow(
+      /The relay had a problem/,
+    );
+    expect(workbook.charts[0]!.name).toBe("Revenue bridge");
+  });
+  it("needs a chart on the sheet when nothing is selected", async () => {
+    helpers.setActiveChart(null);
+    await expect(links.exportActiveChart(ws, relay)).rejects.toThrow(
+      /No chart on this sheet/,
+    );
+  });
+  // The rename is committed by the sync that asks for the picture: without the
+  // undo the chart keeps an anchor name no entry claims and can never be
+  // exported again. Only a host that refuses both pictures gets that far.
+  it("gives a chart its name back when neither picture renders, and exports on the retry", async () => {
+    helpers.addChart("Model", { name: "Revenue bridge" });
+    helpers.setActiveChart(workbook.charts[0]!);
+    helpers.failNextImage();
+    helpers.failNextImage();
+    const failure = (await links
+      .exportActiveChart(ws, relay)
+      .then(() => null)
+      .catch((error: unknown) => error)) as { message: string; code?: string };
+    expect(failure.message).toMatch(
+      /export Model: Revenue bridge: sharp: GeneralException; plain: The image failed to render/,
+    );
+    // The stage wrapper keeps the host's code, so "Copy details" names it.
+    expect(failure.code).toBe("GeneralException");
+    expect(workbook.charts[0]!.name).toBe("Revenue bridge");
+    expect(workbook.names).toEqual([]);
+    expect(helpers.setting(REGISTRY_SETTING)).toBeNull();
+    expect(relay.links.size).toBe(0);
+
+    const result = await links.exportActiveChart(ws, relay);
+    expect(workbook.charts[0]!.name).toBe(anchorName(result.id));
+  });
+  // A host that answers costs exactly what it cost before the fallback existed:
+  // the retry is queued only after a sync has already been refused.
+  it("costs a working host no extra round trip", async () => {
+    addChartWithData();
+    const before = helpers.syncCount();
+    await links.exportActiveChart(ws, relay);
+    expect(helpers.syncCount() - before).toBe(7);
+  });
+  it("re-anchors a chart whose anchor name no link claims", async () => {
+    const orphan = anchorName("f".repeat(32));
+    helpers.addChart("Model", { name: orphan });
+    helpers.setActiveChart(workbook.charts[0]!);
+    const result = await links.exportActiveChart(ws, relay);
+    expect(workbook.charts[0]!.name).toBe(anchorName(result.id));
+    expect(anchorName(result.id)).not.toBe(orphan);
+  });
+});
+
+describe("a registry that cannot be read", () => {
+  it("is never overwritten", async () => {
+    await links.exportSelection(ws, relay);
+    const garbage = '{"v":9,"links":"nope"';
+    helpers.setSetting(REGISTRY_SETTING, garbage);
+    await expect(links.pushLinks("all", relay)).rejects.toThrow(
+      /registry PLSFIX_LINKS: unreadable, not overwriting/,
+    );
+    expect(helpers.setting(REGISTRY_SETTING)).toBe(garbage);
+    await expect(links.listWorkbookLinks()).rejects.toThrow(/unreadable/);
+  });
+});
+
+describe("removeLink and goToSource", () => {
+  it("cleans the name, the registry and the relay", async () => {
+    const { id } = await links.exportSelection(ws, relay);
+    await links.removeLink(id, relay);
+    expect(
+      workbook.names.find((n) => n.name === anchorName(id)),
+    ).toBeUndefined();
+    expect(JSON.parse(String(helpers.setting(REGISTRY_SETTING))).links).toEqual(
+      [],
+    );
+    expect(relay.links.has(id)).toBe(false);
+  });
+  it("selects the source range", async () => {
+    const { id } = await links.exportSelection(ws, relay);
+    helpers.select("Data!A1");
+    await links.goToSource(id);
+    expect(workbook.selectionAddress()).toBe("Model!B4:F5");
+  });
+  // Revoking the relay copy is the point of Remove: a revoke that fails must
+  // leave the entry - and its token - in place to try again with.
+  it("keeps everything when the relay refuses the revoke", async () => {
+    const { id } = await links.exportSelection(ws, relay);
+    relay.deleteLink = () =>
+      Promise.reject(new RelayError("network", "relay unreachable"));
+
+    await expect(links.removeLink(id, relay)).rejects.toThrow(
+      "remove Model!B4:F5: relay unreachable; nothing was removed, try again",
+    );
+    expect(workbook.names.find((n) => n.name === anchorName(id))).toBeDefined();
+    expect(
+      JSON.parse(String(helpers.setting(REGISTRY_SETTING))).links,
+    ).toHaveLength(1);
+    expect(relay.links.has(id)).toBe(true);
+  });
+  it("finishes the removal when the relay has already dropped the copy", async () => {
+    const { id } = await links.exportSelection(ws, relay);
+    relay.deleteLink = () =>
+      Promise.reject(new RelayError("missing", "not found", 404));
+
+    await links.removeLink(id, relay);
+    expect(
+      workbook.names.find((n) => n.name === anchorName(id)),
+    ).toBeUndefined();
+    expect(JSON.parse(String(helpers.setting(REGISTRY_SETTING))).links).toEqual(
+      [],
+    );
+  });
+  // Anchors resolve on hidden sheets - which is right - but Excel refuses to
+  // activate one, so the jump says so instead of failing the sync raw.
+  it("refuses to jump to a source on a hidden sheet", async () => {
+    const { id } = await links.exportSelection(ws, relay);
+    helpers.sheet("Model").visibility = "Hidden";
+    helpers.select("Data!A1");
+
+    await expect(links.goToSource(id)).rejects.toThrow(
+      'go to source Model!B4:F5: sheet "Model" is hidden',
+    );
+    expect(workbook.selectionAddress()).toBe("Data!A1");
+  });
+});

@@ -1,0 +1,69 @@
+// Paintbrush slots: three captured formats carried by the workbook. Local
+// storage is only a first-run fallback for an older or unsaved workbook.
+// Office.js only reaches here through ../excel.
+
+import {
+  applySlot,
+  captureSlot,
+  loadWorkbookPaintSlots,
+  saveWorkbookPaintSlots,
+} from "../excel";
+import {
+  emptySlots,
+  type PaintSlots,
+  parseSlots,
+  serializeSlots,
+  slotLabel,
+} from "../paintbrush";
+import { getElement } from "../ui/dom";
+
+const PAINT_KEY = "plsfix.paint.v1";
+let paintSlots: PaintSlots = emptySlots();
+// The workbook read at boot is not awaited; a capture that lands before it
+// resolves must not be overwritten by the older array it brings back.
+let capturedSinceBoot = false;
+
+export function loadPaintSlots(): void {
+  let raw: string | null = null;
+  try {
+    raw = localStorage.getItem(PAINT_KEY);
+  } catch {
+    raw = null;
+  }
+  paintSlots = parseSlots(raw);
+}
+
+export function renderPaintSlots(): void {
+  paintSlots.forEach((slot, index) => {
+    getElement(`paint-slot-${index + 1}`).textContent = slotLabel(slot);
+  });
+}
+
+// The workbook is the authority once Excel is connected. A null result means
+// this workbook has never saved slots, so the local slots remain a helpful
+// first-run fallback instead of being wiped.
+export async function loadWorkbookSlots(): Promise<void> {
+  const saved = await loadWorkbookPaintSlots();
+  if (saved === null || capturedSinceBoot) return;
+  paintSlots = saved;
+  renderPaintSlots();
+}
+
+export async function capturePaintSlot(index: number): Promise<string> {
+  const slot = await captureSlot(index);
+  capturedSinceBoot = true;
+  paintSlots[index - 1] = slot;
+  try {
+    localStorage.setItem(PAINT_KEY, serializeSlots(paintSlots));
+  } catch {
+    // Storage can be unavailable in private webviews; slots stay in memory.
+  }
+  await saveWorkbookPaintSlots(paintSlots);
+  renderPaintSlots();
+  return `Slot ${index}: ${slotLabel(slot)}`;
+}
+
+export async function applyPaintSlot(index: number): Promise<string> {
+  await applySlot(index, paintSlots[index - 1] ?? null);
+  return `Painted slot ${index}`;
+}

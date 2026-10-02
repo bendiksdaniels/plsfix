@@ -1,0 +1,30 @@
+node_modules/
+dist/
+server/target/
+target-linux/
+.DS_Store
+*.log
+*.tmp
+.idea/
+.vscode/
+.claude/
+.superpowers/
+data/
+public/functions.js
+
+# demo workbook generator
+demo/target/
+demo/out/
+
+# PowerPoint demo deck generator (the .pptx it writes is committed)
+demo/deck/.venv/
+demo/deck/__pycache__/
+
+# user manual generator (manual/out holds the committed .docx)
+manual/target/
+
+# self-hosting env (deploy/.env.example is the template)
+deploy/.env
+# video/: the motion-graphic video builder
+video/build
+video/target

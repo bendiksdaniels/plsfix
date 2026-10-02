@@ -1,0 +1,387 @@
+// Golden test for the manifest renderer: proves buildManifest reproduces the
+// committed manifest.prod.xml byte for byte, and that dev/prod differ only in
+// the header comment and base URL. Also proves the top-level <Requirements>
+// block is Workbook-only, every ribbon group and its label resource render
+// the expected number of times, every ribbon FunctionName is registered in
+// src/pane/commands.ts, and every interpolated value is XML-escaped.
+import { existsSync, readFileSync } from "node:fs";
+import { describe, expect, it } from "vitest";
+import { ADDIN, ENVIRONMENTS, WORKBOOK_HOST } from "./spec";
+import type { AddinSpec } from "./spec";
+import { buildManifest } from "./xml";
+
+const prod = ENVIRONMENTS.find((env) => env.name === "prod")!;
+const dev = ENVIRONMENTS.find((env) => env.name === "dev")!;
+
+describe("buildManifest", () => {
+  it("reproduces the committed production manifest byte for byte", () => {
+    const committed = readFileSync(
+      new URL("../manifest.prod.xml", import.meta.url),
+      "utf8",
+    );
+    expect(buildManifest(prod, ADDIN)).toBe(committed);
+  });
+
+  it("dev differs from prod only in the header comment and the base URL", () => {
+    const normalise = (xml: string) =>
+      xml
+        .replace(/<!--[\s\S]*?-->/, "")
+        .replaceAll("https://localhost:3000/", "BASE/")
+        .replaceAll("https://dbautomatizacijas.com/modelis/", "BASE/");
+    expect(normalise(buildManifest(dev, ADDIN))).toBe(
+      normalise(buildManifest(prod, ADDIN)),
+    );
+  });
+
+  it("emits every host in both VersionOverrides blocks", () => {
+    const xml = buildManifest(prod, ADDIN);
+    expect(xml.match(/<Host xsi:type="Workbook">/g)).toHaveLength(2);
+    expect(xml.match(/<Host Name="Workbook"\/>/g)).toHaveLength(1);
+  });
+
+  it("keeps the Workbook host at five ribbon groups (Office's per-tab cap is 6), Presentation at three", () => {
+    const workbook = ADDIN.hosts.find((host) => host.name === "Workbook")!;
+    const presentation = ADDIN.hosts.find(
+      (host) => host.name === "Presentation",
+    )!;
+    expect(workbook.groups).toHaveLength(5);
+    expect(workbook.groups.length).toBeLessThanOrEqual(6);
+    expect(presentation.groups).toHaveLength(3);
+
+    const xml = buildManifest(prod, ADDIN);
+    const workbookBlocks = xml.match(
+      /<Host xsi:type="Workbook">[\s\S]*?<\/Host>/g,
+    )!;
+    expect(workbookBlocks).toHaveLength(2);
+    for (const block of workbookBlocks) {
+      expect(block.match(/<Group id="PLSFIX\.Group\./g)).toHaveLength(5);
+    }
+  });
+
+  it("drops the top-level ExcelApi requirement once a second host exists, keeps SharedRuntime", () => {
+    // Built from WORKBOOK_HOST directly, not ADDIN.hosts: ADDIN itself is
+    // already two hosts, so this isolates the renderer's host-count behavior
+    // from what the real spec currently declares.
+    const singleHost: AddinSpec = { ...ADDIN, hosts: [WORKBOOK_HOST] };
+    const withPpt: AddinSpec = {
+      ...ADDIN,
+      hosts: [
+        WORKBOOK_HOST,
+        {
+          name: "Presentation",
+          page: "pptpane.html",
+          urlResid: "PLSFIX.Pptpane.Url",
+          taskpaneId: "PLSFIX.Pptpane",
+          groups: [{ id: "PLSFIX.Group.Links", label: "Links", buttons: [] }],
+        },
+      ],
+    };
+    const single = buildManifest(prod, singleHost);
+    const multi = buildManifest(prod, withPpt);
+    // Exactly-2-space indent targets the OfficeApp-level block only; the
+    // VersionOverrides SharedRuntime blocks sit at 4/6-space indent and stay.
+    expect(single).toMatch(/^ {2}<Requirements>$/m);
+    expect(single).toContain(`<Set Name="ExcelApi"`);
+    expect(multi).not.toMatch(/^ {2}<Requirements>$/m);
+    expect(multi).not.toContain(`<Set Name="ExcelApi"`);
+    expect(multi).toContain(`<bt:Set Name="SharedRuntime"`);
+  });
+
+  // The XML manifest has no per-host <Requirements>, so declaring PowerPoint
+  // costs the add-in its published ExcelApi floor - and the whole export path
+  // rests on Range.getImage (ExcelApi 1.9). The floor did not disappear, it
+  // moved: the Excel pane boot refuses below it. If that check ever leaves
+  // src/main.ts, an old Excel silently installs and fails at the Office.js
+  // call instead, so the ruling is pinned here rather than in a comment alone.
+  it("keeps the ExcelApi 1.9 floor as a runtime check in the Excel pane boot", () => {
+    expect(buildManifest(prod, ADDIN)).not.toContain("ExcelApi");
+    const mainSrc = readFileSync(
+      new URL("../src/main.ts", import.meta.url),
+      "utf8",
+    );
+    expect(mainSrc).toContain(
+      'Office.context.requirements.isSetSupported("ExcelApi", "1.9")',
+    );
+  });
+
+  it("declares the Presentation host in both blocks and drops the top-level ExcelApi requirement", () => {
+    const xml = buildManifest(prod, ADDIN);
+    expect(xml.match(/<Host xsi:type="Presentation">/g)).toHaveLength(2);
+    expect(xml).toContain('<Host Name="Presentation"/>');
+    expect(xml).not.toContain('<Set Name="ExcelApi"');
+    expect(xml).toContain(
+      '<bt:Url id="PLSFIX.Pptpane.Url" DefaultValue="https://dbautomatizacijas.com/modelis/pptpane.html"/>',
+    );
+  });
+
+  it("wires custom functions into the Workbook host only, once per block", () => {
+    const xml = buildManifest(prod, ADDIN);
+    // Once in each VersionOverrides block, and never on the PowerPoint host.
+    expect(
+      xml.match(/<ExtensionPoint xsi:type="CustomFunctions">/g),
+    ).toHaveLength(2);
+    for (const block of xml.match(
+      /<Host xsi:type="Presentation">[\s\S]*?<\/Host>/g,
+    )!) {
+      expect(block).not.toContain("CustomFunctions");
+      expect(block).not.toContain("<AllFormFactors>");
+    }
+
+    const workbookBlocks = xml.match(
+      /<Host xsi:type="Workbook">[\s\S]*?<\/Host>/g,
+    )!;
+    expect(workbookBlocks).toHaveLength(2);
+    for (const block of workbookBlocks) {
+      expect(
+        block.match(/<ExtensionPoint xsi:type="CustomFunctions">/g),
+      ).toHaveLength(1);
+      // The schema fixes the order inside <Host>, and the functions reuse the
+      // pane's runtime rather than declaring a second one.
+      expect(block.indexOf("<Runtimes>")).toBeLessThan(
+        block.indexOf("<AllFormFactors>"),
+      );
+      expect(block.indexOf("<AllFormFactors>")).toBeLessThan(
+        block.indexOf("<DesktopFormFactor>"),
+      );
+      expect(block.match(/<Runtime resid=/g)).toHaveLength(1);
+      // Indentation differs between the two blocks, so the point is compared
+      // with its whitespace collapsed.
+      const point = /<AllFormFactors>[\s\S]*?<\/AllFormFactors>/
+        .exec(block)![0]
+        .replaceAll(/\s+/g, " ");
+      expect(point).toContain(
+        '<Script> <SourceLocation resid="PLSFIX.Functions.Script.Url"/> </Script>',
+      );
+      // The page is the pane the shared runtime already serves.
+      expect(point).toContain(
+        '<Page> <SourceLocation resid="PLSFIX.Taskpane.Url"/> </Page>',
+      );
+      expect(point).toContain(
+        '<Metadata> <SourceLocation resid="PLSFIX.Functions.Metadata.Url"/> </Metadata>',
+      );
+      expect(point).toContain(
+        '<Namespace resid="PLSFIX.Functions.Namespace"/>',
+      );
+    }
+  });
+
+  it("publishes the functions script, metadata and namespace as resources", () => {
+    const xml = buildManifest(prod, ADDIN);
+    for (const line of [
+      '<bt:Url id="PLSFIX.Functions.Script.Url" DefaultValue="https://dbautomatizacijas.com/modelis/functions.js"/>',
+      '<bt:Url id="PLSFIX.Functions.Metadata.Url" DefaultValue="https://dbautomatizacijas.com/modelis/functions.json"/>',
+      '<bt:String id="PLSFIX.Functions.Namespace" DefaultValue="PLSFIX"/>',
+    ]) {
+      // One per <Resources> block, and there are two.
+      expect(xml.split(line)).toHaveLength(3);
+    }
+    // A host without the block renders neither the extension point nor its ids.
+    const noFunctions: AddinSpec = {
+      ...ADDIN,
+      hosts: [{ ...WORKBOOK_HOST, customFunctions: undefined }],
+    };
+    const plain = buildManifest(prod, noFunctions);
+    expect(plain).not.toContain("CustomFunctions");
+    expect(plain).not.toContain("PLSFIX.Functions.Script.Url");
+  });
+
+  it("emits each group label resource exactly once per VersionOverrides block", () => {
+    const xml = buildManifest(prod, ADDIN);
+    const resourceBlocks = [
+      ...xml.matchAll(/<Resources>[\s\S]*?<\/Resources>/g),
+    ].map((match) => match[0]);
+    expect(resourceBlocks).toHaveLength(2);
+
+    const groupIds = ADDIN.hosts.flatMap((host) =>
+      host.groups.map((group) => group.id),
+    );
+    expect(groupIds.length).toBeGreaterThan(0);
+    for (const block of resourceBlocks) {
+      for (const groupId of groupIds) {
+        const pattern = new RegExp(
+          `<bt:String id="${groupId.replaceAll(".", "\\.")}\\.Label"`,
+          "g",
+        );
+        expect(block.match(pattern)).toHaveLength(1);
+      }
+    }
+  });
+
+  it("gives every command a semantic icon at every Office ribbon size", () => {
+    const xml = buildManifest(prod, ADDIN);
+    for (const host of ADDIN.hosts) {
+      for (const group of host.groups) {
+        for (const button of group.buttons) {
+          for (const size of [16, 32, 80]) {
+            expect(xml).toContain(`assets/ribbon/${button.icon}-${size}.png`);
+            expect(
+              existsSync(
+                new URL(
+                  `../public/assets/ribbon/${button.icon}-${size}.png`,
+                  import.meta.url,
+                ),
+              ),
+            ).toBe(true);
+          }
+        }
+      }
+    }
+  });
+
+  // The generated-bytes gate compares the build to the committed file, so it
+  // cannot see a duplicate id: both sides would carry it. Only the renderer can.
+  it("refuses a spec whose two hosts reuse one button id", () => {
+    const pptWithOpenPane: AddinSpec = {
+      ...ADDIN,
+      hosts: [
+        WORKBOOK_HOST,
+        {
+          name: "Presentation",
+          page: "pptpane.html",
+          urlResid: "PLSFIX.Pptpane.Url",
+          taskpaneId: "PLSFIX.Pptpane",
+          groups: [
+            {
+              id: "PLSFIX.Group.Links",
+              label: "Links",
+              // The obvious next edit: the same pane button on both hosts.
+              buttons: [
+                {
+                  id: "OpenPane",
+                  label: "Links",
+                  tip: "Open the pls,fix linked-objects pane.",
+                  icon: "pane",
+                  action: { kind: "showPane" },
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    };
+    expect(() => buildManifest(prod, pptWithOpenPane)).toThrow(
+      "manifest: duplicate resource id PLSFIX.Icon.OpenPane.16",
+    );
+  });
+
+  it("refuses a spec whose two hosts reuse one group id", () => {
+    const sharedGroup: AddinSpec = {
+      ...ADDIN,
+      hosts: [
+        WORKBOOK_HOST,
+        {
+          name: "Presentation",
+          page: "pptpane.html",
+          urlResid: "PLSFIX.Pptpane.Url",
+          taskpaneId: "PLSFIX.Pptpane",
+          groups: [
+            { id: "PLSFIX.Group.Tools", label: "Model Tools", buttons: [] },
+          ],
+        },
+      ],
+    };
+    expect(() => buildManifest(prod, sharedGroup)).toThrow(
+      "manifest: duplicate resource id PLSFIX.Group.Tools.Label",
+    );
+  });
+
+  // Each host registers its own FunctionNames in its own pane: the Excel
+  // table in src/pane/commands.ts, the PowerPoint one in src/ppt/commands.ts.
+  it("every ribbon FunctionName is registered in its host's commands table", () => {
+    const registeredIn = (file: string): Set<string> =>
+      new Set(
+        [
+          ...readFileSync(new URL(file, import.meta.url), "utf8").matchAll(
+            /(PLSFIX_[A-Z_]+)[":]/g,
+          ),
+        ].map((match) => match[1]!),
+      );
+    const tables = {
+      Workbook: registeredIn("../src/pane/commands.ts"),
+      Presentation: registeredIn("../src/ppt/commands.ts"),
+    };
+    let seen = 0;
+    for (const host of ADDIN.hosts) {
+      for (const button of host.groups.flatMap((group) => group.buttons)) {
+        if (button.action.kind !== "function") continue;
+        seen += 1;
+        expect(tables[host.name].has(button.action.name)).toBe(true);
+        if (host.name === "Presentation") {
+          expect(button.action.name.startsWith("PLSFIX_PPT_")).toBe(true);
+        }
+      }
+    }
+    expect(seen).toBeGreaterThan(0);
+
+    const xml = buildManifest(prod, ADDIN);
+    const functionNames = new Set(
+      [...xml.matchAll(/<FunctionName>([A-Z_]+)<\/FunctionName>/g)].map(
+        (match) => match[1]!,
+      ),
+    );
+    for (const name of functionNames) {
+      expect(tables.Workbook.has(name) || tables.Presentation.has(name)).toBe(
+        true,
+      );
+    }
+  });
+
+  it('escapes & and " in interpolated text', () => {
+    const spec: AddinSpec = {
+      ...ADDIN,
+      hosts: [
+        {
+          ...WORKBOOK_HOST,
+          groups: [
+            {
+              id: "PLSFIX.Group.Tools",
+              label: "Model Tools",
+              buttons: [
+                {
+                  id: "OpenPane",
+                  label: "Model Tools",
+                  tip: 'Fill & go "now"',
+                  icon: "pane",
+                  action: { kind: "showPane" },
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    };
+    const xml = buildManifest(prod, spec);
+    expect(xml).toContain("&amp;");
+    expect(xml).toContain("&quot;");
+    expect(xml).not.toContain('Fill & go "now"');
+  });
+
+  it("escapes <, > and ' in interpolated text", () => {
+    const spec: AddinSpec = {
+      ...ADDIN,
+      hosts: [
+        {
+          ...WORKBOOK_HOST,
+          groups: [
+            {
+              id: "PLSFIX.Group.Tools",
+              label: "Model Tools",
+              buttons: [
+                {
+                  id: "OpenPane",
+                  label: "Model Tools",
+                  tip: "<script>alert('x')</script>",
+                  icon: "pane",
+                  action: { kind: "showPane" },
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    };
+    const xml = buildManifest(prod, spec);
+    expect(xml).toContain("&lt;script&gt;alert(&apos;x&apos;)&lt;/script&gt;");
+    expect(xml).not.toContain("<script>");
+  });
+});

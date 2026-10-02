@@ -1,0 +1,603 @@
+// The Excel "Links" tab: export a selection - as a picture, as a table or as
+// one cell's text - or the active chart to PowerPoint, list what this workbook owns, push (by hand
+// or automatically after an edit), jump back to a source, remove a link and
+// hold the workspace link key.
+// Office.js only reaches here through src/excel.
+import {
+  exportActiveChart,
+  exportSelection,
+  exportSelectionAsTable,
+  exportSelectionAsText,
+  goToSource,
+  listWorkbookLinks,
+  moveLinksToProject,
+  pushLinks,
+  readProjectState,
+  removeLink,
+  setActiveProject,
+  touchWorkbookLinks,
+  type ExportKind,
+  watchWorksheetEdits,
+  type ListWatchOptions,
+  type PushSummary,
+  type WorkbookLinkRow,
+} from "../excel";
+import type { RelayApi } from "../link/relay";
+import {
+  createWorkspace,
+  forgetWorkspace,
+  loadWorkspace,
+  type KeyStore,
+  type Workspace,
+} from "../link/workspace";
+import { COPY_FAILED_MESSAGE, copyText } from "../ui/clipboard";
+import { armConfirm, type ArmConfirmOptions } from "../ui/confirm";
+import type { Guard } from "../ui/guard";
+import type { Toast } from "../ui/toast";
+import { refreshChartPick, watchSheetChanges } from "./links-charts";
+import {
+  exportCopyLines,
+  installLinksTransport,
+  pendingLinksTransport,
+  pushCopyLines,
+  type LinksTransport,
+} from "./links-transport";
+import { messageRow, renderWorkbookLinks } from "./links-list";
+import {
+  autoPushOffForLocal,
+  restoreToggles,
+  setTogglesBusy,
+  toggleAutoPush,
+  toggleHighlight,
+  type Toggles,
+} from "./links-toggles";
+
+export { renderWorkbookLinks };
+
+const NO_KEY = "No link key yet.";
+const KEY_UNREADABLE = "Could not read the link key on this computer.";
+const NO_KEY_ERROR = "Generate a link key first (Links > Link key).";
+const NO_SELECTION_ERROR = "Select a link in the list first.";
+// Enough of the key to tell two apart, never enough to pair a deck with.
+const KEY_EDGE = 4;
+export interface LinksTabDeps {
+  guard: Guard;
+  toast: Toast;
+  relay: RelayApi;
+  keyStore: KeyStore;
+  root: ParentNode;
+  // Injectable for tests, like auto-push's delay and clock.
+  watch?: ListWatchOptions;
+}
+
+// One object threaded through the actions, so each stays a small function over
+// the same state instead of a closure inside a long install().
+interface Tab {
+  deps: LinksTabDeps;
+  // Set for real by boot(); every method throws TRANSPORT_LOADING_MESSAGE
+  // until then, so a call site never has to null-check it.
+  transport: LinksTransport;
+  list: HTMLTableSectionElement;
+  // The two tick boxes and what they need, in the shape links-toggles.ts takes.
+  toggles: Toggles;
+  keyDisplay: HTMLElement;
+  reveal: HTMLButtonElement;
+  generate: HTMLButtonElement;
+  buttons: HTMLButtonElement[];
+  // The sheet's charts, for a chart export with nothing selected.
+  chartPick: HTMLSelectElement;
+  projectSelect: HTMLSelectElement;
+  rows: WorkbookLinkRow[];
+  selected: Set<string>;
+  workspace: Workspace | null;
+  // Why the stored key could not be read. Null covers both "read fine" and
+  // "nothing stored"; those two are told apart by workspace.
+  keyError: string | null;
+  revealed: boolean;
+}
+
+export function installLinksTab(deps: LinksTabDeps): {
+  refresh(): Promise<void>;
+  /** The selection moved: the chart list follows if the sheet changed. */
+  sheetChanged(): Promise<void>;
+  /** Puts Generate and Reveal back once setBusy's blanket disable lets go of them. */
+  syncKeyButtons(): void;
+} {
+  const tab = newTab(deps);
+  wireBoxes(tab);
+  wireActions(tab);
+  void boot(tab);
+  return {
+    refresh: () => refresh(tab),
+    sheetChanged: () => refreshChartPick(tab),
+    syncKeyButtons: () => renderKey(tab),
+  };
+}
+
+function newTab(deps: LinksTabDeps): Tab {
+  return {
+    deps,
+    transport: pendingLinksTransport(),
+    chartPick: element(deps.root, "export-chart-pick"),
+    projectSelect: element(deps.root, "link-project"),
+    list: element(deps.root, "workbook-links"),
+    toggles: {
+      autopush: element(deps.root, "links-autopush"),
+      highlight: element(deps.root, "links-highlight"),
+      relay: deps.relay,
+      toast: deps.toast,
+    },
+    keyDisplay: element(deps.root, "workspace-key-display"),
+    reveal: element(deps.root, "reveal-key"),
+    generate: element(deps.root, "generate-key"),
+    buttons: [],
+    rows: [],
+    selected: new Set(),
+    workspace: null,
+    keyError: null,
+    revealed: false,
+  };
+}
+
+// The tick boxes report through the guard like every button; "Reveal" is local
+// and instant - it touches neither Office nor the store - so it stays out of
+// the guard and out of the busy state.
+function wireBoxes(tab: Tab): void {
+  tab.reveal.addEventListener("click", () => {
+    tab.revealed = !tab.revealed;
+    renderKey(tab);
+  });
+
+  tab.toggles.autopush.addEventListener("change", () => {
+    void guarded(tab, "links-autopush", () => toggleAutoPush(tab.toggles));
+  });
+
+  tab.toggles.highlight.addEventListener("change", () => {
+    void guarded(tab, "links-highlight", () => toggleHighlight(tab.toggles));
+  });
+}
+
+function wireActions(tab: Tab): void {
+  wire(tab, "export-selection", () => exportRange(tab, "range"));
+  wire(tab, "export-table", () => exportRange(tab, "table"));
+  wire(tab, "export-text", () => exportRange(tab, "text"));
+  wire(tab, "export-chart", () => exportChart(tab));
+  wire(tab, "copy-for-powerpoint", () => copyForPowerPoint(tab));
+  wire(tab, "go-to-source", () => jumpToSource(tab));
+  wireConfirm(tab, "remove-link", () => removeSelected(tab));
+  // A first key needs no confirming; replacing one that already pairs a
+  // deck does, since decks holding it stop seeing new exports.
+  wireConfirm(tab, "generate-key", () => generateKey(tab), {
+    when: () => tab.workspace !== null,
+  });
+  wire(tab, "copy-key", () => copyKey(tab));
+  wireConfirm(tab, "forget-key", () => forgetKey(tab));
+  wirePush(tab, "push-selected", false);
+  wirePush(tab, "push-all", true);
+  wire(tab, "new-project", () => showProjectPrompt(tab));
+  wire(tab, "project-ok", () => createProject(tab));
+  wire(tab, "project-cancel", () => hideProjectPrompt(tab));
+  wire(tab, "move-to-project", () => moveSelected(tab));
+  tab.projectSelect.addEventListener("change", () => {
+    void guarded(tab, "link-project", () => chooseProject(tab));
+  });
+  element<HTMLSelectElement>(tab.deps.root, "link-transport").addEventListener(
+    "change",
+    () => {
+      void guarded(tab, "link-transport", () => changeTransport(tab));
+    },
+  );
+
+  // Links are added and sources deleted without the pane hearing about it, so
+  // the list is read again whenever the tab comes into view - and a key read
+  // that failed gets another go before "Generate" is offered back.
+  element(tab.deps.root, "tab-links").addEventListener("click", () => {
+    void reload(tab);
+  });
+}
+
+// ---------------------------------------------------------------------------
+// State
+// ---------------------------------------------------------------------------
+
+async function boot(tab: Tab): Promise<void> {
+  await loadKey(tab);
+  await refresh(tab);
+  watchSheetChanges(tab);
+  watchForRefresh(tab);
+  // Both boxes are told by the workbook, never by what they last showed. The
+  // refresh above tells the same story in the table.
+  await restoreToggles(tab.toggles);
+  tab.transport = await installLinksTransport({
+    root: tab.deps.root,
+    keyStore: tab.deps.keyStore,
+    toast: tab.deps.toast,
+  });
+  // After restoreToggles, so the check below sees what the workbook really
+  // saved, not the box's unchecked HTML default.
+  if (tab.transport.mode() === "local") await autoPushOffForLocal(tab.toggles);
+  await touchLinks(tab);
+}
+
+// Last, and never in front of anything the tab shows: a relay behind a
+// dropped route now gives up after RELAY_TIMEOUT_MS rather than hanging on
+// the webview's socket, but even that failure changes nothing the user can
+// see, and the next boot tries again. Never a toast on boot.
+async function touchLinks(tab: Tab): Promise<void> {
+  try {
+    await touchWorkbookLinks(tab.deps.relay);
+  } catch {
+    // The relay is out of reach; the links keep the TTL their last push gave.
+  }
+}
+
+// A source deleted or moved keeps reading "fine" until something re-reads
+// the registry - today only a push or reopening the tab. Registered once,
+// for good: an edit while another tab shows is not worth a refresh nobody
+// sees, so the callback checks the panel rather than re-arming per switch.
+function watchForRefresh(tab: Tab): void {
+  watchWorksheetEdits(() => {
+    if (element<HTMLElement>(tab.deps.root, "view-links").hidden) return;
+    void refresh(tab);
+  }, tab.deps.watch);
+}
+
+async function reload(tab: Tab): Promise<void> {
+  if (tab.keyError !== null) await loadKey(tab);
+  await refresh(tab);
+}
+
+// A key that cannot be READ is not a workbook without one: answering a storage
+// failure with "No link key yet." invites the modeller to generate a new key,
+// which unpairs every deck holding the old one. The reason is shown instead,
+// and "Generate" stays off until a read succeeds.
+async function loadKey(tab: Tab): Promise<void> {
+  try {
+    tab.workspace = await loadWorkspace(tab.deps.keyStore);
+    tab.keyError = null;
+  } catch (error) {
+    tab.workspace = null;
+    tab.keyError = error instanceof Error ? error.message : String(error);
+    tab.deps.toast.show(KEY_UNREADABLE, "error", tab.keyError);
+  }
+  renderKey(tab);
+}
+
+// Never rejects: every action ends with a refresh, and a list that cannot be
+// read says so in the table rather than replacing the action's own toast.
+async function refresh(tab: Tab): Promise<void> {
+  await refreshChartPick(tab);
+  try {
+    tab.rows = await listWorkbookLinks();
+  } catch (error) {
+    tab.rows = [];
+    tab.selected.clear();
+    tab.list.replaceChildren(messageRow(unreadable(error)));
+    return;
+  }
+  const live = new Set(tab.rows.map((row) => row.entry.id));
+  for (const id of tab.selected) if (!live.has(id)) tab.selected.delete(id);
+  await fillProjectSelect(tab);
+  renderWorkbookLinks(tab.list, tab.rows, tab.selected, (id, on) => {
+    if (on) tab.selected.add(id);
+    else tab.selected.delete(id);
+  });
+}
+
+async function fillProjectSelect(tab: Tab): Promise<void> {
+  const state = await readProjectState();
+  const picked = tab.projectSelect.value;
+  const hadOptions = tab.projectSelect.options.length > 0;
+  const options = [
+    new Option("All projects", "all"),
+    new Option("No project", ""),
+    ...state.names.map((name) => new Option(name, name)),
+  ];
+  tab.projectSelect.replaceChildren(...options);
+  const keep = hadOptions && options.some((option) => option.value === picked);
+  const fallback = state.active ?? "all";
+  tab.projectSelect.value = keep
+    ? picked
+    : options.some((option) => option.value === fallback)
+      ? fallback
+      : "all";
+}
+
+function renderKey(tab: Tab): void {
+  const key = tab.workspace?.exportKey ?? null;
+  tab.keyDisplay.textContent = keyText(tab, key);
+  tab.reveal.textContent = tab.revealed ? "Hide" : "Reveal";
+  tab.reveal.disabled = key === null;
+  applyKeyState(tab);
+}
+
+// The key is the secret itself - it opens every picture this workbook pushes -
+// so the panel shows only enough to tell two keys apart and leaves "Copy" as
+// the route to the whole value.
+function keyText(tab: Tab, key: string | null): string {
+  if (tab.keyError !== null) return KEY_UNREADABLE;
+  if (key === null) return NO_KEY;
+  if (tab.revealed) return key;
+  return `${key.slice(0, KEY_EDGE)}…${key.slice(-KEY_EDGE)}`;
+}
+
+function applyKeyState(tab: Tab): void {
+  tab.generate.disabled = tab.keyError !== null;
+}
+
+function unreadable(error: unknown): string {
+  const reason = error instanceof Error ? error.message : "unknown error";
+  return `This workbook's links could not be read: ${reason}`;
+}
+
+// ---------------------------------------------------------------------------
+// Actions
+// ---------------------------------------------------------------------------
+
+// Looked up when the button is pressed, not when the module loads: the three
+// adapters are one import each, and only the one asked for is touched.
+function sender(kind: ExportKind): typeof exportSelection {
+  if (kind === "table") return exportSelectionAsTable;
+  return kind === "text" ? exportSelectionAsText : exportSelection;
+}
+
+async function exportRange(tab: Tab, kind: ExportKind): Promise<string> {
+  if (tab.transport.mode() === "local") {
+    return tab.transport.copy(async (ws, relay) => {
+      const result = await sender(kind)(ws, relay);
+      await refresh(tab);
+      return result;
+    }, exportCopyLines());
+  }
+  const result = await sender(kind)(requireWorkspace(tab), tab.deps.relay);
+  await refresh(tab);
+  return sentLine(result);
+}
+
+// The toast: the label, and for a chart Excel could not describe the
+// sentence PowerPoint will repeat beside the picture.
+function sentLine(result: { label: string; note?: string }): string {
+  const note = result.note === undefined ? "" : ` (${result.note})`;
+  return `Sent to PowerPoint: ${result.label}${note}`;
+}
+
+async function exportChart(tab: Tab): Promise<string> {
+  const pick = tab.chartPick.value || null;
+  if (tab.transport.mode() === "local") {
+    return tab.transport.copy(async (ws, relay) => {
+      const result = await exportActiveChart(ws, relay, pick);
+      await refresh(tab);
+      return result;
+    }, exportCopyLines());
+  }
+  const result = await exportActiveChart(
+    requireWorkspace(tab),
+    tab.deps.relay,
+    pick,
+  );
+  await refresh(tab);
+  return sentLine(result);
+}
+
+async function copyForPowerPoint(tab: Tab): Promise<string> {
+  return tab.transport.retryCopy();
+}
+
+async function changeTransport(tab: Tab): Promise<string> {
+  const select = element<HTMLSelectElement>(tab.deps.root, "link-transport");
+  const mode = select.value === "relay" ? "relay" : "local";
+  await tab.transport.setMode(mode);
+  if (mode === "local") await autoPushOffForLocal(tab.toggles);
+  return mode === "local"
+    ? "Links now travel by copy and paste on this computer."
+    : "Links now travel through the relay.";
+}
+
+// pushLinks reports rather than throws, so a partial failure arrives as a
+// summary: the guard toasts the counts, and the reasons are re-shown here with
+// a "Copy details" button. Both happen before a paint, so only one is seen.
+async function push(tab: Tab, action: string, all: boolean): Promise<void> {
+  const failures: string[] = [];
+  let line = "";
+  await guarded(tab, action, async () => {
+    // Computed before copy() starts the clipboard write, never after: a
+    // throw once that write is under way would leave it unresolved.
+    const ids = all ? shownPushIds(tab) : [...requireSelection(tab)];
+    if (tab.transport.mode() === "local") {
+      line = await tab.transport.copy(async (ws, relay) => {
+        const summary = await pushLinks(ids, relay, { announce: ws });
+        failures.push(...summary.failures);
+        await refresh(tab);
+        return summary;
+      }, pushCopyLines());
+      return line;
+    }
+    const summary = await pushLinks(ids, tab.deps.relay);
+    failures.push(...summary.failures);
+    line = summarize(summary);
+    await refresh(tab);
+    return line;
+  });
+  if (failures.length > 0) {
+    tab.deps.toast.show(line, "error", failures.join("\n"));
+  }
+}
+
+function summarize(summary: PushSummary): string {
+  return `${summary.pushed} pushed, ${summary.missing} missing, ${summary.failed} failed`;
+}
+
+async function jumpToSource(tab: Tab): Promise<string> {
+  const [id] = requireSelection(tab);
+  const row = tab.rows.find((candidate) => candidate.entry.id === id);
+  await goToSource(id);
+  return `Went to ${row?.entry.label ?? "the source"}`;
+}
+
+async function removeSelected(tab: Tab): Promise<string> {
+  const ids = requireSelection(tab);
+  try {
+    for (const id of ids) await removeLink(id, tab.deps.relay);
+  } finally {
+    // A failure halfway leaves some links gone: the list must show which.
+    await refresh(tab);
+  }
+  return `Removed ${ids.length} ${ids.length === 1 ? "link" : "links"}`;
+}
+
+async function generateKey(tab: Tab): Promise<string> {
+  tab.workspace = await createWorkspace(tab.deps.keyStore);
+  tab.keyError = null;
+  tab.revealed = false;
+  renderKey(tab);
+  return "Link key generated. Paste it in PowerPoint.";
+}
+
+async function copyKey(tab: Tab): Promise<string> {
+  const copied = await copyText(requireWorkspace(tab).exportKey);
+  if (!copied) throw new Error(COPY_FAILED_MESSAGE);
+  return "Link key copied.";
+}
+
+async function forgetKey(tab: Tab): Promise<string> {
+  await forgetWorkspace(tab.deps.keyStore);
+  tab.workspace = null;
+  tab.revealed = false;
+  renderKey(tab);
+  return "Link key forgotten on this computer.";
+}
+
+function shownPushIds(tab: Tab): string[] | "all" {
+  const value = tab.projectSelect.value;
+  if (value === "all") return "all";
+  return tab.rows
+    .filter((row) => (row.entry.project ?? "") === value)
+    .map((row) => row.entry.id);
+}
+
+async function chooseProject(tab: Tab): Promise<string> {
+  const value = tab.projectSelect.value;
+  await setActiveProject(value === "all" || value === "" ? undefined : value);
+  await refresh(tab);
+  return value === "all" || value === ""
+    ? "No project for new exports."
+    : `Project: ${value}`;
+}
+
+async function showProjectPrompt(tab: Tab): Promise<string> {
+  const prompt = element<HTMLElement>(tab.deps.root, "project-prompt");
+  const input = element<HTMLInputElement>(tab.deps.root, "project-name");
+  prompt.hidden = false;
+  input.focus();
+  return "Name the project.";
+}
+
+async function hideProjectPrompt(tab: Tab): Promise<string> {
+  const prompt = element<HTMLElement>(tab.deps.root, "project-prompt");
+  const input = element<HTMLInputElement>(tab.deps.root, "project-name");
+  prompt.hidden = true;
+  input.value = "";
+  return "Cancelled.";
+}
+
+async function createProject(tab: Tab): Promise<string> {
+  const input = element<HTMLInputElement>(tab.deps.root, "project-name");
+  const name = input.value;
+  if (name.trim() === "") throw new Error("Type a project name.");
+  await setActiveProject(name);
+  await hideProjectPrompt(tab);
+  await refresh(tab);
+  tab.projectSelect.value = name.trim();
+  return `Project: ${name.trim()}`;
+}
+
+async function moveSelected(tab: Tab): Promise<string> {
+  const ids = requireSelection(tab);
+  const name = tab.projectSelect.value;
+  if (name === "all") throw new Error("Pick a project first, or create one.");
+  await moveLinksToProject(ids, name === "" ? undefined : name);
+  await refresh(tab);
+  return `Moved ${String(ids.length)} to ${name === "" ? "No project" : name}.`;
+}
+
+function requireWorkspace(tab: Tab): Workspace {
+  if (tab.keyError !== null) throw new Error(KEY_UNREADABLE);
+  if (tab.workspace === null) throw new Error(NO_KEY_ERROR);
+  return tab.workspace;
+}
+
+// Read back through the rendered rows, so a tick left over from a link that no
+// longer exists cannot reach the adapter.
+function requireSelection(tab: Tab): [string, ...string[]] {
+  const [first, ...rest] = tab.rows
+    .filter((row) => tab.selected.has(row.entry.id))
+    .map((row) => row.entry.id);
+  if (first === undefined) throw new Error(NO_SELECTION_ERROR);
+  return [first, ...rest];
+}
+
+// ---------------------------------------------------------------------------
+// Wiring
+// ---------------------------------------------------------------------------
+
+function wire(tab: Tab, id: string, run: () => Promise<string>): void {
+  listen(tab, id, () => guarded(tab, id, run));
+}
+
+// remove-link, generate-key and forget-key are destructive or one-way (a
+// removed link, an overwritten key, a key gone from this computer): the
+// first press only arms, src/ui/confirm.ts owns the rest.
+function wireConfirm(
+  tab: Tab,
+  id: string,
+  run: () => Promise<string>,
+  options: ArmConfirmOptions = {},
+): void {
+  const button = element<HTMLButtonElement>(tab.deps.root, id);
+  tab.buttons.push(button);
+  const confirm = armConfirm(button, () => void guarded(tab, id, run), options);
+  button.addEventListener("click", () => confirm.handleClick());
+}
+
+function wirePush(tab: Tab, id: string, all: boolean): void {
+  listen(tab, id, () => push(tab, id, all));
+}
+
+function listen(tab: Tab, id: string, run: () => Promise<void>): void {
+  const button = element<HTMLButtonElement>(tab.deps.root, id);
+  tab.buttons.push(button);
+  button.addEventListener("click", () => {
+    void run();
+  });
+}
+
+// The shared guard disables main.ts's [data-action] buttons, which these are
+// not: a second click during a slow push would start a second one.
+async function guarded(
+  tab: Tab,
+  action: string,
+  run: () => Promise<string>,
+): Promise<void> {
+  await tab.deps.guard(async () => {
+    setBusy(tab, true);
+    try {
+      return await run();
+    } finally {
+      setBusy(tab, false);
+    }
+  }, action);
+}
+
+function setBusy(tab: Tab, busy: boolean): void {
+  for (const button of tab.buttons) button.disabled = busy;
+  setTogglesBusy(tab.toggles, busy);
+  // Busy owns every button while it runs; the key panel owns "Generate" again
+  // the moment it lets go.
+  if (!busy) applyKeyState(tab);
+}
+
+function element<T extends Element>(root: ParentNode, id: string): T {
+  const found = root.querySelector<T>(`#${id}`);
+  if (!found) throw new Error(`Missing element #${id}`);
+  return found;
+}

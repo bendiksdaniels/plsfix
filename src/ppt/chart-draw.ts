@@ -1,0 +1,371 @@
+// One chart layout turned into native PowerPoint shapes: a primitive per add,
+// the adds chunked into syncs of SHAPES_PER_SYNC, a pie's angles written in
+// the sync after the one that created it, and one final sync that groups,
+// names and tags the lot. Owns every shape-drawing Office.js call.
+// Invariant: the group carries both tags and its children carry none.
+
+import type { Line, Primitive, Text } from "../chart-shapes";
+import type { Box } from "../layout";
+import { encodeTag, TAG_KEY, TAG_LINK, type LinkTag } from "../link/model";
+import { cleanupByToken, cleanupShapes } from "./chart-cleanup";
+
+// The web charges per shape and per round trip, and a batch of more than a
+// dozen adds stops coming back at all (spike, 30.08): twelve is what a slide
+// already holding other objects still answers in seconds.
+export const SHAPES_PER_SYNC = 12;
+
+// A write batch on PowerPoint for the web can be swallowed whole: it neither
+// applies nor rejects, the shapes of the chunks before it stay on the slide
+// and the pane waits for ever (lessons, 08.09: a 21-shape pie stopped after
+// its first chunk of twelve). Every round trip of a draw therefore has a
+// deadline. It is deliberately generous - the web measured twelve rectangles
+// in 1.7 s on a clean slide and twenty-four in 15 s at 45 shapes - so only a
+// host that has genuinely stopped answering ever reaches it.
+export const SYNC_TIMEOUT_MS = 60_000;
+
+// PowerPoint for Mac (16.107 on macOS 26.6, 13.09.2026) dies on its own
+// repaint after ShapeCollection.addGroup takes a whole chart at once: six
+// shapes grouped in every run of the bisection, nineteen never did, whatever
+// their kind, and the same shapes grouped through the ribbon were fine. So
+// the Mac groups in tiers: sub-groups of this many members first, then those
+// into the link's own group. Windows and the web keep the flat group.
+export const GROUP_TIER_MAC = 6;
+
+export function groupTier(): number | null {
+  return Office.context?.platform === Office.PlatformType.Mac
+    ? GROUP_TIER_MAC
+    : null;
+}
+
+// What a round trip that never came back rejects with, so the caller can tell
+// a host that stopped answering from one that refused the shapes. `what`
+// names the round trip that stopped, so the sentence is true wherever this
+// runs, not only for a chart's own draw.
+export class ChartDrawTimeout extends Error {
+  constructor(what: string) {
+    super(`PowerPoint stopped answering while ${what}`);
+    this.name = "ChartDrawTimeout";
+  }
+}
+
+export function isDrawTimeout(error: unknown): boolean {
+  return error instanceof ChartDrawTimeout;
+}
+
+// One piece of host work under that deadline: whatever it answers, unless it
+// answers nothing at all. The race keeps a handler on the abandoned promise,
+// so a batch that rejects long afterwards is still nobody's unhandled error.
+// Every PowerPoint.run sync in the pane goes through here now, not only a
+// chart's own draw, so `what` defaults to that call's own wording and every
+// other caller names its own round trip.
+export async function withSyncDeadline<T>(
+  work: Promise<T>,
+  what = "drawing the chart",
+): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const deadline = new Promise<never>((_resolve, reject) => {
+    timer = setTimeout(() => {
+      reject(new ChartDrawTimeout(what));
+    }, SYNC_TIMEOUT_MS);
+  });
+  try {
+    return await Promise.race([work, deadline]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+// The teardown runs on the host that has just stopped answering, so it gets
+// the same deadline and no more: a cleanup that hangs too would hold the
+// pane's busy flag open exactly as the draw did.
+async function cleanupWithin(
+  slideId: string,
+  ids: string[],
+  namePrefix: string,
+  // Set only for a fresh insert (insertChart never passes GroupSpec.before;
+  // only refreshChart does, to delete the OLD group its own draw replaces).
+  // A refresh's old group legitimately carries this SAME token already -
+  // that is the whole point of a link keeping its identity across updates -
+  // so cleanupByToken must never run there: a batch this sync rolled back
+  // leaves that still-valid old group exactly as it was, tag and all, and a
+  // token match would delete a link the deck still needs. Undefined means
+  // "do not run it" rather than "run it for every token", so a caller that
+  // forgets the distinction cannot silently reintroduce this.
+  freshInsertToken: string | undefined,
+  // The ids already on the target slide before THIS insert started
+  // (GroupSpec.beforeIds): cleanupByToken never touches one of these, so an
+  // older, finished copy of the same link survives even though it shares
+  // the token being cleaned up by.
+  before: ReadonlySet<string>,
+): Promise<void> {
+  try {
+    await withSyncDeadline(cleanupShapes(slideId, ids, namePrefix));
+    if (freshInsertToken === undefined) return;
+    // The GROUPING sync itself is the one chunk cleanup cannot reach by id
+    // or by name: addGroup nests the primitives (found above, by id) inside
+    // a new shape whose own id was never read back (group.load("id") sat in
+    // the same batch as the sync that just failed), and that new shape's
+    // name is spec.name exactly, with none of the ": " suffix sweepByName
+    // matches - by design, so the sweep never takes down an unrelated,
+    // already-finished link that happens to share the chart's name. A host
+    // that applied the addGroup and both tags before answering the sync
+    // with an error leaves exactly that: a fully tagged, orphaned group.
+    await withSyncDeadline(
+      cleanupByToken(slideId, freshInsertToken, before),
+    ).catch(() => undefined);
+  } catch {
+    // Best effort, the same swallow cleanupShapes makes of its own errors.
+  }
+}
+
+const ALIGNMENT = { l: "Left", c: "Center", r: "Right" } as const;
+// A pie's two adjustment points: the angle it starts at and the one it ends
+// at, both degrees clockwise from 3 o'clock.
+const WEDGE_START = 0;
+const WEDGE_END = 1;
+
+// What one chart draw needs to know: the primitives in the layout's own
+// coordinates, the box on the slide they are drawn at, the brand font every
+// label wears, the group's name, its two tags, and whatever the caller wants
+// queued in the grouping sync (a refresh deletes the old group there).
+export interface GroupSpec {
+  primitives: Primitive[];
+  box: Box;
+  font: string;
+  name: string;
+  tag: LinkTag;
+  token: string;
+  // The slide the group is drawn on, for the cleanup run a rejection sends
+  // after it, which cannot reuse the context that failed.
+  slideId: string;
+  before?: () => void;
+  // resolveTarget's own `before` (placement.ts): the slide's ids as they
+  // stood before a FRESH insert started. Never set by refreshChart, which
+  // never reaches cleanupByToken at all (see cleanupWithin).
+  beforeIds?: ReadonlySet<string>;
+}
+
+interface Added {
+  shape: PowerPoint.Shape;
+  primitive: Primitive;
+}
+
+function offset(inner: Box, box: Box): Box {
+  return {
+    left: box.left + inner.left,
+    top: box.top + inner.top,
+    width: inner.width,
+    height: inner.height,
+  };
+}
+
+function chunks<T>(items: T[], size: number): T[][] {
+  const out: T[][] = [];
+  for (let at = 0; at < items.length; at += size) {
+    out.push(items.slice(at, at + size));
+  }
+  return out;
+}
+
+function filled(shape: PowerPoint.Shape, color: string): PowerPoint.Shape {
+  shape.fill.setSolidColor(color);
+  shape.lineFormat.visible = false;
+  return shape;
+}
+
+// Six property writes: the font, its size, its colour, the alignment, and -
+// since even a box the layout sized for PowerPoint's own insets can still
+// wrap the moment the real font runs a hair wider than the estimate - no word
+// wrap and no autosize, so the host shows exactly the box's one line instead
+// of stacking it ("1 / 519"). The margins are left exactly as the host made
+// them.
+function addLabel(
+  shapes: PowerPoint.ShapeCollection,
+  text: Text,
+  font: string,
+  at: Box,
+): PowerPoint.Shape {
+  const shape = shapes.addTextBox(text.text, at);
+  const range = shape.textFrame.textRange;
+  range.font.name = font;
+  range.font.size = text.size;
+  range.font.color = text.color;
+  range.font.bold = text.bold;
+  range.paragraphFormat.horizontalAlignment = ALIGNMENT[text.align];
+  shape.textFrame.wordWrap = false;
+  shape.textFrame.autoSizeSetting = PowerPoint.ShapeAutoSize.autoSizeNone;
+  return shape;
+}
+
+// A box is always normalised to a non-negative width and height (see
+// chart-shapes-parts.ts lineBetween), so a rising segment - bottom-left to
+// top-right - cannot be drawn as a straight connector from it: the host has
+// no "flip" on ConnectorType.straight, only a second preset for the other
+// diagonal. Everything else keeps the connector it always drew as.
+function addLineShape(
+  shapes: PowerPoint.ShapeCollection,
+  primitive: Line,
+  at: Box,
+): PowerPoint.Shape {
+  if (primitive.rising) {
+    const shape = shapes.addGeometricShape(
+      PowerPoint.GeometricShapeType.lineInverse,
+      at,
+    );
+    shape.lineFormat.color = primitive.color;
+    shape.lineFormat.weight = primitive.weight;
+    return shape;
+  }
+  const shape = shapes.addLine(PowerPoint.ConnectorType.straight, at);
+  // The host reads a zero width or height in the add as "not given" and
+  // draws the line sloped over its 72 pt default (PowerPoint for the web,
+  // 30.08); written after the add, a zero side sticks.
+  shape.width = at.width;
+  shape.height = at.height;
+  shape.lineFormat.color = primitive.color;
+  shape.lineFormat.weight = primitive.weight;
+  return shape;
+}
+
+// A primitive is one shape: a bar, a legend swatch and a stacked segment are
+// rectangles, a slice is a Pie (or an Ellipse when it is the whole circle),
+// a baseline or a waterfall connector is a line (straight, or the host's
+// other diagonal preset for a rising one).
+function addPrimitive(
+  shapes: PowerPoint.ShapeCollection,
+  primitive: Primitive,
+  spec: GroupSpec,
+): PowerPoint.Shape {
+  const at = offset(primitive.box, spec.box);
+  switch (primitive.kind) {
+    case "text":
+      return addLabel(shapes, primitive, spec.font, at);
+    case "line":
+      return addLineShape(shapes, primitive, at);
+    case "wedge":
+      return filled(
+        shapes.addGeometricShape(PowerPoint.GeometricShapeType.pie, at),
+        primitive.color,
+      );
+    case "ellipse":
+      return filled(
+        shapes.addGeometricShape(PowerPoint.GeometricShapeType.ellipse, at),
+        primitive.color,
+      );
+    case "rect":
+      return filled(
+        shapes.addGeometricShape(PowerPoint.GeometricShapeType.rectangle, at),
+        primitive.color,
+      );
+  }
+}
+
+// PowerPoint hands out a shape's adjustments only once it has heard of the
+// shape, so these writes are queued after the sync that added the wedges and
+// travel with the next one - the following chunk's, or the grouping sync.
+function shapeWedges(added: Added[]): void {
+  for (const { shape, primitive } of added) {
+    if (primitive.kind !== "wedge") continue;
+    shape.adjustments.set(WEDGE_START, primitive.start);
+    shape.adjustments.set(WEDGE_END, primitive.end);
+  }
+}
+
+// What every shape of a chart is named with before its own part: the
+// primitives, and on the Mac the tiers, all in the batch that adds them, so
+// a cleanup can find by name what a refused batch left with no id.
+export function chartPrefix(name: string): string {
+  return `${name}: `;
+}
+
+// The ids the link's group takes: the shapes themselves, or on a host that
+// groups in tiers (groupTier) the sub-groups of them, made in one sync per
+// level and appended to the cleanup list - a shape inside a sub-group is no
+// longer an id the slide's own collection can delete, but its sub-group is.
+// Levels repeat until at most `tier` members remain, so a 40-point chart
+// never asks addGroup for 19+ ids (the count that killed Mac 16.107). A
+// remainder of one is left ungrouped: addGroup of one is InvalidArgument,
+// and on Mac 16.107 (14.09) that sync left the sub-groups untagged.
+async function tierUp(
+  context: PowerPoint.RequestContext,
+  shapes: PowerPoint.ShapeCollection,
+  ids: string[],
+  name: string,
+): Promise<string[]> {
+  const tier = groupTier();
+  if (tier === null || ids.length <= tier) return [...ids];
+  let members = [...ids];
+  while (members.length > tier) {
+    const next: string[] = [];
+    const subs: PowerPoint.Shape[] = [];
+    for (const part of chunks(members, tier)) {
+      if (part.length < 2) {
+        next.push(...part);
+        continue;
+      }
+      const sub = shapes.addGroup(part);
+      sub.name = `${chartPrefix(name)}tier`;
+      sub.load("id");
+      subs.push(sub);
+    }
+    await withSyncDeadline(context.sync());
+    const grouped = subs.map((sub) => sub.id);
+    next.push(...grouped);
+    ids.push(...grouped);
+    members = next;
+  }
+  return members;
+}
+
+// The whole chart in ceil(primitives / SHAPES_PER_SYNC) + 1 round trips: each
+// chunk is added and its ids read back in one sync, and the last sync groups
+// them, names the group, tags it and runs whatever the caller queued there.
+//
+// A sync that rejects has already put shapes on the host: PowerPoint.run
+// does not roll those back, and a refused batch keeps the adds queued before
+// the call it refused (Mac 16.107, 14.09). So this tracks every id a prior
+// sync confirmed and, on any rejection, deletes them itself (chart-cleanup.ts)
+// and then sweeps the slide for the rest by the chart's name, before
+// rethrowing the rejection unchanged. A round trip the host swallows without
+// answering reaches the same path through its deadline, as a ChartDrawTimeout
+// the caller falls back on.
+export async function drawGroup(
+  context: PowerPoint.RequestContext,
+  shapes: PowerPoint.ShapeCollection,
+  spec: GroupSpec,
+): Promise<string> {
+  const ids: string[] = [];
+  try {
+    for (const chunk of chunks(spec.primitives, SHAPES_PER_SYNC)) {
+      const added = chunk.map((primitive): Added => {
+        const shape = addPrimitive(shapes, primitive, spec);
+        shape.name = `${chartPrefix(spec.name)}${primitive.name}`;
+        shape.load("id");
+        return { shape, primitive };
+      });
+      await withSyncDeadline(context.sync());
+      ids.push(...added.map((one) => one.shape.id));
+      shapeWedges(added);
+    }
+    const members = await tierUp(context, shapes, ids, spec.name);
+    const group = shapes.addGroup(members);
+    group.name = spec.name;
+    group.tags.add(TAG_LINK, encodeTag(spec.tag));
+    group.tags.add(TAG_KEY, spec.token);
+    group.load("id");
+    spec.before?.();
+    await withSyncDeadline(context.sync());
+    return group.id;
+  } catch (err) {
+    await cleanupWithin(
+      spec.slideId,
+      ids,
+      chartPrefix(spec.name),
+      // No pre-add ids, no token sweep: without them an older copy of the
+      // same link is indistinguishable from this draw's own orphan.
+      spec.before === undefined && spec.beforeIds ? spec.token : undefined,
+      spec.beforeIds ?? new Set(),
+    );
+    throw err;
+  }
+}

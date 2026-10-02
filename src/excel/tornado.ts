@@ -1,0 +1,215 @@
+// The sensitivity tornado: drivers ranked by how far they move the answer, each
+// drawn as a bar spanning its low and high around the base. Office charts plot
+// ranges only and the deltas are not in the model, so they are written to a
+// helper block beside the selection and charted from there.
+//
+// Owns: the base read off the row above, the ranking's styling and the notes.
+// The helper block itself is shared with the football field, in
+// src/excel/chart-blocks.ts.
+
+import { placeChartBeside, UNPLACED_NOTE } from "./chart-place";
+import {
+  CHART_BLOCK_COLUMNS,
+  cleanupChartInsert,
+  isFiniteNumber,
+  readTriples,
+  requireRoomBeside,
+  serialised,
+  type TripleRules,
+  valueFormat,
+  writeHelperBlock,
+} from "./chart-blocks";
+import {
+  formatChartAmount,
+  hostSupports,
+  selectedSingleRange,
+  styleChartLabels,
+  styleChartShell,
+  syncTolerating,
+  withinCap,
+} from "./internal";
+import { tornadoSeries } from "../chartmath";
+import { type CellValue } from "../model";
+import { getActiveSettings } from "../settings";
+
+const STAGE = "tornado";
+const TORNADO_ROW_CAP = 100;
+// Both halves of a driver share one bar row, with the rows drawn close together.
+const TORNADO_OVERLAP = 100;
+const TORNADO_GAP_WIDTH = 40;
+const TORNADO_TITLE = "Sensitivity";
+const TORNADO_HEADERS = ["Driver", "Low", "High"];
+const TORNADO_SHAPE_ERROR =
+  "tornado: need 3 columns (label, low, high) and at least 2 rows";
+// Bar overlap and gap width arrived in ExcelApi 1.8; without them the tornado
+// is drawn as a plain clustered bar chart, which is worth saying out loud.
+const BASIC_BARS_NOTE = "; plain bars on this build";
+// Excel for the web refuses chart.format.font and roundedCorners outright on
+// a chartex chart (the waterfall), and possibly on this one too under a
+// different code: public traces show InvalidOperation and "This operation is
+// not permitted for the current object." on a bar chart's surface. Either way
+// it is cosmetic, so the tolerated batch below keeps the chart, its placement
+// and its title when that happens, and stays silent about it.
+
+// The row cap is counted off the selection before the grid is read, so the
+// reader itself carries none.
+const TORNADO_RULES: TripleRules = {
+  minRows: 2,
+  tooFew: TORNADO_SHAPE_ERROR,
+  notNumbers: "tornado: the low and high columns must hold numbers",
+};
+
+interface TornadoHeader {
+  heading: string;
+  base: number | null;
+}
+
+// One read of the row above the selection answers both questions it can: text
+// over the label column titles the chart, and the first number over the outcome
+// columns is the base case. Without either, the defaults stand.
+async function readTornadoHeader(
+  context: Excel.RequestContext,
+  sheet: Excel.Worksheet,
+  range: Excel.Range,
+): Promise<TornadoHeader> {
+  if (range.rowIndex === 0) return { heading: TORNADO_TITLE, base: null };
+
+  const above = sheet.getRangeByIndexes(
+    range.rowIndex - 1,
+    range.columnIndex,
+    1,
+    CHART_BLOCK_COLUMNS,
+  );
+  above.load("values");
+  await context.sync();
+
+  const cells = (above.values as CellValue[][])[0] ?? [];
+  const title = cells[0];
+  return {
+    heading:
+      typeof title === "string" && title.trim() ? title.trim() : TORNADO_TITLE,
+    base: cells.slice(1).find(isFiniteNumber) ?? null,
+  };
+}
+
+function styleTornado(chart: Excel.Chart, heading: string): void {
+  // The surface stays out of this batch: Excel for the web may refuse the
+  // font and the corners on this chart the way it refuses them outright on a
+  // chartex chart, and that refusal must not take the rest of the styling,
+  // the chart itself or its placement down with it. Applied afterwards,
+  // alongside the title again, in its own tolerated batch (runTornado).
+  styleChartShell(chart, heading, true, false);
+  styleChartLabels(
+    chart.dataLabels,
+    Excel.ChartType.barClustered,
+    "OutsideEnd",
+  );
+  // A bar chart plots the first category at the bottom; reversing the order
+  // puts the widest swing on top, which is the shape a tornado is read by.
+  if (hostSupports("1.7")) chart.axes.categoryAxis.reversePlotOrder = true;
+
+  const { accent, external } = getActiveSettings();
+  // Downside in the same colour a bridge paints a fall, upside in the accent.
+  [external, accent].forEach((color, index) => {
+    const series = chart.series.getItemAt(index);
+    series.format.fill.setSolidColor(color);
+    if (hostSupports("1.8")) {
+      series.overlap = TORNADO_OVERLAP;
+      series.gapWidth = TORNADO_GAP_WIDTH;
+    }
+  });
+}
+
+// Three columns, at least two drivers, no more than the cap, and room for the
+// helper block beside them.
+function requireTornadoShape(range: Excel.Range): void {
+  if (range.columnCount !== CHART_BLOCK_COLUMNS || range.rowCount < 2) {
+    throw new Error(TORNADO_SHAPE_ERROR);
+  }
+  if (range.rowCount > TORNADO_ROW_CAP) {
+    throw new Error(`${STAGE}: supports up to ${TORNADO_ROW_CAP} drivers`);
+  }
+  requireRoomBeside(range, STAGE);
+}
+
+function notes(placed: boolean): string {
+  return [
+    placed ? "" : UNPLACED_NOTE,
+    hostSupports("1.7") && hostSupports("1.8") ? "" : BASIC_BARS_NOTE,
+  ].join("");
+}
+
+// Label, low outcome, high outcome; the helper block lands immediately right of
+// the selection, and pls,fix Undo captures whatever stood there first.
+async function runTornado(context: Excel.RequestContext): Promise<string> {
+  // The cap answers before the values are asked for: a clicked column header
+  // is a million cells, and the driver cap only runs after the read.
+  const range = await withinCap(
+    context,
+    await selectedSingleRange(context, STAGE),
+    STAGE,
+  );
+  const sheet = range.worksheet;
+  range.load("rowCount,columnCount,rowIndex,columnIndex,values,numberFormat");
+  await context.sync();
+  requireTornadoShape(range);
+
+  const drivers = readTriples(range.values as CellValue[][], TORNADO_RULES);
+  const format = valueFormat(range.numberFormat as string[][], drivers.length);
+  const { heading, base } = await readTornadoHeader(context, sheet, range);
+  const series = tornadoSeries(drivers, base);
+
+  const block = await writeHelperBlock(context, sheet, range, {
+    stage: STAGE,
+    headers: TORNADO_HEADERS,
+    rows: series.labels.map((label, index) => [
+      label,
+      series.low[index] ?? 0,
+      series.high[index] ?? 0,
+    ]),
+    format,
+  });
+
+  let chart: Excel.Chart | undefined;
+  try {
+    chart = sheet.charts.add(
+      Excel.ChartType.barClustered,
+      block,
+      Excel.ChartSeriesBy.columns,
+    );
+    styleTornado(chart, heading);
+    await context.sync();
+    const placed = await placeChartBeside(context, sheet, chart, block);
+    await context.sync();
+
+    // Its own batch, tolerated the way the waterfall's own surface is: a
+    // refusal here must never undo the placement that already landed, and
+    // stays silent - the surface is cosmetic. The title rides in the same
+    // batch, written after the surface (styleChartShell's own order), so a
+    // host that spreads the chart-area font to every text element cannot
+    // leave the title behind it.
+    styleChartShell(chart, heading, true);
+    await syncTolerating(
+      context,
+      Excel.ErrorCodes.unsupportedOperation,
+      Excel.ErrorCodes.invalidOperation,
+    );
+
+    const count = series.labels.length;
+    const tail = notes(placed);
+    return `Tornado added: ${count} drivers, base ${formatChartAmount(series.base)}${tail}`;
+  } catch (error) {
+    // Anything from here on is a refusal after the helper block already
+    // landed: a half-drawn or misplaced chart, or none at all, is never left
+    // beside data the modeller was told nothing happened to.
+    await cleanupChartInsert(context, block, chart);
+    throw error;
+  }
+}
+
+// Serialised with the football field: a second press must meet this press's
+// helper block, not an empty one, so it hits the "not empty" refusal instead
+// of drawing a second chart on top of the first.
+export async function insertTornado(): Promise<string> {
+  return serialised(() => Excel.run(runTornado));
+}

@@ -1,0 +1,1805 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <title>pls,fix</title>
+    <script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
+    <!-- The manifest declares the custom functions on this page's shared
+         runtime, so Excel loads this file as the custom-functions runtime and
+         never reads the <Script><SourceLocation> the CustomFunctions
+         extension point names. Without this tag the associate() calls inside
+         functions.js never run and every =PLSFIX.* formula answers #VALUE!. -->
+    <script src="./functions.js"></script>
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="masthead">
+        <div class="brand-mark" aria-hidden="true">,</div>
+        <div>
+          <div class="eyebrow">pls,fix</div>
+          <h1>Build cleaner models.</h1>
+        </div>
+        <span id="connection-status" class="connection waiting"
+          >Connecting</span
+        >
+      </header>
+
+      <nav
+        id="tab-bar"
+        class="tab-bar"
+        role="tablist"
+        aria-label="Task pane views"
+      >
+        <button
+          id="tab-tools"
+          class="tab active"
+          role="tab"
+          aria-selected="true"
+          aria-controls="view-tools"
+          type="button"
+        >
+          Tools
+        </button>
+        <button
+          id="tab-workbook"
+          class="tab"
+          role="tab"
+          aria-selected="false"
+          aria-controls="view-workbook"
+          type="button"
+        >
+          Workbook
+        </button>
+        <button
+          id="tab-links"
+          class="tab"
+          role="tab"
+          aria-selected="false"
+          aria-controls="view-links"
+          type="button"
+        >
+          Links
+        </button>
+        <button
+          id="tab-brand"
+          class="tab"
+          role="tab"
+          aria-selected="false"
+          aria-controls="view-brand"
+          type="button"
+        >
+          Brand
+        </button>
+      </nav>
+
+      <div class="tool-search">
+        <input
+          id="tool-search"
+          type="search"
+          placeholder="Find a tool"
+          aria-label="Find a tool"
+          autocomplete="off"
+          title="Type what you want to do: waterfall, color key, undo, find"
+        />
+        <p id="tool-search-hint" class="hint" hidden>
+          Type what you want to do: waterfall, color key, undo, find
+        </p>
+        <ul
+          id="tool-search-results"
+          class="tool-search-results"
+          role="listbox"
+          hidden
+        ></ul>
+      </div>
+
+      <div
+        id="view-tools"
+        class="view"
+        role="tabpanel"
+        aria-labelledby="tab-tools"
+      >
+        <section class="first-run" id="first-run" data-help="first-run">
+          <div class="section-heading">
+            <div>
+              <p class="kicker">GETTING STARTED</p>
+              <h2 id="first-run-heading">New here?</h2>
+            </div>
+          </div>
+          <p>
+            1. Select cells, then a preset or a format cycle (Ctrl+Shift+1, 2, 4
+            to 7).
+          </p>
+          <p>
+            2. Links: export a range, a chart or one cell to PowerPoint and
+            update it later.
+          </p>
+          <p>3. Every section has a ? beside its heading.</p>
+          <div class="io-row">
+            <button id="first-run-shortcuts" type="button">
+              Shortcut card
+            </button>
+            <button id="first-run-dismiss" type="button">Got it</button>
+          </div>
+        </section>
+
+        <section class="selection-card" aria-labelledby="selection-heading">
+          <div class="section-heading compact">
+            <div>
+              <p class="kicker">ACTIVE SELECTION</p>
+              <h2 id="selection-heading">Selection inspector</h2>
+            </div>
+            <button
+              id="refresh-selection"
+              class="icon-button"
+              type="button"
+              aria-label="Refresh selection"
+            >
+              ↻
+            </button>
+            <button
+              id="shortcut-card"
+              class="icon-button"
+              data-action="shortcut-card"
+              type="button"
+              aria-label="Shortcut card"
+              title="Shortcut card"
+            >
+              ⌨
+            </button>
+          </div>
+          <div class="selection-address" id="selection-address">
+            Select a range in Excel
+          </div>
+          <div class="metrics" aria-live="polite">
+            <div><strong id="metric-cells">—</strong><span>cells</span></div>
+            <div>
+              <strong id="metric-formulas">—</strong><span>formulas</span>
+            </div>
+            <div><strong id="metric-errors">—</strong><span>errors</span></div>
+            <div><strong id="metric-blanks">—</strong><span>blank</span></div>
+          </div>
+        </section>
+
+        <section aria-labelledby="reconcile-heading">
+          <div class="section-heading">
+            <div>
+              <p class="kicker">VARIANCE</p>
+              <h2 id="reconcile-heading">Find a combination</h2>
+            </div>
+          </div>
+          <div class="reconcile-form">
+            <label>
+              <span>Target</span>
+              <input id="reconcile-target" type="number" value="0" step="any" />
+            </label>
+            <label>
+              <span>Tolerance</span>
+              <input
+                id="reconcile-tolerance"
+                type="number"
+                value="0.01"
+                min="0"
+                step="any"
+              />
+            </label>
+            <button data-action="reconcile-find" type="button">
+              Find cells
+            </button>
+          </div>
+          <p id="reconcile-result" class="hint" aria-live="polite">
+            Select up to 34 numeric cells. Matching cells become the selection.
+          </p>
+        </section>
+
+        <section aria-labelledby="templates-heading">
+          <div class="section-heading">
+            <div>
+              <p class="kicker">START FROM A BLOCK</p>
+              <h2 id="templates-heading">Templates</h2>
+            </div>
+          </div>
+          <div class="tool-grid template-grid">
+            <button
+              class="tool"
+              data-action="template-debt-schedule"
+              type="button"
+              title="Writes a 20 by 6 annuity loan schedule at the active cell: principal, rate, years and payments per year into a level payment, with interest, principal and closing balance per period"
+            >
+              <span class="action-icon template">≡</span
+              ><span>Debt schedule</span>
+            </button>
+            <button
+              class="tool"
+              data-action="template-dcf"
+              type="button"
+              title="Writes a 13 by 6 DCF block at the active cell: wACC, terminal growth and five cash flows into discount factors, present values, a Gordon terminal value and enterprise value"
+            >
+              <span class="action-icon template">∑</span
+              ><span>DCF valuation</span>
+            </button>
+            <button
+              class="tool"
+              data-action="template-npv-irr"
+              type="button"
+              title="Writes a 17 by 3 NPV, IRR and payback block at the active cell: an outlay and eight cash flows into a cumulative column, NPV at your rate, IRR and a payback period"
+            >
+              <span class="action-icon template">%</span><span>NPV / IRR</span>
+            </button>
+            <button
+              class="tool"
+              data-action="template-working-capital"
+              type="button"
+              title="Writes a 12 by 2 working capital days block at the active cell: revenue, COGS and the three balances into DSO, DIO, DPO and the cash conversion cycle"
+            >
+              <span class="action-icon template">⟳</span
+              ><span>Working capital</span>
+            </button>
+            <button
+              class="tool"
+              data-action="template-sensitivity"
+              type="button"
+              title="Writes an 11 by 6 two-way sensitivity grid at the active cell: a base value and two drivers with their step sizes into a 5 by 5 grid of formulas"
+            >
+              <span class="action-icon template">▦</span
+              ><span>Sensitivity grid</span>
+            </button>
+            <button
+              class="tool"
+              data-action="template-ebitda-bridge"
+              type="button"
+              title='Writes a 9 by 2 EBITDA bridge table at the active cell: opening, five named steps, closing and a check row, in the shape "Waterfall from selection" reads'
+            >
+              <span class="action-icon bridge">▃▆</span
+              ><span>EBITDA bridge</span>
+            </button>
+          </div>
+        </section>
+
+        <section aria-labelledby="format-heading">
+          <div class="section-heading">
+            <div>
+              <p class="kicker">CONSISTENCY</p>
+              <h2 id="format-heading">Model formatting</h2>
+            </div>
+          </div>
+          <div class="tool-grid format-grid">
+            <button
+              class="tool style-title"
+              data-action="style-title"
+              type="button"
+            >
+              <i></i><span>Title</span>
+            </button>
+            <button
+              class="tool style-header"
+              data-action="style-header"
+              type="button"
+            >
+              <i></i><span>Header</span>
+            </button>
+            <button
+              class="tool style-input"
+              data-action="style-input"
+              type="button"
+            >
+              <i></i><span>Input</span>
+            </button>
+            <button
+              class="tool style-formula"
+              data-action="style-formula"
+              type="button"
+            >
+              <i></i><span>Formula</span>
+            </button>
+            <button
+              class="tool style-result"
+              data-action="style-result"
+              type="button"
+            >
+              <i></i><span>Result</span>
+            </button>
+            <button
+              class="tool style-clear"
+              data-action="clear-formats"
+              type="button"
+            >
+              <i></i><span>Clear</span>
+            </button>
+          </div>
+          <div class="number-strip" role="group" aria-label="Number formats">
+            <button data-action="number-whole" type="button">1,234</button>
+            <button data-action="number-decimal" type="button">1,234.0</button>
+            <button
+              data-action="number-currency"
+              id="currency-format-button"
+              type="button"
+            >
+              € 1,234
+            </button>
+            <button data-action="number-percent" type="button">12.3%</button>
+          </div>
+          <div class="scale-row" role="group" aria-label="Workbook style slots">
+            <button
+              data-action="paint-capture-1"
+              type="button"
+              title="Save the active cell's format in this workbook as style 1"
+            >
+              Save 1
+            </button>
+            <button
+              data-action="paint-capture-2"
+              type="button"
+              title="Save the active cell's format in this workbook as style 2"
+            >
+              Save 2
+            </button>
+            <button
+              data-action="paint-capture-3"
+              type="button"
+              title="Save the active cell's format in this workbook as style 3"
+            >
+              Save 3
+            </button>
+            <button
+              data-action="paint-apply-1"
+              type="button"
+              title="Paint slot 1 over the selection (Ctrl+Shift+D)"
+            >
+              Use 1
+            </button>
+            <button
+              data-action="paint-apply-2"
+              type="button"
+              title="Paint slot 2 over the selection (Ctrl+Shift+N)"
+            >
+              Use 2
+            </button>
+            <button
+              data-action="paint-apply-3"
+              type="button"
+              title="Paint slot 3 over the selection (Ctrl+Shift+O)"
+            >
+              Use 3
+            </button>
+          </div>
+          <p class="hint">
+            Saved in this workbook.<br />
+            Slot 1: <span id="paint-slot-1">empty</span><br />
+            Slot 2: <span id="paint-slot-2">empty</span><br />
+            Slot 3: <span id="paint-slot-3">empty</span>
+          </p>
+        </section>
+
+        <section aria-labelledby="cycles-heading">
+          <div class="section-heading">
+            <div>
+              <p class="kicker">REPEAT TO STEP</p>
+              <h2 id="cycles-heading">Format cycles</h2>
+            </div>
+          </div>
+          <div
+            class="number-strip cycle-strip"
+            role="group"
+            aria-label="Number format cycles"
+          >
+            <button
+              data-action="cycle-number-general"
+              type="button"
+              title="General numbers: 1,234 / 1,234.0 / 1,234.00 (Ctrl+Shift+1)"
+            >
+              1,234
+            </button>
+            <button
+              data-action="cycle-number-date"
+              type="button"
+              title="Dates: 31.12.2026 / Dec-26 / 2026 (Ctrl+Shift+2)"
+            >
+              Date
+            </button>
+            <button
+              data-action="cycle-number-currency"
+              type="button"
+              title="Currency: whole / one decimal / thousands (Ctrl+Shift+4)"
+            >
+              Cur.
+            </button>
+            <button
+              data-action="cycle-number-percent"
+              type="button"
+              title="Percentages: 12.3% / 12% / 12.34% (Ctrl+Shift+5)"
+            >
+              %
+            </button>
+            <button
+              data-action="cycle-number-multiple"
+              type="button"
+              title="Multiples: 1.5x / 1.50x (Ctrl+Shift+6)"
+            >
+              0.0x
+            </button>
+          </div>
+          <div
+            class="number-strip cycle-strip style-strip"
+            role="group"
+            aria-label="Style cycles"
+          >
+            <button
+              data-action="cycle-row-title"
+              type="button"
+              title="Title row styles (Ctrl+Shift+H)"
+            >
+              Title
+            </button>
+            <button
+              data-action="cycle-row-result"
+              type="button"
+              title="Result row styles (Ctrl+Shift+R)"
+            >
+              Result
+            </button>
+            <button
+              data-action="cycle-row-item"
+              type="button"
+              title="Item row styles (Ctrl+Shift+E)"
+            >
+              Item
+            </button>
+            <button
+              data-action="cycle-fill"
+              type="button"
+              title="Brand fill colors (Ctrl+Shift+F)"
+            >
+              Fill
+            </button>
+            <button
+              data-action="cycle-font"
+              type="button"
+              title="Brand font colors (Ctrl+Shift+G)"
+            >
+              Font
+            </button>
+            <button
+              data-action="cycle-border"
+              type="button"
+              title="Borders: bottom rule / total / result / box / grid (Ctrl+Shift+7)"
+            >
+              Border
+            </button>
+          </div>
+          <div
+            class="number-strip cycle-strip size-strip"
+            role="group"
+            aria-label="Size cycles"
+          >
+            <button
+              data-action="cycle-row-height"
+              type="button"
+              title="Row heights: 15 / 18 / 21 / 24 / 30 pt (Ctrl+Shift+Y)"
+            >
+              Row height
+            </button>
+            <button
+              data-action="cycle-col-width"
+              type="button"
+              title="Column widths: 64 / 80 / 96 / 120 / 48 pt (Ctrl+Shift+X)"
+            >
+              Column width
+            </button>
+          </div>
+          <div
+            class="number-strip cycle-strip size-strip"
+            role="group"
+            aria-label="Pinstripes"
+          >
+            <button
+              data-action="pinstripes-rows"
+              type="button"
+              title="Band every second row of the selection; press again to clear"
+            >
+              Pinstripes
+            </button>
+            <button
+              data-action="pinstripes-columns"
+              type="button"
+              title="Band every second column of the selection; press again to clear"
+            >
+              Pinstripes ↔
+            </button>
+          </div>
+          <div class="scale-row" role="group" aria-label="Hygiene cycles">
+            <button
+              data-action="cycle-indent"
+              type="button"
+              title="Indent: 0 / 1 / 2 / 3 levels"
+            >
+              Indent
+            </button>
+            <button
+              data-action="cycle-align"
+              type="button"
+              title="Alignment: left / center / right / general"
+            >
+              Align
+            </button>
+            <button
+              data-action="cycle-underline"
+              type="button"
+              title="Underline: single / double / none"
+            >
+              Underline
+            </button>
+          </div>
+          <p class="hint">
+            Press the same button or shortcut again to step to the next look.
+          </p>
+        </section>
+
+        <section aria-labelledby="tools-heading">
+          <div class="section-heading">
+            <div>
+              <p class="kicker">SPEED</p>
+              <h2 id="tools-heading">Model tools</h2>
+            </div>
+          </div>
+          <div class="action-list">
+            <button
+              data-action="undo"
+              type="button"
+              title="Restore what the last pls,fix action overwrote (Ctrl+Shift+Z)"
+            >
+              <span class="action-icon undo">⟲</span
+              ><span
+                ><strong>Undo last pls,fix action</strong
+                ><small id="undo-target">Nothing to undo yet</small></span
+              ><kbd>Ctrl+Shift+Z</kbd>
+            </button>
+            <button
+              data-action="fill-right"
+              type="button"
+              title="Fill the active formula right (Ctrl+Alt+R)"
+            >
+              <span class="action-icon">→</span
+              ><span
+                ><strong>Fill formula right</strong
+                ><small>Sized by the neighbouring rows</small></span
+              ><kbd>Ctrl+Alt+R</kbd>
+            </button>
+            <button
+              data-action="fill-down"
+              type="button"
+              title="Fill the active formula down (Ctrl+Alt+D)"
+            >
+              <span class="action-icon">↓</span
+              ><span
+                ><strong>Fill formula down</strong
+                ><small>Sized by the neighbouring columns</small></span
+              ><kbd>Ctrl+Alt+D</kbd>
+            </button>
+            <button
+              data-action="if-error"
+              type="button"
+              title="Add or strip the IFERROR guard (Ctrl+Shift+I)"
+            >
+              <span class="action-icon">ƒ</span
+              ><span
+                ><strong>IFERROR guard</strong
+                ><small
+                  >Adds IFERROR(…, 0), or strips it when it is already
+                  there</small
+                ></span
+              >
+            </button>
+            <button
+              data-action="autocolor"
+              type="button"
+              title="Color inputs, formulas, links and hardcodes in your palette (Ctrl+Shift+K)"
+            >
+              <span class="action-icon colors">●</span
+              ><span
+                ><strong>Autocolor selection</strong
+                ><small
+                  >Inputs, formulas, links and hardcodes in your palette</small
+                ></span
+              ><kbd>Ctrl+Shift+K</kbd>
+            </button>
+            <button data-action="insert-color-key" type="button">
+              <span class="action-icon key">⚿</span
+              ><span
+                ><strong>Insert color key</strong
+                ><small>Drops the legend at the active cell</small></span
+              >
+            </button>
+            <button
+              data-action="write-rounded"
+              type="button"
+              title="Write consistent rounding formulas beside the selection"
+            >
+              <span class="action-icon">Σ</span
+              ><span
+                ><strong>Consistent rounding</strong
+                ><small
+                  >Writes =PLSFIX.ROUND beside the selected row or column, so
+                  the rounded numbers still add up to the rounded total</small
+                ></span
+              >
+            </button>
+            <button
+              data-action="unpivot"
+              type="button"
+              title="Turn a cross-tab selection into a long table"
+            >
+              <span class="action-icon">⇲</span
+              ><span
+                ><strong>Unpivot selection</strong
+                ><small
+                  >Header row and first column become Row / Column / Value lines
+                  on a new sheet, so nothing here is overwritten</small
+                ></span
+              >
+            </button>
+            <button
+              data-action="comps-stats"
+              type="button"
+              title="Min, quartiles, median, mean and max under a comps table"
+            >
+              <span class="action-icon">Σ</span
+              ><span
+                ><strong>Comps stats</strong
+                ><small
+                  >Writes MIN, 25th, median, mean, 75th and MAX as live formulas
+                  one blank row under the selected table, one column of numbers
+                  at a time</small
+                ></span
+              >
+            </button>
+          </div>
+          <div
+            class="number-strip paste-strip"
+            role="group"
+            aria-label="Copy and paste"
+          >
+            <button
+              data-action="copy-source"
+              type="button"
+              title="Mark the selection as the copy source (Ctrl+Shift+C)"
+            >
+              Mark
+            </button>
+            <button
+              data-action="paste-values"
+              type="button"
+              title="Paste the source values (Ctrl+Shift+V)"
+            >
+              Values
+            </button>
+            <button
+              data-action="paste-formats"
+              type="button"
+              title="Paste the source formatting (Ctrl+Alt+F)"
+            >
+              Formats
+            </button>
+            <button
+              data-action="paste-exact"
+              type="button"
+              title="Paste the formulas exactly, references unchanged (Ctrl+Alt+P)"
+            >
+              Exact
+            </button>
+            <button
+              data-action="paste-transpose"
+              type="button"
+              title="Paste rows as columns (Ctrl+Alt+T)"
+            >
+              Transpose
+            </button>
+          </div>
+          <p class="hint" id="paste-source">
+            Mark a source, then paste it into any selection.
+          </p>
+          <div class="action-list">
+            <button
+              data-action="paste-duplicate"
+              type="button"
+              title="Paste the source formulas, in-range references adapted"
+            >
+              <span class="action-icon">ƒ</span
+              ><span
+                ><strong>Paste: duplicate formulas</strong
+                ><small
+                  >References pointing inside the copied block move with it;
+                  references pointing outside it keep the cells they had</small
+                ></span
+              >
+            </button>
+            <button
+              data-action="paste-number-formats"
+              type="button"
+              title="Paste the source number formats only"
+            >
+              <span class="action-icon">#</span
+              ><span
+                ><strong>Paste: number formats</strong
+                ><small
+                  >Only the number formats, tiled over the selection. Values,
+                  formulas and fills stay as they are</small
+                ></span
+              >
+            </button>
+            <button
+              data-action="paste-row-heights"
+              type="button"
+              title="Paste the source row heights only"
+            >
+              <span class="action-icon">↕</span
+              ><span
+                ><strong>Paste: row heights</strong
+                ><small
+                  >Only the row heights, row by row. A hidden source row is
+                  skipped, and heights sit outside pls,fix Undo</small
+                ></span
+              >
+            </button>
+          </div>
+          <div class="scale-row">
+            <button
+              data-action="divide-1000"
+              type="button"
+              title="Divide the selection by a thousand (Ctrl+Shift+Alt+9)"
+            >
+              ÷ 1,000
+            </button>
+            <button
+              data-action="multiply-1000"
+              type="button"
+              title="Multiply the selection by a thousand (Ctrl+Shift+Alt+8)"
+            >
+              × 1,000
+            </button>
+            <button
+              data-action="cagr"
+              type="button"
+              title="CAGR just past the selected row or column (Ctrl+Shift+Q)"
+            >
+              CAGR
+            </button>
+            <button
+              data-action="sign-flip"
+              type="button"
+              title="Flip the sign of the selection (Ctrl+Shift+J)"
+            >
+              ± sign
+            </button>
+            <button
+              data-action="dec-more"
+              type="button"
+              title="One more decimal place (Ctrl+Shift+Alt+3)"
+            >
+              .00 +
+            </button>
+            <button
+              data-action="dec-less"
+              type="button"
+              title="One less decimal place (Ctrl+Shift+Alt+7)"
+            >
+              .00 −
+            </button>
+          </div>
+        </section>
+
+        <section aria-labelledby="audit-heading">
+          <div class="section-heading">
+            <div>
+              <p class="kicker">CHECK AND TRACE</p>
+              <h2 id="audit-heading">Audit</h2>
+            </div>
+          </div>
+          <div class="action-list">
+            <button
+              data-action="audit-toggle"
+              type="button"
+              title="Toggle the formula consistency overlay (Ctrl+Shift+A)"
+            >
+              <span class="action-icon audit">▤</span
+              ><span
+                ><strong>Audit overlay</strong
+                ><small
+                  >Stripes where formulas match their neighbours, red where one
+                  breaks the pattern</small
+                ></span
+              ><kbd id="audit-state">Off</kbd>
+            </button>
+          </div>
+          <div
+            class="number-strip trace-strip"
+            role="group"
+            aria-label="Trace formulas"
+          >
+            <button
+              data-action="trace-precedents"
+              type="button"
+              title="Cells the active cell reads from (Ctrl+Alt+Q)"
+            >
+              Precedents
+            </button>
+            <button
+              data-action="trace-dependents"
+              type="button"
+              title="Cells that read the active cell (Ctrl+Alt+W)"
+            >
+              Dependents
+            </button>
+          </div>
+          <div class="trace-panel" id="trace-panel" hidden>
+            <div class="trace-head">
+              <button
+                id="trace-back"
+                class="icon-button back"
+                type="button"
+                aria-label="Back to the previous cell"
+                title="Back"
+                disabled
+              >
+                ←
+              </button>
+              <span class="trace-origin" id="trace-origin"></span>
+            </div>
+            <div class="chip-strip" id="trace-chips"></div>
+          </div>
+          <p class="hint">Click an address to jump there and keep tracing.</p>
+          <div class="action-list">
+            <button
+              data-action="select-consistent"
+              type="button"
+              title="Select every cell filled with the active cell's formula"
+            >
+              <span class="action-icon audit">⌗</span
+              ><span
+                ><strong>Select consistent region</strong
+                ><small
+                  >Grows the block of cells that share the active cell's
+                  formula, and selects it</small
+                ></span
+              >
+            </button>
+            <button
+              data-action="trace-precedents-all"
+              type="button"
+              title="Precedents of every formula cell in the selection"
+            >
+              <span class="action-icon audit">⇤</span
+              ><span
+                ><strong>Precedents of selection</strong
+                ><small
+                  >Lists what every formula cell in the selection reads from,
+                  grouped by cell</small
+                ></span
+              >
+            </button>
+          </div>
+        </section>
+
+        <section aria-labelledby="charts-heading">
+          <div class="section-heading">
+            <div>
+              <p class="kicker">PICTURE THE MODEL</p>
+              <h2 id="charts-heading">Charts</h2>
+            </div>
+          </div>
+          <div class="action-list">
+            <button
+              data-action="chart-waterfall"
+              type="button"
+              title="Waterfall from a two-column bridge table (Ctrl+Shift+B)"
+            >
+              <span class="action-icon bridge">▃▆</span
+              ><span
+                ><strong>Waterfall from selection</strong
+                ><small
+                  >Labels and values, first and last rows the opening and
+                  closing totals</small
+                ></span
+              ><kbd>Ctrl+Shift+B</kbd>
+            </button>
+            <button
+              data-action="tornado"
+              type="button"
+              title="Tornado chart from a driver, low, high table"
+            >
+              <span class="action-icon bridge">◧</span
+              ><span
+                ><strong>Tornado from selection</strong
+                ><small
+                  >Driver, low and high in three columns, ranked by swing. The
+                  base is the number above the low and high columns, or their
+                  mean; the deltas land in a helper block on the right</small
+                ></span
+              >
+            </button>
+            <button
+              data-action="chart-football"
+              type="button"
+              title="Football field from a method, low, high table"
+            >
+              <span class="action-icon bridge">⊟</span
+              ><span
+                ><strong>Football field</strong
+                ><small
+                  >Method, low and high in three columns, up to twenty rows,
+                  drawn as one floating bar per valuation; the floor and the
+                  band land in a helper block on the right</small
+                ></span
+              >
+            </button>
+            <button
+              data-action="chart-format"
+              type="button"
+              title="Restyle the selected chart to your palette (Ctrl+Alt+G)"
+            >
+              <span class="action-icon chart">◫</span
+              ><span
+                ><strong>Brand-format chart</strong
+                ><small
+                  >Fonts, series colors and legend from your palette, gridlines
+                  off</small
+                ></span
+              ><kbd>Ctrl+Alt+G</kbd>
+            </button>
+            <button
+              data-action="chart-cagr"
+              type="button"
+              title="CAGR callout beside the selected series (Ctrl+Alt+K)"
+            >
+              <span class="action-icon chart">↗</span
+              ><span
+                ><strong>CAGR label</strong
+                ><small
+                  >Drops the growth rate at the top right of the
+                  selection</small
+                ></span
+              ><kbd>Ctrl+Alt+K</kbd>
+            </button>
+          </div>
+        </section>
+      </div>
+
+      <div
+        id="view-brand"
+        class="view"
+        role="tabpanel"
+        aria-labelledby="tab-brand"
+        hidden
+      >
+        <section class="selection-card" aria-labelledby="preview-heading">
+          <div class="section-heading compact">
+            <div>
+              <p class="kicker">LIVE PREVIEW</p>
+              <h2 id="preview-heading">Your workbook style</h2>
+            </div>
+          </div>
+          <table class="preview-table" id="brand-preview">
+            <tbody>
+              <tr class="pv-title">
+                <td colspan="3">Model 2026</td>
+              </tr>
+              <tr class="pv-header">
+                <td></td>
+                <td>2025</td>
+                <td>2026</td>
+              </tr>
+              <tr>
+                <td>Growth</td>
+                <td class="pv-input">4,0%</td>
+                <td class="pv-input">5,0%</td>
+              </tr>
+              <tr>
+                <td>Revenue</td>
+                <td class="pv-formula">1 240</td>
+                <td class="pv-formula">1 302</td>
+              </tr>
+              <tr>
+                <td>Group fees</td>
+                <td class="pv-link">(18)</td>
+                <td class="pv-link">(19)</td>
+              </tr>
+              <tr>
+                <td>Fuel index</td>
+                <td class="pv-external">102</td>
+                <td class="pv-external">107</td>
+              </tr>
+              <tr>
+                <td>Other costs</td>
+                <td class="pv-partial">(820)</td>
+                <td class="pv-partial">(852)</td>
+              </tr>
+              <tr class="pv-result">
+                <td>EBITDA</td>
+                <td>402</td>
+                <td>431</td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section aria-labelledby="palette-heading">
+          <div class="section-heading">
+            <div>
+              <p class="kicker">COMPANY COLORS</p>
+              <h2 id="palette-heading">Palette</h2>
+            </div>
+            <button
+              id="reset-brand"
+              class="icon-button"
+              type="button"
+              aria-label="Reset brand settings"
+              title="Reset brand settings"
+            >
+              ⟲
+            </button>
+          </div>
+          <div class="palette-list" id="palette-list">
+            <div class="palette-row">
+              <input
+                type="color"
+                class="swatch-input"
+                data-slot-color="primary"
+                aria-label="Primary color picker"
+              />
+              <span class="palette-meta"
+                ><strong>Primary</strong
+                ><small>Titles and dark fills</small></span
+              >
+              <input
+                type="text"
+                class="hex-input"
+                data-slot-hex="primary"
+                spellcheck="false"
+                maxlength="7"
+                aria-label="Primary hex value"
+              />
+            </div>
+            <div class="palette-row">
+              <input
+                type="color"
+                class="swatch-input"
+                data-slot-color="accent"
+                aria-label="Accent color picker"
+              />
+              <span class="palette-meta"
+                ><strong>Accent</strong
+                ><small>Result rows and highlights</small></span
+              >
+              <input
+                type="text"
+                class="hex-input"
+                data-slot-hex="accent"
+                spellcheck="false"
+                maxlength="7"
+                aria-label="Accent hex value"
+              />
+            </div>
+            <div class="palette-row">
+              <input
+                type="color"
+                class="swatch-input"
+                data-slot-color="input"
+                aria-label="Input color picker"
+              />
+              <span class="palette-meta"
+                ><strong>Inputs</strong><small>Hardcoded numbers</small></span
+              >
+              <input
+                type="text"
+                class="hex-input"
+                data-slot-hex="input"
+                spellcheck="false"
+                maxlength="7"
+                aria-label="Input hex value"
+              />
+            </div>
+            <div class="palette-row">
+              <input
+                type="color"
+                class="swatch-input"
+                data-slot-color="formula"
+                aria-label="Formula color picker"
+              />
+              <span class="palette-meta"
+                ><strong>Formulas</strong><small>Calculated cells</small></span
+              >
+              <input
+                type="text"
+                class="hex-input"
+                data-slot-hex="formula"
+                spellcheck="false"
+                maxlength="7"
+                aria-label="Formula hex value"
+              />
+            </div>
+            <div class="palette-row">
+              <input
+                type="color"
+                class="swatch-input"
+                data-slot-color="link"
+                aria-label="Cross-sheet link color picker"
+              />
+              <span class="palette-meta"
+                ><strong>Cross-sheet links</strong
+                ><small>References to another sheet</small></span
+              >
+              <input
+                type="text"
+                class="hex-input"
+                data-slot-hex="link"
+                spellcheck="false"
+                maxlength="7"
+                aria-label="Cross-sheet link hex value"
+              />
+            </div>
+            <div class="palette-row">
+              <input
+                type="color"
+                class="swatch-input"
+                data-slot-color="external"
+                aria-label="External file link color picker"
+              />
+              <span class="palette-meta"
+                ><strong>External file links</strong
+                ><small>References to another workbook</small></span
+              >
+              <input
+                type="text"
+                class="hex-input"
+                data-slot-hex="external"
+                spellcheck="false"
+                maxlength="7"
+                aria-label="External file link hex value"
+              />
+            </div>
+            <div class="palette-row">
+              <input
+                type="color"
+                class="swatch-input"
+                data-slot-color="partial"
+                aria-label="Partial input color picker"
+              />
+              <span class="palette-meta"
+                ><strong>Partial inputs</strong
+                ><small>Numbers typed inside a formula</small></span
+              >
+              <input
+                type="text"
+                class="hex-input"
+                data-slot-hex="partial"
+                spellcheck="false"
+                maxlength="7"
+                aria-label="Partial input hex value"
+              />
+            </div>
+          </div>
+        </section>
+
+        <section aria-labelledby="logo-heading">
+          <div class="section-heading">
+            <div>
+              <p class="kicker">FROM YOUR LOGO</p>
+              <h2 id="logo-heading">Upload company colors</h2>
+            </div>
+          </div>
+          <label class="upload-drop" for="logo-file">
+            <input type="file" id="logo-file" accept="image/*" hidden />
+            <span
+              ><strong>Upload a logo or brand image</strong
+              ><small
+                >Colors are read locally, nothing leaves this pane</small
+              ></span
+            >
+          </label>
+          <div class="swatch-strip" id="logo-swatches" hidden></div>
+          <p class="hint" id="logo-hint" hidden>
+            First click sets Primary, second click sets Accent.
+          </p>
+        </section>
+
+        <section aria-labelledby="settings-heading">
+          <div class="section-heading">
+            <div>
+              <p class="kicker">WORKBOOK SETTINGS</p>
+              <h2 id="settings-heading">Output defaults</h2>
+            </div>
+          </div>
+          <div class="settings-grid">
+            <label
+              >Font
+              <select id="setting-font">
+                <option>Aptos</option>
+                <option>Arial</option>
+                <option>Calibri</option>
+                <option>Georgia</option>
+                <option>Times New Roman</option>
+              </select>
+            </label>
+            <label
+              >Language
+              <select id="setting-language">
+                <option value="lv">Latviešu: 1 094 417.5, 1 094 417 €</option>
+                <option value="en">English: 1,094,417.5, € 1,094,417</option>
+                <option value="ru">Русский: 1 094 417.5, 1 094 417 €</option>
+              </select>
+            </label>
+            <label
+              >Currency
+              <select id="setting-currency">
+                <option value="€">€ euro</option>
+                <option value="$">$ dollar</option>
+                <option value="£">£ pound</option>
+                <option value="">No symbol</option>
+              </select>
+            </label>
+          </div>
+          <p id="separators-note" class="hint" hidden></p>
+          <label class="toggle-row" for="setting-autocolor-edit">
+            <input type="checkbox" id="setting-autocolor-edit" />
+            <span
+              ><strong>Autocolor on edit</strong
+              ><small
+                >Recolor cells as you type, up to 500 at a time</small
+              ></span
+            >
+          </label>
+          <div class="io-row">
+            <button id="export-brand" type="button">Copy palette JSON</button>
+            <label class="io-import" for="import-file"
+              >Import JSON<input
+                type="file"
+                id="import-file"
+                accept="application/json,.json"
+                hidden
+            /></label>
+          </div>
+        </section>
+
+        <section aria-labelledby="shortcuts-heading">
+          <div class="section-heading">
+            <div>
+              <p class="kicker">YOUR KEYS</p>
+              <h2 id="shortcuts-heading">Keyboard shortcuts</h2>
+            </div>
+            <button
+              id="shortcuts-card"
+              class="icon-button"
+              type="button"
+              aria-label="Printable card"
+              title="Printable card"
+            >
+              ⌨
+            </button>
+          </div>
+          <p class="hint" id="shortcuts-note">
+            Type a combination beside any action, then Apply. An empty box keeps
+            the pls,fix default.
+          </p>
+          <div class="action-list" id="shortcuts-list"></div>
+          <div class="io-row">
+            <button
+              id="shortcuts-apply"
+              type="button"
+              data-action="shortcuts-apply"
+            >
+              Apply
+            </button>
+            <button
+              id="shortcuts-reset"
+              type="button"
+              data-action="shortcuts-reset"
+              data-confirm
+            >
+              Reset all
+            </button>
+          </div>
+        </section>
+      </div>
+
+      <div
+        id="view-workbook"
+        class="view"
+        role="tabpanel"
+        aria-labelledby="tab-workbook"
+        hidden
+      >
+        <section aria-labelledby="sheets-heading">
+          <div class="section-heading">
+            <div>
+              <p class="kicker">SHEETS</p>
+              <h2 id="sheets-heading">Sheet explorer</h2>
+            </div>
+            <button
+              id="refresh-sheets"
+              class="icon-button"
+              type="button"
+              aria-label="Refresh the sheet list"
+              title="Refresh"
+            >
+              ↻
+            </button>
+          </div>
+          <div class="io-row">
+            <button
+              data-action="sheets-unhide-all"
+              type="button"
+              title="Show every hidden sheet in this workbook"
+            >
+              Unhide all
+            </button>
+            <button
+              data-action="sheets-show-only"
+              type="button"
+              title="Hide every other sheet and keep this one on show"
+            >
+              Show only this
+            </button>
+            <button
+              data-action="sheets-bury"
+              type="button"
+              title="Make this sheet very hidden, out of Excel's own unhide list"
+            >
+              Bury this
+            </button>
+            <button
+              data-action="sheets-move-end"
+              type="button"
+              title="Move this sheet to the end of the tab strip"
+            >
+              Move to end
+            </button>
+            <button
+              data-action="sheets-move-up"
+              type="button"
+              title="Move this sheet one place left"
+            >
+              Move up
+            </button>
+            <button
+              data-action="sheets-move-down"
+              type="button"
+              title="Move this sheet one place right"
+            >
+              Move down
+            </button>
+          </div>
+          <label class="toggle-row" for="sheets-very-hidden">
+            <input type="checkbox" id="sheets-very-hidden" />
+            <span
+              ><strong>Include very hidden</strong
+              ><small
+                >Unhide all then brings back the sheets buried outside Excel's
+                own unhide list</small
+              ></span
+            >
+          </label>
+          <div class="sheet-list" id="sheet-list"></div>
+          <p class="hint">
+            Click a name to go there. The circle hides or shows a sheet; very
+            hidden sheets are left alone. Sheet changes are outside pls,fix
+            Undo.
+          </p>
+        </section>
+
+        <section aria-labelledby="find-heading">
+          <div class="section-heading">
+            <div>
+              <p class="kicker">SEARCH</p>
+              <h2 id="find-heading">Super Find</h2>
+            </div>
+          </div>
+          <label class="key-label" for="find-query">
+            Find in this workbook
+            <input
+              id="find-query"
+              class="key-input"
+              type="search"
+              autocomplete="off"
+              placeholder="Text, number or formula"
+            />
+          </label>
+          <label class="toggle-row" for="find-case">
+            <input id="find-case" type="checkbox" />
+            <span
+              ><strong>Match case</strong
+              ><small>Off finds a word in any casing</small></span
+            >
+          </label>
+          <label class="toggle-row" for="find-formulas">
+            <input id="find-formulas" type="checkbox" checked />
+            <span
+              ><strong>Search formulas</strong
+              ><small>Looks behind the value at the formula text</small></span
+            >
+          </label>
+          <label class="toggle-row" for="find-comments">
+            <input id="find-comments" type="checkbox" checked />
+            <span
+              ><strong>Comments</strong
+              ><small>Threads and replies, author too (Excel 365)</small></span
+            >
+          </label>
+          <p class="hint">
+            Enter in the box runs the search. Hidden sheets are searched too.
+          </p>
+          <div class="action-list">
+            <button
+              id="find-run"
+              data-action="find"
+              type="button"
+              title="Search every sheet, defined name, sheet name and comment (Ctrl+Shift+Alt+F)"
+            >
+              <span class="action-icon names">⌕</span
+              ><span
+                ><strong>Find in workbook</strong
+                ><small>Values, formulas, names, sheets, comments</small></span
+              ><kbd>Ctrl+Shift+Alt+F</kbd>
+            </button>
+            <div class="action-list" id="find-results" hidden></div>
+          </div>
+          <p class="hint" id="find-hint">
+            Searches values, defined names, sheet names and comments on every
+            sheet.
+          </p>
+        </section>
+
+        <section aria-labelledby="styles-heading">
+          <div class="section-heading">
+            <div>
+              <p class="kicker">CLEANUP</p>
+              <h2 id="styles-heading">Styles</h2>
+            </div>
+          </div>
+          <div class="action-list">
+            <button data-action="styles-scan" type="button">
+              <span class="action-icon names">▦</span
+              ><span
+                ><strong>Scan styles</strong
+                ><small
+                  >Custom cell styles no cell in the workbook uses</small
+                ></span
+              >
+            </button>
+          </div>
+          <p class="hint" id="styles-result">Not scanned yet.</p>
+          <div class="sheet-list" id="styles-list" hidden></div>
+          <button id="styles-delete" class="danger" type="button" hidden>
+            Delete unused styles
+          </button>
+        </section>
+
+        <section aria-labelledby="toc-heading">
+          <div class="section-heading">
+            <div>
+              <p class="kicker">NAVIGATION</p>
+              <h2 id="toc-heading">Table of contents</h2>
+            </div>
+          </div>
+          <div class="action-list">
+            <button
+              data-action="insert-toc"
+              type="button"
+              title="Build or rebuild the TOC sheet (Ctrl+Alt+O)"
+            >
+              <span class="action-icon toc">☰</span
+              ><span
+                ><strong>Insert contents sheet</strong
+                ><small
+                  >A TOC sheet linking every visible sheet, rewritten on each
+                  run</small
+                ></span
+              ><kbd>Ctrl+Alt+O</kbd>
+            </button>
+          </div>
+        </section>
+
+        <section aria-labelledby="share-heading">
+          <div class="section-heading">
+            <div>
+              <p class="kicker">HANDOVER</p>
+              <h2 id="share-heading">Share</h2>
+            </div>
+          </div>
+          <div class="action-list">
+            <button
+              id="share-prepare"
+              data-action="share-prepare"
+              type="button"
+              title="Put every visible sheet back at A1 and report what a reader would still find"
+            >
+              <span class="action-icon toc">⇪</span
+              ><span
+                ><strong>Prepare for sharing</strong
+                ><small
+                  >Every visible sheet back to A1, then what is left to
+                  check</small
+                ></span
+              >
+            </button>
+            <button
+              data-action="clean-past-data"
+              data-confirm
+              type="button"
+              title="Delete the empty formatted rows and columns past the data on this sheet"
+            >
+              <span class="action-icon toc">⌫</span
+              ><span
+                ><strong>Clean past the data</strong
+                ><small
+                  >Drops the empty rows and columns Excel still counts as used
+                  on this sheet</small
+                ></span
+              >
+            </button>
+          </div>
+          <div class="sheet-list" id="share-report" hidden></div>
+          <p class="hint" id="share-hint"></p>
+        </section>
+
+        <section data-help="model-check" aria-labelledby="model-check-heading">
+          <div class="section-heading">
+            <div>
+              <p class="kicker">REVIEW</p>
+              <h2 id="model-check-heading">Model check</h2>
+            </div>
+          </div>
+          <div class="action-list">
+            <button
+              id="run-model-check"
+              data-action="run-model-check"
+              type="button"
+              title="One read-only pass over the workbook: what a reviewer would flag, with a jump to the cell"
+            >
+              <span class="action-icon audit">⚑</span
+              ><span
+                ><strong>Run model check</strong
+                ><small
+                  >Errors, hardcodes, odd formulas, volatiles, names, styles,
+                  hidden sheets, external links</small
+                ></span
+              >
+            </button>
+          </div>
+          <div class="action-list find-list" id="model-check-list" hidden></div>
+          <p class="hint" id="model-check-hint"></p>
+          <div class="action-list">
+            <button id="copy-model-check" type="button" disabled>
+              <span class="action-icon names">⧉</span
+              ><span
+                ><strong>Copy report</strong
+                ><small>The whole list as plain text</small></span
+              >
+            </button>
+          </div>
+        </section>
+
+        <section aria-labelledby="names-heading">
+          <div class="section-heading">
+            <div>
+              <p class="kicker">CLEANUP</p>
+              <h2 id="names-heading">Names</h2>
+            </div>
+          </div>
+          <div class="action-list">
+            <button data-action="scan-names" type="button">
+              <span class="action-icon names">⌗</span
+              ><span
+                ><strong>Scan broken names</strong
+                ><small
+                  >Defined names left pointing at deleted cells</small
+                ></span
+              >
+            </button>
+          </div>
+          <p class="hint" id="names-result">Not scanned yet.</p>
+          <button id="delete-names" class="danger" type="button" hidden>
+            Delete broken names
+          </button>
+        </section>
+      </div>
+
+      <div
+        id="view-links"
+        class="view"
+        role="tabpanel"
+        aria-labelledby="tab-links"
+        hidden
+      >
+        <section aria-labelledby="export-heading">
+          <div class="section-heading">
+            <div>
+              <p class="kicker">SEND TO POWERPOINT</p>
+              <h2 id="export-heading">Export</h2>
+            </div>
+          </div>
+          <div class="action-list">
+            <button id="export-selection" type="button">
+              <span class="action-icon links">⇱</span
+              ><span
+                ><strong>Export selection</strong
+                ><small>The selected range as a linked picture</small></span
+              >
+            </button>
+            <button id="export-chart" type="button">
+              <span class="action-icon links">▥</span
+              ><span
+                ><strong>Export active chart</strong
+                ><small>The selected chart as a linked picture</small></span
+              >
+            </button>
+            <select
+              id="export-chart-pick"
+              aria-label="Chart to export when none is selected"
+              hidden
+            ></select>
+            <button id="export-table" type="button">
+              <span class="action-icon links">▦</span
+              ><span
+                ><strong>Export as table</strong
+                ><small>The selected range as an editable table</small></span
+              >
+            </button>
+            <button id="export-text" type="button">
+              <span class="action-icon links">T</span
+              ><span
+                ><strong>Export as text</strong
+                ><small
+                  >One cell's text as a box that refreshes in place</small
+                ></span
+              >
+            </button>
+          </div>
+          <div id="copy-ready" class="copy-ready" hidden>
+            <p id="copy-ready-text" class="hint"></p>
+            <button id="copy-for-powerpoint" type="button">
+              Copy for PowerPoint
+            </button>
+            <textarea
+              id="copy-manual"
+              class="copy-manual"
+              readonly
+              hidden
+              aria-label="The copy for PowerPoint, to select and copy by hand"
+            ></textarea>
+          </div>
+        </section>
+
+        <section aria-labelledby="links-heading">
+          <div class="section-heading">
+            <div>
+              <p class="kicker">THIS WORKBOOK</p>
+              <h2 id="links-heading">Linked objects</h2>
+            </div>
+          </div>
+          <label class="key-label" for="link-project"
+            >Project
+            <select id="link-project"></select>
+          </label>
+          <div class="io-row">
+            <button id="new-project" type="button">New project</button>
+            <button id="move-to-project" type="button">Move to project</button>
+          </div>
+          <div id="project-prompt" hidden>
+            <label class="key-label" for="project-name"
+              >Name
+              <input
+                id="project-name"
+                type="text"
+                maxlength="40"
+                autocomplete="off"
+              />
+            </label>
+            <div class="io-row">
+              <button id="project-ok" type="button">Create</button>
+              <button id="project-cancel" type="button">Cancel</button>
+            </div>
+          </div>
+          <table class="wl-table">
+            <colgroup>
+              <col class="wl-col-pick" />
+              <col />
+              <col class="wl-col-pushed" />
+            </colgroup>
+            <tbody id="workbook-links"></tbody>
+          </table>
+          <div class="io-row">
+            <button id="push-selected" type="button">Push selected</button>
+            <button id="push-all" type="button">Push all</button>
+            <button id="go-to-source" type="button">Go to source</button>
+            <button id="remove-link" type="button">Remove link</button>
+          </div>
+          <label
+            id="links-autopush-row"
+            class="toggle-row"
+            for="links-autopush"
+          >
+            <input type="checkbox" id="links-autopush" />
+            <span
+              ><strong>Auto-push on edit</strong
+              ><small
+                >Pushes changed links 3 s after the last edit; needs the pane
+                open</small
+              ></span
+            >
+          </label>
+          <label class="toggle-row" for="links-highlight">
+            <input type="checkbox" id="links-highlight" />
+            <span
+              ><strong>Highlight linked cells</strong
+              ><small
+                >Tints every linked range in this workbook. Charts are not
+                highlighted</small
+              ></span
+            >
+          </label>
+          <p class="hint">
+            Anyone holding a deck can pull a link's latest picture for up to 30
+            days. Break the links in PowerPoint before sending a deck outside.
+          </p>
+        </section>
+
+        <section aria-labelledby="transport-heading" data-help="link-transport">
+          <div class="section-heading compact">
+            <div>
+              <p class="kicker">HOW LINKS REACH POWERPOINT</p>
+              <h2 id="transport-heading">Transport</h2>
+            </div>
+          </div>
+          <label class="key-label" for="link-transport"
+            >Links travel
+            <select id="link-transport">
+              <option value="local">Copy and paste on this computer</option>
+              <option value="relay">Through the relay</option>
+            </select>
+          </label>
+          <p class="hint" id="transport-local-hint">
+            Nothing leaves this computer: export or copy here, then paste in
+            PowerPoint's pls,fix pane, Inbox tab.
+          </p>
+          <p class="hint" id="transport-relay-hint" hidden>
+            Pushes go to the relay beside this pane; PowerPoint updates with one
+            click once the link key is pasted there.
+          </p>
+        </section>
+
+        <section id="link-key-section" aria-labelledby="linkkey-heading">
+          <div class="section-heading">
+            <div>
+              <p class="kicker">PAIRING</p>
+              <h2 id="linkkey-heading">Link key</h2>
+            </div>
+          </div>
+          <code id="workspace-key-display" class="wl-key"
+            >No link key yet.</code
+          >
+          <div class="io-row wl-keys">
+            <button id="generate-key" type="button">Generate</button>
+            <button id="copy-key" type="button">Copy</button>
+            <button id="reveal-key" type="button">Reveal</button>
+            <button id="forget-key" type="button">Forget</button>
+          </div>
+          <p class="hint">
+            Paste this key once in PowerPoint &gt; pls,fix &gt; Settings &gt;
+            Link key. Copy hands over the whole key; the panel shows its ends
+            only. A new key unpairs decks that hold the old one.
+          </p>
+        </section>
+      </div>
+
+      <footer>
+        <span class="privacy-dot"></span>
+        Workbook data stays inside Excel
+        <span id="app-version"></span>
+      </footer>
+    </main>
+
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

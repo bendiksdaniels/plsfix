@@ -1,0 +1,400 @@
+// Internal API of the src/excel/ folder: private range, fill, workbook-scan,
+// defined-name, chart-shell and host-capability helpers no pane code calls
+// directly. Exported so sibling section files (and src/excel/links.ts later)
+// can import them - the barrel never re-exports this module, so nothing here is
+// part of the pane's public surface.
+
+import { type LabelPosition } from "../chart-labels";
+import { ANCHOR_PREFIX } from "../link/model";
+import { type CellValue } from "../model";
+import {
+  activeTheme,
+  currencyNumberFormat,
+  getActiveSettings,
+} from "../settings";
+import { formatAmount } from "../numbers";
+import { brokenNames } from "../workbook";
+import { type NumberFormatName } from "./shared";
+
+const staticNumberFormats = {
+  whole: "#,##0;[Red](#,##0);-",
+  decimal: "#,##0.0;[Red](#,##0.0);-",
+  percent: "0.0%;[Red](0.0%);-",
+} as const;
+
+export function numberFormat(name: NumberFormatName): string {
+  if (name === "currency") {
+    const { currency, language } = getActiveSettings();
+    return currencyNumberFormat(currency, language);
+  }
+  return staticNumberFormats[name];
+}
+
+export const SELECTION_CELL_CAP = 5_000;
+export const EDIT_CELL_CAP = 500;
+// The grid itself: what a block written beside a selection may not run past.
+export const SHEET_ROWS = 1_048_576;
+export const SHEET_COLUMNS = 16_384;
+// What one workbook-wide scan may read in total. The per-sheet cap alone does
+// not bound a request: thirty sheets just under it queue a hundred and fifty
+// thousand cells into a single sync, which a real model reaches easily and the
+// host answers with a bare RequestPayloadSizeLimitExceeded.
+export const SCAN_CELL_CAP = SELECTION_CELL_CAP * 4;
+// The per-sheet cap Find, prepare-for-sharing and the model check all read
+// under: a deal model's largest sheet is 50,000+ cells, well past the
+// selection cap above. All three load every scanned sheet's grid in ONE sync,
+// never one sync per sheet, so the same number is also their default total
+// across every sheet: it is what keeps that one combined request inside what
+// the host will answer, matched to the model check's own pass, which already
+// ships four grids per sheet (formulas, values, valueTypes, formulasR1C1)
+// under this same total. The three moved onto one constant so they never
+// drift apart again.
+export const SHEET_SCAN_CELL_CAP = 200_000;
+export const BASE_WHITE = "#FFFFFF";
+
+// A whole-column click selects a million cells; reading or writing their grids
+// would freeze the pane or overflow the request payload.
+export function overCap(cells: number): boolean {
+  // Excel answers -1 for a count past 2^31-1, which a whole-sheet Ctrl+A is:
+  // read as a number that is the largest selection there is, not the smallest.
+  return cells < 0 || cells > SELECTION_CELL_CAP;
+}
+
+export async function withinCap(
+  context: Excel.RequestContext,
+  range: Excel.Range,
+  what: string,
+): Promise<Excel.Range> {
+  range.load("cellCount");
+  await context.sync();
+  if (overCap(range.cellCount)) {
+    throw new Error(
+      `${what} supports up to ${SELECTION_CELL_CAP.toLocaleString()} selected cells at once.`,
+    );
+  }
+  return range;
+}
+
+export async function selectionWithinCap(
+  context: Excel.RequestContext,
+  what: string,
+): Promise<Excel.Range> {
+  return withinCap(context, context.workbook.getSelectedRange(), what);
+}
+
+// getSelectedRange is documented to throw on a multi-area selection (ctrl-click
+// two blocks), and it throws as a bare host string with no stage in it. The
+// area count is read first so the flow that asked says which one it was.
+// getSelectedRanges arrived in ExcelApi 1.9; an older host cannot be asked, and
+// falls through to the single-area call it has always made.
+export async function selectedSingleRange(
+  context: Excel.RequestContext,
+  stage: string,
+): Promise<Excel.Range> {
+  if (hostSupports("1.9")) {
+    const areas = context.workbook.getSelectedRanges();
+    areas.load("areaCount");
+    await context.sync();
+    if (areas.areaCount > 1) {
+      throw new Error(`${stage}: select a single range`);
+    }
+    return context.workbook.getSelectedRange();
+  }
+
+  // Without RangeAreas the count cannot be asked for at all, so the refusal has
+  // to be caught where office.js reports it: on the sync after the call.
+  const range = context.workbook.getSelectedRange();
+  range.load("address");
+  try {
+    await context.sync();
+  } catch (error) {
+    const { code } = error as { code?: string };
+    if (code !== Excel.ErrorCodes.invalidSelection) throw error;
+    throw new Error(`${stage}: select a single range`);
+  }
+  return range;
+}
+
+// A block written beside the selection has to be free first: pls,fix Undo only
+// goes five actions deep, so a base-case column or a comment standing there is
+// not something to overwrite and report afterwards. Nor is a formula showing
+// nothing (=IF(...,"")), nor a blank cell a dynamic array spills into: both
+// read values "", so the formula and the value type ("String" in a spill,
+// never "Empty"; rig 27.09) decide, and any value has a type of its own.
+export async function requireEmptyBlock(
+  context: Excel.RequestContext,
+  block: Excel.Range,
+  message: string,
+): Promise<void> {
+  block.load("formulas, valueTypes");
+  await context.sync();
+  const formulas = block.formulas as CellValue[][];
+  const occupied = (block.valueTypes as string[][]).some((row, r) =>
+    row.some((type, c) => {
+      const formula = formulas[r]?.[c];
+      const written = formula !== undefined && formula !== null;
+      return type !== Excel.RangeValueType.empty || (written && formula !== "");
+    }),
+  );
+  if (occupied) throw new Error(message);
+}
+
+// One write per run of same-key cells instead of one per cell: model rows are
+// usually uniform, so this keeps the batch small on wide selections. A null key
+// leaves the cell untouched.
+export function writeRuns<Key extends string>(
+  range: Excel.Range,
+  keys: (Key | null)[][],
+  write: (block: Excel.Range, key: Key) => void,
+): void {
+  keys.forEach((row, rowIndex) => {
+    let start = 0;
+    while (start < row.length) {
+      const key = row[start] ?? null;
+      let end = start + 1;
+      while (end < row.length && (row[end] ?? null) === key) end += 1;
+      if (key !== null) {
+        write(
+          range.getCell(rowIndex, start).getResizedRange(0, end - start - 1),
+          key,
+        );
+      }
+      start = end;
+    }
+  });
+}
+
+export function hostSupports(apiSet: string): boolean {
+  const requirements = Office.context?.requirements;
+  return requirements ? requirements.isSetSupported("ExcelApi", apiSet) : true;
+}
+
+// Excel for the web, by its own name: it reads fills and border edges back in
+// shapes of its own (fill-store.ts readFill). office.js gives the platform as
+// a string whatever the .d.ts enum says; outside Office there is none.
+export function onTheWeb(): boolean {
+  if (typeof Office === "undefined") return false;
+  return String(Office.context?.platform) === "OfficeOnline";
+}
+
+// One border edge as setCellProperties takes it back: only the fields Excel
+// gave a value for, nothing at all when it gave none. On the web a None edge
+// goes as its style alone, since a weight or a colour beside it draws the line
+// (rig 27.09); elsewhere the edge keeps the fields it was proven with.
+export function settableEdge(
+  border: Excel.CellBorder | undefined,
+): Excel.CellBorder | undefined {
+  if (!border || typeof border !== "object") return undefined;
+  if (border.style === "None" && onTheWeb()) return { style: "None" };
+  const settable: Excel.CellBorder = {};
+  if (border.color) settable.color = border.color;
+  if (border.style) settable.style = border.style;
+  if (border.weight) settable.weight = border.weight;
+  return Object.keys(settable).length > 0 ? settable : undefined;
+}
+
+export interface ScannedSheet {
+  index: number;
+  name: string;
+  range: Excel.Range;
+}
+
+// Which sheets a workbook-wide scan can read: an empty sheet has nothing in it,
+// a sheet whose used range runs past the per-sheet cap would overflow the
+// request payload on its own, and the sheets after the running total passes the
+// scan cap would overflow it between them. All three are named as skipped
+// rather than quietly left out - the callers render that list, and the style
+// scrubber refuses to delete while it is not empty. The ranges come in with
+// isNullObject, cellCount, rowIndex and columnIndex already synced; the caller
+// loads the grids it needs - values, formulas or both - before the next sync.
+export function pickScannableSheets(
+  items: Excel.Worksheet[],
+  ranges: Excel.Range[],
+  cap: number,
+  totalCap = SCAN_CELL_CAP,
+): { scanned: ScannedSheet[]; skippedSheets: string[] } {
+  const scanned: ScannedSheet[] = [];
+  const skippedSheets: string[] = [];
+  let total = 0;
+
+  ranges.forEach((range, index) => {
+    const name = items[index]?.name ?? "";
+    if (range.isNullObject) return;
+    // A count past 2^31-1 comes back as -1: the biggest sheet there is.
+    const cells = range.cellCount;
+    if (cells < 0 || cells > cap || total + cells > totalCap) {
+      skippedSheets.push(name);
+      return;
+    }
+    total += cells;
+    scanned.push({ index, name, range });
+  });
+
+  return { scanned, skippedSheets };
+}
+
+export function loadNames(
+  context: Excel.RequestContext,
+): Excel.NamedItemCollection {
+  const names = context.workbook.names;
+  names.load("items/name,items/formula");
+  return names;
+}
+
+// A link anchor whose rows were deleted is a #REF! hidden name by design: the
+// Links tab reports it as "Source missing" and owns its removal, and treating
+// it as scrub-able here would cut a link the modeller could still heal by
+// undoing the delete.
+export function brokenIn(names: Excel.NamedItemCollection): string[] {
+  return brokenNames(
+    names.items
+      .filter((item) => !item.name.startsWith(ANCHOR_PREFIX))
+      .map((item) => ({
+        name: item.name,
+        formula: typeof item.formula === "string" ? item.formula : "",
+      })),
+  );
+}
+
+// Worksheet.names (ExcelApi 1.4): one collection per sheet, loaded the same
+// way loadNames loads the workbook's. Queues the load only - the caller syncs
+// whenever its own batch already does, so this never adds a sync of its own.
+export function loadSheetNames(
+  sheets: Excel.Worksheet[],
+): Excel.NamedItemCollection[] {
+  return sheets.map((sheet) => {
+    const names = sheet.names;
+    names.load("items/name,items/formula");
+    return names;
+  });
+}
+
+// Every #REF! name in the workbook, sheet-scoped ones included: a name scoped
+// to a sheet is listed as Sheet!Name, so it never reads as a workbook-scoped
+// name of the same spelling. Find, prepare-for-sharing, the model check and
+// the names scrubber all report broken names this way.
+export function brokenEverywhere(
+  workbookNames: Excel.NamedItemCollection,
+  sheets: Excel.Worksheet[],
+  perSheetNames: Excel.NamedItemCollection[],
+): string[] {
+  const scoped = sheets.flatMap((sheet, index) =>
+    brokenIn(perSheetNames[index]!).map((name) => `${sheet.name}!${name}`),
+  );
+  return [...brokenIn(workbookNames), ...scoped];
+}
+
+const CHART_TEXT_SIZE = 9;
+const CHART_TITLE_SIZE = 12;
+
+// The brand shell every chart gets: our font everywhere, a bold primary title,
+// no gridlines, no chart-area frame, legend under the plot.
+// The chart surface: the font every label inherits and the corner style.
+// Excel for the web does not implement either on its chartex charts (the
+// waterfall), and a batch carrying them is rejected whole with
+// UnsupportedOperation, so insertWaterfall applies the surface in a batch of
+// its own through syncTolerating and keeps the chart when that batch fails.
+export function styleChartSurface(chart: Excel.Chart): void {
+  const settings = getActiveSettings();
+  chart.format.font.name = settings.font;
+  chart.format.font.size = CHART_TEXT_SIZE;
+  chart.format.font.color = activeTheme().formulaFont;
+  // ChartAreaFormat.font is ExcelApi 1.1 but roundedCorners is 1.9, and an
+  // older host rejects the whole batch over that one line - a rejection the
+  // waterfall's tolerated batch does not forgive, since it is not
+  // UnsupportedOperation.
+  if (hostSupports("1.9")) chart.format.roundedCorners = false;
+}
+
+export function styleChartShell(
+  chart: Excel.Chart,
+  title: string | null,
+  withAxes: boolean,
+  surface = true,
+): void {
+  const settings = getActiveSettings();
+  const theme = activeTheme();
+
+  if (surface) styleChartSurface(chart);
+  chart.format.border.lineStyle = Excel.ChartLineStyle.none;
+
+  if (title !== null) chart.title.text = title;
+  chart.title.format.font.name = settings.font;
+  chart.title.format.font.size = CHART_TITLE_SIZE;
+  chart.title.format.font.bold = true;
+  chart.title.format.font.color = settings.primary;
+
+  if (withAxes) {
+    for (const axis of [chart.axes.categoryAxis, chart.axes.valueAxis]) {
+      axis.format.font.name = settings.font;
+      axis.format.font.size = CHART_TEXT_SIZE;
+      axis.format.font.color = theme.formulaFont;
+      axis.majorGridlines.visible = false;
+    }
+  }
+
+  chart.legend.position = Excel.ChartLegendPosition.bottom;
+  chart.legend.overlay = false;
+  chart.legend.format.font.name = settings.font;
+  chart.legend.format.font.size = CHART_TEXT_SIZE;
+  chart.legend.format.font.color = theme.formulaFont;
+}
+
+// The chart types Excel draws through its chartex engine (all eight Office.js
+// names). Excel for the web implements neither their chart-area font nor a
+// label's percentage, legend key or bubble size (UnsupportedOperation).
+const CHARTEX_TYPES = new Set([
+  "Waterfall",
+  "Treemap",
+  "Sunburst",
+  "Histogram",
+  "Pareto",
+  "Boxwhisker",
+  "Funnel",
+  "RegionMap",
+]);
+
+// The label rule every chart follows: the value and nothing else - no category
+// or series name, no percentage, no legend key, no bubble size - in the house
+// font, placed where chart-labels.ts says; a null position leaves the host's.
+// A part is switched off only on a chart that has it: Excel for the web ends
+// the batch on a percentage off a pie or doughnut, a bubble size off a bubble
+// chart (InvalidOperation) and all three on a chartex chart (rig 27.09).
+export function styleChartLabels(
+  labels: Excel.ChartDataLabels,
+  chartType: string,
+  position: LabelPosition | null,
+): void {
+  const settings = getActiveSettings();
+  labels.showValue = true;
+  labels.showCategoryName = false;
+  labels.showSeriesName = false;
+  if (/Pie|Doughnut/.test(chartType)) labels.showPercentage = false;
+  if (!CHARTEX_TYPES.has(chartType)) labels.showLegendKey = false;
+  if (chartType.startsWith("Bubble")) labels.showBubbleSize = false;
+  if (position !== null) labels.position = position;
+  labels.format.font.name = settings.font;
+  labels.format.font.size = CHART_TEXT_SIZE;
+  labels.format.font.color = activeTheme().formulaFont;
+}
+
+// Runs the queued batch; a rejection carrying one of the given error codes is
+// swallowed and reported as false, anything else is rethrown.
+export async function syncTolerating(
+  context: Excel.RequestContext,
+  ...codes: string[]
+): Promise<boolean> {
+  try {
+    await context.sync();
+    return true;
+  } catch (error) {
+    const code = (error as { code?: string }).code;
+    if (typeof code === "string" && codes.includes(code)) return false;
+    throw error;
+  }
+}
+
+// Amounts in toasts and labels follow the house style of the pane language.
+export function formatChartAmount(value: number): string {
+  return formatAmount(value, getActiveSettings().language);
+}

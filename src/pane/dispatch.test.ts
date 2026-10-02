@@ -1,0 +1,400 @@
+// @vitest-environment jsdom
+// dispatch() has never run in a test (0% coverage). This drives every
+// data-action taskpane.html actually ships, plus the bespoke styles-delete
+// confirm, through the real routing logic with ../excel and the pane panels
+// mocked - no Office host needed. Regression coverage for a shadowing bug a
+// sibling slice found: a prefix branch (action.startsWith("cycle-row-"))
+// swallowed cycle-row-height before its own exact switch case ever ran.
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  applyAlignmentCycle,
+  applyColumnWidthCycle,
+  applyIndentCycle,
+  applyNumberCycle,
+  applyPinstripes,
+  applyRowHeightCycle,
+  applyRowStyleCycle,
+  applyUnderlineCycle,
+  cleanPastData,
+  insertCompsStats,
+  insertFootballField,
+  pasteDuplicateFormulas,
+  pasteNumberFormats,
+  pastePreserveFormulas,
+  pasteRowHeights,
+  selectConsistentRegion,
+} from "../excel";
+import { isExcelReady } from "./shared";
+import { startPrecedentsOfSelection, startTrace } from "./trace-panel";
+import { applyShortcuts, resetShortcuts } from "./shortcuts-panel";
+import { dispatch } from "./dispatch";
+import {
+  buryThisSheet,
+  moveThisSheet,
+  showOnlyThisSheet,
+  unhideAllSheets,
+} from "./workbook-tab";
+
+vi.mock("../excel", () => ({
+  addCagrLabel: vi.fn(async () => "cagr label"),
+  applyAlignmentCycle: vi.fn(async () => "Aligned: left"),
+  applyBorderCycle: vi.fn(async () => "Borders: box"),
+  applyColumnWidthCycle: vi.fn(
+    async () => "Column width 80 (outside pls,fix Undo)",
+  ),
+  applyDecimalStep: vi.fn(async () => undefined),
+  applyFillCycle: vi.fn(async () => "Fill: Accent"),
+  applyFontColorCycle: vi.fn(async () => "Font colour: Accent"),
+  applyIndentCycle: vi.fn(async () => "Indent: 1"),
+  applyNumberCycle: vi.fn(async () => "Number format: 1,234"),
+  applyNumberFormat: vi.fn(async () => undefined),
+  applyPinstripes: vi.fn(async () => "pinstripes ok"),
+  applyPreset: vi.fn(async () => undefined),
+  applyRowHeightCycle: vi.fn(
+    async () => "Row height 18 pt (outside pls,fix Undo)",
+  ),
+  applyRowStyleCycle: vi.fn(async () => "Row style: Filled"),
+  applySignFlip: vi.fn(async () => undefined),
+  applyUnderlineCycle: vi.fn(async () => "Underline: single"),
+  autocolorSelection: vi.fn(async () => "autocolor ok"),
+  cleanPastData: vi.fn(async () => "cleaned ok"),
+  clearFormats: vi.fn(async () => undefined),
+  fastFillAuto: vi.fn(async () => undefined),
+  formatSelectedChart: vi.fn(async () => undefined),
+  insertCagr: vi.fn(async () => "CAGR written at Model!E7"),
+  insertColorKey: vi.fn(async () => "color key ok"),
+  insertCompsStats: vi.fn(async () => "comps stats ok"),
+  insertConsistentRounding: vi.fn(async () => "rounded ok"),
+  insertFootballField: vi.fn(async () => "football ok"),
+  insertTemplate: vi.fn(async () => "template ok"),
+  insertTornado: vi.fn(async () => "tornado ok"),
+  insertWaterfall: vi.fn(async () => "waterfall ok"),
+  markCopySource: vi.fn(async () => "Model!A1"),
+  pasteSpecial: vi.fn(async () => undefined),
+  pastePreserveFormulas: vi.fn(async () => undefined),
+  pasteDuplicateFormulas: vi.fn(async () => undefined),
+  pasteNumberFormats: vi.fn(async () => undefined),
+  pasteRowHeights: vi.fn(async () => "Paste: 2 row heights"),
+  scaleSelection: vi.fn(async () => undefined),
+  selectConsistentRegion: vi.fn(async () => "3 cells share this formula"),
+  toggleIfErrorGuard: vi.fn(async () => "IFERROR added to 1 formula"),
+  undoLastAction: vi.fn(async () => "undone"),
+  unpivotSelection: vi.fn(async () => "unpivoted ok"),
+}));
+
+vi.mock("./find-panel", () => ({ runFind: vi.fn(async () => "find ok") }));
+vi.mock("./model-check-panel", () => ({
+  runCheck: vi.fn(async () => "check ok"),
+}));
+vi.mock("./paint-slots", () => ({
+  applyPaintSlot: vi.fn(async () => "paint apply ok"),
+  capturePaintSlot: vi.fn(async () => "paint capture ok"),
+}));
+vi.mock("./share-panel", () => ({
+  prepareShare: vi.fn(async () => "share ok"),
+}));
+vi.mock("./reconcile-panel", () => ({
+  runReconciliation: vi.fn(async () => "reconcile ok"),
+}));
+vi.mock("./shortcuts-panel", () => ({
+  applyShortcuts: vi.fn(async () => "shortcuts applied"),
+  resetShortcuts: vi.fn(async () => "shortcuts reset"),
+}));
+vi.mock("./styles-panel", () => ({
+  deleteStyles: vi.fn(async () => "styles deleted"),
+  scanStyles: vi.fn(async () => "styles scanned"),
+}));
+vi.mock("./trace-panel", () => ({
+  startPrecedentsOfSelection: vi.fn(async () => "precedents of selection ok"),
+  startTrace: vi.fn(async () => "trace ok"),
+  toggleAudit: vi.fn(async () => "audit ok"),
+}));
+vi.mock("./workbook-tab", () => ({
+  buryThisSheet: vi.fn(async () => "buried ok"),
+  insertTocSheet: vi.fn(async () => "toc ok"),
+  moveThisSheet: vi.fn(async () => "moved ok"),
+  scanNames: vi.fn(async () => "names ok"),
+  showOnlyThisSheet: vi.fn(async () => "show only ok"),
+  unhideAllSheets: vi.fn(async () => "unhidden ok"),
+}));
+vi.mock("./shared", () => ({ isExcelReady: vi.fn(() => true) }));
+
+function dataActionsInTaskpane(): string[] {
+  const html = readFileSync(join(process.cwd(), "taskpane.html"), "utf8");
+  const found = new Set<string>();
+  for (const match of html.matchAll(/data-action="([a-zA-Z0-9_-]+)"/g)) {
+    found.add(match[1]!);
+  }
+  return Array.from(found);
+}
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  vi.mocked(isExcelReady).mockReturnValue(true);
+  Object.assign(globalThis, {
+    Office: {
+      context: {
+        ui: {
+          displayDialogAsync: vi.fn(
+            (
+              _url: string,
+              _options: unknown,
+              callback: (result: { status: string }) => void,
+            ) => callback({ status: "succeeded" }),
+          ),
+        },
+      },
+      AsyncResultStatus: { Succeeded: "succeeded", Failed: "failed" },
+    },
+  });
+});
+
+describe("dispatch: every taskpane data-action", () => {
+  const actions = dataActionsInTaskpane();
+
+  it("finds the full, real set of buttons (a canary for this file drifting)", () => {
+    expect(actions.length).toBeGreaterThanOrEqual(60);
+  });
+
+  it.each(actions)("routes %s without throwing", async (action) => {
+    await expect(dispatch(action)).resolves.toEqual(expect.any(String));
+  });
+
+  it("also routes the bespoke styles-delete confirm action", async () => {
+    await expect(dispatch("styles-delete")).resolves.toEqual(
+      expect.any(String),
+    );
+  });
+
+  it("routes the two shortcut-manager buttons to their own panel", async () => {
+    await dispatch("shortcuts-apply");
+    await dispatch("shortcuts-reset");
+    expect(applyShortcuts).toHaveBeenCalledTimes(1);
+    expect(resetShortcuts).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("dispatch: the cycle-row-height / cycle-row- prefix shadowing bug", () => {
+  it("routes cycle-row-height to the height cycle, never the row-style cycle", async () => {
+    await dispatch("cycle-row-height");
+    expect(applyRowHeightCycle).toHaveBeenCalledTimes(1);
+    expect(applyRowStyleCycle).not.toHaveBeenCalled();
+  });
+
+  it("still routes the three real row-style kinds through the prefix branch", async () => {
+    await dispatch("cycle-row-title");
+    await dispatch("cycle-row-result");
+    await dispatch("cycle-row-item");
+    expect(applyRowStyleCycle).toHaveBeenNthCalledWith(1, "title");
+    expect(applyRowStyleCycle).toHaveBeenNthCalledWith(2, "result");
+    expect(applyRowStyleCycle).toHaveBeenNthCalledWith(3, "item");
+    expect(applyRowHeightCycle).not.toHaveBeenCalled();
+  });
+
+  it("routes cycle-col-width to the width cycle (the same class of bug, checked)", async () => {
+    await dispatch("cycle-col-width");
+    expect(applyColumnWidthCycle).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("dispatch: the audit tools", () => {
+  it("routes select-consistent to the region adapter", async () => {
+    await expect(dispatch("select-consistent")).resolves.toBe(
+      "3 cells share this formula",
+    );
+    expect(selectConsistentRegion).toHaveBeenCalledTimes(1);
+  });
+
+  // trace-precedents-all is a longer id than trace-precedents: the shorter one
+  // must never swallow it, whatever order the cases end up in.
+  it("routes trace-precedents-all to the whole-selection walk, not the one-cell one", async () => {
+    await expect(dispatch("trace-precedents-all")).resolves.toBe(
+      "precedents of selection ok",
+    );
+    expect(startPrecedentsOfSelection).toHaveBeenCalledTimes(1);
+    expect(startTrace).not.toHaveBeenCalled();
+  });
+
+  it("still routes trace-precedents to the one-cell walk", async () => {
+    await dispatch("trace-precedents");
+    expect(startTrace).toHaveBeenCalledWith("precedents", false);
+    expect(startPrecedentsOfSelection).not.toHaveBeenCalled();
+  });
+});
+
+describe("dispatch: without Excel connected", () => {
+  beforeEach(() => {
+    vi.mocked(isExcelReady).mockReturnValue(false);
+  });
+
+  it("refuses every workbook action with one clean sentence", async () => {
+    await expect(dispatch("undo")).rejects.toThrow("Excel is not connected.");
+    await expect(dispatch("cycle-fill")).rejects.toThrow(
+      "Excel is not connected.",
+    );
+    await expect(dispatch("template-dcf")).rejects.toThrow(
+      "Excel is not connected.",
+    );
+  });
+
+  it("still opens the shortcut card - Office chrome, not a workbook action", async () => {
+    await expect(dispatch("shortcut-card")).resolves.toBe(
+      "Shortcut card opened",
+    );
+  });
+
+  // Office.actions roams a key map on the account and never touches the file,
+  // so the two shortcut-manager buttons answer on their own terms (the panel
+  // refuses when the requirement set is missing) rather than through the
+  // "Excel is not connected." guard, which would be the wrong sentence.
+  it("still runs the shortcut manager - Office.actions, not a workbook action", async () => {
+    await expect(dispatch("shortcuts-apply")).resolves.toBe(
+      "shortcuts applied",
+    );
+    await expect(dispatch("shortcuts-reset")).resolves.toBe("shortcuts reset");
+  });
+
+  it("falls back to a plain tab when the host has no dialog API at all", async () => {
+    Object.assign(globalThis, { Office: { context: {} } });
+    // A real window.open() answers with the new Window on success; only a
+    // falsy answer (null, a blocked pop-up) is the failure this dispatch
+    // must catch, so the fake stands in for the successful case here.
+    const opened = vi.fn(() => ({}) as Window);
+    vi.stubGlobal("open", opened);
+    await expect(dispatch("shortcut-card")).resolves.toBe(
+      "Shortcut card opened",
+    );
+    expect(opened).toHaveBeenCalledTimes(1);
+    vi.unstubAllGlobals();
+  });
+
+  it("throws when the host has no dialog API and the pop-up is blocked", async () => {
+    Object.assign(globalThis, { Office: { context: {} } });
+    vi.stubGlobal(
+      "open",
+      vi.fn(() => null),
+    );
+    await expect(dispatch("shortcut-card")).rejects.toThrow(
+      "The shortcut card could not open. Allow pop-ups for this pane.",
+    );
+    vi.unstubAllGlobals();
+  });
+
+  it("also falls back to a plain tab when displayDialogAsync itself reports Failed", async () => {
+    Object.assign(globalThis, {
+      Office: {
+        context: {
+          ui: {
+            displayDialogAsync: vi.fn(
+              (
+                _url: string,
+                _options: unknown,
+                callback: (result: { status: string }) => void,
+              ) => callback({ status: "failed" }),
+            ),
+          },
+        },
+        AsyncResultStatus: { Succeeded: "succeeded", Failed: "failed" },
+      },
+    });
+    const opened = vi.fn();
+    vi.stubGlobal("open", opened);
+    await expect(dispatch("shortcut-card")).resolves.toBe(
+      "Shortcut card opened",
+    );
+    expect(opened).toHaveBeenCalledTimes(1);
+    vi.unstubAllGlobals();
+  });
+});
+
+describe("dispatch: wave v2.7 slice M1", () => {
+  it("routes comps-stats to the comps statistics block", async () => {
+    await expect(dispatch("comps-stats")).resolves.toBe("comps stats ok");
+    expect(insertCompsStats).toHaveBeenCalledTimes(1);
+  });
+
+  it("routes chart-football to the football field", async () => {
+    await expect(dispatch("chart-football")).resolves.toBe("football ok");
+    expect(insertFootballField).toHaveBeenCalledTimes(1);
+  });
+
+  it("routes the two pinstripe buttons to their own axis", async () => {
+    await expect(dispatch("pinstripes-rows")).resolves.toBe("pinstripes ok");
+    await dispatch("pinstripes-columns");
+    expect(applyPinstripes).toHaveBeenNthCalledWith(1, "rows");
+    expect(applyPinstripes).toHaveBeenNthCalledWith(2, "columns");
+  });
+});
+
+describe("dispatch: unknown action", () => {
+  it("rejects with the action name", async () => {
+    await expect(dispatch("not-a-real-action")).rejects.toThrow(
+      "Unknown action: not-a-real-action",
+    );
+  });
+});
+
+describe("dispatch: the hygiene cycles and the sheet tools", () => {
+  it("routes each hygiene cycle to its own adapter", async () => {
+    await dispatch("cycle-indent");
+    await dispatch("cycle-align");
+    await dispatch("cycle-underline");
+
+    expect(applyIndentCycle).toHaveBeenCalledTimes(1);
+    expect(applyAlignmentCycle).toHaveBeenCalledTimes(1);
+    expect(applyUnderlineCycle).toHaveBeenCalledTimes(1);
+    // The cycle- prefixes own the number and row-style ids only.
+    expect(applyRowStyleCycle).not.toHaveBeenCalled();
+    expect(applyNumberCycle).not.toHaveBeenCalled();
+  });
+
+  it("routes the three moves with the direction each button promises", async () => {
+    await dispatch("sheets-move-up");
+    await dispatch("sheets-move-down");
+    await dispatch("sheets-move-end");
+
+    expect(moveThisSheet).toHaveBeenNthCalledWith(1, "up");
+    expect(moveThisSheet).toHaveBeenNthCalledWith(2, "down");
+    expect(moveThisSheet).toHaveBeenNthCalledWith(3, "end");
+  });
+
+  it("routes the visibility tools and hands their line back", async () => {
+    await expect(dispatch("sheets-unhide-all")).resolves.toBe("unhidden ok");
+    await expect(dispatch("sheets-show-only")).resolves.toBe("show only ok");
+    await expect(dispatch("sheets-bury")).resolves.toBe("buried ok");
+    expect(unhideAllSheets).toHaveBeenCalledTimes(1);
+    expect(showOnlyThisSheet).toHaveBeenCalledTimes(1);
+    expect(buryThisSheet).toHaveBeenCalledTimes(1);
+  });
+
+  it("routes Clean past the data and hands its count back", async () => {
+    await expect(dispatch("clean-past-data")).resolves.toBe("cleaned ok");
+    expect(cleanPastData).toHaveBeenCalledTimes(1);
+  });
+});
+
+// Four ids share the "paste-" prefix with the three narrow pastes, and the
+// switch is where a longer id would be shadowed by a shorter one.
+describe("dispatch: the three narrow pastes", () => {
+  it("routes paste-duplicate to the duplicate-formula paste only", async () => {
+    await dispatch("paste-duplicate");
+    expect(pasteDuplicateFormulas).toHaveBeenCalledTimes(1);
+    expect(pastePreserveFormulas).not.toHaveBeenCalled();
+    expect(pasteNumberFormats).not.toHaveBeenCalled();
+  });
+
+  it("routes paste-number-formats to the number-format paste only", async () => {
+    await dispatch("paste-number-formats");
+    expect(pasteNumberFormats).toHaveBeenCalledTimes(1);
+    expect(pasteDuplicateFormulas).not.toHaveBeenCalled();
+  });
+
+  it("routes paste-row-heights and hands its count back to the toast", async () => {
+    await expect(dispatch("paste-row-heights")).resolves.toBe(
+      "Paste: 2 row heights",
+    );
+    expect(pasteRowHeights).toHaveBeenCalledTimes(1);
+  });
+});

@@ -1,0 +1,133 @@
+// A text link on a slide: one tagged text box of its own, auto-sized to what
+// Excel displayed, placed in free space like every other kind. Owns the insert
+// and the in-place refresh. Invariant: a refresh writes the text and the tag,
+// never the geometry, font or colour the user chose.
+
+import type { Size } from "../layout";
+import {
+  encodeTag,
+  sourceLabel,
+  TAG_KEY,
+  TAG_LINK,
+  type InboxItem,
+  type LinkTag,
+  type TextPayload,
+} from "../link/model";
+import { cleanupByToken } from "./chart-cleanup";
+import { withSyncDeadline } from "./chart-draw";
+import type { FoundLink, InsertResult } from "./host";
+import { isMissingShape, missingShapeError } from "./missing-shape";
+import {
+  CONTENT_WIDTH,
+  DEFAULT_TARGET,
+  finishTarget,
+  resolveTarget,
+  type InsertTarget,
+} from "./placement";
+import { shapeAt } from "./shapes";
+
+// PowerPoint's default text-box font is 18 pt, and 0.55 em is about the width
+// of a proportional font's average glyph. The auto-size corrects the guess the
+// moment the box is on the slide; this only has to be close enough that the
+// placement finds it a spot of roughly the right shape.
+const FONT_PT = 18;
+const EM_PER_CHAR = 0.55;
+const PADDING = 14;
+const LINE_HEIGHT = 28;
+const MIN_WIDTH = 60;
+// A text link is never worth shrinking: autoSizeShapeToFitText grows the box
+// straight back to its text the moment it lands, so a scaled-down box would
+// only ever be a placement fiction. Its own natural size is the floor.
+const TEXT_MIN_SCALE = 1;
+
+export function textSize(payload: TextPayload): Size {
+  const width = Math.ceil(payload.text.length * FONT_PT * EM_PER_CHAR);
+  return {
+    width: Math.min(CONTENT_WIDTH, Math.max(MIN_WIDTH, width + PADDING)),
+    height: LINE_HEIGHT,
+  };
+}
+
+export async function insertText(
+  stage: string,
+  item: InboxItem,
+  payload: TextPayload,
+  tag: LinkTag,
+  target: InsertTarget = DEFAULT_TARGET,
+): Promise<InsertResult> {
+  const placed = await PowerPoint.run(async (context) => {
+    const resolved = await resolveTarget(
+      context,
+      stage,
+      target,
+      textSize(payload),
+      TEXT_MIN_SCALE,
+    );
+    const { slideId, placement, consume, before } = resolved;
+    const shapes = context.presentation.slides.getItem(slideId).shapes;
+    const shape = shapes.addTextBox(payload.text, placement.box);
+    shape.name = `pls,fix text ${item.label}`;
+    // The box hugs its text, on one line: the slide keeps the number where the
+    // modeller put it instead of wrapping it into a paragraph.
+    shape.textFrame.autoSizeSetting =
+      PowerPoint.ShapeAutoSize.autoSizeShapeToFitText;
+    shape.textFrame.wordWrap = false;
+    shape.tags.add(TAG_LINK, encodeTag(tag));
+    shape.tags.add(TAG_KEY, item.token);
+    shape.load("id");
+    // The text box's id is only known once this sync answers, so a host
+    // that swallows it (rolls the batch back) leaves nothing to delete -
+    // but one that applies the add and both tags before answering the sync
+    // itself with an error leaves a fully tagged, orphaned text box; this
+    // catch is what finds and removes it. cleanupByToken (chart-cleanup.ts)
+    // matches by the token, which the link owns, not this one push -
+    // `before` keeps it off an older, already-finished copy of the link.
+    try {
+      await withSyncDeadline(context.sync(), "inserting the text");
+    } catch (error) {
+      await withSyncDeadline(cleanupByToken(slideId, item.token, before)).catch(
+        () => undefined,
+      );
+      throw error;
+    }
+    return {
+      slideId,
+      shapeId: shape.id,
+      overlapping: placement.overlapping,
+      freeSpot: placement.freeSpot,
+      freeSpotSize: placement.freeSpotSize,
+      consume,
+    };
+  });
+  await finishTarget(target, placed.slideId, placed.consume);
+  return {
+    slideId: placed.slideId,
+    shapeId: placed.shapeId,
+    overlapping: placed.overlapping,
+    freeSpot: placed.freeSpot,
+    freeSpotSize: placed.freeSpotSize,
+  };
+}
+
+// The text the source shows now, written into the box where it sits. Nothing
+// here touches left, top, width, height or the font: a text link is the one
+// kind whose whole look is the user's after the insert.
+export async function refreshText(
+  found: FoundLink,
+  payload: TextPayload,
+  tag: LinkTag,
+): Promise<void> {
+  const stage = `refresh ${sourceLabel(found.tag.src, found.tag.kind)}`;
+  await PowerPoint.run(async (context) => {
+    const shape = shapeAt(context, found);
+    shape.textFrame.textRange.text = payload.text;
+    shape.tags.add(TAG_LINK, encodeTag(tag));
+    await withSyncDeadline(context.sync(), "refreshing the text");
+  }).catch((error: unknown) => {
+    // A box the modeller deleted since the list was drawn has the pane's own
+    // sentence; wrapping the host's string here would hide it from the caller.
+    if (isMissingShape(error)) throw missingShapeError(stage, error);
+    const reason = error instanceof Error ? error.message : String(error);
+    throw new Error(`${stage}: ${reason}`);
+  });
+}

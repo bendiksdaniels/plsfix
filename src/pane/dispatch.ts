@@ -1,0 +1,299 @@
+// The action dispatch table: turns a [data-action] id (button click or ribbon
+// shortcut) into the excel/pane call it makes. Called through the shared
+// guard by main.ts's button loop and its styles-delete confirm. Business
+// logic's Office.js only reaches here through ../excel; the one exception is
+// the shortcut card, core Office chrome (displayDialogAsync) rather than a
+// workbook action.
+
+import {
+  addCagrLabel,
+  applyAlignmentCycle,
+  applyBorderCycle,
+  applyColumnWidthCycle,
+  applyDecimalStep,
+  applyFillCycle,
+  applyFontColorCycle,
+  applyIndentCycle,
+  applyNumberCycle,
+  applyNumberFormat,
+  applyPinstripes,
+  applyPreset,
+  applyRowHeightCycle,
+  applyRowStyleCycle,
+  applySignFlip,
+  applyUnderlineCycle,
+  autocolorSelection,
+  cleanPastData,
+  clearFormats,
+  fastFillAuto,
+  formatSelectedChart,
+  insertCagr,
+  insertColorKey,
+  insertCompsStats,
+  insertConsistentRounding,
+  insertFootballField,
+  insertTemplate,
+  insertTornado,
+  insertWaterfall,
+  markCopySource,
+  pasteDuplicateFormulas,
+  pasteNumberFormats,
+  pasteRowHeights,
+  pasteSpecial,
+  pastePreserveFormulas,
+  scaleSelection,
+  selectConsistentRegion,
+  toggleIfErrorGuard,
+  undoLastAction,
+  unpivotSelection,
+  type NumberFormatName,
+  type PresetName,
+  type TraceDirection,
+} from "../excel";
+import type { NumberCycleFamily, RowStyleKind } from "../cycles";
+import { runFind } from "./find-panel";
+import { runCheck } from "./model-check-panel";
+import { applyPaintSlot, capturePaintSlot } from "./paint-slots";
+import { prepareShare } from "./share-panel";
+import { runReconciliation } from "./reconcile-panel";
+import { isExcelReady } from "./shared";
+import { applyShortcuts, resetShortcuts } from "./shortcuts-panel";
+import { deleteStyles, scanStyles } from "./styles-panel";
+import {
+  startPrecedentsOfSelection,
+  startTrace,
+  toggleAudit,
+} from "./trace-panel";
+import {
+  buryThisSheet,
+  insertTocSheet,
+  moveThisSheet,
+  scanNames,
+  showOnlyThisSheet,
+  unhideAllSheets,
+} from "./workbook-tab";
+
+// The card is a static page, not a workbook write: it needs Office chrome to
+// exist at all, not a connected Excel, so it works even before isExcelReady()
+// would let anything else through. A host with no dialog API at all (or one
+// that fails the call) falls back to a plain browser tab either way.
+function openShortcutCard(): Promise<string> {
+  const url = new URL("shortcuts.html", location.href).href;
+  if (!Office.context?.ui?.displayDialogAsync) {
+    if (!window.open(url, "_blank")) {
+      throw new Error(
+        "The shortcut card could not open. Allow pop-ups for this pane.",
+      );
+    }
+    return Promise.resolve("Shortcut card opened");
+  }
+  return new Promise((resolve) => {
+    Office.context.ui.displayDialogAsync(
+      url,
+      { height: 80, width: 45, displayInIframe: true },
+      (result) => {
+        if (result.status === Office.AsyncResultStatus.Failed) {
+          window.open(url, "_blank");
+        }
+        resolve("Shortcut card opened");
+      },
+    );
+  });
+}
+
+// Actions that want Office chrome rather than a connected workbook: the
+// printable card (a dialog) and the shortcut manager (Office.actions, which
+// roams a user's key map and never touches the file). Each refuses on its own
+// terms, so the "Excel is not connected." guard would answer the wrong
+// question for all three.
+const HOST_FREE_ACTIONS = new Set([
+  "shortcut-card",
+  "shortcuts-apply",
+  "shortcuts-reset",
+]);
+
+// The one sentence every workbook action answers with when there is no
+// connected, supported Excel - shared rather than restated, including by
+// main.ts's Links-tab buttons, which never reach this switch at all.
+export const EXCEL_NOT_CONNECTED_MESSAGE = "Excel is not connected.";
+
+export async function dispatch(action: string): Promise<string> {
+  // Every other action reaches Excel through ../excel: without a connected
+  // workbook that would throw whatever raw error the adapter or Excel.js
+  // hits first, instead of the one clean sentence a pane with no host (or a
+  // rejected one) owes every click.
+  if (!HOST_FREE_ACTIONS.has(action) && !isExcelReady()) {
+    throw new Error(EXCEL_NOT_CONNECTED_MESSAGE);
+  }
+
+  if (action.startsWith("style-")) {
+    await applyPreset(action.replace("style-", "") as PresetName);
+  } else if (action.startsWith("paint-capture-")) {
+    return capturePaintSlot(Number(action.replace("paint-capture-", "")));
+  } else if (action.startsWith("paint-apply-")) {
+    return applyPaintSlot(Number(action.replace("paint-apply-", "")));
+  } else if (action.startsWith("number-")) {
+    await applyNumberFormat(action.replace("number-", "") as NumberFormatName);
+  } else if (action.startsWith("cycle-number-")) {
+    return applyNumberCycle(
+      action.replace("cycle-number-", "") as NumberCycleFamily,
+    );
+  } else if (action.startsWith("cycle-row-") && action !== "cycle-row-height") {
+    // Excludes cycle-row-height: that action is row SIZING (the switch below
+    // routes it to applyRowHeightCycle), not one of the three row-STYLE
+    // kinds this prefix owns - the prefix used to swallow it first and call
+    // applyRowStyleCycle("height"), which is not a real RowStyleKind.
+    return applyRowStyleCycle(action.replace("cycle-row-", "") as RowStyleKind);
+  } else if (action.startsWith("template-")) {
+    return insertTemplate(action.replace("template-", ""));
+  } else {
+    switch (action) {
+      case "cycle-fill":
+        return applyFillCycle();
+      case "cycle-font":
+        return applyFontColorCycle();
+      case "cycle-border":
+        return applyBorderCycle();
+      case "cycle-row-height":
+        return applyRowHeightCycle();
+      case "cycle-col-width":
+        return applyColumnWidthCycle();
+      case "clear-formats":
+        await clearFormats();
+        break;
+      case "fill-right":
+        await fastFillAuto("right");
+        break;
+      case "fill-down":
+        await fastFillAuto("down");
+        break;
+      case "if-error":
+        return toggleIfErrorGuard();
+      case "autocolor":
+        return autocolorSelection();
+      case "insert-color-key":
+        return insertColorKey();
+      case "divide-1000":
+        await scaleSelection(0.001);
+        break;
+      case "multiply-1000":
+        await scaleSelection(1000);
+        break;
+      case "cagr":
+        return insertCagr();
+      case "sign-flip":
+        await applySignFlip();
+        break;
+      case "dec-more":
+        await applyDecimalStep(1);
+        break;
+      case "dec-less":
+        await applyDecimalStep(-1);
+        break;
+      case "undo":
+        return await undoLastAction();
+      case "copy-source":
+        return `Copy source: ${await markCopySource()}`;
+      case "paste-values":
+        await pasteSpecial("values");
+        break;
+      case "paste-formats":
+        await pasteSpecial("formats");
+        break;
+      case "paste-transpose":
+        await pasteSpecial("transpose");
+        break;
+      case "paste-exact":
+        await pastePreserveFormulas();
+        break;
+      case "paste-duplicate":
+        await pasteDuplicateFormulas();
+        break;
+      case "paste-number-formats":
+        await pasteNumberFormats();
+        break;
+      case "paste-row-heights":
+        return pasteRowHeights();
+      case "chart-waterfall":
+        return insertWaterfall();
+      case "tornado":
+        return insertTornado();
+      case "unpivot":
+        return unpivotSelection();
+      case "write-rounded":
+        return insertConsistentRounding();
+      case "chart-format":
+        await formatSelectedChart();
+        return "Chart restyled to your brand";
+      case "chart-cagr":
+        return addCagrLabel();
+      case "audit-toggle":
+        return toggleAudit();
+      case "trace-precedents":
+      case "trace-dependents":
+        return startTrace(
+          action.replace("trace-", "") as TraceDirection,
+          false,
+        );
+      case "select-consistent":
+        return selectConsistentRegion();
+      case "trace-precedents-all":
+        return startPrecedentsOfSelection();
+      case "insert-toc":
+        return insertTocSheet();
+      case "find":
+        return runFind();
+      case "scan-names":
+        return scanNames();
+      case "styles-scan":
+        return scanStyles();
+      case "styles-delete":
+        return deleteStyles();
+      case "share-prepare":
+        return prepareShare();
+      case "run-model-check":
+        return runCheck();
+      case "reconcile-find":
+        return runReconciliation();
+      case "shortcut-card":
+        return openShortcutCard();
+      // ---- wave v2.7, slice M1: comps and valuation tools ----
+      case "comps-stats":
+        return insertCompsStats();
+      case "chart-football":
+        return insertFootballField();
+      case "pinstripes-rows":
+        return applyPinstripes("rows");
+      case "pinstripes-columns":
+        return applyPinstripes("columns");
+      case "cycle-indent":
+        return applyIndentCycle();
+      case "cycle-align":
+        return applyAlignmentCycle();
+      case "cycle-underline":
+        return applyUnderlineCycle();
+      case "sheets-unhide-all":
+        return unhideAllSheets();
+      case "sheets-show-only":
+        return showOnlyThisSheet();
+      case "sheets-bury":
+        return buryThisSheet();
+      case "sheets-move-up":
+        return moveThisSheet("up");
+      case "sheets-move-down":
+        return moveThisSheet("down");
+      case "sheets-move-end":
+        return moveThisSheet("end");
+      case "clean-past-data":
+        return cleanPastData();
+      case "shortcuts-apply":
+        return applyShortcuts();
+      case "shortcuts-reset":
+        return resetShortcuts();
+      default:
+        throw new Error(`Unknown action: ${action}`);
+    }
+  }
+
+  return "Selection updated";
+}
