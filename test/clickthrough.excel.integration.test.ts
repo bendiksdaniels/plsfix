@@ -23,6 +23,7 @@ import {
   type FakeHelpers,
 } from "./fakehost";
 import { FakeRelay } from "./fakerelay";
+import { freshWebStorage } from "./web-storage";
 
 enableStrictLoadSemantics();
 
@@ -94,14 +95,12 @@ interface BootOptions {
 async function bootExcel(options: BootOptions = {}): Promise<void> {
   vi.resetModules();
   uninstallFakeHost();
-  // officeKeyStore() (src/link/workspace.ts) falls through to a module-level
-  // in-memory Map here: this Node/jsdom combination's global `localStorage`
-  // exists but every method on it is undefined (see src/ui/first-run.test.ts
-  // for the same finding), so webStorage()'s own probe throws and is caught.
-  // vi.resetModules() below re-evaluates that module fresh on the next
-  // import, which is what actually gives every boot a clean key store; no
-  // manual clearing needed (and `localStorage.clear` is not callable here to
-  // even attempt it).
+  // Every boot is a fresh machine: under Node 22 (CI) jsdom's localStorage
+  // works and would keep an earlier boot's first-run dismissal and key; under
+  // Node 25 the global localStorage has no working methods, officeKeyStore()
+  // (src/link/workspace.ts) falls through to a module-level Map, and
+  // vi.resetModules() above gives that module a fresh Map on the next import.
+  freshWebStorage();
   if (options.transport === "relay") {
     // Imported fresh after resetModules(), so this writes into the same
     // module instance src/main.ts reads back from below - a static

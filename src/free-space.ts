@@ -111,7 +111,8 @@ function uniqueSorted(values: number[]): number[] {
   return [...new Set(values)].sort((a, b) => a - b);
 }
 
-function largestFreeBox(
+// Exported for its oracle test (test/free-space.oracle.test.ts) only.
+export function largestFreeBox(
   occupied: readonly Box[],
   canvas: Canvas,
   margin: number,
@@ -131,38 +132,56 @@ function largestFreeBox(
       box.left + box.width + gap,
     ]),
   ]).filter((x) => x >= left && x <= right);
-  const ys = uniqueSorted([
-    top,
-    bottom,
-    ...occupied.flatMap((box) => [
-      box.top,
-      box.top + box.height,
-      box.top - gap,
-      box.top + box.height + gap,
-    ]),
-  ]).filter((y) => y >= top && y <= bottom);
+  // A box whose vertical edges are not numbers blocks nothing (every compare
+  // with NaN is false in overlaps()); infinities sort without subtraction.
+  const byTop = occupied
+    .filter(
+      (box) => !Number.isNaN(box.top) && !Number.isNaN(box.top + box.height),
+    )
+    .sort((a, b) => (a.top < b.top ? -1 : a.top > b.top ? 1 : 0));
   let best: Box | null = null;
   let bestArea = 0;
   for (let i = 0; i < xs.length; i += 1) {
     for (let j = i + 1; j < xs.length; j += 1) {
-      for (let k = 0; k < ys.length; k += 1) {
-        for (let l = k + 1; l < ys.length; l += 1) {
-          const candidate: Box = {
-            left: xs[i]!,
-            top: ys[k]!,
-            width: xs[j]! - xs[i]!,
-            height: ys[l]! - ys[k]!,
-          };
-          if (!hasArea(candidate) || !clear(candidate, occupied, gap)) continue;
-          const area = areaOf(candidate);
-          if (area > bestArea) {
-            best = candidate;
-            bestArea = area;
-          }
-        }
-      }
+      const width = xs[j]! - xs[i]!;
+      const run = tallestRun(xs[i]!, xs[j]!, byTop, top, bottom, gap);
+      if (!run || width * run.height <= bestArea) continue;
+      best = { left: xs[i]!, top: run.top, width, height: run.height };
+      bestArea = width * run.height;
     }
   }
+  return best;
+}
+
+// The tallest stretch of [top, bottom] that the strip from x0 to x1 leaves
+// clear of every box (gap included), the first of equals: every rectangle
+// with that strip's width is clear exactly when it sits inside one such run,
+// so trying every pair of y edges (O(n^5) in all, 12 s for 300 shapes on
+// Node 22) finds the same rectangle as this sweep over boxes sorted by top.
+function tallestRun(
+  x0: number,
+  x1: number,
+  byTop: readonly Box[],
+  top: number,
+  bottom: number,
+  gap: number,
+): { top: number; height: number } | null {
+  let cursor = top;
+  let best: { top: number; height: number } | null = null;
+  const consider = (end: number) => {
+    const height = Math.min(end, bottom) - cursor;
+    if (height > 0 && (!best || height > best.height))
+      best = { top: cursor, height };
+  };
+  for (const box of byTop) {
+    const blocks = x0 < box.left + box.width + gap && box.left < x1 + gap;
+    if (!blocks) continue;
+    const lo = box.top - gap;
+    if (lo > cursor) consider(lo);
+    cursor = Math.max(cursor, box.top + box.height + gap);
+    if (cursor >= bottom) return best;
+  }
+  consider(bottom);
   return best;
 }
 

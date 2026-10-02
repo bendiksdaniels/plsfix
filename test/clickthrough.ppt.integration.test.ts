@@ -34,6 +34,7 @@ import {
   type Payload,
 } from "../src/link/model";
 import { TRANSPORT_STORAGE_KEY } from "../src/link/transport-setting";
+import { freshWebStorage } from "./web-storage";
 import {
   createWorkspace,
   WORKSPACE_STORAGE_KEY,
@@ -113,6 +114,7 @@ interface BootOptions {
 async function bootPpt(options: BootOptions = {}): Promise<void> {
   vi.resetModules();
   uninstallFakePpt();
+  freshWebStorage();
   pane();
   relay = new FakeRelay();
   const storage = new Map<string, string>();
